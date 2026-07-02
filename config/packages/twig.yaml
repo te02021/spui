@@ -1,0 +1,6 @@
+twig:
+    paths:
+        "%kernel.project_dir%/apps/spui/templates": "SPUI"
+    file_name_pattern: "*.twig"
+    form_themes:
+        - "bootstrap_5_layout.html.twig"

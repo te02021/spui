@@ -1,0 +1,85 @@
+{% extends '@SPUI/base.html.twig' %}
+{% block title %}Alertas de Emergencia — SPUI{% endblock %}
+
+{% block body %}
+<div class="d-flex justify-content-between align-items-center mb-1 flex-wrap gap-2">
+    <div>
+        <h1 style="color:var(--unraf-azul);font-family:var(--unraf-font-principal);margin:0">Alertas de Emergencia</h1>
+        <p class="text-muted mb-0">Las alertas activas se publican a todos los reproductores inmediatamente.</p>
+    </div>
+    <button type="button" class="unraf-btn unraf-btn-institucion flex-shrink-0"
+            data-spui-form="{{ path('spui_cms_alertas_nueva_form') }}"
+            data-spui-title="Nueva alerta de emergencia">
+        + Nueva alerta
+    </button>
+</div>
+
+<div id="spui-table-body">
+<div class="unraf-card mt-4">
+    {% for alerta in alertas %}
+        <div class="p-3 border-bottom {{ alerta.activa ? 'spui-alerta-card-activa' : (alerta.haExpirado ? 'spui-alerta-card-expirada' : 'spui-alerta-card-inactiva') }}">
+            <div class="d-flex justify-content-between align-items-start gap-2">
+                <div class="flex-grow-1">
+                    <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
+                        {% if alerta.activa %}
+                            <span class="spui-badge-desconectado">ACTIVA</span>
+                        {% elseif alerta.haExpirado %}
+                            <span class="spui-badge-archivado">Expirada</span>
+                        {% else %}
+                            <span class="spui-badge-borrador">Inactiva</span>
+                        {% endif %}
+                        <span class="spui-badge-borrador">Prioridad {{ alerta.prioridad }}</span>
+                        {% if alerta.expiraEn %}
+                            <small class="text-muted">Expira: {{ alerta.expiraEn|date('d/m/Y H:i') }}</small>
+                        {% endif %}
+                    </div>
+                    <strong>{{ alerta.titulo }}</strong>
+                    <p class="mb-1 text-muted small">{{ alerta.mensaje|slice(0,120) }}{% if alerta.mensaje|length > 120 %}…{% endif %}</p>
+                    {% if alerta.contenido %}
+                        <small class="text-muted">
+                            <img src="{{ asset('unraf-ui/icons/paperclip.svg') }}" class="unraf-icon-svg" alt=""> {{ alerta.contenido.titulo }}
+                        </small>
+                    {% endif %}
+                </div>
+                <div class="d-flex flex-column gap-1 flex-shrink-0">
+                    {% if not alerta.activa and not alerta.haExpirado %}
+                        <button type="button" class="unraf-btn unraf-btn-danger unraf-btn-sm"
+                                data-spui-action="{{ path('spui_cms_alertas_activar', {id: alerta.id}) }}"
+                                data-spui-title="Activar alerta"
+                                data-spui-message="¿Activar «{{ alerta.titulo }}»? Se publicará a TODAS las pantallas inmediatamente."
+                                data-spui-variant="danger"
+                                style="white-space:nowrap">
+                            <img src="{{ asset('unraf-ui/icons/lightning.svg') }}" class="unraf-icon-svg" style="filter:invert(1)" alt=""> Activar
+                        </button>
+                    {% endif %}
+                    {% if alerta.activa %}
+                        <button type="button" class="unraf-btn unraf-btn-sm spui-btn-confirm-success"
+                                data-spui-action="{{ path('spui_cms_alertas_desactivar', {id: alerta.id}) }}"
+                                data-spui-title="Desactivar alerta"
+                                data-spui-message="¿Desactivar «{{ alerta.titulo }}»? Los reproductores dejarán de mostrarla."
+                                data-spui-variant="success"
+                                style="white-space:nowrap">
+                            <img src="{{ asset('unraf-ui/icons/check.svg') }}" class="unraf-icon-svg" style="filter:invert(1)" alt=""> Desactivar
+                        </button>
+                    {% endif %}
+                    {% if not alerta.activa %}
+                        <button type="button" class="unraf-btn-icon btn-delete"
+                                data-spui-action="{{ path('spui_cms_alertas_eliminar', {id: alerta.id}) }}"
+                                data-spui-title="Eliminar alerta"
+                                data-spui-message="¿Eliminar «{{ alerta.titulo }}»? Esta acción no se puede deshacer."
+                                data-spui-variant="danger"
+                                title="Eliminar">
+                            <img src="{{ asset('unraf-ui/icons/trash.svg') }}" class="unraf-icon-svg" alt="Eliminar">
+                        </button>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    {% else %}
+        <div class="p-4 text-center text-muted">
+            No hay alertas creadas.
+        </div>
+    {% endfor %}
+</div>
+</div>
+{% endblock %}

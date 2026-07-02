@@ -1,0 +1,29 @@
+{{ form_start(form, {'attr': {'data-spui-ajax': '1', 'novalidate': 'novalidate'}}) }}
+
+<div class="mb-3">
+    {{ form_label(form.hostname) }}
+    {{ form_widget(form.hostname) }}
+    {% for e in form.hostname.vars.errors %}
+        <p class="text-danger small mt-1">{{ e.message }}</p>
+    {% endfor %}
+</div>
+
+<div class="mb-4">
+    {{ form_label(form.versionFirmware) }}
+    {{ form_widget(form.versionFirmware) }}
+</div>
+
+{% if reproductor is not defined or not reproductor.id %}
+    <div class="alert alert-info" style="font-size:.875rem">
+        <strong>Clave API:</strong> Se generará automáticamente. Aparecerá una sola vez al crear el reproductor — guardála en un lugar seguro.
+    </div>
+{% endif %}
+
+<div class="d-flex justify-content-end gap-2 pt-3 border-top">
+    <button type="button" class="unraf-btn spui-btn-back" data-spui-close>Cancelar</button>
+    <button type="submit" class="unraf-btn unraf-btn-institucion">
+        {{ reproductor is defined and reproductor.id ? 'Guardar cambios' : 'Registrar reproductor' }}
+    </button>
+</div>
+
+{{ form_end(form) }}

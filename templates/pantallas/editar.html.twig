@@ -1,0 +1,97 @@
+{% extends '@SPUI/base.html.twig' %}
+{% block title %}Editar pantalla — SPUI{% endblock %}
+
+{% block body %}
+<div class="d-flex justify-content-between align-items-center mb-4 gap-2">
+    <h1 class="mb-0" style="color:var(--unraf-azul);font-family:var(--unraf-font-principal)">Editar: {{ pantalla.nombre }}</h1>
+    <a href="{{ path('spui_cms_pantallas_index') }}" class="unraf-btn spui-btn-back flex-shrink-0">← Volver</a>
+</div>
+
+{% if pantalla.reproductor %}
+<div class="alert alert-info mb-4" role="alert">
+    <img src="{{ asset('unraf-ui/icons/cpu.svg') }}" style="width:1rem;height:1rem" alt="">
+    Reproductor asociado: <strong>{{ pantalla.reproductor.hostname }}</strong>
+    — <a href="{{ path('spui_cms_reproductores_editar', {id: pantalla.reproductor.id}) }}">Editar reproductor</a>
+</div>
+{% endif %}
+
+<div class="row justify-content-center">
+<div class="col-lg-8">
+    <div class="unraf-card p-4">
+        {{ form_start(form) }}
+
+        <div class="mb-3">
+            {{ form_label(form.nombre) }}
+            {{ form_widget(form.nombre) }}
+            {% for error in form.nombre.vars.errors %}
+                <p class="text-danger small mt-1">{{ error.message }}</p>
+            {% endfor %}
+        </div>
+
+        <div class="mb-3">
+            {{ form_label(form.ubicacion) }}
+            {{ form_widget(form.ubicacion) }}
+            {% for error in form.ubicacion.vars.errors %}
+                <p class="text-danger small mt-1">{{ error.message }}</p>
+            {% endfor %}
+        </div>
+
+        <div class="mb-3">
+            {{ form_label(form.macAddress) }}
+            {{ form_widget(form.macAddress) }}
+        </div>
+
+        <div class="mb-3">
+            {{ form_label(form.ipAddress) }}
+            {{ form_widget(form.ipAddress) }}
+        </div>
+
+        <div class="row g-3 mb-3">
+            <div class="col-sm-6">
+                {{ form_label(form.resolucionAncho) }}
+                {{ form_widget(form.resolucionAncho) }}
+            </div>
+            <div class="col-sm-6">
+                {{ form_label(form.resolucionAlto) }}
+                {{ form_widget(form.resolucionAlto) }}
+            </div>
+        </div>
+
+        <div class="mb-3">
+            {{ form_label(form.estado) }}
+            {{ form_widget(form.estado) }}
+        </div>
+
+        <div class="mb-3">
+            {{ form_label(form.reproductor) }}
+            {{ form_widget(form.reproductor) }}
+            <small class="text-muted d-block mt-1">Raspberry Pi que controla esta pantalla. Puede dejarse vacío.</small>
+        </div>
+
+        <div class="mb-4">
+            {{ form_label(form.playlistFallback) }}
+            {{ form_widget(form.playlistFallback) }}
+            <small class="text-muted d-block mt-1">Se muestra cuando no hay ninguna regla de programación activa para este momento.</small>
+        </div>
+
+        <div class="d-flex justify-content-between align-items-center">
+            {% if pantalla.reproductor is null %}
+                <button type="button" class="unraf-btn unraf-btn-danger"
+                        data-confirm-url="{{ path('spui_cms_pantallas_eliminar', {id: pantalla.id}) }}"
+                        data-confirm-title="Eliminar pantalla"
+                        data-confirm-message="¿Eliminar «{{ pantalla.nombre }}»? Esta acción no se puede deshacer."
+                        data-confirm-variant="danger">Eliminar</button>
+            {% else %}
+                <span class="text-muted small">Tiene reproductor asociado — desasignalo primero para poder eliminar</span>
+            {% endif %}
+            <div class="d-flex gap-2">
+                <a href="{{ path('spui_cms_pantallas_index') }}" class="unraf-btn spui-btn-back">Cancelar</a>
+                <button type="submit" class="unraf-btn unraf-btn-institucion">Guardar cambios</button>
+            </div>
+        </div>
+
+        {{ form_end(form) }}
+    </div>
+</div>
+</div>
+{% endblock %}

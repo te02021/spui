@@ -1,0 +1,40 @@
+# systemd service para SPUI Pi Client
+# NOTA Pi-only: Requiere Linux con systemd (Raspberry Pi OS, Ubuntu, etc.)
+#
+# Instalación:
+#   sudo cp spui.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable spui
+#   sudo systemctl start spui
+#
+# Logs:
+#   journalctl -u spui -f
+
+[Unit]
+Description=SPUI Digital Signage Client
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pi
+Group=pi
+WorkingDirectory=/opt/spui
+
+# Variables de entorno — crear este archivo con los valores reales
+EnvironmentFile=/etc/spui/spui.env
+
+ExecStart=/usr/bin/python3 /opt/spui/main.py
+Restart=always
+RestartSec=10
+
+# Logs van al journal Y al archivo configurado en SPUI_LOG_FILE
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=spui
+
+# Matar todo el proceso group al detener
+KillMode=process
+
+[Install]
+WantedBy=graphical.target

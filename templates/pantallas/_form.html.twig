@@ -1,0 +1,64 @@
+{{ form_start(form, {'attr': {'data-spui-ajax': '1', 'novalidate': 'novalidate'}}) }}
+
+<div class="mb-3">
+    {{ form_label(form.nombre) }}
+    {{ form_widget(form.nombre) }}
+    {% for e in form.nombre.vars.errors %}
+        <p class="text-danger small mt-1">{{ e.message }}</p>
+    {% endfor %}
+</div>
+
+<div class="mb-3">
+    {{ form_label(form.ubicacion) }}
+    {{ form_widget(form.ubicacion) }}
+    {% for e in form.ubicacion.vars.errors %}
+        <p class="text-danger small mt-1">{{ e.message }}</p>
+    {% endfor %}
+</div>
+
+<div class="mb-3">
+    {{ form_label(form.reproductor) }}
+    {{ form_widget(form.reproductor) }}
+    <small class="text-muted d-block mt-1">Raspberry Pi que controla esta pantalla. Opcional.</small>
+</div>
+
+<div class="mb-3">
+    {{ form_label(form.playlistFallback) }}
+    {{ form_widget(form.playlistFallback) }}
+</div>
+
+<div class="mb-3">
+    {{ form_label(form.estado) }}
+    {{ form_widget(form.estado) }}
+</div>
+
+<div class="row g-2 mb-3">
+    <div class="col">
+        {{ form_label(form.macAddress) }}
+        {{ form_widget(form.macAddress) }}
+    </div>
+    <div class="col">
+        {{ form_label(form.ipAddress) }}
+        {{ form_widget(form.ipAddress) }}
+    </div>
+</div>
+
+<div class="row g-2 mb-4">
+    <div class="col">
+        {{ form_label(form.resolucionAncho) }}
+        {{ form_widget(form.resolucionAncho) }}
+    </div>
+    <div class="col">
+        {{ form_label(form.resolucionAlto) }}
+        {{ form_widget(form.resolucionAlto) }}
+    </div>
+</div>
+
+<div class="d-flex justify-content-end gap-2 pt-3 border-top">
+    <button type="button" class="unraf-btn spui-btn-back" data-spui-close>Cancelar</button>
+    <button type="submit" class="unraf-btn unraf-btn-institucion">
+        {{ pantalla is defined and pantalla.id ? 'Guardar cambios' : 'Crear pantalla' }}
+    </button>
+</div>
+
+{{ form_end(form) }}

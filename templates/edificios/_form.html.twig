@@ -1,0 +1,28 @@
+{{ form_start(form, {'attr': {'data-spui-ajax': '1', 'novalidate': 'novalidate'}}) }}
+
+<div class="mb-3">
+    {{ form_label(form.nombre) }}
+    {{ form_widget(form.nombre) }}
+    {% for e in form.nombre.vars.errors %}
+        <p class="text-danger small mt-1">{{ e.message }}</p>
+    {% endfor %}
+</div>
+
+<div class="mb-3">
+    {{ form_label(form.descripcion) }}
+    {{ form_widget(form.descripcion) }}
+</div>
+
+<div class="mb-4 form-check">
+    {{ form_widget(form.activo, {'attr': {'class': 'form-check-input'}}) }}
+    {{ form_label(form.activo, null, {'label_attr': {'class': 'form-check-label'}}) }}
+</div>
+
+<div class="d-flex justify-content-end gap-2 pt-3 border-top">
+    <button type="button" class="unraf-btn spui-btn-back" data-spui-close>Cancelar</button>
+    <button type="submit" class="unraf-btn unraf-btn-institucion">
+        {{ edificio is defined and edificio.id ? 'Guardar cambios' : 'Crear edificio' }}
+    </button>
+</div>
+
+{{ form_end(form) }}

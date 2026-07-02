@@ -1,0 +1,5 @@
+doctrine:
+    dbal:
+        default_connection: spui
+    orm:
+        default_entity_manager: SPUI

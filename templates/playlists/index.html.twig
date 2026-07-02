@@ -1,0 +1,61 @@
+{% extends '@SPUI/base.html.twig' %}
+{% block title %}Playlists — SPUI{% endblock %}
+
+{% block body %}
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <div>
+        <h1 style="color:var(--unraf-azul);font-family:var(--unraf-font-principal);margin:0">Playlists</h1>
+        <p class="text-muted mb-0">Colecciones ordenadas de contenidos para reproducir en las pantallas.</p>
+    </div>
+    <button type="button" class="unraf-btn unraf-btn-institucion"
+            data-spui-form="{{ path('spui_cms_playlists_nueva') }}"
+            data-spui-title="Nueva playlist">
+        + Nueva playlist
+    </button>
+</div>
+
+<div id="spui-table-body">
+<div class="unraf-card">
+    <div class="unraf-table-responsive">
+        <table class="unraf-table unraf-table-striped w-100">
+            <thead>
+                <tr>
+                    <th class="p-3">Nombre</th>
+                    <th class="p-3">Items</th>
+                    <th class="p-3">Estado</th>
+                    <th class="p-3">Actualizada</th>
+                    <th class="p-3 text-center">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for pl in playlists %}
+                <tr>
+                    <td class="p-3">
+                        <strong>{{ pl.nombre }}</strong>
+                        {% if pl.descripcion %}<br><small class="text-muted">{{ pl.descripcion|slice(0,80) }}</small>{% endif %}
+                    </td>
+                    <td class="p-3">{{ pl.items|length }}</td>
+                    <td class="p-3">
+                        {% if pl.activo %}
+                            <span class="spui-badge-publicado">Activa</span>
+                        {% else %}
+                            <span class="spui-badge-archivado">Inactiva</span>
+                        {% endif %}
+                    </td>
+                    <td class="p-3"><small>{{ pl.actualizadoEn|date('d/m/Y H:i') }}</small></td>
+                    <td class="p-3 text-center">
+                        <a href="{{ path('spui_cms_playlists_builder', {id: pl.id}) }}" class="unraf-btn-icon" title="Editar items">
+                            <img src="{{ asset('unraf-ui/icons/pencil-simple.svg') }}" class="unraf-icon-svg" alt="Editar">
+                        </a>
+                    </td>
+                </tr>
+            {% else %}
+                <tr><td colspan="5" class="p-4 text-center text-muted">No hay playlists.
+                </td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+</div>
+{% endblock %}

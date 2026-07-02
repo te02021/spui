@@ -1,0 +1,97 @@
+{% extends '@SPUI/base.html.twig' %}
+{% block title %}Contenidos — SPUI{% endblock %}
+
+{% block body %}
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <div>
+        <h1 style="color:var(--unraf-azul);font-family:var(--unraf-font-principal);margin:0">Contenidos</h1>
+        <p class="text-muted mb-0">Imágenes, videos y textos disponibles para las playlists.</p>
+    </div>
+    <button type="button" class="unraf-btn unraf-btn-institucion"
+            data-spui-form="{{ path('spui_cms_contenidos_new') }}"
+            data-spui-title="Nuevo contenido"
+            data-spui-size="modal-lg">
+        + Nuevo contenido
+    </button>
+</div>
+
+<div id="spui-table-body">
+<div class="unraf-card">
+    <div class="unraf-table-responsive">
+        <table class="unraf-table unraf-table-striped w-100">
+            <thead>
+                <tr>
+                    <th class="p-3">Título</th>
+                    <th class="p-3">Tipo</th>
+                    <th class="p-3">Duración</th>
+                    <th class="p-3">Estado</th>
+                    <th class="p-3">Creado</th>
+                    <th class="p-3 text-center">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for c in contenidos %}
+                <tr>
+                    <td class="p-3">
+                        <strong>{{ c.titulo }}</strong>
+                        {% if c.contenidoTexto %}
+                            <br><small class="text-muted">{{ c.contenidoTexto|slice(0,60) }}{% if c.contenidoTexto|length > 60 %}…{% endif %}</small>
+                        {% endif %}
+                    </td>
+                    <td class="p-3">
+                        {% if c.tipo.value == 'imagen' %}
+                            <span class="unraf-badge-info">{{ c.tipo.value }}</span>
+                        {% elseif c.tipo.value == 'video' %}
+                            <span class="unraf-badge-azul">{{ c.tipo.value }}</span>
+                        {% else %}
+                            <span class="unraf-badge-turquesa">{{ c.tipo.value }}</span>
+                        {% endif %}
+                    </td>
+                    <td class="p-3">{{ c.duracionSegundos ? c.duracionSegundos ~ 's' : '∞ Perm.' }}</td>
+                    <td class="p-3"><span class="spui-badge-{{ c.estado.value }}">{{ c.estado.value }}</span></td>
+                    <td class="p-3"><small>{{ c.creadoEn|date('d/m/Y') }}</small></td>
+                    <td class="p-3">
+                        <div class="d-flex gap-1 justify-content-center flex-wrap">
+                            {% if c.estado.value != 'publicado' %}
+                                <button type="button" class="unraf-btn-icon"
+                                        data-spui-action="{{ path('spui_cms_contenidos_publicar', {id: c.id}) }}"
+                                        data-spui-title="Publicar contenido"
+                                        data-spui-message="¿Publicar «{{ c.titulo }}»?"
+                                        data-spui-variant="success"
+                                        title="Publicar"
+                                        style="background:var(--unraf-success,#4A9930);color:#fff">
+                                    <img src="{{ asset('unraf-ui/icons/check.svg') }}" class="unraf-icon-svg" alt="Publicar">
+                                </button>
+                            {% endif %}
+                            {% if c.estado.value != 'archivado' %}
+                                <button type="button" class="unraf-btn-icon"
+                                        data-spui-action="{{ path('spui_cms_contenidos_archivar', {id: c.id}) }}"
+                                        data-spui-title="Archivar contenido"
+                                        data-spui-message="¿Archivar «{{ c.titulo }}»?"
+                                        data-spui-variant="warning"
+                                        title="Archivar"
+                                        style="background:var(--unraf-turquesa,#1CA1A7);color:#fff">
+                                    <img src="{{ asset('unraf-ui/icons/archive.svg') }}" class="unraf-icon-svg" alt="Archivar">
+                                </button>
+                            {% endif %}
+                            <button type="button" class="unraf-btn-icon btn-delete"
+                                    data-spui-action="{{ path('spui_cms_contenidos_eliminar', {id: c.id}) }}"
+                                    data-spui-title="Eliminar contenido"
+                                    data-spui-message="¿Eliminar «{{ c.titulo }}»? Esta acción no se puede deshacer."
+                                    data-spui-variant="danger"
+                                    title="Eliminar">
+                                <img src="{{ asset('unraf-ui/icons/trash.svg') }}" class="unraf-icon-svg" alt="Eliminar">
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            {% else %}
+                <tr><td colspan="6" class="p-4 text-center text-muted">No hay contenidos.
+                </td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+</div>
+{% endblock %}

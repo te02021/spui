@@ -1,0 +1,20 @@
+<form method="post" action="{{ path('spui_cms_playlists_nueva') }}" data-spui-ajax="1" novalidate>
+
+    <div class="mb-3">
+        <label class="unraf-form-label" for="pl_nombre">Nombre <span class="text-danger">*</span></label>
+        <input type="text" id="pl_nombre" name="nombre" class="unraf-form-control" maxlength="150"
+               placeholder="Ej: Cartelera Edificio A" required>
+    </div>
+
+    <div class="mb-4">
+        <label class="unraf-form-label" for="pl_descripcion">Descripción (opcional)</label>
+        <textarea id="pl_descripcion" name="descripcion" class="unraf-form-control" rows="3"
+                  placeholder="Descripción breve de la playlist…"></textarea>
+    </div>
+
+    <div class="d-flex justify-content-end gap-2 pt-3 border-top">
+        <button type="button" class="unraf-btn spui-btn-back" data-spui-close>Cancelar</button>
+        <button type="submit" class="unraf-btn unraf-btn-institucion">Crear playlist</button>
+    </div>
+
+</form>

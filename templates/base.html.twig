@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}SPUI — Pantallas Digitales{% endblock %} | UNRaf</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 128 128%22><text y=%221.2em%22 font-size=%2296%22>🖥️</text></svg>">
+
+    {% block stylesheets %}
+        {{ importmap('spuiMap') }}
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+        <link rel="stylesheet" href="{{ asset('unraf-ui/css/unraf-estilos.min.css') }}">
+        <link rel="stylesheet" href="{{ asset('spui/css/style.css') }}">
+    {% endblock %}
+</head>
+<body>
+<div class="unraf-dashboard">
+
+    {# ── Header ── #}
+    <header class="unraf-header">
+        <div style="display:flex;align-items:center;gap:1rem;">
+            <button id="btnMenuToggle" class="unraf-menu-toggle" aria-label="Menú">
+                <img src="{{ asset('unraf-ui/icons/list.svg') }}" style="width:1.4rem;height:1.4rem;filter:invert(1)" alt="">
+            </button>
+            <a href="{{ path('spui_cms_dashboard') }}" class="unraf-brand unraf-brand-header">
+                <div class="brand-top">
+                    <img src="{{ asset('unraf-ui/icons/UNRaf-transparente.png') }}" alt="Logo UNRaf" class="brand-logo">
+                    <span class="brand-divisor"></span>
+                    <span class="brand-iniciales">SPUI</span>
+                </div>
+                <div class="brand-nombre">Sistema de Pantallas Digitales</div>
+            </a>
+        </div>
+        <a href="{{ path('sistemas') }}" class="d-none d-md-inline-flex align-items-center"
+           style="color:rgba(255,255,255,.8);font-size:.85rem;text-decoration:none;border:1px solid rgba(255,255,255,.3);padding:.4rem .8rem;border-radius:4px;">
+            ← Volver a Intranet
+        </a>
+    </header>
+
+    <div class="unraf-body-wrapper">
+
+        {# ── Sidebar ── #}
+        <aside class="unraf-sidebar d-flex flex-column">
+            <div class="flex-grow-1">
+                <p class="unraf-nav-separator">Principal</p>
+                <a href="{{ path('spui_cms_dashboard') }}" class="unraf-nav-item {{ app.request.get('_route') == 'spui_cms_dashboard' ? 'active' : '' }}">
+                    <img src="{{ asset('unraf-ui/icons/chart-pie.svg') }}" class="unraf-icon-svg" alt=""> Dashboard
+                </a>
+
+                <p class="unraf-nav-separator">Contenido</p>
+                <a href="{{ path('spui_cms_contenidos_index') }}" class="unraf-nav-item {{ app.request.get('_route') starts with 'spui_cms_contenidos' ? 'active' : '' }}">
+                    <img src="{{ asset('unraf-ui/icons/image.svg') }}" class="unraf-icon-svg" alt=""> Contenidos
+                </a>
+                <a href="{{ path('spui_cms_playlists_index') }}" class="unraf-nav-item {{ app.request.get('_route') starts with 'spui_cms_playlists' ? 'active' : '' }}">
+                    <img src="{{ asset('unraf-ui/icons/playlist.svg') }}" class="unraf-icon-svg" alt=""> Playlists
+                </a>
+                <a href="{{ path('spui_cms_programacion_index') }}" class="unraf-nav-item {{ app.request.get('_route') starts with 'spui_cms_programacion' ? 'active' : '' }}">
+                    <img src="{{ asset('unraf-ui/icons/calendar-dots.svg') }}" class="unraf-icon-svg" alt=""> Programación
+                </a>
+
+                <p class="unraf-nav-separator">Infraestructura</p>
+                <a href="{{ path('spui_cms_ubicaciones_index') }}" class="unraf-nav-item {{ app.request.get('_route') starts with 'spui_cms_ubicaciones' ? 'active' : '' }}">
+                    <img src="{{ asset('unraf-ui/icons/buildings.svg') }}" class="unraf-icon-svg" alt=""> Ubicaciones
+                </a>
+                <a href="{{ path('spui_cms_pantallas_index') }}" class="unraf-nav-item {{ app.request.get('_route') starts with 'spui_cms_pantallas' ? 'active' : '' }}">
+                    <img src="{{ asset('unraf-ui/icons/monitor.svg') }}" class="unraf-icon-svg" alt=""> Pantallas
+                </a>
+                <a href="{{ path('spui_cms_edificios_index') }}" class="unraf-nav-item {{ app.request.get('_route') starts with 'spui_cms_edificios' ? 'active' : '' }}">
+                    <img src="{{ asset('unraf-ui/icons/buildings.svg') }}" class="unraf-icon-svg" alt=""> Edificios
+                </a>
+                <a href="{{ path('spui_cms_reproductores_index') }}" class="unraf-nav-item {{ app.request.get('_route') starts with 'spui_cms_reproductores' ? 'active' : '' }}">
+                    <img src="{{ asset('unraf-ui/icons/cpu.svg') }}" class="unraf-icon-svg" alt=""> Reproductores
+                </a>
+
+                <p class="unraf-nav-separator">Operaciones</p>
+                <a href="{{ path('spui_cms_alertas_index') }}" class="unraf-nav-item {{ app.request.get('_route') starts with 'spui_cms_alertas' ? 'active' : '' }}">
+                    <img src="{{ asset('unraf-ui/icons/warning.svg') }}" class="unraf-icon-svg" alt=""> Alertas
+                </a>
+            </div>
+            <div class="d-md-none p-2 mt-4">
+                <a href="{{ path('sistemas') }}" class="unraf-nav-item nav-item-intranet">
+                    <img src="{{ asset('unraf-ui/icons/arrow-left.svg') }}" class="unraf-icon-svg" alt=""> Intranet
+                </a>
+            </div>
+        </aside>
+
+        <div id="sidebarOverlay" class="unraf-sidebar-overlay"></div>
+
+        {# ── Flash messages ── #}
+        <div class="flash-container">
+            {% for label, messages in app.flashes %}
+                {% for message in messages %}
+                    <div class="alert alert-{{ label == 'error' ? 'danger' : (label == 'warning' ? 'warning' : 'success') }} fade show" role="alert">
+                        <button type="button" class="flash-close-btn" aria-label="Cerrar">&times;</button>
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endfor %}
+        </div>
+
+        <div class="unraf-main-content d-flex flex-column min-vh-100">
+            <main class="flex-grow-1 {% block main_class %}p-4{% endblock %}">
+                {% block body %}{% endblock %}
+            </main>
+        </div>
+    </div>
+</div>
+
+<footer class="unraf-footer">
+    <div class="unraf-footer-content">
+        <div class="unraf-footer-section">
+            <h4>Universidad Nacional de Rafaela</h4>
+            <p>SPUI — Sistema de Pantallas de Información Universitaria</p>
+        </div>
+    </div>
+    <div class="unraf-footer-bottom">&copy; {{ "now"|date("Y") }} UNRaf — Departamento de Desarrollo</div>
+</footer>
+
+{# ── Modal ABM unificado ── #}
+<div class="spui-abm-overlay" id="spuiAbmOverlay" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="spuiAbmTitle">
+    <div class="spui-abm-modal" id="spuiAbmModal">
+        <div class="spui-abm-modal-header">
+            <h4 class="spui-abm-modal-title" id="spuiAbmTitle"></h4>
+            <button type="button" class="spui-abm-modal-close" id="spuiAbmClose" aria-label="Cerrar">&times;</button>
+        </div>
+        <div class="spui-abm-modal-body" id="spuiAbmBody"></div>
+    </div>
+</div>
+
+<script>
+(function () {
+    // ======= FLASH MESSAGES =======
+    document.querySelectorAll('.flash-container .alert').forEach(function (alert) {
+        function hide() {
+            alert.classList.add('flash-hiding');
+            setTimeout(function () { alert.parentNode && alert.remove(); }, 850);
+        }
+        setTimeout(hide, 5000);
+        var btn = alert.querySelector('.flash-close-btn');
+        if (btn) btn.addEventListener('click', hide);
+    });
+
+    // ======= ABM MODAL SYSTEM =======
+    var overlay = document.getElementById('spuiAbmOverlay');
+    var modal   = document.getElementById('spuiAbmModal');
+    var titleEl = document.getElementById('spuiAbmTitle');
+    var bodyEl  = document.getElementById('spuiAbmBody');
+    var closeEl = document.getElementById('spuiAbmClose');
+
+    function openModal() {
+        overlay.classList.add('is-open');
+        overlay.setAttribute('aria-hidden', 'false');
+        document.body.style.overflow = 'hidden';
+        setTimeout(function () {
+            if (!bodyEl) return;
+            var el = bodyEl.querySelector('input:not([type=hidden]),select,textarea');
+            if (el) el.focus();
+        }, 270);
+    }
+
+    function closeModal() {
+        overlay.classList.remove('is-open');
+        overlay.setAttribute('aria-hidden', 'true');
+        document.body.style.overflow = '';
+        setTimeout(function () {
+            bodyEl.innerHTML = '';
+            titleEl.textContent = '';
+            modal.className = 'spui-abm-modal';
+        }, 230);
+    }
+
+    function setTitle(t) { titleEl.textContent = t || ''; }
+
+    function showSpinner(title) {
+        setTitle(title || '');
+        bodyEl.innerHTML = '<div class="spui-abm-loading"><div class="spui-spinner"></div><span>Cargando…</span></div>';
+    }
+
+    function escHtml(s) {
+        return String(s).replace(/[&<>"']/g, function (c) {
+            return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+        });
+    }
+
+    // ── Flash programático ──
+    function showFlash(msg, type) {
+        var container = document.querySelector('.flash-container');
+        if (!container) return;
+        var cls = type === 'error' ? 'danger' : (type === 'warning' ? 'warning' : 'success');
+        var el = document.createElement('div');
+        el.className = 'alert alert-' + cls + ' fade show';
+        el.setAttribute('role', 'alert');
+        el.innerHTML = '<button type="button" class="flash-close-btn" aria-label="Cerrar">&times;</button>' + escHtml(msg);
+        el.querySelector('.flash-close-btn').addEventListener('click', function () { dismissFlash(el); });
+        container.appendChild(el);
+        setTimeout(function () { dismissFlash(el); }, 5000);
+    }
+    function dismissFlash(el) {
+        el.classList.add('flash-hiding');
+        setTimeout(function () { el.parentNode && el.remove(); }, 850);
+    }
+
+    // ── Refrescar tabla ──
+    function refreshTable() {
+        var tableEl = document.getElementById('spui-table-body');
+        if (!tableEl) return;
+        tableEl.classList.add('is-refreshing');
+        fetch(location.pathname + location.search, { cache: 'no-store' })
+            .then(function (r) { return r.text(); })
+            .then(function (html) {
+                var doc = new DOMParser().parseFromString(html, 'text/html');
+                var fresh = doc.getElementById('spui-table-body');
+                if (fresh) {
+                    tableEl.innerHTML = fresh.innerHTML;
+                    bindTableButtons();
+                }
+            })
+            .catch(function () { /* silent */ })
+            .finally(function () { tableEl.classList.remove('is-refreshing'); });
+    }
+
+    // ── Abrir formulario en modal ──
+    function openFormModal(url, title, size) {
+        showSpinner(title);
+        if (size) modal.classList.add(size);
+        openModal();
+        fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' }, cache: 'no-store' })
+            .then(function (r) {
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                return r.json();
+            })
+            .then(function (data) {
+                if (data.title) setTitle(data.title);
+                bodyEl.innerHTML = data.html || '';
+                runScriptsIn(bodyEl);
+                bindFormInBody();
+            })
+            .catch(function () {
+                bodyEl.innerHTML = '<div class="alert alert-danger">Error al cargar el formulario. Intentá de nuevo.</div>';
+            });
+    }
+
+    function runScriptsIn(container) {
+        container.querySelectorAll('script').forEach(function (old) {
+            var s = document.createElement('script');
+            s.textContent = old.textContent;
+            old.parentNode.replaceChild(s, old);
+        });
+    }
+
+    function bindFormInBody() {
+        var form = bodyEl && bodyEl.querySelector('form[data-spui-ajax]');
+        if (!form) return;
+        // bind close buttons inside the form
+        bodyEl.querySelectorAll('[data-spui-close]').forEach(function (b) {
+            b.addEventListener('click', closeModal);
+        });
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+            var btn = form.querySelector('[type=submit]');
+            if (btn) btn.classList.add('spui-btn-submitting');
+            var fd = new FormData(form);
+            fetch(form.getAttribute('action') || location.href, {
+                method: 'POST',
+                body: fd,
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (data.success) {
+                    closeModal();
+                    if (data.message) showFlash(data.message, 'success');
+                    if (data.redirect) { window.location.href = data.redirect; }
+                    else if (data.apiKey) { showApiKeyModal(data.apiKey, data.hostname || ''); }
+                    else { refreshTable(); }
+                } else {
+                    if (data.html) {
+                        bodyEl.innerHTML = data.html;
+                        runScriptsIn(bodyEl);
+                        bindFormInBody();
+                    } else {
+                        if (btn) btn.classList.remove('spui-btn-submitting');
+                        showFlash(data.message || 'Error al guardar. Revisá el formulario.', 'error');
+                    }
+                }
+            })
+            .catch(function () {
+                if (btn) btn.classList.remove('spui-btn-submitting');
+                showFlash('Error de red. Intentá de nuevo.', 'error');
+            });
+        });
+    }
+
+    // ── API key inline (reproductores) ──
+    function showApiKeyModal(key, hostname) {
+        modal.className = 'spui-abm-modal';
+        setTitle('API Key — ' + hostname);
+        bodyEl.innerHTML =
+            '<div class="alert alert-warning"><strong>¡Guardá esta clave ahora!</strong> No volverá a mostrarse.</div>' +
+            '<label class="unraf-form-label">API Key</label>' +
+            '<div class="d-flex gap-2 mb-3">' +
+            '<input type="text" class="unraf-form-control font-monospace" id="spuiApiKeyDisplay" readonly value="' + escHtml(key) + '">' +
+            '<button type="button" class="unraf-btn unraf-btn-light" id="spuiApiKeyCopy">Copiar</button>' +
+            '</div>' +
+            '<p class="text-muted small">Configurá <code>API_KEY=' + escHtml(key) + '</code> en el cliente Pi.</p>' +
+            '<div class="d-flex justify-content-end mt-3"><button type="button" class="unraf-btn unraf-btn-institucion" data-spui-close>Listo</button></div>';
+        openModal();
+        var copyBtn = document.getElementById('spuiApiKeyCopy');
+        if (copyBtn) {
+            copyBtn.addEventListener('click', function () {
+                navigator.clipboard && navigator.clipboard.writeText(key)
+                    .then(function () { copyBtn.textContent = '¡Copiado!'; setTimeout(function () { copyBtn.textContent = 'Copiar'; }, 2000); });
+            });
+        }
+        bodyEl.querySelectorAll('[data-spui-close]').forEach(function (b) { b.addEventListener('click', closeModal); });
+        refreshTable();
+    }
+
+    // ── Abrir confirmación de acción ──
+    function openActionModal(url, title, message, variant) {
+        modal.className = 'spui-abm-modal modal-sm';
+        setTitle(title || 'Confirmar acción');
+        var btnCls = variant === 'success' ? 'spui-btn-confirm-success' :
+                     variant === 'warning' ? 'spui-btn-confirm-warning' : 'unraf-btn-danger';
+        var btnLabel = variant === 'success' ? 'Confirmar' : variant === 'warning' ? 'Confirmar' : 'Eliminar';
+        bodyEl.innerHTML =
+            '<p class="mb-0 text-secondary" style="font-size:.95rem">' + escHtml(message) + '</p>' +
+            '<div class="d-flex justify-content-end gap-2 pt-3 mt-3 border-top">' +
+            '<button type="button" class="unraf-btn spui-btn-back" data-spui-close>Cancelar</button>' +
+            '<button type="button" class="unraf-btn ' + btnCls + '" id="spuiAbmActionBtn">' + btnLabel + '</button>' +
+            '</div>';
+        bodyEl.querySelector('[data-spui-close]').addEventListener('click', closeModal);
+        var actionBtn = document.getElementById('spuiAbmActionBtn');
+        actionBtn.addEventListener('click', function () {
+            actionBtn.classList.add('spui-btn-submitting');
+            actionBtn.disabled = true;
+            fetch(url, {
+                method: 'POST',
+                body: new FormData(),
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                closeModal();
+                var tp = (data.success !== false) ? (data.type || 'success') : 'error';
+                if (data.message) showFlash(data.message, tp);
+                if (data.success !== false) {
+                    if (data.redirect) window.location.href = data.redirect;
+                    else refreshTable();
+                }
+            })
+            .catch(function () {
+                closeModal();
+                showFlash('Error de red.', 'error');
+            });
+        });
+        openModal();
+    }
+
+    // ── Bind botones de tabla ──
+    function bindTableButtons() {
+        document.querySelectorAll('[data-spui-form]').forEach(function (btn) {
+            if (btn._spuiBound) return;
+            btn._spuiBound = true;
+            btn.addEventListener('click', function () {
+                openFormModal(btn.dataset.spuiForm, btn.dataset.spuiTitle, btn.dataset.spuiSize || null);
+            });
+        });
+        document.querySelectorAll('[data-spui-action]').forEach(function (btn) {
+            if (btn._spuiBound) return;
+            btn._spuiBound = true;
+            btn.addEventListener('click', function () {
+                openActionModal(
+                    btn.dataset.spuiAction,
+                    btn.dataset.spuiTitle,
+                    btn.dataset.spuiMessage || '¿Confirmar esta acción?',
+                    btn.dataset.spuiVariant
+                );
+            });
+        });
+    }
+
+    // ── Cerrar con backdrop / ESC ──
+    overlay.addEventListener('click', function (e) { if (e.target === overlay) closeModal(); });
+    if (closeEl) closeEl.addEventListener('click', closeModal);
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && overlay.classList.contains('is-open')) closeModal();
+    });
+
+    bindTableButtons();
+
+    // ======= SIDEBAR TOGGLE =======
+    document.addEventListener('DOMContentLoaded', function () {
+        var btn = document.getElementById('btnMenuToggle');
+        if (!btn) return;
+        var clone = btn.cloneNode(true);
+        btn.parentNode.replaceChild(clone, btn);
+        var sidebar = document.querySelector('.unraf-sidebar');
+        var sidebarOverlay = document.getElementById('sidebarOverlay');
+        function toggle() {
+            if (sidebar) sidebar.classList.toggle('abierto');
+            if (sidebarOverlay) sidebarOverlay.classList.toggle('activo');
+        }
+        clone.addEventListener('click', toggle);
+        if (sidebarOverlay) sidebarOverlay.addEventListener('click', toggle);
+    });
+}());
+</script>
+
+{% block javascripts %}{% endblock %}
+
+</body>
+</html>

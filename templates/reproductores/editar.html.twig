@@ -1,0 +1,73 @@
+{% extends '@SPUI/base.html.twig' %}
+{% block title %}Editar reproductor — SPUI{% endblock %}
+
+{% block body %}
+<div class="d-flex justify-content-between align-items-center mb-4 gap-2">
+    <h1 class="mb-0" style="color:var(--unraf-azul);font-family:var(--unraf-font-principal)">Editar: {{ reproductor.hostname }}</h1>
+    <a href="{{ path('spui_cms_reproductores_index') }}" class="unraf-btn spui-btn-back flex-shrink-0">← Volver</a>
+</div>
+
+<div class="row justify-content-center">
+<div class="col-lg-8">
+
+    {% if reproductor.pantallas|length > 0 %}
+    <div class="alert alert-info mb-4" role="alert">
+        <img src="{{ asset('unraf-ui/icons/monitor.svg') }}" style="width:1rem;height:1rem" alt="">
+        Pantallas asignadas:
+        {% for p in reproductor.pantallas %}
+            <strong>{{ p.nombre }}</strong>{% if not loop.last %}, {% endif %}
+        {% endfor %}
+        — Para reasignar, editá cada pantalla individualmente.
+    </div>
+    {% endif %}
+
+    <div class="unraf-card p-4 mb-4">
+        {{ form_start(form) }}
+
+        <div class="mb-3">
+            {{ form_label(form.hostname) }}
+            {{ form_widget(form.hostname) }}
+            {% for error in form.hostname.vars.errors %}
+                <p class="text-danger small mt-1">{{ error.message }}</p>
+            {% endfor %}
+        </div>
+
+        <div class="mb-4">
+            {{ form_label(form.versionFirmware) }}
+            {{ form_widget(form.versionFirmware) }}
+        </div>
+
+        <div class="d-flex justify-content-between align-items-center">
+            {% if reproductor.pantallas|length == 0 %}
+                <button type="button" class="unraf-btn unraf-btn-danger"
+                        data-confirm-url="{{ path('spui_cms_reproductores_eliminar', {id: reproductor.id}) }}"
+                        data-confirm-title="Eliminar reproductor"
+                        data-confirm-message="¿Eliminar «{{ reproductor.hostname }}»? El Pi dejará de poder comunicarse con el sistema."
+                        data-confirm-variant="danger">Eliminar</button>
+            {% else %}
+                <span class="text-muted small">Tiene {{ reproductor.pantallas|length }} pantalla(s) — desasignálas primero para poder eliminar</span>
+            {% endif %}
+            <div class="d-flex gap-2">
+                <a href="{{ path('spui_cms_reproductores_index') }}" class="unraf-btn spui-btn-back">Cancelar</a>
+                <button type="submit" class="unraf-btn unraf-btn-institucion">Guardar cambios</button>
+            </div>
+        </div>
+
+        {{ form_end(form) }}
+    </div>
+
+    <div class="unraf-card p-4">
+        <h5 class="mb-1" style="color:var(--unraf-azul)">Regenerar API key</h5>
+        <p class="text-muted small mb-3">La clave actual quedará inválida inmediatamente. Actualizá el Pi después.</p>
+        <button type="button" class="unraf-btn spui-btn-confirm-warning"
+                data-confirm-url="{{ path('spui_cms_reproductores_regenerar_clave', {id: reproductor.id}) }}"
+                data-confirm-title="Regenerar clave API"
+                data-confirm-message="¿Regenerar la API key de «{{ reproductor.hostname }}»? La clave anterior quedará inválida de inmediato."
+                data-confirm-variant="warning">
+            <img src="{{ asset('unraf-ui/icons/key.svg') }}" style="width:1rem;height:1rem" alt=""> Regenerar clave
+        </button>
+    </div>
+
+</div>
+</div>
+{% endblock %}

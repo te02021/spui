@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/wamp64/www/intranet/**)",
+      "Bash(php bin/console spui:mqtt:subscribe --help --id=spui)",
+      "Bash(curl -s -X POST http://localhost/intranet/public/api/spui/ubicaciones -H 'Content-Type: application/json' -d '{\"edificio\":\"Edificio Central\",\"aula\":\"Hall\",\"descripcion\":\"Pantalla de prueba\",\"activo\":true}')"
+    ]
+  }
+}

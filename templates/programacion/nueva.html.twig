@@ -1,0 +1,88 @@
+{% extends '@SPUI/base.html.twig' %}
+{% block title %}Nueva regla de programación — SPUI{% endblock %}
+
+{% block body %}
+<div class="d-flex justify-content-between align-items-center mb-4 gap-2">
+    <h1 class="mb-0" style="color:var(--unraf-azul);font-family:var(--unraf-font-principal)">Nueva regla</h1>
+    <a href="{{ path('spui_cms_programacion_index') }}" class="unraf-btn spui-btn-back flex-shrink-0">← Volver</a>
+</div>
+
+<div class="row justify-content-center">
+<div class="col-lg-9">
+    <div class="unraf-card p-4">
+        {{ form_start(form) }}
+
+        <div class="mb-3">
+            {{ form_label(form.playlist) }}
+            {{ form_widget(form.playlist) }}
+            {% for error in form.playlist.vars.errors %}
+                <p class="text-danger small mt-1">{{ error.message }}</p>
+            {% endfor %}
+        </div>
+
+        <div class="mb-3">
+            {{ form_label(form.pantalla) }}
+            {{ form_widget(form.pantalla) }}
+        </div>
+
+        <div class="mb-3">
+            {{ form_label(form.ubicacion) }}
+            {{ form_widget(form.ubicacion) }}
+            <small class="text-muted d-block mt-1">Si seleccionás pantalla, tiene prioridad sobre ubicación.</small>
+        </div>
+
+        <div class="row g-2 mb-3">
+            <div class="col-sm-6">
+                {{ form_label(form.horaInicio) }}
+                {{ form_widget(form.horaInicio) }}
+            </div>
+            <div class="col-sm-6">
+                {{ form_label(form.horaFin) }}
+                {{ form_widget(form.horaFin) }}
+            </div>
+        </div>
+
+        <div class="row g-2 mb-3">
+            <div class="col-sm-6">
+                {{ form_label(form.fechaInicio) }}
+                {{ form_widget(form.fechaInicio) }}
+            </div>
+            <div class="col-sm-6">
+                {{ form_label(form.fechaFin) }}
+                {{ form_widget(form.fechaFin) }}
+            </div>
+        </div>
+
+        <div class="mb-3">
+            {{ form_label(form.diasSemana) }}
+            <div class="d-flex gap-3 flex-wrap mt-1">
+                {% for child in form.diasSemana %}
+                    <div class="form-check form-check-inline m-0">
+                        {{ form_widget(child, {'attr': {'class': 'form-check-input'}}) }}
+                        {{ form_label(child, null, {'label_attr': {'class': 'form-check-label small'}}) }}
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="mb-3">
+            {{ form_label(form.prioridad) }}
+            {{ form_widget(form.prioridad) }}
+            <small class="text-muted d-block mt-1">Mayor número = mayor prioridad. Si hay conflicto, gana la mayor.</small>
+        </div>
+
+        <div class="mb-4 form-check">
+            {{ form_widget(form.activo, {'attr': {'class': 'form-check-input'}}) }}
+            {{ form_label(form.activo, null, {'label_attr': {'class': 'form-check-label'}}) }}
+        </div>
+
+        <div class="d-flex justify-content-end gap-2">
+            <a href="{{ path('spui_cms_programacion_index') }}" class="unraf-btn spui-btn-back">Cancelar</a>
+            <button type="submit" class="unraf-btn unraf-btn-institucion">Crear regla</button>
+        </div>
+
+        {{ form_end(form) }}
+    </div>
+</div>
+</div>
+{% endblock %}

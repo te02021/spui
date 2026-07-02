@@ -1,0 +1,17 @@
+# SPUI Pi Client — dependencias Python
+# Instalar con: pip install -r requirements.txt
+
+# HTTP — sync REST con el CMS
+requests>=2.28.0
+
+# MQTT — alertas de emergencia en tiempo real
+paho-mqtt>=1.6.1
+
+# VLC — reproductor multimedia
+# Requiere VLC instalado en el sistema:
+#   Pi/Linux: sudo apt install vlc
+#   Windows:  https://www.videolan.org/vlc/
+python-vlc>=3.0.20120801
+
+# Telemetría — métricas del sistema (CPU temp, RAM, disco)
+psutil>=5.9.0

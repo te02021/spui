@@ -1,0 +1,101 @@
+{% extends '@SPUI/base.html.twig' %}
+{% block title %}Reproductores — SPUI{% endblock %}
+
+{% block body %}
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <div>
+        <h1 style="color:var(--unraf-azul);font-family:var(--unraf-font-principal);margin:0">Reproductores</h1>
+        <p class="text-muted mb-0">Raspberry Pi registradas en el sistema. Cada reproductor puede controlar múltiples pantallas.</p>
+    </div>
+    <button type="button" class="unraf-btn unraf-btn-institucion flex-shrink-0"
+            data-spui-form="{{ path('spui_cms_reproductores_nuevo') }}"
+            data-spui-title="Nuevo reproductor">
+        + Nuevo reproductor
+    </button>
+</div>
+
+<div id="spui-table-body">
+<div class="unraf-card">
+    <div class="unraf-table-responsive">
+        <table class="unraf-table unraf-table-striped w-100 text-nowrap">
+            <thead>
+                <tr>
+                    <th class="p-3">Hostname</th>
+                    <th class="p-3">Pantallas asignadas</th>
+                    <th class="p-3">Firmware</th>
+                    <th class="p-3">Estado</th>
+                    <th class="p-3">Último heartbeat</th>
+                    <th class="p-3">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for r in reproductores %}
+                <tr>
+                    <td class="p-3"><strong>{{ r.hostname }}</strong></td>
+                    <td class="p-3">
+                        {% if r.pantallas|length > 0 %}
+                            {% for p in r.pantallas %}
+                                <span class="spui-badge-borrador">{{ p.nombre }}</span>
+                            {% endfor %}
+                        {% else %}
+                            <span class="text-muted small">Sin pantallas</span>
+                        {% endif %}
+                    </td>
+                    <td class="p-3"><small class="text-muted">{{ r.versionFirmware ?? '—' }}</small></td>
+                    <td class="p-3">
+                        <span class="spui-badge-{{ r.estadoConexion.value }}">
+                            {{ r.estadoConexion.value|replace({'_': ' '})|title }}
+                        </span>
+                    </td>
+                    <td class="p-3">
+                        {% if r.ultimoHeartbeat %}
+                            {{ r.ultimoHeartbeat|date('d/m/Y H:i:s') }}
+                            {% set diff = (date() - r.ultimoHeartbeat)|abs %}
+                            {% if diff > 300 %}<br><small class="text-danger">Hace más de 5 min</small>{% endif %}
+                        {% else %}
+                            <span class="text-muted">Nunca</span>
+                        {% endif %}
+                    </td>
+                    <td class="p-3">
+                        <div class="d-flex gap-1">
+                            <button type="button"
+                                    class="unraf-btn unraf-btn-light unraf-btn-sm"
+                                    data-spui-form="{{ path('spui_cms_reproductores_editar', {id: r.id}) }}"
+                                    data-spui-title="Editar: {{ r.hostname }}"
+                                    title="Editar">
+                                <img src="{{ asset('unraf-ui/icons/pencil.svg') }}" class="spui-action-icon" alt="Editar">
+                            </button>
+                            <button type="button"
+                                    class="unraf-btn unraf-btn-sm spui-btn-confirm-warning"
+                                    data-spui-action="{{ path('spui_cms_reproductores_regenerar_clave', {id: r.id}) }}"
+                                    data-spui-title="Regenerar clave API"
+                                    data-spui-message="¿Regenerar la API key de «{{ r.hostname }}»? La clave anterior quedará inválida de inmediato."
+                                    data-spui-variant="warning"
+                                    title="Regenerar API key">
+                                <img src="{{ asset('unraf-ui/icons/key.svg') }}" class="spui-action-icon" alt=""> Clave
+                            </button>
+                            {% if r.pantallas|length == 0 %}
+                                <button type="button" class="unraf-btn-icon btn-delete"
+                                        data-spui-action="{{ path('spui_cms_reproductores_eliminar', {id: r.id}) }}"
+                                        data-spui-title="Eliminar reproductor"
+                                        data-spui-message="¿Eliminar «{{ r.hostname }}»? El Pi dejará de poder comunicarse con el sistema."
+                                        data-spui-variant="danger" title="Eliminar">
+                                    <img src="{{ asset('unraf-ui/icons/trash.svg') }}" alt="Eliminar">
+                                </button>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+            {% else %}
+                <tr>
+                    <td colspan="6" class="p-4 text-center text-muted">
+                        No hay reproductores registrados.
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+</div>
+{% endblock %}

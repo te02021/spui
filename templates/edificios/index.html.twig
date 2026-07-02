@@ -1,0 +1,86 @@
+{% extends '@SPUI/base.html.twig' %}
+{% block title %}Edificios — SPUI{% endblock %}
+
+{% block body %}
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <div>
+        <h1 style="color:var(--unraf-azul);font-family:var(--unraf-font-principal);margin:0">Edificios</h1>
+        <p class="text-muted mb-0">Edificios del campus donde se ubican las pantallas.</p>
+    </div>
+    <button type="button" class="unraf-btn unraf-btn-institucion flex-shrink-0"
+            data-spui-form="{{ path('spui_cms_edificios_nuevo') }}"
+            data-spui-title="Nuevo edificio">
+        + Nuevo edificio
+    </button>
+</div>
+
+<div id="spui-table-body">
+<div class="unraf-card">
+    <div class="unraf-table-responsive">
+        <table class="unraf-table unraf-table-striped w-100">
+            <thead>
+                <tr>
+                    <th class="p-3">Nombre</th>
+                    <th class="p-3">Descripción</th>
+                    <th class="p-3">Ubicaciones</th>
+                    <th class="p-3">Estado</th>
+                    <th class="p-3">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for e in edificios %}
+                <tr>
+                    <td class="p-3"><strong>{{ e.nombre }}</strong></td>
+                    <td class="p-3"><small class="text-muted">{{ e.descripcion ?? '—' }}</small></td>
+                    <td class="p-3">
+                        {% if e.ubicaciones|length > 0 %}
+                            <span class="spui-badge-borrador">{{ e.ubicaciones|length }} sector(es)</span>
+                        {% else %}
+                            <span class="text-muted small">Sin sectores</span>
+                        {% endif %}
+                    </td>
+                    <td class="p-3">
+                        <button type="button"
+                                class="unraf-btn unraf-btn-sm {{ e.activo ? 'unraf-btn-success' : 'unraf-btn-light' }}"
+                                data-spui-action="{{ path('spui_cms_edificios_toggle', {id: e.id}) }}"
+                                data-spui-title="{{ e.activo ? 'Desactivar' : 'Activar' }} edificio"
+                                data-spui-message="{{ e.activo ? 'Desactivar' : 'Activar' }} «{{ e.nombre }}»?"
+                                data-spui-variant="{{ e.activo ? 'warning' : 'success' }}"
+                                title="{{ e.activo ? 'Activo — clic para desactivar' : 'Inactivo — clic para activar' }}">
+                            {{ e.activo ? 'Activo' : 'Inactivo' }}
+                        </button>
+                    </td>
+                    <td class="p-3">
+                        <div class="d-flex gap-1">
+                            <button type="button"
+                                    class="unraf-btn unraf-btn-light unraf-btn-sm"
+                                    data-spui-form="{{ path('spui_cms_edificios_editar', {id: e.id}) }}"
+                                    data-spui-title="Editar: {{ e.nombre }}"
+                                    title="Editar">
+                                <img src="{{ asset('unraf-ui/icons/pencil.svg') }}" class="spui-action-icon" alt="Editar">
+                            </button>
+                            {% if e.ubicaciones|length == 0 %}
+                                <button type="button" class="unraf-btn-icon btn-delete"
+                                        data-spui-action="{{ path('spui_cms_edificios_eliminar', {id: e.id}) }}"
+                                        data-spui-title="Eliminar edificio"
+                                        data-spui-message="¿Eliminar «{{ e.nombre }}»? Esta acción no se puede deshacer."
+                                        data-spui-variant="danger" title="Eliminar">
+                                    <img src="{{ asset('unraf-ui/icons/trash.svg') }}" alt="Eliminar">
+                                </button>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+            {% else %}
+                <tr>
+                    <td colspan="5" class="p-4 text-center text-muted">
+                        No hay edificios registrados.
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+</div>
+{% endblock %}

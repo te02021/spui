@@ -1,0 +1,11 @@
+doctrine_migrations:
+    storage:
+        table_storage:
+            table_name: migration_versions
+    migrations_paths:
+        # Override del key global para anular las migraciones de Shared en el contexto SPUI.
+        # DoctrineMigrationsBundle escanea este path buscando clases con namespace 'Shared\Migrations'
+        # y no encuentra ninguna (las clases aqui son 'SPUI\Migrations') — efecto: nulo.
+        'Shared\Migrations': '%kernel.project_dir%/apps/spui/migrations'
+        'SPUI\Migrations': '%kernel.project_dir%/apps/spui/migrations'
+    em: SPUI

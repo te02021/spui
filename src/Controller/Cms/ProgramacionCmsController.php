@@ -1,0 +1,104 @@
+<?php
+
+declare(strict_types=1);
+
+namespace SPUI\Controller\Cms;
+
+use Doctrine\Persistence\ManagerRegistry;
+use SPUI\Entity\Programacion;
+use SPUI\Form\ProgramacionType;
+use SPUI\Repository\ProgramacionRepository;
+use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Routing\Attribute\Route;
+
+#[Route('/spui/programacion')]
+class ProgramacionCmsController extends AbstractController
+{
+    public function __construct(
+        private readonly ProgramacionRepository $repo,
+        private readonly ManagerRegistry $doctrine,
+    ) {}
+
+    private function em()
+    {
+        return $this->doctrine->getManager('SPUI');
+    }
+
+    #[Route('', name: 'spui_cms_programacion_index', methods: ['GET'])]
+    public function index(): Response
+    {
+        return $this->render('@SPUI/programacion/index.html.twig', [
+            'programaciones' => $this->repo->findBy([], ['prioridad' => 'DESC', 'creadoEn' => 'DESC']),
+            'dias'           => ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'],
+        ]);
+    }
+
+    #[Route('/nueva-regla', name: 'spui_cms_programacion_nueva_form', methods: ['GET', 'POST'])]
+    public function nueva(Request $request): Response
+    {
+        $prog = new Programacion();
+        $form = $this->createForm(ProgramacionType::class, $prog, [
+            'action' => $this->generateUrl('spui_cms_programacion_nueva_form'),
+        ]);
+        $form->handleRequest($request);
+
+        if ($form->isSubmitted() && $form->isValid()) {
+            $diasArray = $form->get('diasSemana')->getData() ?? [];
+            $bitmask   = 0;
+            foreach ($diasArray as $bit) { $bitmask |= (1 << (int) $bit); }
+            $prog->setDiasSemana($bitmask ?: 127);
+            $prog->setCreadoPorId((int) $this->getUser()->getId());
+
+            $this->em()->persist($prog);
+            $this->em()->flush();
+
+            if ($request->isXmlHttpRequest()) {
+                return $this->json(['success' => true, 'message' => 'Programación creada correctamente.']);
+            }
+            $this->addFlash('success', 'Programación creada correctamente.');
+            return $this->redirectToRoute('spui_cms_programacion_index');
+        }
+
+        if ($request->isXmlHttpRequest()) {
+            return $this->json([
+                'title' => 'Nueva regla de programación',
+                'html'  => $this->renderView('@SPUI/programacion/_form.html.twig', ['form' => $form]),
+            ]);
+        }
+
+        return $this->render('@SPUI/programacion/nueva.html.twig', ['form' => $form]);
+    }
+
+    #[Route('/{id}/toggle', name: 'spui_cms_programacion_toggle', methods: ['POST'], requirements: ['id' => '\d+'])]
+    public function toggle(int $id, Request $request): Response
+    {
+        $prog = $this->repo->find($id);
+        if (!$prog) { throw $this->createNotFoundException(); }
+
+        $prog->setActivo(!$prog->isActivo());
+        $this->em()->flush();
+        $msg = 'Programación ' . ($prog->isActivo() ? 'activada' : 'desactivada') . '.';
+        if ($request->isXmlHttpRequest()) {
+            return $this->json(['success' => true, 'message' => $msg]);
+        }
+        $this->addFlash('success', $msg);
+        return $this->redirectToRoute('spui_cms_programacion_index');
+    }
+
+    #[Route('/{id}/eliminar', name: 'spui_cms_programacion_eliminar', methods: ['POST'], requirements: ['id' => '\d+'])]
+    public function eliminar(int $id, Request $request): Response
+    {
+        $prog = $this->repo->find($id);
+        if (!$prog) { throw $this->createNotFoundException(); }
+
+        $this->em()->remove($prog);
+        $this->em()->flush();
+        if ($request->isXmlHttpRequest()) {
+            return $this->json(['success' => true, 'message' => 'Programación eliminada.']);
+        }
+        $this->addFlash('success', 'Programación eliminada.');
+        return $this->redirectToRoute('spui_cms_programacion_index');
+    }
+}

@@ -1,0 +1,22 @@
+framework:
+    rate_limiter:
+        # Nodo → sync: máx 2 por minuto (el Pi sincroniza cada 5 min normalmente)
+        spui_nodo_sync:
+            policy: sliding_window
+            limit: 2
+            interval: '1 minute'
+            cache_pool: cache.app
+
+        # Nodo → heartbeat: máx 3 por minuto (el Pi envía cada 60s)
+        spui_nodo_heartbeat:
+            policy: sliding_window
+            limit: 3
+            interval: '1 minute'
+            cache_pool: cache.app
+
+        # Admin API general: 120 req/min por IP
+        spui_api:
+            policy: sliding_window
+            limit: 120
+            interval: '1 minute'
+            cache_pool: cache.app

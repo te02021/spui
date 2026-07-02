@@ -1,0 +1,14 @@
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+
+    SPUI\:
+        resource: '../src/'
+        exclude:
+            - '../src/Entity/'
+            - '../src/Enum/'
+
+    SPUI\Controller\:
+        resource: '../src/Controller/'
+        tags: ['controller.service_arguments']

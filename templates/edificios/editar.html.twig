@@ -1,0 +1,53 @@
+{% extends '@SPUI/base.html.twig' %}
+{% block title %}Editar edificio — SPUI{% endblock %}
+
+{% block body %}
+<div class="d-flex justify-content-between align-items-center mb-4 gap-2">
+    <h1 class="mb-0" style="color:var(--unraf-azul);font-family:var(--unraf-font-principal)">Editar: {{ edificio.nombre }}</h1>
+    <a href="{{ path('spui_cms_edificios_index') }}" class="unraf-btn spui-btn-back flex-shrink-0">← Volver</a>
+</div>
+
+<div class="row justify-content-center">
+<div class="col-lg-8">
+    <div class="unraf-card p-4">
+        {{ form_start(form) }}
+
+        <div class="mb-3">
+            {{ form_label(form.nombre) }}
+            {{ form_widget(form.nombre) }}
+            {% for error in form.nombre.vars.errors %}
+                <p class="text-danger small mt-1">{{ error.message }}</p>
+            {% endfor %}
+        </div>
+
+        <div class="mb-3">
+            {{ form_label(form.descripcion) }}
+            {{ form_widget(form.descripcion) }}
+        </div>
+
+        <div class="mb-4">
+            {{ form_label(form.activo) }}
+            {{ form_widget(form.activo) }}
+        </div>
+
+        <div class="d-flex justify-content-between align-items-center">
+            {% if edificio.ubicaciones|length == 0 %}
+                <button type="button" class="unraf-btn unraf-btn-danger"
+                        data-confirm-url="{{ path('spui_cms_edificios_eliminar', {id: edificio.id}) }}"
+                        data-confirm-title="Eliminar edificio"
+                        data-confirm-message="¿Eliminar «{{ edificio.nombre }}»? Esta acción no se puede deshacer."
+                        data-confirm-variant="danger">Eliminar</button>
+            {% else %}
+                <span class="text-muted small">Tiene {{ edificio.ubicaciones|length }} sector(es) — eliminá los sectores primero</span>
+            {% endif %}
+            <div class="d-flex gap-2">
+                <a href="{{ path('spui_cms_edificios_index') }}" class="unraf-btn spui-btn-back">Cancelar</a>
+                <button type="submit" class="unraf-btn unraf-btn-institucion">Guardar cambios</button>
+            </div>
+        </div>
+
+        {{ form_end(form) }}
+    </div>
+</div>
+</div>
+{% endblock %}

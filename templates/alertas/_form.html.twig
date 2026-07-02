@@ -1,0 +1,41 @@
+{{ form_start(form, {'attr': {'data-spui-ajax': '1', 'novalidate': 'novalidate'}}) }}
+
+<div class="mb-3">
+    {{ form_label(form.titulo) }}
+    {{ form_widget(form.titulo) }}
+    {% for e in form.titulo.vars.errors %}
+        <p class="text-danger small mt-1">{{ e.message }}</p>
+    {% endfor %}
+</div>
+
+<div class="mb-3">
+    {{ form_label(form.mensaje) }}
+    {{ form_widget(form.mensaje) }}
+    {% for e in form.mensaje.vars.errors %}
+        <p class="text-danger small mt-1">{{ e.message }}</p>
+    {% endfor %}
+</div>
+
+<div class="mb-3">
+    {{ form_label(form.prioridad) }}
+    {{ form_widget(form.prioridad) }}
+    <small class="text-muted d-block mt-1">Mayor número = mayor prioridad en pantallas.</small>
+</div>
+
+<div class="mb-3">
+    {{ form_label(form.expiraEn) }}
+    {{ form_widget(form.expiraEn) }}
+</div>
+
+<div class="mb-4">
+    {{ form_label(form.contenido) }}
+    {{ form_widget(form.contenido) }}
+    <small class="text-muted d-block mt-1">Si se selecciona, los reproductores mostrarán esta imagen/video junto al mensaje.</small>
+</div>
+
+<div class="d-flex justify-content-end gap-2 pt-3 border-top">
+    <button type="button" class="unraf-btn spui-btn-back" data-spui-close>Cancelar</button>
+    <button type="submit" class="unraf-btn unraf-btn-danger">Crear alerta</button>
+</div>
+
+{{ form_end(form) }}
