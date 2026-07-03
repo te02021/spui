@@ -2,9 +2,9 @@
 Cliente REST para comunicación con el CMS SPUI.
 
 Responsabilidades:
-  - POST /nodos/sync   → obtiene programación activa + alerta
-  - POST /nodos/heartbeat → confirma que el nodo está vivo
-  - GET  /media/{file}   → descarga archivos multimedia al caché local
+  - POST /reproductores/sync      → obtiene programación activa + alerta
+  - POST /reproductores/heartbeat → confirma que el reproductor está vivo
+  - GET  /media/{file}            → descarga archivos multimedia al caché local
 """
 
 import hashlib
@@ -29,8 +29,8 @@ class SyncClient:
     # ------------------------------------------------------------------ #
 
     def sincronizar(self) -> dict:
-        """Llama a /nodos/sync y devuelve el JSON completo."""
-        resp = self._session.post(f'{self._base}/nodos/sync', timeout=10)
+        """Llama a /reproductores/sync y devuelve el JSON completo."""
+        resp = self._session.post(f'{self._base}/reproductores/sync', timeout=10)
         resp.raise_for_status()
         data = resp.json()
         logger.info(
@@ -42,9 +42,9 @@ class SyncClient:
         return data
 
     def heartbeat(self) -> bool:
-        """Registra que el nodo está vivo. Retorna True si el servidor recibió."""
+        """Registra que el reproductor está vivo. Retorna True si el servidor recibió."""
         try:
-            resp = self._session.post(f'{self._base}/nodos/heartbeat', timeout=5)
+            resp = self._session.post(f'{self._base}/reproductores/heartbeat', timeout=5)
             resp.raise_for_status()
             return True
         except Exception as exc:

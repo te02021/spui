@@ -6,7 +6,7 @@ la red está disponible. Esto es más barato que un HTTP request y detecta
 pérdida de red antes de que el timeout de requests expire.
 
 Registra las transiciones online ↔ offline para no spamear el log en
-cada ciclo cuando el nodo lleva tiempo desconectado.
+cada ciclo cuando el reproductor lleva tiempo desconectado.
 """
 
 import logging

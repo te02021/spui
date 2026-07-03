@@ -7,11 +7,14 @@ namespace SPUI\Controller\Api;
 use DateTimeImmutable;
 use Doctrine\Persistence\ManagerRegistry;
 use SPUI\Entity\AlertaEmergencia;
+use SPUI\Entity\CronogramaItem;
 use SPUI\Entity\Pantalla;
 use SPUI\Entity\PlaylistItem;
 use SPUI\Entity\Playlist;
 use SPUI\Entity\Programacion;
+use SPUI\Enum\TipoContenido;
 use SPUI\Repository\AlertaEmergenciaRepository;
+use SPUI\Repository\CronogramaItemRepository;
 use SPUI\Repository\ProgramacionRepository;
 use SPUI\Service\ReproductorAuthService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -32,9 +35,10 @@ class SyncController extends AbstractController
         private readonly ReproductorAuthService $authService,
         private readonly ProgramacionRepository $progRepo,
         private readonly AlertaEmergenciaRepository $alertaRepo,
+        private readonly CronogramaItemRepository $cronogramaItemRepo,
         private readonly ManagerRegistry $doctrine,
-        private readonly RateLimiterFactory $spuiNodoSyncLimiter,
-        private readonly RateLimiterFactory $spuiNodoHeartbeatLimiter,
+        private readonly RateLimiterFactory $spuiReproductorSyncLimiter,
+        private readonly RateLimiterFactory $spuiReproductorHeartbeatLimiter,
     ) {}
 
     /**
@@ -49,7 +53,7 @@ class SyncController extends AbstractController
             return $this->json(['error' => 'Autenticación requerida. Enviá X-Api-Key en el header.'], Response::HTTP_UNAUTHORIZED);
         }
 
-        $limiter = $this->spuiNodoSyncLimiter->create('reproductor_sync_' . $reproductor->getId());
+        $limiter = $this->spuiReproductorSyncLimiter->create('reproductor_sync_' . $reproductor->getId());
         $limit   = $limiter->consume();
         if (!$limit->isAccepted()) {
             return $this->json(
@@ -108,7 +112,7 @@ class SyncController extends AbstractController
             return $this->json(['error' => 'Autenticación requerida. Enviá X-Api-Key en el header.'], Response::HTTP_UNAUTHORIZED);
         }
 
-        $limiter = $this->spuiNodoHeartbeatLimiter->create('reproductor_hb_' . $reproductor->getId());
+        $limiter = $this->spuiReproductorHeartbeatLimiter->create('reproductor_hb_' . $reproductor->getId());
         $limit   = $limiter->consume();
         if (!$limit->isAccepted()) {
             return $this->json(
@@ -174,18 +178,38 @@ class SyncController extends AbstractController
     private function serializeItem(PlaylistItem $item, Request $request): array
     {
         $c = $item->getContenido();
+
+        $cronogramaItems = null;
+        if ($c->getTipo() === TipoContenido::Cronograma) {
+            $bit  = (int)(new DateTimeImmutable())->format('N') - 1; // 0=Lun … 6=Dom
+            $mask = 1 << $bit;
+            $cronogramaItems = array_values(array_map(
+                fn(CronogramaItem $ci) => [
+                    'nombre'      => $ci->getNombre(),
+                    'aula'        => $ci->getAula(),
+                    'hora_inicio' => $ci->getHoraInicio()->format('H:i'),
+                    'hora_fin'    => $ci->getHoraFin()->format('H:i'),
+                ],
+                array_filter(
+                    $this->cronogramaItemRepo->findByContenidoOrdenado($c),
+                    fn(CronogramaItem $ci) => (bool)($ci->getDiasSemana() & $mask),
+                ),
+            ));
+        }
+
         return [
-            'orden'                  => $item->getOrden(),
-            'duracion_efectiva_seg'  => $item->getDuracionEfectiva(),
-            'contenido'              => [
-                'id'              => $c->getId(),
-                'titulo'          => $c->getTitulo(),
-                'tipo'            => $c->getTipo()->value,
-                'contenido_texto' => $c->getContenidoTexto(),
-                'hash_archivo'    => $c->getHashArchivo(),
-                'url_descarga'    => $c->getRutaArchivo() !== null
+            'orden'                 => $item->getOrden(),
+            'duracion_efectiva_seg' => $item->getDuracionEfectiva(),
+            'contenido'             => [
+                'id'               => $c->getId(),
+                'titulo'           => $c->getTitulo(),
+                'tipo'             => $c->getTipo()->value,
+                'contenido_texto'  => $c->getContenidoTexto(),
+                'hash_archivo'     => $c->getHashArchivo(),
+                'url_descarga'     => $c->getRutaArchivo() !== null
                     ? $request->getSchemeAndHttpHost() . '/api/spui/media/' . rawurlencode(basename($c->getRutaArchivo()))
                     : null,
+                'cronograma_items' => $cronogramaItems,
             ],
         ];
     }

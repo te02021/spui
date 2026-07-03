@@ -105,7 +105,7 @@ class ProgramacionType extends AbstractType
                 'multiple'   => true,
                 'expanded'   => true,
                 'choices'    => ['Lun' => 0, 'Mar' => 1, 'Mié' => 2, 'Jue' => 3, 'Vie' => 4, 'Sáb' => 5, 'Dom' => 6],
-                'data'       => [0, 1, 2, 3, 4],
+                'data'       => $options['dias_semana_default'],
             ])
             ->add('repetirSemanal', CheckboxType::class, [
                 'label'    => 'Repetir semanalmente',
@@ -128,6 +128,9 @@ class ProgramacionType extends AbstractType
 
     public function configureOptions(OptionsResolver $resolver): void
     {
-        $resolver->setDefaults(['data_class' => Programacion::class]);
+        $resolver->setDefaults([
+            'data_class'          => Programacion::class,
+            'dias_semana_default' => [0, 1, 2, 3, 4],
+        ]);
     }
 }

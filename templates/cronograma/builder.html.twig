@@ -1,0 +1,107 @@
+{% extends '@SPUI/base.html.twig' %}
+{% block title %}{{ contenido.titulo }} — Editor de cronograma — SPUI{% endblock %}
+
+{% block body %}
+<div class="d-flex justify-content-between align-items-center mb-4 gap-2 flex-wrap">
+    <div>
+        <h1 class="mb-0" style="color:var(--unraf-azul);font-family:var(--unraf-font-principal)">{{ contenido.titulo }}</h1>
+        <p class="text-muted mb-0 small">Cronograma de actividades — los ítems se ordenan por hora de inicio</p>
+    </div>
+    <div class="d-flex gap-2 flex-shrink-0">
+        <button type="button" class="unraf-btn unraf-btn-institucion"
+                data-spui-form="{{ path('spui_cms_cronograma_item_agregar', {id: contenido.id}) }}"
+                data-spui-title="Agregar ítem al cronograma">
+            + Agregar ítem
+        </button>
+        <a href="{{ path('spui_cms_contenidos_index') }}" class="unraf-btn spui-btn-back">← Contenidos</a>
+    </div>
+</div>
+
+{% for type, msgs in app.flashes %}
+    {% for msg in msgs %}
+        <div class="alert alert-{{ type == 'error' ? 'danger' : type }} mb-3">{{ msg }}</div>
+    {% endfor %}
+{% endfor %}
+
+<div class="unraf-card">
+    <div class="p-3 border-bottom d-flex justify-content-between align-items-center">
+        <strong>Ítems del cronograma</strong>
+        <span class="text-muted small">{{ items|length }} ítem(s) · ordenados por hora de inicio</span>
+    </div>
+
+    {% if items|length == 0 %}
+        <div class="p-5 text-center text-muted">
+            <p class="mb-2">El cronograma está vacío.</p>
+            <button type="button" class="unraf-btn unraf-btn-institucion"
+                    data-spui-form="{{ path('spui_cms_cronograma_item_agregar', {id: contenido.id}) }}"
+                    data-spui-title="Agregar ítem al cronograma">
+                + Agregar primer ítem
+            </button>
+        </div>
+    {% else %}
+        {% set diasNombres = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'] %}
+        {% set diasMasks   = [1, 2, 4, 8, 16, 32, 64] %}
+
+        <div class="unraf-table-responsive">
+            <table class="unraf-table w-100">
+                <thead>
+                    <tr>
+                        <th class="p-3">Hora</th>
+                        <th class="p-3">Nombre</th>
+                        <th class="p-3">Aula</th>
+                        <th class="p-3">Días</th>
+                        <th class="p-3">Estado</th>
+                        <th class="p-3">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for item in items %}
+                    <tr>
+                        <td class="p-3 text-nowrap">
+                            <strong>{{ item.horaInicio|date('H:i') }}</strong>
+                            <span class="text-muted"> – {{ item.horaFin|date('H:i') }}</span>
+                        </td>
+                        <td class="p-3"><strong>{{ item.nombre }}</strong></td>
+                        <td class="p-3">{{ item.aula ?? '—' }}</td>
+                        <td class="p-3">
+                            <div class="d-flex gap-1 flex-wrap">
+                            {% for i in 0..6 %}
+                                <span class="spui-dia-badge {{ (item.diasSemana // diasMasks[i]) is odd ? 'spui-dia-activo' : 'spui-dia-inactivo' }}">
+                                    {{ diasNombres[i] }}
+                                </span>
+                            {% endfor %}
+                            </div>
+                        </td>
+                        <td class="p-3">
+                            {% if item.activo %}
+                                <span class="spui-badge-publicado">Activo</span>
+                            {% else %}
+                                <span class="spui-badge-archivado">Inactivo</span>
+                            {% endif %}
+                        </td>
+                        <td class="p-3">
+                            <div class="d-flex gap-1">
+                                <button type="button" class="unraf-btn unraf-btn-light unraf-btn-sm"
+                                        data-spui-form="{{ path('spui_cms_cronograma_item_editar', {id: contenido.id, itemId: item.id}) }}"
+                                        data-spui-title="Editar: {{ item.nombre }}"
+                                        title="Editar">
+                                    <img src="{{ asset('unraf-ui/icons/pencil.svg') }}" class="spui-action-icon" alt=""> Editar
+                                </button>
+                                <button type="button" class="unraf-btn-icon btn-delete"
+                                        data-spui-action="{{ path('spui_cms_cronograma_item_eliminar', {id: contenido.id, itemId: item.id}) }}"
+                                        data-spui-title="Eliminar ítem"
+                                        data-spui-message="¿Eliminar «{{ item.nombre }}»?"
+                                        data-spui-variant="danger"
+                                        title="Eliminar">
+                                    <img src="{{ asset('unraf-ui/icons/trash.svg') }}" class="unraf-icon-svg" alt="Eliminar">
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

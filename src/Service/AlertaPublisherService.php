@@ -14,7 +14,7 @@ use Symfony\Component\Mercure\Update;
 
 /**
  * Publica eventos de alerta de emergencia hacia:
- * - Nodos Pi vía MQTT (broker Mosquitto): reciben el override inmediatamente
+ * - Reproductores Pi vía MQTT (broker Mosquitto): reciben el override inmediatamente
  * - Dashboard web vía Mercure SSE: el panel admin se actualiza en tiempo real
  *
  * Ambos canales fallan de forma silenciosa si el broker/hub no está disponible
@@ -36,7 +36,7 @@ final class AlertaPublisherService
 
     /**
      * Llama esto al activar una alerta.
-     * Los nodos Pi recibirán el mensaje MQTT y overridearán su contenido actual.
+     * Los reproductores Pi recibirán el mensaje MQTT y overridearán su contenido actual.
      */
     public function publicarActivacion(AlertaEmergencia $alerta): void
     {
@@ -49,14 +49,14 @@ final class AlertaPublisherService
             'expira_en' => $alerta->getExpiraEn()?->format('c'),
         ];
 
-        // retain=true → los nodos que se reconecten después también reciben la alerta
+        // retain=true → los reproductores que se reconecten después también reciben la alerta
         $this->publicarMqtt(self::MQTT_TOPIC_ALERTA, $payload, retain: true);
         $this->publicarMercure(self::MERCURE_TOPIC, $payload);
     }
 
     /**
      * Llama esto al desactivar una alerta.
-     * Los nodos Pi vuelven a su programación normal.
+     * Los reproductores Pi vuelven a su programación normal.
      */
     public function publicarDesactivacion(AlertaEmergencia $alerta): void
     {

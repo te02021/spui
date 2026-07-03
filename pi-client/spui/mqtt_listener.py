@@ -6,7 +6,7 @@ Cuando llega un mensaje:
   - accion='activada'   → llama on_alerta(payload)
   - accion='desactivada' → llama on_desactivar()
 
-Ventaja vs polling: el nodo recibe la alerta INMEDIATAMENTE, sin esperar
+Ventaja vs polling: el reproductor recibe la alerta INMEDIATAMENTE, sin esperar
 al próximo ciclo de sync (que puede ser de 5 minutos).
 
 Si paho-mqtt no está instalado o el broker no está disponible, el listener
@@ -52,7 +52,7 @@ class MqttListener(threading.Thread):
             return
 
         try:
-            self._client = mqtt.Client(client_id='spui-nodo', clean_session=True)
+            self._client = mqtt.Client(client_id='spui-reproductor', clean_session=True)
             self._client.on_connect    = self._on_connect
             self._client.on_message    = self._on_message
             self._client.on_disconnect = self._on_disconnect

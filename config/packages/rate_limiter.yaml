@@ -1,14 +1,14 @@
 framework:
     rate_limiter:
-        # Nodo → sync: máx 2 por minuto (el Pi sincroniza cada 5 min normalmente)
-        spui_nodo_sync:
+        # Reproductor → sync: máx 2 por minuto (el Pi sincroniza cada 5 min normalmente)
+        spui_reproductor_sync:
             policy: sliding_window
             limit: 2
             interval: '1 minute'
             cache_pool: cache.app
 
-        # Nodo → heartbeat: máx 3 por minuto (el Pi envía cada 60s)
-        spui_nodo_heartbeat:
+        # Reproductor → heartbeat: máx 3 por minuto (el Pi envía cada 60s)
+        spui_reproductor_heartbeat:
             policy: sliding_window
             limit: 3
             interval: '1 minute'

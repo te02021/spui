@@ -7,6 +7,7 @@ namespace SPUI\Controller\Cms;
 use Doctrine\Persistence\ManagerRegistry;
 use SPUI\Entity\Contenido;
 use SPUI\Enum\EstadoContenido;
+use SPUI\Enum\TipoContenido;
 use SPUI\Form\ContenidoType;
 use SPUI\Repository\ContenidoRepository;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -75,6 +76,8 @@ class ContenidoCmsController extends AbstractController
                 $archivo->move($this->uploadDir, $filename);
                 $contenido->setRutaArchivo('uploads/spui/' . $filename);
                 $contenido->setHashArchivo(hash_file('sha256', $this->uploadDir . '/' . $filename));
+            } elseif ($tipo === TipoContenido::Cronograma) {
+                // El cronograma no requiere archivo ni texto — los ítems se gestionan en el builder
             } else {
                 $texto = trim($request->request->get('contenido_texto', ''));
                 if (!$texto) {
@@ -92,6 +95,16 @@ class ContenidoCmsController extends AbstractController
 
             $this->em()->persist($contenido);
             $this->em()->flush();
+
+            if ($tipo === TipoContenido::Cronograma) {
+                $builderUrl = $this->generateUrl('spui_cms_cronograma_builder', ['id' => $contenido->getId()]);
+                if ($request->isXmlHttpRequest()) {
+                    return $this->json(['success' => true, 'redirect' => $builderUrl]);
+                }
+                $this->addFlash('success', 'Cronograma "' . $contenido->getTitulo() . '" creado. Ahora agregá los ítems.');
+                return $this->redirect($builderUrl);
+            }
+
             $msg = 'Contenido "' . $contenido->getTitulo() . '" creado correctamente.';
             if ($request->isXmlHttpRequest()) {
                 return $this->json(['success' => true, 'message' => $msg]);
@@ -108,6 +121,51 @@ class ContenidoCmsController extends AbstractController
         }
 
         return $this->render('@SPUI/contenidos/new.html.twig', ['form' => $form]);
+    }
+
+    #[Route('/{id}/editar', name: 'spui_cms_contenidos_editar', methods: ['GET', 'POST'], requirements: ['id' => '\d+'])]
+    public function editar(int $id, Request $request): Response
+    {
+        $c = $this->repo->find($id);
+        if (!$c) { throw $this->createNotFoundException(); }
+
+        if ($request->isMethod('POST')) {
+            $titulo = trim($request->request->get('titulo', ''));
+            if (!$titulo) {
+                $error = 'El título es requerido.';
+                if ($request->isXmlHttpRequest()) {
+                    return $this->json(['success' => false, 'html' => $this->renderView('@SPUI/contenidos/_edit_form.html.twig', ['contenido' => $c, 'error' => $error])]);
+                }
+                $this->addFlash('error', $error);
+                return $this->redirectToRoute('spui_cms_contenidos_index');
+            }
+
+            $c->setTitulo($titulo);
+            $durStr = $request->request->get('duracion_segundos', '');
+            $c->setDuracionSegundos($durStr !== '' ? max(1, (int) $durStr) : null);
+
+            if (in_array($c->getTipo()->value, ['texto', 'youtube', 'qr'], true)) {
+                $texto = trim($request->request->get('contenido_texto', ''));
+                if ($texto !== '') { $c->setContenidoTexto($texto); }
+            }
+
+            $this->em()->flush();
+            $msg = '"' . $c->getTitulo() . '" actualizado.';
+            if ($request->isXmlHttpRequest()) {
+                return $this->json(['success' => true, 'message' => $msg]);
+            }
+            $this->addFlash('success', $msg);
+            return $this->redirectToRoute('spui_cms_contenidos_index');
+        }
+
+        if ($request->isXmlHttpRequest()) {
+            return $this->json([
+                'title' => 'Editar: ' . $c->getTitulo(),
+                'html'  => $this->renderView('@SPUI/contenidos/_edit_form.html.twig', ['contenido' => $c, 'error' => null]),
+            ]);
+        }
+
+        return $this->redirectToRoute('spui_cms_contenidos_index');
     }
 
     #[Route('/{id}/publicar', name: 'spui_cms_contenidos_publicar', methods: ['POST'], requirements: ['id' => '\d+'])]

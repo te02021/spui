@@ -71,6 +71,51 @@ class ProgramacionCmsController extends AbstractController
         return $this->render('@SPUI/programacion/nueva.html.twig', ['form' => $form]);
     }
 
+    #[Route('/{id}/editar', name: 'spui_cms_programacion_editar', methods: ['GET', 'POST'], requirements: ['id' => '\d+'])]
+    public function editar(int $id, Request $request): Response
+    {
+        $prog = $this->repo->find($id);
+        if (!$prog) { throw $this->createNotFoundException(); }
+
+        $diasDefault = [];
+        for ($bit = 0; $bit < 7; $bit++) {
+            if ($prog->getDiasSemana() & (1 << $bit)) { $diasDefault[] = $bit; }
+        }
+
+        $form = $this->createForm(ProgramacionType::class, $prog, [
+            'action'              => $this->generateUrl('spui_cms_programacion_editar', ['id' => $id]),
+            'dias_semana_default' => $diasDefault,
+        ]);
+        $form->handleRequest($request);
+
+        if ($form->isSubmitted() && $form->isValid()) {
+            $diasArray = $form->get('diasSemana')->getData() ?? [];
+            $bitmask   = 0;
+            foreach ($diasArray as $bit) { $bitmask |= (1 << (int) $bit); }
+            $prog->setDiasSemana($bitmask ?: 127);
+
+            $this->em()->flush();
+
+            if ($request->isXmlHttpRequest()) {
+                return $this->json(['success' => true, 'message' => 'Regla de programación actualizada.']);
+            }
+            $this->addFlash('success', 'Regla de programación actualizada.');
+            return $this->redirectToRoute('spui_cms_programacion_index');
+        }
+
+        if ($request->isXmlHttpRequest()) {
+            return $this->json([
+                'title' => 'Editar regla de programación',
+                'html'  => $this->renderView('@SPUI/programacion/_form.html.twig', [
+                    'form'         => $form,
+                    'submit_label' => 'Guardar cambios',
+                ]),
+            ]);
+        }
+
+        return $this->render('@SPUI/programacion/nueva.html.twig', ['form' => $form]);
+    }
+
     #[Route('/{id}/toggle', name: 'spui_cms_programacion_toggle', methods: ['POST'], requirements: ['id' => '\d+'])]
     public function toggle(int $id, Request $request): Response
     {

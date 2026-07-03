@@ -171,8 +171,8 @@ class AlertaEmergenciaController extends AbstractController
     // -------------------------------------------------------------------------
 
     /**
-     * Activa la alerta → interrumpe la programación normal en TODOS los nodos.
-     * Publica en MQTT (nodos Pi) y Mercure (dashboard web).
+     * Activa la alerta → interrumpe la programación normal en TODOS los reproductores.
+     * Publica en MQTT (reproductores Pi) y Mercure (dashboard web).
      */
     #[Route('/{id}/activar', name: 'spui_alertas_activar', methods: ['POST'], requirements: ['id' => '\d+'])]
     public function activar(int $id): JsonResponse
@@ -191,13 +191,13 @@ class AlertaEmergenciaController extends AbstractController
         $alerta->activar();
         $this->em()->flush();
 
-        // Push a nodos Pi (MQTT) y dashboard web (Mercure)
+        // Push a reproductores Pi (MQTT) y dashboard web (Mercure)
         $this->publisher->publicarActivacion($alerta);
 
         return $this->json(['data' => $this->serialize($alerta)]);
     }
 
-    /** Desactiva la alerta → los nodos vuelven a la programación normal. */
+    /** Desactiva la alerta → los reproductores vuelven a la programación normal. */
     #[Route('/{id}/desactivar', name: 'spui_alertas_desactivar', methods: ['POST'], requirements: ['id' => '\d+'])]
     public function desactivar(int $id): JsonResponse
     {
@@ -212,7 +212,7 @@ class AlertaEmergenciaController extends AbstractController
         $alerta->desactivar();
         $this->em()->flush();
 
-        // Push a nodos Pi (MQTT) y dashboard web (Mercure)
+        // Push a reproductores Pi (MQTT) y dashboard web (Mercure)
         $this->publisher->publicarDesactivacion($alerta);
 
         return $this->json(['data' => $this->serialize($alerta)]);

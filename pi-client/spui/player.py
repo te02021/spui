@@ -1,5 +1,5 @@
 """
-Reproductor multimedia para nodo SPUI.
+Reproductor multimedia para SPUI Pi Client.
 
 Tipos de contenido soportados:
   imagen  → imagen estática (PNG, JPG) mostrada N segundos

@@ -8,8 +8,8 @@ Métricas recopiladas:
   espacio_disco_libre_mb  : espacio libre en la partición raíz en MB (psutil).
   latencia_red_ms         : reservado (siempre None por ahora).
 
-El nodo_id se establece externamente vía set_nodo_id() después del primer sync.
-El thread no publica hasta tener un nodo_id válido.
+El reproductor_id se establece externamente vía set_reproductor_id() después del primer sync.
+El thread no publica hasta tener un reproductor_id válido.
 """
 
 import json
@@ -41,11 +41,11 @@ class TelemetriaPublisher(threading.Thread):
         self._host     = mqtt_host
         self._port     = mqtt_port
         self._interval = interval
-        self._nodo_id: int | None = None
+        self._reproductor_id: int | None = None
         self._stop     = threading.Event()
 
-    def set_nodo_id(self, nodo_id: int) -> None:
-        self._nodo_id = nodo_id
+    def set_reproductor_id(self, reproductor_id: int) -> None:
+        self._reproductor_id = reproductor_id
 
     def detener(self) -> None:
         self._stop.set()
@@ -67,11 +67,11 @@ class TelemetriaPublisher(threading.Thread):
                     self._interval, self._host, self._port)
 
         while not self._stop.wait(timeout=self._interval):
-            if self._nodo_id is None:
+            if self._reproductor_id is None:
                 continue  # esperar al primer sync exitoso
 
             payload = self._recopilar()
-            topic   = f'spui/telemetria/{self._nodo_id}'
+            topic   = f'spui/telemetria/{self._reproductor_id}'
             try:
                 client.publish(topic, json.dumps(payload), qos=0)
                 logger.debug('Telemetría → %s | temp=%s°C ram=%.1f%% disco=%dMB',
@@ -90,7 +90,7 @@ class TelemetriaPublisher(threading.Thread):
 
     def _recopilar(self) -> dict:
         return {
-            'nodo_id':                self._nodo_id,
+            'reproductor_id':         self._reproductor_id,
             'temperatura_soc_celsius': self._leer_temperatura(),
             'uso_ram_porcentaje':     self._leer_ram(),
             'espacio_disco_libre_mb': self._leer_disco(),

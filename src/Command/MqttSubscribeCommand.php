@@ -9,7 +9,7 @@ use Doctrine\Persistence\ManagerRegistry;
 use PhpMqtt\Client\ConnectionSettings;
 use PhpMqtt\Client\MqttClient;
 use SPUI\Entity\Telemetria;
-use SPUI\Repository\NodoRepository;
+use SPUI\Repository\ReproductorRepository;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
@@ -18,7 +18,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
 /**
- * Daemon que escucha telemetría MQTT de los nodos Pi y la persiste en BD.
+ * Daemon que escucha telemetría MQTT de los reproductores Pi y la persiste en BD.
  *
  * Uso:
  *   php bin/console spui:mqtt:subscribe --id=spui
@@ -29,7 +29,7 @@ use Symfony\Component\Console\Style\SymfonyStyle;
  */
 #[AsCommand(
     name: 'spui:mqtt:subscribe',
-    description: 'Escucha telemetría MQTT de los nodos Pi y la persiste en BD.',
+    description: 'Escucha telemetría MQTT de los reproductores Pi y la persiste en BD.',
 )]
 class MqttSubscribeCommand extends Command
 {
@@ -38,7 +38,7 @@ class MqttSubscribeCommand extends Command
 
     public function __construct(
         private readonly ManagerRegistry $doctrine,
-        private readonly NodoRepository $nodoRepo,
+        private readonly ReproductorRepository $reproductorRepo,
     ) {
         parent::__construct();
     }
@@ -72,7 +72,7 @@ class MqttSubscribeCommand extends Command
             return Command::FAILURE;
         }
 
-        $io->success('Conectado. Esperando telemetría de nodos Pi...');
+        $io->success('Conectado. Esperando telemetría de reproductores Pi...');
 
         $mqtt->subscribe(
             self::TOPIC_TELEMETRIA,
@@ -97,13 +97,13 @@ class MqttSubscribeCommand extends Command
             return;
         }
 
-        // Extraer nodo_id desde el topic 'spui/telemetria/{nodo_id}'
-        $partes = explode('/', $topic);
-        $nodoId = (int) end($partes);
-        $nodo   = $this->nodoRepo->find($nodoId);
+        // Extraer reproductor_id desde el topic 'spui/telemetria/{reproductor_id}'
+        $partes        = explode('/', $topic);
+        $reproductorId = (int) end($partes);
+        $reproductor   = $this->reproductorRepo->find($reproductorId);
 
-        if ($nodo === null) {
-            $io->warning(sprintf('[%s] Nodo %d no encontrado (topic: %s).', $this->ts(), $nodoId, $topic));
+        if ($reproductor === null) {
+            $io->warning(sprintf('[%s] Reproductor %d no encontrado (topic: %s).', $this->ts(), $reproductorId, $topic));
             return;
         }
 
@@ -112,7 +112,7 @@ class MqttSubscribeCommand extends Command
             : 0.0;
 
         $telemetria = new Telemetria();
-        $telemetria->setNodo($nodo);
+        $telemetria->setReproductor($reproductor);
         $telemetria->setTemperaturaSocCelsius($temp);
         $telemetria->setUsoRamPorcentaje((float) ($data['uso_ram_porcentaje'] ?? 0.0));
         $telemetria->setLatenciaRedMs(isset($data['latencia_red_ms']) ? (int) $data['latencia_red_ms'] : null);
@@ -125,9 +125,9 @@ class MqttSubscribeCommand extends Command
         $em->clear();
 
         $io->writeln(sprintf(
-            '[%s] Nodo <info>%d</info> — temp=<comment>%.1f°C</comment>  ram=<comment>%.1f%%</comment>  disco=<comment>%dMB</comment>',
+            '[%s] Reproductor <info>%d</info> — temp=<comment>%.1f°C</comment>  ram=<comment>%.1f%%</comment>  disco=<comment>%dMB</comment>',
             $this->ts(),
-            $nodoId,
+            $reproductorId,
             $temp,
             (float) ($data['uso_ram_porcentaje'] ?? 0),
             (int) ($data['espacio_disco_libre_mb'] ?? 0),
@@ -135,8 +135,8 @@ class MqttSubscribeCommand extends Command
 
         if ($temp >= self::TEMP_ALERTA_CELSIUS) {
             $io->caution(sprintf(
-                'TEMPERATURA CRÍTICA en Nodo %d: %.1f°C (umbral: %.0f°C)',
-                $nodoId,
+                'TEMPERATURA CRÍTICA en Reproductor %d: %.1f°C (umbral: %.0f°C)',
+                $reproductorId,
                 $temp,
                 self::TEMP_ALERTA_CELSIUS,
             ));

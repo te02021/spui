@@ -33,6 +33,13 @@
     <textarea name="contenido_texto" id="textareaTexto" class="unraf-form-control" rows="4" placeholder="Ingresá el texto a mostrar…"></textarea>
 </div>
 
+<div id="campoCronograma" class="mb-3" style="display:none">
+    <div class="p-3" style="background:#f0f7ff;border:1px solid #b8d4ec;border-radius:.5rem">
+        <strong style="color:var(--unraf-azul)">Cronograma de actividades</strong><br>
+        <small class="text-muted">Después de guardar serás redirigido al editor de ítems donde podés agregar horarios, materias y eventos.</small>
+    </div>
+</div>
+
 <div class="d-flex justify-content-end gap-2 pt-3 border-top">
     <button type="button" class="unraf-btn spui-btn-back" data-spui-close>Cancelar</button>
     <button type="submit" class="unraf-btn unraf-btn-institucion">Guardar contenido</button>
@@ -42,21 +49,24 @@
 
 <script>
 (function () {
-    var tipoSelect   = document.getElementById('tipoSelect');
-    var campoArchivo = document.getElementById('campoArchivo');
-    var campoTexto   = document.getElementById('campoTexto');
-    var labelTexto   = document.getElementById('labelTexto');
-    var textarea     = document.getElementById('textareaTexto');
-    var archivoInput = document.getElementById('archivoInput');
+    var tipoSelect      = document.getElementById('tipoSelect');
+    var campoArchivo    = document.getElementById('campoArchivo');
+    var campoTexto      = document.getElementById('campoTexto');
+    var campoCronograma = document.getElementById('campoCronograma');
+    var labelTexto      = document.getElementById('labelTexto');
+    var textarea        = document.getElementById('textareaTexto');
+    var archivoInput    = document.getElementById('archivoInput');
     if (!tipoSelect) return;
     function actualizarCampos() {
-        var tipo      = tipoSelect.value;
-        var esArchivo = tipo === 'imagen' || tipo === 'video';
-        var esTexto   = tipo === 'texto' || tipo === 'youtube' || tipo === 'qr';
-        if (campoArchivo) campoArchivo.style.display = esArchivo ? '' : 'none';
-        if (campoTexto)   campoTexto.style.display   = esTexto  ? '' : 'none';
-        if (archivoInput) archivoInput.required       = esArchivo;
-        if (textarea)     textarea.required            = esTexto;
+        var tipo         = tipoSelect.value;
+        var esArchivo    = tipo === 'imagen' || tipo === 'video';
+        var esTexto      = tipo === 'texto' || tipo === 'youtube' || tipo === 'qr';
+        var esCronograma = tipo === 'cronograma';
+        if (campoArchivo)    campoArchivo.style.display    = esArchivo    ? '' : 'none';
+        if (campoTexto)      campoTexto.style.display      = esTexto      ? '' : 'none';
+        if (campoCronograma) campoCronograma.style.display = esCronograma ? '' : 'none';
+        if (archivoInput) archivoInput.required = esArchivo;
+        if (textarea)     textarea.required     = esTexto;
         if (labelTexto) {
             labelTexto.childNodes[0].textContent =
                 tipo === 'youtube' ? 'URL de YouTube ' :

@@ -12,7 +12,7 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Routing\Attribute\Route;
 
 /**
- * Sirve archivos de contenido (imágenes, videos) para descarga por los nodos Pi.
+ * Sirve archivos de contenido (imágenes, videos) para descarga por los reproductores Pi.
  * Los archivos se almacenan en public/uploads/spui/.
  */
 #[Route('/api/spui/media')]

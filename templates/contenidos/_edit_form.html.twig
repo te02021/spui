@@ -1,0 +1,47 @@
+<form method="post"
+      action="{{ path('spui_cms_contenidos_editar', {id: contenido.id}) }}"
+      data-spui-ajax="1"
+      novalidate>
+
+    {% if error %}
+        <div class="alert alert-danger mb-3">{{ error }}</div>
+    {% endif %}
+
+    <div class="mb-3">
+        <label class="unraf-form-label text-muted">Tipo (no editable)</label>
+        <p class="mb-0 fw-semibold">{{ contenido.tipo.value|capitalize }}</p>
+    </div>
+
+    <div class="mb-3">
+        <label class="unraf-form-label" for="ed_titulo">Título <span class="text-danger">*</span></label>
+        <input type="text" id="ed_titulo" name="titulo" class="unraf-form-control"
+               value="{{ contenido.titulo }}" maxlength="200" required>
+    </div>
+
+    <div class="mb-3">
+        <label class="unraf-form-label" for="ed_duracion">Duración por defecto (segundos)</label>
+        <input type="number" id="ed_duracion" name="duracion_segundos" class="unraf-form-control"
+               value="{{ contenido.duracionSegundos ?? '' }}" min="1" max="3600"
+               style="max-width:12rem" placeholder="Vacío = permanente">
+        <small class="text-muted d-block mt-1">
+            Duración que se usa al agregar este contenido a una playlist. Se puede sobreescribir individualmente por cada ítem de playlist. Dejar vacío para contenido permanente (sin avance automático).
+        </small>
+    </div>
+
+    {% if contenido.tipo.value in ['texto', 'youtube', 'qr'] %}
+    <div class="mb-3">
+        <label class="unraf-form-label" for="ed_texto">
+            {% if contenido.tipo.value == 'youtube' %}URL de YouTube
+            {% elseif contenido.tipo.value == 'qr' %}URL para el QR
+            {% else %}Texto a mostrar{% endif %}
+        </label>
+        <textarea id="ed_texto" name="contenido_texto" class="unraf-form-control" rows="3">{{ contenido.contenidoTexto }}</textarea>
+    </div>
+    {% endif %}
+
+    <div class="d-flex justify-content-end gap-2 pt-3 border-top">
+        <button type="button" class="unraf-btn spui-btn-back" data-spui-close>Cancelar</button>
+        <button type="submit" class="unraf-btn unraf-btn-institucion">Guardar cambios</button>
+    </div>
+
+</form>

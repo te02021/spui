@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
 """
-SPUI Pi Client — Cliente multimedia para nodos Raspberry Pi.
+SPUI Pi Client — Cliente multimedia para reproductores Raspberry Pi.
 
 Arquitectura de threads:
   Main thread   → loop de sync + decisión de qué reproducir
-  heartbeat     → daemon, POST /nodos/heartbeat cada 60s
+  heartbeat     → daemon, POST /reproductores/heartbeat cada 60s
   mqtt-listener → daemon, suscrito a 'spui/alertas/emergencia'
   telemetria    → daemon, publica métricas del sistema vía MQTT cada 60s
 
 Flujo por ciclo (Fase 7 — offline/fail-safe):
   1. NetworkMonitor.is_online() — TCP check rápido (no HTTP)
      OFFLINE → servir del caché SQLite, reintentar en OFFLINE_RETRY_SEG (30s)
-     ONLINE  → POST /nodos/sync, guardar en caché, prefetch de todos los archivos
+     ONLINE  → POST /reproductores/sync, guardar en caché, prefetch de todos los archivos
   2. Decidir qué reproducir:
      alerta activa    → player.mostrar_alerta()
      programación     → player.reproducir_playlist()
@@ -117,10 +117,10 @@ def main() -> None:
                 sync_data = sync.sincronizar()
                 cache.guardar_sync(sync_data)
 
-                # Informar al publisher de telemetría cuál es este nodo
-                nodo_id = sync_data.get('nodo_id')
-                if nodo_id:
-                    telemetria.set_nodo_id(nodo_id)
+                # Informar al publisher de telemetría cuál es este reproductor
+                reproductor_id = sync_data.get('reproductor_id')
+                if reproductor_id:
+                    telemetria.set_reproductor_id(reproductor_id)
 
                 # Prefetch proactivo — descarga todo lo que necesita la playlist
                 # mientras la red esté disponible, para que el caché esté completo

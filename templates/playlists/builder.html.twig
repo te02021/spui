@@ -9,13 +9,20 @@
             <span class="spui-badge-archivado">Inactiva</span>
         {% endif %}
     </div>
-    <a href="{{ path('spui_cms_playlists_index') }}" class="unraf-btn spui-btn-back flex-shrink-0">← Playlists</a>
+    <div class="d-flex gap-2 flex-shrink-0">
+        <button type="button" class="unraf-btn unraf-btn-institucion"
+                data-spui-form="{{ path('spui_cms_playlists_items_agregar_form', {id: playlist.id}) }}"
+                data-spui-title="Agregar contenido">
+            + Agregar contenido
+        </button>
+        <a href="{{ path('spui_cms_playlists_index') }}" class="unraf-btn spui-btn-back">← Playlists</a>
+    </div>
 </div>
 
 <div class="row g-4">
 
-    {# ── Items actuales (izquierda) ── #}
-    <div class="col-lg-7">
+    {# ── Items actuales (izquierda, ahora full en lg) ── #}
+    <div class="col-12">
         <div class="unraf-card">
             <div class="p-3 border-bottom d-flex justify-content-between align-items-center">
                 <strong>Items de la playlist</strong>
@@ -39,12 +46,12 @@
                             <strong>{{ item.contenido.titulo }}</strong>
                             <small class="text-muted ms-2">{{ item.contenido.tipo.value }}</small>
                         </div>
-                        <span class="duracion-badge">{{ item.duracionEfectiva }}s</span>
+                        <span class="duracion-badge">{{ item.duracionEfectiva ? item.duracionEfectiva ~ 's' : '∞' }}</span>
                         <button type="button" class="unraf-btn-icon btn-delete"
-                                data-confirm-url="{{ path('spui_cms_playlists_items_quitar', {id: playlist.id, itemId: item.id}) }}"
-                                data-confirm-title="Quitar item"
-                                data-confirm-message="¿Quitar «{{ item.contenido.titulo }}» de esta playlist?"
-                                data-confirm-variant="danger"
+                                data-spui-action="{{ path('spui_cms_playlists_items_quitar', {id: playlist.id, itemId: item.id}) }}"
+                                data-spui-title="Quitar item"
+                                data-spui-message="¿Quitar «{{ item.contenido.titulo }}» de esta playlist?"
+                                data-spui-variant="danger"
                                 title="Quitar">
                             <img src="{{ asset('unraf-ui/icons/trash.svg') }}" class="unraf-icon-svg" alt="Quitar">
                         </button>
@@ -53,38 +60,12 @@
                 </ul>
 
                 <div class="p-3 text-muted small border-top">
-                    Duración total: <strong>{{ playlist.items|map(i => i.duracionEfectiva)|reduce((carry, v) => carry + v, 0) }}s</strong>
-                </div>
-            {% endif %}
-        </div>
-    </div>
-
-    {# ── Contenidos disponibles (derecha) ── #}
-    <div class="col-lg-5">
-        <div class="unraf-card">
-            <div class="p-3 border-bottom">
-                <strong>Contenidos disponibles</strong>
-                <br><small class="text-muted">Solo contenidos publicados no usados en esta playlist.</small>
-            </div>
-
-            {% if disponibles|length == 0 %}
-                <div class="p-4 text-center text-muted">
-                    No hay más contenidos publicados para agregar.
-                </div>
-            {% else %}
-                <div style="max-height:460px;overflow-y:auto">
-                {% for c in disponibles %}
-                    <div class="d-flex align-items-center gap-2 p-2 border-bottom">
-                        <div class="flex-grow-1">
-                            <div>{{ c.titulo }}</div>
-                            <small class="text-muted">{{ c.tipo.value }} · {{ c.duracionSegundos }}s</small>
-                        </div>
-                        <form method="post" action="{{ path('spui_cms_playlists_items_agregar', {id: playlist.id}) }}">
-                            <input type="hidden" name="contenido_id" value="{{ c.id }}">
-                            <button type="submit" class="unraf-btn unraf-btn-institucion unraf-btn-sm">+ Agregar</button>
-                        </form>
-                    </div>
-                {% endfor %}
+                    {% set tienePermamente = playlist.items|filter(i => i.duracionEfectiva is null)|length > 0 %}
+                    Duración total:
+                    <strong>
+                        {{ playlist.items|map(i => i.duracionEfectiva ?? 0)|reduce((carry, v) => carry + v, 0) }}s
+                        {% if tienePermamente %}+ contenido permanente{% endif %}
+                    </strong>
                 </div>
             {% endif %}
         </div>

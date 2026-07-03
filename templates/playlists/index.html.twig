@@ -21,10 +21,10 @@
             <thead>
                 <tr>
                     <th class="p-3">Nombre</th>
-                    <th class="p-3">Items</th>
+                    <th class="p-3">Ítems</th>
                     <th class="p-3">Estado</th>
                     <th class="p-3">Actualizada</th>
-                    <th class="p-3 text-center">Acciones</th>
+                    <th class="p-3">Acciones</th>
                 </tr>
             </thead>
             <tbody>
@@ -34,7 +34,9 @@
                         <strong>{{ pl.nombre }}</strong>
                         {% if pl.descripcion %}<br><small class="text-muted">{{ pl.descripcion|slice(0,80) }}</small>{% endif %}
                     </td>
-                    <td class="p-3">{{ pl.items|length }}</td>
+                    <td class="p-3 text-center">
+                        <span class="spui-badge-borrador">{{ pl.items|length }}</span>
+                    </td>
                     <td class="p-3">
                         {% if pl.activo %}
                             <span class="spui-badge-publicado">Activa</span>
@@ -43,15 +45,37 @@
                         {% endif %}
                     </td>
                     <td class="p-3"><small>{{ pl.actualizadoEn|date('d/m/Y H:i') }}</small></td>
-                    <td class="p-3 text-center">
-                        <a href="{{ path('spui_cms_playlists_builder', {id: pl.id}) }}" class="unraf-btn-icon" title="Editar items">
-                            <img src="{{ asset('unraf-ui/icons/pencil-simple.svg') }}" class="unraf-icon-svg" alt="Editar">
-                        </a>
+                    <td class="p-3">
+                        <div class="d-flex gap-1 flex-wrap align-items-center">
+
+                            <button type="button" class="unraf-btn unraf-btn-light unraf-btn-sm"
+                                    data-spui-form="{{ path('spui_cms_playlists_editar', {id: pl.id}) }}"
+                                    data-spui-title="Editar: {{ pl.nombre }}"
+                                    title="Editar datos">
+                                <img src="{{ asset('unraf-ui/icons/pencil.svg') }}" class="spui-action-icon" alt=""> Editar
+                            </button>
+
+                            <a href="{{ path('spui_cms_playlists_builder', {id: pl.id}) }}"
+                               class="unraf-btn unraf-btn-sm"
+                               style="background:var(--unraf-azul,#446687);color:#fff;border:none"
+                               title="Editar ítems de la playlist">
+                                <img src="{{ asset('unraf-ui/icons/playlist.svg') }}" class="spui-action-icon" style="filter:invert(1)" alt=""> Ítems
+                            </a>
+
+                            <button type="button" class="unraf-btn-icon btn-delete"
+                                    data-spui-action="{{ path('spui_cms_playlists_eliminar', {id: pl.id}) }}"
+                                    data-spui-title="Eliminar playlist"
+                                    data-spui-message="¿Eliminar «{{ pl.nombre }}»? Esta acción no se puede deshacer."
+                                    data-spui-variant="danger"
+                                    title="Eliminar">
+                                <img src="{{ asset('unraf-ui/icons/trash.svg') }}" class="unraf-icon-svg" alt="Eliminar">
+                            </button>
+
+                        </div>
                     </td>
                 </tr>
             {% else %}
-                <tr><td colspan="5" class="p-4 text-center text-muted">No hay playlists.
-                </td></tr>
+                <tr><td colspan="5" class="p-4 text-center text-muted">No hay playlists.</td></tr>
             {% endfor %}
             </tbody>
         </table>

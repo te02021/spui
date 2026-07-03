@@ -55,7 +55,7 @@ class CronogramaItemType extends AbstractType
                 'multiple'   => true,
                 'expanded'   => true,
                 'choices'    => ['Lun' => 0, 'Mar' => 1, 'Mié' => 2, 'Jue' => 3, 'Vie' => 4, 'Sáb' => 5, 'Dom' => 6],
-                'data'       => [0, 1, 2, 3, 4],
+                'data'       => $options['dias_semana_default'],
             ])
             ->add('orden', IntegerType::class, [
                 'label'      => 'Orden',
@@ -71,6 +71,9 @@ class CronogramaItemType extends AbstractType
 
     public function configureOptions(OptionsResolver $resolver): void
     {
-        $resolver->setDefaults(['data_class' => CronogramaItem::class]);
+        $resolver->setDefaults([
+            'data_class'          => CronogramaItem::class,
+            'dias_semana_default' => [0, 1, 2, 3, 4],
+        ]);
     }
 }

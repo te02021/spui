@@ -2,7 +2,7 @@
 Thread de background que envía heartbeat periódicamente al CMS.
 
 El CMS usa esto para marcar estado_conexion='conectado' y registrar
-el timestamp de ultimo_heartbeat en la entidad Nodo.
+el timestamp de ultimo_heartbeat en la entidad Reproductor.
 
 Si el heartbeat falla (red caída), lo registra como warning y sigue
 intentando en el siguiente ciclo — no interrumpe el player.

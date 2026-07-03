@@ -38,15 +38,15 @@ class PantallaController extends AbstractController
             'nombre'           => $p->getNombre(),
             'ubicacion'        => [
                 'id'       => $u->getId(),
-                'edificio' => $u->getEdificio(),
-                'aula'     => $u->getAula(),
+                'edificio' => $u->getEdificio()->getNombre(),
+                'sector'   => $u->getSector(),
             ],
             'ip_address'       => $p->getIpAddress(),
             'mac_address'      => $p->getMacAddress(),
             'resolucion_ancho' => $p->getResolucionAncho(),
             'resolucion_alto'  => $p->getResolucionAlto(),
             'estado'           => $p->getEstado()->value,
-            'nodo_id'          => $p->getNodo()?->getId(),
+            'reproductor_id'   => $p->getReproductor()?->getId(),
             'creado_en'        => $p->getCreadoEn()->format('c'),
             'actualizado_en'   => $p->getActualizadoEn()->format('c'),
         ];
@@ -203,9 +203,9 @@ class PantallaController extends AbstractController
             return $this->json(['error' => 'Pantalla no encontrada.'], Response::HTTP_NOT_FOUND);
         }
 
-        if ($pantalla->getNodo() !== null) {
+        if ($pantalla->getReproductor() !== null) {
             return $this->json(
-                ['error' => 'No se puede eliminar una pantalla con nodo asociado. Desregistra el nodo primero.'],
+                ['error' => 'No se puede eliminar una pantalla con reproductor asociado. Desasignalo primero.'],
                 Response::HTTP_CONFLICT,
             );
         }

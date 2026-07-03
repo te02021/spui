@@ -1,0 +1,63 @@
+<form method="post"
+      action="{{ action_url }}"
+      data-spui-ajax="1"
+      novalidate>
+
+    {% if errors is defined and errors %}
+        <div class="alert alert-danger mb-3">
+            {% for e in errors %}<div>{{ e }}</div>{% endfor %}
+        </div>
+    {% endif %}
+
+    {% set v = values is defined ? values : {} %}
+
+    <div class="mb-3">
+        <label class="unraf-form-label" for="ci_nombre">Nombre <span class="text-danger">*</span></label>
+        <input type="text" id="ci_nombre" name="nombre" class="unraf-form-control"
+               value="{{ v.nombre ?? '' }}" maxlength="200"
+               placeholder="Ej: Análisis Matemático I" required>
+    </div>
+
+    <div class="mb-3">
+        <label class="unraf-form-label" for="ci_aula">Aula / Espacio <small class="text-muted">(opcional)</small></label>
+        <input type="text" id="ci_aula" name="aula" class="unraf-form-control"
+               value="{{ v.aula ?? '' }}" maxlength="100"
+               placeholder="Ej: Aula 3 / Lab 2">
+    </div>
+
+    <div class="row g-2 mb-3">
+        <div class="col-6">
+            <label class="unraf-form-label" for="ci_hi">Hora inicio <span class="text-danger">*</span></label>
+            <input type="time" id="ci_hi" name="hora_inicio" class="unraf-form-control"
+                   value="{{ v.hora_inicio ?? '' }}" required>
+        </div>
+        <div class="col-6">
+            <label class="unraf-form-label" for="ci_hf">Hora fin <span class="text-danger">*</span></label>
+            <input type="time" id="ci_hf" name="hora_fin" class="unraf-form-control"
+                   value="{{ v.hora_fin ?? '' }}" required>
+        </div>
+    </div>
+
+    <div class="mb-3">
+        <label class="unraf-form-label">Días de la semana</label>
+        <div class="d-flex flex-wrap gap-3 mt-1">
+            {% set diasOpciones = {'Lun': 0, 'Mar': 1, 'Mié': 2, 'Jue': 3, 'Vie': 4, 'Sáb': 5, 'Dom': 6} %}
+            {% set diasActivos = v.dias is defined ? v.dias : [0, 1, 2, 3, 4] %}
+            {% for label, bit in diasOpciones %}
+                <div class="form-check form-check-inline m-0">
+                    <input class="form-check-input" type="checkbox" name="dias[]"
+                           id="ci_dia_{{ bit }}" value="{{ bit }}"
+                           {{ bit in diasActivos ? 'checked' : '' }}>
+                    <label class="form-check-label" for="ci_dia_{{ bit }}">{{ label }}</label>
+                </div>
+            {% endfor %}
+        </div>
+        <small class="text-muted">Sin selección = todos los días.</small>
+    </div>
+
+    <div class="d-flex justify-content-end gap-2 pt-3 border-top">
+        <button type="button" class="unraf-btn spui-btn-back" data-spui-close>Cancelar</button>
+        <button type="submit" class="unraf-btn unraf-btn-institucion">+ Agregar ítem</button>
+    </div>
+
+</form>

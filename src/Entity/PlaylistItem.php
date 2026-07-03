@@ -45,7 +45,7 @@ class PlaylistItem
     public function getDuracionOverrideSeg(): ?int { return $this->duracionOverrideSeg; }
     public function setDuracionOverrideSeg(?int $duracionOverrideSeg): static { $this->duracionOverrideSeg = $duracionOverrideSeg; return $this; }
 
-    public function getDuracionEfectiva(): int
+    public function getDuracionEfectiva(): ?int
     {
         return $this->duracionOverrideSeg ?? $this->contenido->getDuracionSegundos();
     }

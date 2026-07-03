@@ -1,0 +1,30 @@
+<form method="post"
+      action="{{ path('spui_cms_playlists_items_agregar', {id: playlist.id}) }}"
+      data-spui-ajax="1"
+      novalidate>
+
+    {% if disponibles|length == 0 %}
+        <div class="alert alert-info mb-0">
+            No hay contenidos publicados disponibles para agregar.<br>
+            <small>Publicá un contenido desde <strong>Contenidos</strong> primero.</small>
+        </div>
+    {% else %}
+        <div class="mb-4">
+            <label class="unraf-form-label" for="sel_contenido">Contenido <span class="text-danger">*</span></label>
+            <select id="sel_contenido" name="contenido_id" class="unraf-form-select" required>
+                <option value="">— seleccionar —</option>
+                {% for c in disponibles %}
+                    <option value="{{ c.id }}">
+                        {{ c.titulo }} ({{ c.tipo.value }}{% if c.duracionSegundos %} · {{ c.duracionSegundos }}s{% else %} · permanente{% endif %})
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="d-flex justify-content-end gap-2 pt-3 border-top">
+            <button type="button" class="unraf-btn spui-btn-back" data-spui-close>Cancelar</button>
+            <button type="submit" class="unraf-btn unraf-btn-institucion">+ Agregar a la playlist</button>
+        </div>
+    {% endif %}
+
+</form>

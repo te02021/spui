@@ -61,15 +61,23 @@
                         <span class="spui-badge-borrador">{{ prog.prioridad }}</span>
                     </td>
                     <td class="p-3">
-                        <div class="d-flex gap-1 justify-content-center">
+                        <div class="d-flex gap-1 flex-wrap align-items-center">
+                            <button type="button" class="unraf-btn unraf-btn-light unraf-btn-sm"
+                                    data-spui-form="{{ path('spui_cms_programacion_editar', {id: prog.id}) }}"
+                                    data-spui-title="Editar regla"
+                                    data-spui-size="modal-lg"
+                                    title="Editar">
+                                <img src="{{ asset('unraf-ui/icons/pencil.svg') }}" class="spui-action-icon" alt=""> Editar
+                            </button>
                             <button type="button"
-                                    class="unraf-btn-icon {{ prog.activo ? 'spui-toggle-activo' : 'spui-toggle-inactivo' }}"
+                                    class="unraf-btn unraf-btn-sm {{ prog.activo ? 'spui-toggle-activo' : 'spui-toggle-inactivo' }}"
                                     data-spui-action="{{ path('spui_cms_programacion_toggle', {id: prog.id}) }}"
                                     data-spui-title="{{ prog.activo ? 'Desactivar regla' : 'Activar regla' }}"
                                     data-spui-message="{{ prog.activo ? '¿Desactivar esta regla de programación?' : '¿Activar esta regla de programación?' }}"
                                     data-spui-variant="{{ prog.activo ? 'danger' : 'success' }}"
                                     title="{{ prog.activo ? 'Desactivar' : 'Activar' }}">
-                                <img src="{{ asset(prog.activo ? 'unraf-ui/icons/pause.svg' : 'unraf-ui/icons/play.svg') }}" class="unraf-icon-svg" alt="">
+                                <img src="{{ asset(prog.activo ? 'unraf-ui/icons/pause.svg' : 'unraf-ui/icons/play.svg') }}" class="spui-action-icon" style="filter:invert(1)" alt="">
+                                {{ prog.activo ? 'Desactivar' : 'Activar' }}
                             </button>
                             <button type="button" class="unraf-btn-icon btn-delete"
                                     data-spui-action="{{ path('spui_cms_programacion_eliminar', {id: prog.id}) }}"

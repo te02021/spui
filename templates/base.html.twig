@@ -47,8 +47,22 @@
                     <img src="{{ asset('unraf-ui/icons/chart-pie.svg') }}" class="unraf-icon-svg" alt=""> Dashboard
                 </a>
 
+                <p class="unraf-nav-separator">Infraestructura</p>
+                <a href="{{ path('spui_cms_edificios_index') }}" class="unraf-nav-item {{ app.request.get('_route') starts with 'spui_cms_edificios' ? 'active' : '' }}">
+                    <img src="{{ asset('unraf-ui/icons/buildings.svg') }}" class="unraf-icon-svg" alt=""> Edificios
+                </a>
+                <a href="{{ path('spui_cms_ubicaciones_index') }}" class="unraf-nav-item {{ app.request.get('_route') starts with 'spui_cms_ubicaciones' ? 'active' : '' }}">
+                    <img src="{{ asset('unraf-ui/icons/map-pin.svg') }}" class="unraf-icon-svg" alt=""> Ubicaciones
+                </a>
+                <a href="{{ path('spui_cms_reproductores_index') }}" class="unraf-nav-item {{ app.request.get('_route') starts with 'spui_cms_reproductores' ? 'active' : '' }}">
+                    <img src="{{ asset('unraf-ui/icons/cpu.svg') }}" class="unraf-icon-svg" alt=""> Reproductores
+                </a>
+                <a href="{{ path('spui_cms_pantallas_index') }}" class="unraf-nav-item {{ app.request.get('_route') starts with 'spui_cms_pantallas' ? 'active' : '' }}">
+                    <img src="{{ asset('unraf-ui/icons/monitor.svg') }}" class="unraf-icon-svg" alt=""> Pantallas
+                </a>
+
                 <p class="unraf-nav-separator">Contenido</p>
-                <a href="{{ path('spui_cms_contenidos_index') }}" class="unraf-nav-item {{ app.request.get('_route') starts with 'spui_cms_contenidos' ? 'active' : '' }}">
+                <a href="{{ path('spui_cms_contenidos_index') }}" class="unraf-nav-item {{ app.request.get('_route') starts with 'spui_cms_contenidos' or app.request.get('_route') starts with 'spui_cms_cronograma' ? 'active' : '' }}">
                     <img src="{{ asset('unraf-ui/icons/image.svg') }}" class="unraf-icon-svg" alt=""> Contenidos
                 </a>
                 <a href="{{ path('spui_cms_playlists_index') }}" class="unraf-nav-item {{ app.request.get('_route') starts with 'spui_cms_playlists' ? 'active' : '' }}">
@@ -56,20 +70,6 @@
                 </a>
                 <a href="{{ path('spui_cms_programacion_index') }}" class="unraf-nav-item {{ app.request.get('_route') starts with 'spui_cms_programacion' ? 'active' : '' }}">
                     <img src="{{ asset('unraf-ui/icons/calendar-dots.svg') }}" class="unraf-icon-svg" alt=""> Programación
-                </a>
-
-                <p class="unraf-nav-separator">Infraestructura</p>
-                <a href="{{ path('spui_cms_ubicaciones_index') }}" class="unraf-nav-item {{ app.request.get('_route') starts with 'spui_cms_ubicaciones' ? 'active' : '' }}">
-                    <img src="{{ asset('unraf-ui/icons/buildings.svg') }}" class="unraf-icon-svg" alt=""> Ubicaciones
-                </a>
-                <a href="{{ path('spui_cms_pantallas_index') }}" class="unraf-nav-item {{ app.request.get('_route') starts with 'spui_cms_pantallas' ? 'active' : '' }}">
-                    <img src="{{ asset('unraf-ui/icons/monitor.svg') }}" class="unraf-icon-svg" alt=""> Pantallas
-                </a>
-                <a href="{{ path('spui_cms_edificios_index') }}" class="unraf-nav-item {{ app.request.get('_route') starts with 'spui_cms_edificios' ? 'active' : '' }}">
-                    <img src="{{ asset('unraf-ui/icons/buildings.svg') }}" class="unraf-icon-svg" alt=""> Edificios
-                </a>
-                <a href="{{ path('spui_cms_reproductores_index') }}" class="unraf-nav-item {{ app.request.get('_route') starts with 'spui_cms_reproductores' ? 'active' : '' }}">
-                    <img src="{{ asset('unraf-ui/icons/cpu.svg') }}" class="unraf-icon-svg" alt=""> Reproductores
                 </a>
 
                 <p class="unraf-nav-separator">Operaciones</p>

@@ -83,21 +83,95 @@ class PlaylistCmsController extends AbstractController
         return $this->render('@SPUI/playlists/nueva.html.twig');
     }
 
+    #[Route('/{id}/editar', name: 'spui_cms_playlists_editar', methods: ['GET', 'POST'], requirements: ['id' => '\d+'])]
+    public function editar(int $id, Request $request): Response
+    {
+        $playlist = $this->repo->find($id);
+        if (!$playlist) { throw $this->createNotFoundException(); }
+
+        if ($request->isMethod('POST')) {
+            $nombre = trim($request->request->get('nombre', ''));
+            if (!$nombre) {
+                $error = 'El nombre es requerido.';
+                if ($request->isXmlHttpRequest()) {
+                    return $this->json(['success' => false, 'html' => $this->renderView('@SPUI/playlists/_edit_form.html.twig', ['playlist' => $playlist, 'error' => $error])]);
+                }
+                $this->addFlash('error', $error);
+                return $this->redirectToRoute('spui_cms_playlists_index');
+            }
+
+            $playlist->setNombre($nombre);
+            $playlist->setDescripcion(trim($request->request->get('descripcion', '')) ?: null);
+            $playlist->setActivo((bool) $request->request->get('activo', false));
+            $this->em()->flush();
+
+            $msg = '"' . $playlist->getNombre() . '" actualizada.';
+            if ($request->isXmlHttpRequest()) {
+                return $this->json(['success' => true, 'message' => $msg]);
+            }
+            $this->addFlash('success', $msg);
+            return $this->redirectToRoute('spui_cms_playlists_index');
+        }
+
+        if ($request->isXmlHttpRequest()) {
+            return $this->json([
+                'title' => 'Editar: ' . $playlist->getNombre(),
+                'html'  => $this->renderView('@SPUI/playlists/_edit_form.html.twig', ['playlist' => $playlist, 'error' => null]),
+            ]);
+        }
+        return $this->redirectToRoute('spui_cms_playlists_index');
+    }
+
+    #[Route('/{id}/eliminar', name: 'spui_cms_playlists_eliminar', methods: ['POST'], requirements: ['id' => '\d+'])]
+    public function eliminar(int $id, Request $request): Response
+    {
+        $playlist = $this->repo->find($id);
+        if (!$playlist) { throw $this->createNotFoundException(); }
+
+        if ($playlist->getItems()->count() > 0) {
+            $msg = 'Primero quitá todos los ítems de la playlist antes de eliminarla.';
+            if ($request->isXmlHttpRequest()) { return $this->json(['success' => false, 'message' => $msg]); }
+            $this->addFlash('error', $msg);
+            return $this->redirectToRoute('spui_cms_playlists_index');
+        }
+
+        $nombre = $playlist->getNombre();
+        $this->em()->remove($playlist);
+        $this->em()->flush();
+
+        $msg = '"' . $nombre . '" eliminada.';
+        if ($request->isXmlHttpRequest()) { return $this->json(['success' => true, 'message' => $msg]); }
+        $this->addFlash('success', $msg);
+        return $this->redirectToRoute('spui_cms_playlists_index');
+    }
+
+    #[Route('/{id}/items/agregar-form', name: 'spui_cms_playlists_items_agregar_form', methods: ['GET'], requirements: ['id' => '\d+'])]
+    public function agregarItemForm(int $id): Response
+    {
+        $playlist    = $this->repo->find($id);
+        if (!$playlist) { throw $this->createNotFoundException(); }
+
+        $disponibles = $this->contenidoRepo->findBy(['estado' => \SPUI\Enum\EstadoContenido::Publicado], ['titulo' => 'ASC']);
+        $enPlaylist  = array_map(fn($item) => $item->getContenido()->getId(), $playlist->getItems()->toArray());
+        $disponibles = array_values(array_filter($disponibles, fn($c) => !in_array($c->getId(), $enPlaylist, true)));
+
+        return $this->json([
+            'title' => 'Agregar contenido',
+            'html'  => $this->renderView('@SPUI/playlists/_agregar_form.html.twig', [
+                'playlist'    => $playlist,
+                'disponibles' => $disponibles,
+            ]),
+        ]);
+    }
+
     #[Route('/{id}', name: 'spui_cms_playlists_builder', methods: ['GET'], requirements: ['id' => '\d+'])]
     public function builder(int $id): Response
     {
         $playlist = $this->repo->find($id);
         if (!$playlist) { throw $this->createNotFoundException(); }
 
-        $disponibles = $this->contenidoRepo->findBy(['estado' => \SPUI\Enum\EstadoContenido::Publicado], ['titulo' => 'ASC']);
-
-        // Excluir los que ya están en la playlist
-        $enPlaylist = array_map(fn($item) => $item->getContenido()->getId(), $playlist->getItems()->toArray());
-        $disponibles = array_filter($disponibles, fn($c) => !in_array($c->getId(), $enPlaylist, true));
-
         return $this->render('@SPUI/playlists/builder.html.twig', [
-            'playlist'    => $playlist,
-            'disponibles' => array_values($disponibles),
+            'playlist' => $playlist,
         ]);
     }
 
@@ -118,16 +192,20 @@ class PlaylistCmsController extends AbstractController
         $item->setOrden($siguiente);
         $item->setDuracionOverrideSeg(null);
 
-        $em = $this->em();
-        $em->persist($item);
-        $em->flush();
+        $this->em()->persist($item);
+        $this->em()->flush();
 
-        $this->addFlash('success', '"' . $contenido->getTitulo() . '" agregado a la playlist.');
+        $msg        = '"' . $contenido->getTitulo() . '" agregado a la playlist.';
+        $builderUrl = $this->generateUrl('spui_cms_playlists_builder', ['id' => $id]);
+        if ($request->isXmlHttpRequest()) {
+            return $this->json(['success' => true, 'message' => $msg, 'redirect' => $builderUrl]);
+        }
+        $this->addFlash('success', $msg);
         return $this->redirectToRoute('spui_cms_playlists_builder', ['id' => $id]);
     }
 
     #[Route('/{id}/items/{itemId}/quitar', name: 'spui_cms_playlists_items_quitar', methods: ['POST'], requirements: ['id' => '\d+', 'itemId' => '\d+'])]
-    public function quitarItem(int $id, int $itemId): Response
+    public function quitarItem(int $id, int $itemId, Request $request): Response
     {
         $playlist = $this->repo->find($id);
         $item     = $this->itemRepo->find($itemId);
@@ -136,14 +214,20 @@ class PlaylistCmsController extends AbstractController
             throw $this->createNotFoundException();
         }
 
+        $titulo = $item->getContenido()->getTitulo();
+
         $em = $this->em();
         $em->remove($item);
         $em->flush();
 
-        // Renumerar órdenes
         $this->renumerarItems($playlist);
 
-        $this->addFlash('success', 'Item eliminado de la playlist.');
+        $msg        = '"' . $titulo . '" quitado de la playlist.';
+        $builderUrl = $this->generateUrl('spui_cms_playlists_builder', ['id' => $id]);
+        if ($request->isXmlHttpRequest()) {
+            return $this->json(['success' => true, 'message' => $msg, 'redirect' => $builderUrl]);
+        }
+        $this->addFlash('success', $msg);
         return $this->redirectToRoute('spui_cms_playlists_builder', ['id' => $id]);
     }
 

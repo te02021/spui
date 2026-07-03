@@ -2,7 +2,16 @@
    SPUI — Estilos específicos del Sistema de Pantallas
    ========================================================= */
 
-/* ----- Badges de estado de nodo ----- */
+/* ----- Badges tipo de contenido (unraf-ui override: más padding y bordes) ----- */
+[class^="unraf-badge-"], [class*=" unraf-badge-"] {
+    padding: .28rem .65rem !important;
+    border-radius: .5rem !important;
+    font-size: .75rem;
+    display: inline-block;
+    font-weight: 600;
+}
+
+/* ----- Badges de estado de reproductor ----- */
 .spui-badge-conectado {
     background-color: var(--unraf-success, #4A9930);
     color: #fff;
