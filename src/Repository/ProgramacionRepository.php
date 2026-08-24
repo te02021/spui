@@ -22,6 +22,12 @@ class ProgramacionRepository extends ServiceEntityRepository
      * Devuelve todas las programaciones activas que podrían aplicar ahora para una pantalla,
      * incluyendo reglas por pantalla, por ubicación/sector, por edificio y globales.
      *
+     * Descarta las reglas sin horario o sin playlist: esos campos son nullable
+     * en la entidad (los setters aceptan null para que el formulario pueda
+     * mapear los datos antes de validarlos), así que una fila incompleta haría
+     * reventar el ->format() del sync y ese reproductor se quedaría sin poder
+     * sincronizar nunca más. Filtrarlo acá lo cubre para todos los consumidores.
+     *
      * @return Programacion[]
      */
     public function findVigentesParaPantalla(Pantalla $pantalla): array
@@ -30,6 +36,9 @@ class ProgramacionRepository extends ServiceEntityRepository
 
         return $this->createQueryBuilder('p')
             ->where('p.activo = true')
+            ->andWhere('p.horaInicio IS NOT NULL')
+            ->andWhere('p.horaFin IS NOT NULL')
+            ->andWhere('p.playlist IS NOT NULL')
             ->andWhere('p.fechaInicio <= :hoy')
             ->andWhere('p.fechaFin IS NULL OR p.fechaFin >= :hoy')
             ->andWhere(

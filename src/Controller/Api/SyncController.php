@@ -6,15 +6,18 @@ namespace SPUI\Controller\Api;
 
 use DateTimeImmutable;
 use Doctrine\Persistence\ManagerRegistry;
+use Psr\Log\LoggerInterface;
 use SPUI\Entity\AlertaEmergencia;
 use SPUI\Entity\CronogramaItem;
 use SPUI\Entity\Pantalla;
 use SPUI\Entity\PlaylistItem;
 use SPUI\Entity\Playlist;
 use SPUI\Entity\Programacion;
+use SPUI\Entity\ProgramacionEnergetica;
 use SPUI\Enum\TipoContenido;
 use SPUI\Repository\AlertaEmergenciaRepository;
 use SPUI\Repository\CronogramaItemRepository;
+use SPUI\Repository\ProgramacionEnergeticaRepository;
 use SPUI\Repository\ProgramacionRepository;
 use SPUI\Service\ReproductorAuthService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -36,9 +39,11 @@ class SyncController extends AbstractController
         private readonly ProgramacionRepository $progRepo,
         private readonly AlertaEmergenciaRepository $alertaRepo,
         private readonly CronogramaItemRepository $cronogramaItemRepo,
+        private readonly ProgramacionEnergeticaRepository $energiaRepo,
         private readonly ManagerRegistry $doctrine,
         private readonly RateLimiterFactory $spuiReproductorSyncLimiter,
         private readonly RateLimiterFactory $spuiReproductorHeartbeatLimiter,
+        private readonly LoggerInterface $logger,
     ) {}
 
     /**
@@ -65,9 +70,26 @@ class SyncController extends AbstractController
 
         $ahora = new DateTimeImmutable();
 
+        // La expiración ya se filtra en la consulta; este chequeo queda como
+        // red de seguridad por si la alerta venció entre la consulta y acá.
         $alerta = $this->alertaRepo->findActivaConMayorPrioridad();
         if ($alerta !== null && $alerta->haExpirado()) {
             $alerta = null;
+        }
+
+        // Una alerta dirigida sólo se le entrega al reproductor si alguna de
+        // sus pantallas está entre las destinatarias. Las globales van a todos.
+        if ($alerta !== null && !$alerta->esGlobal()) {
+            $esDestinatario = false;
+            foreach ($reproductor->getPantallas() as $pantalla) {
+                if ($alerta->getPantallas()->contains($pantalla)) {
+                    $esDestinatario = true;
+                    break;
+                }
+            }
+            if (!$esDestinatario) {
+                $alerta = null;
+            }
         }
 
         // Para cada pantalla del reproductor, resolver programación + fallback
@@ -89,6 +111,9 @@ class SyncController extends AbstractController
                 'resolucion_alto'     => $pantalla->getResolucionAlto(),
                 'programacion_activa' => $progActiva !== null ? $this->serializeProgMeta($progActiva) : null,
                 'playlist'            => $playlistData,
+                // CU-11: horario energético semanal. Lista vacía = sin gestión de
+                // energía; el nodo deja la pantalla siempre encendida.
+                'energia'             => $this->serializeEnergia($pantalla),
             ];
         }
 
@@ -123,6 +148,36 @@ class SyncController extends AbstractController
         }
 
         $reproductor->registrarHeartbeat();
+
+        // El reproductor informa acá los problemas que detecta por su cuenta
+        // (por ejemplo, que no encuentra el entorno gráfico y no puede mostrar
+        // nada en pantalla). Se guardan para que el operador los vea en el
+        // panel: un equipo puede estar conectado y sincronizando y aun así no
+        // estar mostrando nada, y eso no puede pasar inadvertido.
+        $body = json_decode($request->getContent() ?: '[]', true);
+        if (is_array($body) && array_key_exists('diagnostico', $body)) {
+            $problemas = is_array($body['diagnostico']) ? $body['diagnostico'] : [];
+            // Se acotan longitud y cantidad: el texto viene de un cliente y
+            // termina renderizado en el panel.
+            $problemas = array_slice(
+                array_map(fn($p) => mb_substr((string) $p, 0, 300), $problemas),
+                0,
+                10,
+            );
+            $reproductor->setDiagnostico($problemas);
+
+            if ($problemas !== []) {
+                $this->logger->warning(
+                    'SPUI: el reproductor {hostname} reporta {n} problema(s): {detalle}',
+                    [
+                        'hostname' => $reproductor->getHostname(),
+                        'n'        => count($problemas),
+                        'detalle'  => implode(' | ', $problemas),
+                    ],
+                );
+            }
+        }
+
         $this->doctrine->getManager('SPUI')->flush();
 
         return $this->json([
@@ -151,6 +206,49 @@ class SyncController extends AbstractController
         }
 
         return null;
+    }
+
+    /**
+     * Horario energético de la pantalla, un elemento por día configurado.
+     *
+     * dia_semana va en ISO (1=Lunes … 7=Domingo), igual que date('N') en PHP y
+     * que isoweekday() en Python, para que el nodo no tenga que convertir nada.
+     * Ojo: es una convención distinta a la bitmask (bit0=Lunes) que usan
+     * Programacion y CronogramaItem.
+     */
+    private function serializeEnergia(Pantalla $pantalla): array
+    {
+        $reglas = $this->energiaRepo->findByPantallaOrdenado($pantalla);
+
+        // Las horas son nullable en la entidad (los setters aceptan null para
+        // que el formulario pueda mapear antes de validar). Una fila incompleta
+        // haría reventar ->format() y el sync entero devolvería un 500: ese
+        // reproductor se quedaría con su caché para siempre, sin poder
+        // actualizarse nunca más. Se descarta la regla y se sigue.
+        $completas = array_filter(
+            $reglas,
+            static function (ProgramacionEnergetica $pe): bool {
+                return $pe->getHoraEncendido() !== null && $pe->getHoraApagado() !== null;
+            },
+        );
+
+        $descartadas = count($reglas) - count($completas);
+        if ($descartadas > 0) {
+            $this->logger->warning(
+                'SPUI: {n} regla(s) de energía sin horario completo en la pantalla {pantalla} — se omiten del sync.',
+                ['n' => $descartadas, 'pantalla' => $pantalla->getId()],
+            );
+        }
+
+        return array_values(array_map(
+            fn(ProgramacionEnergetica $pe) => [
+                'dia_semana'     => $pe->getDiaSemana(),
+                'hora_encendido' => $pe->getHoraEncendido()->format('H:i'),
+                'hora_apagado'   => $pe->getHoraApagado()->format('H:i'),
+                'nivel_brillo'   => $pe->getNivelBrillo(),
+            ],
+            $completas,
+        ));
     }
 
     private function serializeProgMeta(Programacion $prog): array

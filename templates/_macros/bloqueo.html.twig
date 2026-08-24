@@ -1,0 +1,30 @@
+{#
+    Deshabilitar acciones cuyo reproductor está desconectado.
+
+    Los botones del CMS ya traen sus propios class y title, así que emitir esos
+    atributos otra vez los duplicaría (el navegador se queda con el primero y
+    el bloqueo no se vería). Por eso son dos macros separados:
+
+      - clase(motivo)  se concatena DENTRO del class que ya tiene el botón
+      - attrs(motivo)  emite title + data-spui-bloqueado, que no colisionan
+                       (el title propio del botón se reemplaza a propósito:
+                       explicar por qué no se puede importa más que describir
+                       lo que haría)
+
+    Uso:
+      {% import '@SPUI/_macros/bloqueo.html.twig' as bloqueo %}
+      <button class="unraf-btn {{ bloqueo.clase(motivo) }}" {{ bloqueo.attrs(motivo) }}>
+
+    `motivo` es null (no bloquea) o el texto de
+    AlcanceReproductorService::motivoBloqueo().
+
+    El botón NO se oculta: tiene que verse que la acción existe y por qué no
+    está disponible. Se rehabilita solo, porque las tablas viven dentro de
+    zonas [data-spui-refresh] que se recargan cada 20 s.
+#}
+
+{% macro clase(motivo) %}{{ motivo ? 'spui-accion-bloqueada' : '' }}{% endmacro %}
+
+{% macro attrs(motivo) %}
+    {%- if motivo %} title="{{ motivo }}" data-spui-bloqueado="{{ motivo }}"{% endif -%}
+{% endmacro %}

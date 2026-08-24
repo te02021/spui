@@ -2,12 +2,12 @@
 {% block title %}Ubicaciones — SPUI{% endblock %}
 
 {% block body %}
-<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2 spui-header-actions">
     <div>
         <h1 style="color:var(--unraf-azul);font-family:var(--unraf-font-principal);margin:0">Ubicaciones</h1>
         <p class="text-muted mb-0">Espacios físicos donde se instalan las pantallas.</p>
     </div>
-    <button type="button" class="unraf-btn unraf-btn-institucion flex-shrink-0"
+    <button type="button" class="unraf-btn spui-btn-crear flex-shrink-0"
             data-spui-form="{{ path('spui_cms_ubicaciones_nueva') }}"
             data-spui-title="Nueva ubicación">
         + Nueva ubicación
@@ -17,7 +17,7 @@
 <div id="spui-table-body">
 <div class="unraf-card">
     <div class="unraf-table-responsive">
-        <table class="unraf-table unraf-table-striped w-100 text-nowrap">
+        <table class="unraf-table unraf-table-striped w-100 text-nowrap spui-tabla-cards">
             <thead>
                 <tr>
                     <th class="p-3">Edificio</th>
@@ -31,50 +31,58 @@
             <tbody>
             {% for u in ubicaciones %}
                 <tr>
-                    <td class="p-3"><strong>{{ u.edificio.nombre }}</strong></td>
-                    <td class="p-3">{{ u.sector ?? '—' }}</td>
-                    <td class="p-3" style="white-space:normal;max-width:20rem">
+                    <td class="p-3" data-label="Edificio"><strong>{{ u.edificio.nombre }}</strong></td>
+                    <td class="p-3" data-label="Sector">{{ u.sector ?? '—' }}</td>
+                    <td class="p-3" style="white-space:normal;max-width:20rem" data-label="Descripción">
                         <small class="text-muted">{{ u.descripcion ? u.descripcion|slice(0,80) ~ (u.descripcion|length > 80 ? '…' : '') : '—' }}</small>
                     </td>
-                    <td class="p-3 text-center">
+                    <td class="p-3" data-label="Pantallas">
                         <span class="spui-badge-borrador">{{ u.pantallas|length }}</span>
                     </td>
-                    <td class="p-3">
+                    <td class="p-3" data-label="Estado">
                         {% if u.activo %}
                             <span class="spui-badge-conectado">Activa</span>
                         {% else %}
                             <span class="spui-badge-sin_registrar">Inactiva</span>
                         {% endif %}
                     </td>
-                    <td class="p-3">
-                        <div class="d-flex gap-1">
+                    <td class="p-3" data-label="Acciones">
+                        <div class="spui-acciones">
                             <button type="button"
-                                    class="unraf-btn unraf-btn-light unraf-btn-sm"
+                                    class="unraf-btn spui-btn-ver unraf-btn-sm"
+                                    data-spui-form="{{ path('spui_cms_ubicaciones_ver', {id: u.id}) }}"
+                                    data-spui-size="modal-sm"
+                                    data-spui-title="{{ u.edificio.nombre }}{{ u.sector ? ' — ' ~ u.sector : '' }}"
+                                    title="Ver detalle">
+                                <img src="{{ asset('unraf-ui/icons/eye.svg') }}" class="spui-action-icon" alt=""> Ver
+                            </button>
+                            <button type="button"
+                                    class="unraf-btn spui-btn-editar unraf-btn-sm"
                                     data-spui-form="{{ path('spui_cms_ubicaciones_editar', {id: u.id}) }}"
                                     data-spui-title="Editar: {{ u.edificio.nombre }}{{ u.sector ? ' — ' ~ u.sector : '' }}"
                                     title="Editar">
-                                <img src="{{ asset('unraf-ui/icons/pencil.svg') }}" class="spui-action-icon" alt="Editar">
+                                <img src="{{ asset('unraf-ui/icons/pencil.svg') }}" class="spui-action-icon" alt=""> Editar
                             </button>
                             <button type="button"
-                                    class="unraf-btn unraf-btn-sm {{ u.activo ? 'spui-toggle-activo' : 'spui-toggle-inactivo' }}"
+                                    class="unraf-btn unraf-btn-sm {{ u.activo ? 'spui-btn-desactivar' : 'spui-btn-activar' }}"
                                     data-spui-action="{{ path('spui_cms_ubicaciones_toggle', {id: u.id}) }}"
                                     data-spui-title="{{ u.activo ? 'Desactivar' : 'Activar' }} ubicación"
                                     data-spui-message="{{ u.activo ? 'Desactivar' : 'Activar' }} «{{ u.edificio.nombre }}{{ u.sector ? ' — ' ~ u.sector : '' }}»?"
-                                    data-spui-variant="{{ u.activo ? 'warning' : 'success' }}"
+                                    data-spui-variant="{{ u.activo ? 'desactivar' : 'activar' }}"
                                     title="{{ u.activo ? 'Desactivar' : 'Activar' }}">
-                                <img src="{{ u.activo ? asset('unraf-ui/icons/x.svg') : asset('unraf-ui/icons/check.svg') }}"
-                                     class="spui-action-icon" style="filter:invert(1)" alt="">
+                                <img src="{{ u.activo ? asset('unraf-ui/icons/hand-palm.svg') : asset('unraf-ui/icons/lightning.svg') }}"
+                                     class="spui-action-icon" alt="">
                                 {{ u.activo ? 'Desactivar' : 'Activar' }}
                             </button>
-                            {% if u.pantallas|length == 0 %}
-                                <button type="button" class="unraf-btn-icon btn-delete"
-                                        data-spui-action="{{ path('spui_cms_ubicaciones_eliminar', {id: u.id}) }}"
-                                        data-spui-title="Eliminar ubicación"
-                                        data-spui-message="¿Eliminar «{{ u.edificio.nombre }}»? Esta acción no se puede deshacer."
-                                        data-spui-variant="danger" title="Eliminar">
-                                    <img src="{{ asset('unraf-ui/icons/trash.svg') }}" alt="Eliminar">
-                                </button>
-                            {% endif %}
+                            <button type="button"
+                                    class="unraf-btn spui-btn-eliminar unraf-btn-sm"
+                                    data-spui-action="{{ path('spui_cms_ubicaciones_eliminar', {id: u.id}) }}"
+                                    data-spui-title="Eliminar ubicación"
+                                    data-spui-message="¿Eliminar «{{ u.edificio.nombre }}»? Esta acción no se puede deshacer."
+                                    data-spui-variant="eliminar"
+                                    title="Eliminar">
+                                <img src="{{ asset('unraf-ui/icons/trash.svg') }}" class="spui-action-icon" alt=""> Eliminar
+                            </button>
                         </div>
                     </td>
                 </tr>

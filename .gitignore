@@ -1,0 +1,9 @@
+# Markdown: por default no se trackea ninguno (notas de sesión, contexto de
+# desarrollo, etc.) salvo la documentación con autoridad verificada contra
+# código en docs/ (ver docs/README.md §1 para el criterio).
+*.md
+!docs/06_funcionamiento_del_sistema.md
+!docs/07_manual_uso_cms.md
+!docs/08_pendientes_vm.md
+!docs/09_instalacion_raspberry.md
+!docs/README.md

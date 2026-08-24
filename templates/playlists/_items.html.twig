@@ -1,0 +1,150 @@
+{# Ítems de una playlist, dentro del modal de segundo nivel.
+
+   Dos listados en la misma vista: arriba los asignados (drag & drop + quitar) y
+   abajo los disponibles para agregar. Antes agregar abría un sub-formulario que
+   reemplazaba todo el modal; con los dos listados juntos el ida y vuelta se ve
+   en el lugar. Quitar un ítem lo devuelve solo al listado de abajo, porque la
+   query de disponibles excluye los que ya están en la playlist.
+
+   Modo readonly = true (desde "Ver playlist"): sólo el listado de arriba, sin
+   controles. No se emite data-reorder-url, porque el sortable se engancha por
+   ese atributo y con él presente se podría reordenar desde una vista que dice
+   ser de sólo lectura (el endpoint de reorder no distingue modos). #}
+{% set ro = readonly|default(false) %}
+{% set total = playlist.items|length %}
+{% set permanentes = playlist.items|filter(i => i.duracionEfectiva is null)|length %}
+
+{# Los 10s son _DURACION_POR_DEFECTO de pi-client/spui/player.py: un contenido
+   permanente queda fijo en pantalla SÓLO si es el único ítem de la playlist; si
+   hay varios, el reproductor le aplica 10s para que los demás lleguen a verse.
+   Si ese valor cambia allá, hay que cambiarlo acá. #}
+{% set seg_permanente = 10 %}
+
+{# Zona donde el nivel 2 pinta sus confirmaciones (no puede abrir otro modal). #}
+<div data-spui-confirm-host></div>
+
+{# ── Ítems asignados ────────────────────────────────────────────────── #}
+<div class="d-flex justify-content-between align-items-center mb-2 gap-2 flex-wrap">
+    <strong class="spui-view-section-title mb-0">En la playlist</strong>
+    <span class="text-muted small">
+        {{ total }} ítem(s){% if not ro and total > 1 %} · Arrastrá para reordenar{% endif %}
+    </span>
+</div>
+
+{% if permanentes > 0 and total > 1 %}
+    <div class="spui-aviso-problemas mb-3">
+        {{ permanentes }} contenido(s) de esta playlist {{ permanentes == 1 ? 'es permanente' : 'son permanentes' }}.
+        Como la playlist tiene más de un ítem, se muestran {{ seg_permanente }} segundos cada uno;
+        sólo quedan fijos en pantalla si son el único contenido.
+    </div>
+{% endif %}
+
+{% if total == 0 %}
+    <div class="p-4 text-center text-muted">
+        La playlist está vacía.{% if not ro %} Agregá contenidos desde la lista de abajo.{% endif %}
+    </div>
+{% else %}
+    <ul class="list-unstyled mb-0 spui-items-lista"
+        {% if not ro %}data-spui-sortable
+        data-reorder-url="{{ path('spui_cms_playlists_items_reorder', {id: playlist.id}) }}"{% endif %}>
+    {% for item in playlist.items %}
+        <li class="sortable-item d-flex align-items-center gap-2 p-3 border-bottom"
+            data-item-id="{{ item.id }}">
+            {% if not ro %}
+                <span class="item-drag-handle">
+                    <img src="{{ asset('unraf-ui/icons/dots-six-vertical.svg') }}" class="unraf-icon-svg" alt="">
+                </span>
+            {% endif %}
+            <span class="spui-badge-borrador" style="min-width:1.8rem;text-align:center">{{ item.orden }}</span>
+            <div class="flex-grow-1">
+                <strong>{{ item.contenido.titulo }}</strong>
+                <small class="text-muted ms-2">{{ item.contenido.tipo.value }}</small>
+            </div>
+
+            {# La duración es la del contenido y no se edita acá: para cambiarla
+               hay que editar el contenido, que es su única fuente de verdad. #}
+            {% if item.duracionEfectiva %}
+                <span class="duracion-badge text-muted small">{{ item.duracionEfectiva }}s</span>
+            {% elseif total == 1 %}
+                <span class="duracion-badge text-muted small">Permanente</span>
+            {% else %}
+                <span class="duracion-badge text-muted small"
+                      title="Este contenido es permanente, pero al compartir playlist el reproductor le aplica {{ seg_permanente }}s">
+                    {{ seg_permanente }}s *
+                </span>
+            {% endif %}
+
+            {% if not ro %}
+                <button type="button" class="unraf-btn-icon btn-delete"
+                        data-spui-action2-now="{{ path('spui_cms_playlists_items_quitar', {id: playlist.id, itemId: item.id}) }}"
+                        title="Quitar de la playlist">
+                    <img src="{{ asset('unraf-ui/icons/trash.svg') }}" class="unraf-icon-svg" alt="Quitar">
+                </button>
+            {% endif %}
+        </li>
+    {% endfor %}
+    </ul>
+
+    <div class="p-3 text-muted small border-top">
+        Duración total:
+        <strong>
+            {% if total == 1 and permanentes == 1 %}
+                permanente (no rota)
+            {% else %}
+                {{ playlist.items|map(i => i.duracionEfectiva ?? seg_permanente)|reduce((carry, v) => carry + v, 0) }}s por vuelta
+            {% endif %}
+        </strong>
+    </div>
+{% endif %}
+
+{# ── Contenidos disponibles ─────────────────────────────────────────── #}
+{% if not ro %}
+    <div class="spui-items-separador">
+        <div class="d-flex justify-content-between align-items-center mb-2 gap-2 flex-wrap">
+            <strong class="spui-view-section-title mb-0">Agregar contenido</strong>
+            {% if disponibles|default([])|length > 0 %}
+                <input type="search" class="unraf-form-control spui-filtro-input"
+                       placeholder="Buscar…" aria-label="Buscar contenidos"
+                       data-spui-filter-input
+                       data-spui-filter-target="#spui-disponibles"
+                       data-spui-filter-empty="#spui-disponibles-sin-resultados">
+            {% endif %}
+        </div>
+
+        {% if disponibles|default([])|length == 0 %}
+            <div class="p-4 text-center text-muted">
+                {% if total > 0 %}
+                    Ya agregaste todos los contenidos disponibles.
+                {% else %}
+                    No hay contenidos para agregar.<br>
+                    <small>Creá uno desde <strong>Contenidos</strong> y volvé acá.</small>
+                {% endif %}
+            </div>
+        {% else %}
+            <ul class="list-unstyled mb-0 spui-disponibles-lista" id="spui-disponibles">
+            {% for c in disponibles %}
+                <li class="d-flex align-items-center gap-2 p-3 border-bottom"
+                    data-filter-text="{{ (c.titulo ~ ' ' ~ c.tipo.value)|lower }}">
+                    <div class="flex-grow-1">
+                        <strong>{{ c.titulo }}</strong>
+                        <small class="text-muted ms-2">{{ c.tipo.value }}</small>
+                    </div>
+                    <span class="duracion-badge text-muted small">
+                        {{ c.duracionSegundos ? c.duracionSegundos ~ 's' : 'Permanente' }}
+                    </span>
+                    <button type="button" class="unraf-btn spui-btn-crear unraf-btn-sm"
+                            data-spui-post2="{{ path('spui_cms_playlists_items_agregar', {id: playlist.id}) }}"
+                            data-spui-post-field="contenido_id"
+                            data-spui-post-value="{{ c.id }}"
+                            title="Agregar a la playlist">
+                        Agregar
+                    </button>
+                </li>
+            {% endfor %}
+            </ul>
+            <p class="p-3 text-center text-muted mb-0" id="spui-disponibles-sin-resultados" hidden>
+                Ningún contenido coincide con la búsqueda.
+            </p>
+        {% endif %}
+    </div>
+{% endif %}

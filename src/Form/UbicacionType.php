@@ -43,7 +43,7 @@ class UbicacionType extends AbstractType
                 'attr'       => ['class' => 'unraf-form-control', 'rows' => 3],
             ])
             ->add('activo', CheckboxType::class, [
-                'label'    => 'Ubicación activa',
+                'label'    => false,
                 'required' => false,
             ]);
     }

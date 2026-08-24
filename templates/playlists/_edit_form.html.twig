@@ -7,26 +7,47 @@
         <div class="alert alert-danger mb-3">{{ error }}</div>
     {% endif %}
 
-    <div class="mb-3">
-        <label class="unraf-form-label" for="ed_pl_nombre">Nombre <span class="text-danger">*</span></label>
-        <input type="text" id="ed_pl_nombre" name="nombre" class="unraf-form-control"
-               value="{{ playlist.nombre }}" maxlength="150" required>
+    {# Switch estándar del sistema (el mismo de qr, edificios, ubicaciones…).
+       Como este form no usa FormType, el id va literal y el span _lbl se arma a
+       mano; switch-toggle.js lo engancha por data-spui-switch. #}
+    <div class="row g-3 mb-3 align-items-start">
+        <div class="col">
+            <label class="unraf-form-label" for="ed_pl_nombre">Nombre <span class="text-danger">*</span></label>
+            <input type="text" id="ed_pl_nombre" name="nombre" class="unraf-form-control"
+                   value="{{ playlist.nombre }}" maxlength="150" required>
+        </div>
+        <div class="col-12 col-sm-auto d-flex flex-column align-items-center" style="min-width:110px">
+            <label class="unraf-form-label mb-2 text-center" for="ed_pl_activo">Estado</label>
+            <div class="d-flex align-items-center gap-2">
+                <div class="form-switch m-0">
+                    <input class="form-check-input spui-switch-input" type="checkbox"
+                           name="activo" id="ed_pl_activo" value="1" role="switch"
+                           data-spui-switch="1" data-switch-on="Activa" data-switch-off="Inactiva"
+                           {{ playlist.activo ? 'checked' : '' }}>
+                </div>
+                <span class="spui-switch-status {{ playlist.activo ? 'on' : 'off' }}" id="ed_pl_activo_lbl">{{ playlist.activo ? 'Activa' : 'Inactiva' }}</span>
+            </div>
+        </div>
     </div>
 
-    <div class="mb-3">
+    <div class="mb-4">
         <label class="unraf-form-label" for="ed_pl_descripcion">Descripción (opcional)</label>
         <textarea id="ed_pl_descripcion" name="descripcion" class="unraf-form-control" rows="3">{{ playlist.descripcion }}</textarea>
     </div>
 
-    <div class="mb-4 form-check">
-        <input type="checkbox" id="ed_pl_activo" name="activo" class="form-check-input"
-               value="1" {{ playlist.activo ? 'checked' : '' }}>
-        <label class="form-check-label" for="ed_pl_activo">Activa</label>
-    </div>
-
-    <div class="d-flex justify-content-end gap-2 pt-3 border-top">
-        <button type="button" class="unraf-btn spui-btn-back" data-spui-close>Cancelar</button>
-        <button type="submit" class="unraf-btn unraf-btn-institucion">Guardar cambios</button>
+    {# "Ver ítems" abre el nivel 2 SIN cerrar este form: es type="button", así que
+       no envía nada. Ojo: lo que esté sin guardar acá sigue sin guardarse. #}
+    <div class="d-flex justify-content-between align-items-center gap-2 pt-3 border-top flex-wrap">
+        <button type="button" class="unraf-btn spui-btn-items unraf-btn-sm"
+                data-spui-form2="{{ path('spui_cms_playlists_items', {id: playlist.id}) }}"
+                data-spui-title="Ítems de {{ playlist.nombre }}"
+                data-spui-size="modal-lg">
+            <img src="{{ asset('unraf-ui/icons/playlist.svg') }}" class="spui-action-icon" alt=""> Ver ítems
+        </button>
+        <div class="d-flex gap-2 ms-auto">
+            <button type="button" class="unraf-btn spui-btn-back" data-spui-close>Cancelar</button>
+            <button type="submit" class="unraf-btn spui-btn-editar">Guardar</button>
+        </div>
     </div>
 
 </form>

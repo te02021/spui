@@ -31,7 +31,7 @@ class EdificioType extends AbstractType
                 'attr'       => ['class' => 'unraf-form-control', 'rows' => 3, 'placeholder' => 'Ej: Sede principal del campus, esquina Av. Roca y Paz'],
             ])
             ->add('activo', CheckboxType::class, [
-                'label'    => 'Edificio activo',
+                'label'    => false,
                 'required' => false,
             ]);
     }

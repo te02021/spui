@@ -1,0 +1,48 @@
+{# Detalle de una playlist, en modal de sólo lectura.
+   Los ítems no se listan acá: van en el modal de segundo nivel que abre el
+   botón del final, para no hacer interminable esta vista cuando la playlist
+   tiene muchos contenidos. #}
+<div class="spui-view-header">
+    <div>
+        <p class="spui-view-title">{{ playlist.nombre }}</p>
+        <p class="spui-view-subtitle">Creada el {{ playlist.creadoEn|date('d/m/Y') }} a las {{ playlist.creadoEn|date('H:i') }}</p>
+    </div>
+    <span class="{{ playlist.activo ? 'spui-badge-publicado' : 'spui-badge-archivado' }} flex-shrink-0">
+        {{ playlist.activo ? 'Activa' : 'Inactiva' }}
+    </span>
+</div>
+
+<div class="spui-view-section">
+    <p class="spui-view-section-title">Detalles</p>
+    {% if playlist.descripcion %}
+        <div class="spui-view-row">
+            <span class="spui-view-row-label">Descripción</span>
+            <span class="spui-view-row-value">{{ playlist.descripcion }}</span>
+        </div>
+    {% endif %}
+    <div class="spui-view-row">
+        <span class="spui-view-row-label">Ítems</span>
+        <span class="spui-view-row-value">{{ playlist.items|length }}</span>
+    </div>
+    <div class="spui-view-row">
+        <span class="spui-view-row-label">Reglas que la usan</span>
+        <span class="spui-view-row-value">{{ playlist.programaciones|length }}</span>
+    </div>
+    <div class="spui-view-row">
+        <span class="spui-view-row-label">Última modificación</span>
+        <span class="spui-view-row-value">{{ playlist.actualizadoEn|date('d/m/Y H:i') }}</span>
+    </div>
+    <div class="spui-view-row">
+        <span class="spui-view-row-label">Creada por</span>
+        <span class="spui-view-row-value">Usuario #{{ playlist.creadoPorId }}</span>
+    </div>
+</div>
+
+<div class="spui-view-section">
+    <button type="button" class="unraf-btn spui-btn-items unraf-btn-sm"
+            data-spui-form2="{{ path('spui_cms_playlists_items', {id: playlist.id, ro: 1}) }}"
+            data-spui-title="Ítems de {{ playlist.nombre }}"
+            data-spui-size="modal-lg">
+        <img src="{{ asset('unraf-ui/icons/playlist.svg') }}" class="spui-action-icon" alt=""> Ver ítems
+    </button>
+</div>

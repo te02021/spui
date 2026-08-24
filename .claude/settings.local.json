@@ -3,7 +3,19 @@
     "allow": [
       "Read(//c/wamp64/www/intranet/**)",
       "Bash(php bin/console spui:mqtt:subscribe --help --id=spui)",
-      "Bash(curl -s -X POST http://localhost/intranet/public/api/spui/ubicaciones -H 'Content-Type: application/json' -d '{\"edificio\":\"Edificio Central\",\"aula\":\"Hall\",\"descripcion\":\"Pantalla de prueba\",\"activo\":true}')"
+      "Bash(curl -s -X POST http://localhost/intranet/public/api/spui/ubicaciones -H 'Content-Type: application/json' -d '{\"edificio\":\"Edificio Central\",\"aula\":\"Hall\",\"descripcion\":\"Pantalla de prueba\",\"activo\":true}')",
+      "Bash(php \"C:/Users/MATEOR~1/AppData/Local/Temp/claude/c--wamp64-www-intranet-apps-spui/6bc29956-8360-4448-b29d-50d533c5a0e6/scratchpad/render_form.php\")",
+      "Bash(php \"C:/Users/MATEOR~1/AppData/Local/Temp/claude/c--wamp64-www-intranet-apps-spui/6bc29956-8360-4448-b29d-50d533c5a0e6/scratchpad/test_alta.php\")",
+      "Bash(grep -v \"^ *<\\\\|^   *$\")",
+      "Bash(php \"C:/Users/MATEOR~1/AppData/Local/Temp/claude/c--wamp64-www-intranet-apps-spui/6bc29956-8360-4448-b29d-50d533c5a0e6/scratchpad/test_alta2.php\")",
+      "Bash(php bin/console lint:twig apps/spui/templates/contenidos --id=spui)",
+      "Bash(php -l apps/spui/src/Controller/Cms/ContenidoCmsController.php)",
+      "Bash(php -l apps/spui/src/Form/ContenidoType.php)",
+      "Bash(php bin/console dbal:run-sql --id=spui \"SELECT id, titulo, tipo, estado FROM contenido ORDER BY id\")",
+      "Bash(php bin/console --env=dev --id=spui lint:container)",
+      "Bash(grep -n -e \"Assert\\\\\\\\\\\\\\\\\" -e \"message\" src/Controller/Api/ProgramacionController.php)",
+      "Bash(php -l src/Controller/Api/ProgramacionController.php)",
+      "Bash(grep -rn -e \"Assert\\\\\\\\\\\\\\\\NotBlank\\(\\)\" -e \"Assert\\\\\\\\\\\\\\\\Positive\\(\\)\" -e \"Assert\\\\\\\\\\\\\\\\Date\\(\\)\" -e \"Assert\\\\\\\\\\\\\\\\Type\\(\" src/Controller/Api/*.php)"
     ]
   }
 }

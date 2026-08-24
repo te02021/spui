@@ -20,7 +20,7 @@ class ReproductorType extends AbstractType
                 'label'      => 'Hostname',
                 'label_attr' => ['class' => 'unraf-form-label'],
                 'attr'       => ['class' => 'unraf-form-control', 'maxlength' => 100, 'placeholder' => 'spui-pi-01'],
-                'constraints' => [new NotBlank()],
+                'constraints' => [new NotBlank(message: 'El hostname del reproductor es requerido.')],
             ])
             ->add('versionFirmware', TextType::class, [
                 'label'      => 'Versión firmware (opcional)',

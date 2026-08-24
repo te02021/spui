@@ -1,0 +1,89 @@
+{# Detalle de una alerta de emergencia.
+   A diferencia del listado, acá el mensaje se muestra completo. #}
+<div class="spui-view-header">
+    <div>
+        <p class="spui-view-title">{{ alerta.titulo }}</p>
+        <p class="spui-view-subtitle">Alerta de emergencia · Prioridad {{ alerta.prioridad }}</p>
+    </div>
+    {% if alerta.activa %}
+        <span class="spui-badge-desconectado flex-shrink-0">Activa</span>
+    {% elseif alerta.haExpirado %}
+        <span class="spui-badge-archivado flex-shrink-0">Expirada</span>
+    {% else %}
+        <span class="spui-badge-borrador flex-shrink-0">Inactiva</span>
+    {% endif %}
+</div>
+
+<div class="spui-view-section">
+    <p class="spui-view-section-title">Mensaje</p>
+    <p class="mb-0" style="font-size:.9rem;white-space:pre-line;line-height:1.6">{{ alerta.mensaje }}</p>
+</div>
+
+<div class="spui-view-section">
+    <p class="spui-view-section-title">Estado</p>
+    <div class="spui-view-row">
+        <span class="spui-view-row-label">Situación</span>
+        <span class="spui-view-row-value">
+            {%- if alerta.activa %}Activa{% elseif alerta.haExpirado %}Expirada{% else %}Inactiva{% endif -%}
+        </span>
+    </div>
+    <div class="spui-view-row">
+        <span class="spui-view-row-label">Prioridad</span>
+        <span class="spui-view-row-value">{{ alerta.prioridad }}</span>
+    </div>
+    <div class="spui-view-row">
+        <span class="spui-view-row-label">Alcance</span>
+        <span class="spui-view-row-value">
+            {%- if alerta.esGlobal %}Todas las pantallas{% else %}{{ alerta.pantallas|length }} pantalla(s) seleccionada(s){% endif -%}
+        </span>
+    </div>
+    <div class="spui-view-row">
+        <span class="spui-view-row-label">Creada</span>
+        <span class="spui-view-row-value">{{ alerta.creadaEn|date('d/m/Y H:i') }}</span>
+    </div>
+    {% if alerta.activadaEn %}
+    <div class="spui-view-row">
+        <span class="spui-view-row-label">Activada</span>
+        <span class="spui-view-row-value">{{ alerta.activadaEn|date('d/m/Y H:i') }}</span>
+    </div>
+    {% endif %}
+    <div class="spui-view-row">
+        <span class="spui-view-row-label">Expira</span>
+        <span class="spui-view-row-value">
+            {%- if alerta.expiraEn %}{{ alerta.expiraEn|date('d/m/Y H:i') }}{% else %}Sin vencimiento{% endif -%}
+        </span>
+    </div>
+    <div class="spui-view-row">
+        <span class="spui-view-row-label">Creada por</span>
+        <span class="spui-view-row-value">Usuario #{{ alerta.creadoPorId }}</span>
+    </div>
+</div>
+
+{% if not alerta.esGlobal %}
+<div class="spui-view-section">
+    <p class="spui-view-section-title">Pantallas destinatarias · {{ alerta.pantallas|length }}</p>
+    <div class="spui-view-list">
+    {% for p in alerta.pantallas %}
+        <div class="spui-view-list-item">
+            <span class="spui-view-list-bullet"></span>
+            <span>{{ p.nombre }}</span>
+            <span class="spui-view-list-meta">{{ p.ubicacion.edificio.nombre }}{% if p.ubicacion.sector %} · {{ p.ubicacion.sector }}{% endif %}</span>
+        </div>
+    {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+{% if alerta.contenido %}
+<div class="spui-view-section">
+    <p class="spui-view-section-title">Contenido adjunto</p>
+    <div class="spui-view-row">
+        <span class="spui-view-row-label">Título</span>
+        <span class="spui-view-row-value">{{ alerta.contenido.titulo }}</span>
+    </div>
+    <div class="spui-view-row">
+        <span class="spui-view-row-label">Tipo</span>
+        <span class="spui-view-row-value">{{ alerta.contenido.tipo.etiqueta }}</span>
+    </div>
+</div>
+{% endif %}

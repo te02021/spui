@@ -28,9 +28,6 @@ class PlaylistItem
     #[ORM\Column(type: 'smallint', options: ['unsigned' => true])]
     private int $orden;
 
-    #[ORM\Column(type: 'smallint', options: ['unsigned' => true], nullable: true)]
-    private ?int $duracionOverrideSeg = null;
-
     public function getId(): ?int { return $this->id; }
 
     public function getPlaylist(): Playlist { return $this->playlist; }
@@ -42,11 +39,19 @@ class PlaylistItem
     public function getOrden(): int { return $this->orden; }
     public function setOrden(int $orden): static { $this->orden = $orden; return $this; }
 
-    public function getDuracionOverrideSeg(): ?int { return $this->duracionOverrideSeg; }
-    public function setDuracionOverrideSeg(?int $duracionOverrideSeg): static { $this->duracionOverrideSeg = $duracionOverrideSeg; return $this; }
-
+    /**
+     * Segundos que dura este ítem, o null si el contenido es permanente.
+     *
+     * La duración la define el contenido y sólo el contenido: antes existía un
+     * duracion_override_seg por ítem que permitía pisarla en cada playlist, y
+     * eso dejaba dos fuentes de verdad para el mismo dato.
+     *
+     * El método sobrevive aunque hoy sea un passthrough: es el contrato que
+     * consumen SyncController y la API de playlists, y mantiene al cliente Pi
+     * aislado de cómo el CMS resuelve la duración.
+     */
     public function getDuracionEfectiva(): ?int
     {
-        return $this->duracionOverrideSeg ?? $this->contenido->getDuracionSegundos();
+        return $this->contenido->getDuracionSegundos();
     }
 }

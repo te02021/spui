@@ -9,6 +9,7 @@ use SPUI\Entity\Pantalla;
 use SPUI\Enum\EstadoPantalla;
 use SPUI\Form\PantallaType;
 use SPUI\Repository\PantallaRepository;
+use SPUI\Service\AlcanceReproductorService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -17,8 +18,11 @@ use Symfony\Component\Routing\Attribute\Route;
 #[Route('/spui/pantallas')]
 class PantallaCmsController extends AbstractController
 {
+    use BloqueoOfflineTrait;
+
     public function __construct(
         private readonly PantallaRepository $repo,
+        private readonly AlcanceReproductorService $alcance,
         private readonly ManagerRegistry $doctrine,
     ) {}
 
@@ -31,8 +35,30 @@ class PantallaCmsController extends AbstractController
     public function index(): Response
     {
         return $this->render('@SPUI/pantallas/index.html.twig', [
-            'pantallas' => $this->repo->findBy([], ['nombre' => 'ASC']),
+            'pantallas'   => $this->repo->findBy([], ['nombre' => 'ASC']),
+            // Una sola consulta por request: resolverlo por fila dispararía la
+            // cadena de relaciones por cada pantalla.
+            'ids_offline' => $this->alcance->idsOfflineDeUnaVez(),
         ]);
+    }
+
+    /** Detalle de la pantalla (modal "Ver"). */
+    #[Route('/{id}/ver', name: 'spui_cms_pantallas_ver', methods: ['GET'], requirements: ['id' => '\d+'])]
+    public function ver(int $id, Request $request): Response
+    {
+        $pantalla = $this->repo->find($id);
+        if (!$pantalla) {
+            throw $this->createNotFoundException();
+        }
+
+        if ($request->isXmlHttpRequest()) {
+            return $this->json([
+                'title' => $pantalla->getNombre(),
+                'html'  => $this->renderView('@SPUI/pantallas/_view.html.twig', ['pantalla' => $pantalla]),
+            ]);
+        }
+
+        return $this->redirectToRoute('spui_cms_pantallas_index');
     }
 
     #[Route('/nueva', name: 'spui_cms_pantallas_nueva', methods: ['GET', 'POST'])]
@@ -45,6 +71,12 @@ class PantallaCmsController extends AbstractController
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
+            // El formulario ya asignó el reproductor, así que se puede saber a
+            // qué equipo llegaría esta pantalla aunque todavía no exista.
+            if ($r = $this->bloquearSiOffline($this->alcance->dePantalla($pantalla), $request, 'spui_cms_pantallas_index')) {
+                return $r;
+            }
+
             $this->em()->persist($pantalla);
             $this->em()->flush();
             $msg = 'Pantalla "' . $pantalla->getNombre() . '" creada correctamente.';
@@ -79,6 +111,10 @@ class PantallaCmsController extends AbstractController
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
+            if ($r = $this->bloquearSiOffline($this->alcance->dePantalla($pantalla), $request, 'spui_cms_pantallas_index')) {
+                return $r;
+            }
+
             $this->em()->flush();
             $msg = 'Pantalla "' . $pantalla->getNombre() . '" actualizada.';
             if ($request->isXmlHttpRequest()) {
@@ -107,6 +143,10 @@ class PantallaCmsController extends AbstractController
         $pantalla = $this->repo->find($id);
         if (!$pantalla) {
             throw $this->createNotFoundException();
+        }
+
+        if ($r = $this->bloquearSiOffline($this->alcance->dePantalla($pantalla), $request, 'spui_cms_pantallas_index')) {
+            return $r;
         }
 
         $nuevo = match ($pantalla->getEstado()) {

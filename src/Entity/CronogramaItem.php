@@ -22,17 +22,17 @@ class CronogramaItem
     private Contenido $contenido;
 
     #[ORM\Column(length: 200)]
-    private string $nombre;
+    private ?string $nombre = null;
 
     /** Aula o espacio físico donde ocurre el evento — Ej: "Aula 3", "Lab 2", "SUM" */
     #[ORM\Column(length: 100, nullable: true)]
     private ?string $aula = null;
 
     #[ORM\Column(type: 'time_immutable')]
-    private DateTimeImmutable $horaInicio;
+    private ?DateTimeImmutable $horaInicio = null;
 
     #[ORM\Column(type: 'time_immutable')]
-    private DateTimeImmutable $horaFin;
+    private ?DateTimeImmutable $horaFin = null;
 
     /** Bitmask: bit0=Lun…bit6=Dom — igual que Programacion.diasSemana */
     #[ORM\Column(type: 'smallint', options: ['unsigned' => true])]
@@ -49,17 +49,24 @@ class CronogramaItem
     public function getContenido(): Contenido { return $this->contenido; }
     public function setContenido(Contenido $contenido): static { $this->contenido = $contenido; return $this; }
 
-    public function getNombre(): string { return $this->nombre; }
-    public function setNombre(string $nombre): static { $this->nombre = $nombre; return $this; }
+    /**
+     * Campos obligatorios con setter nullable: el formulario mapea al objeto
+     * ANTES de validar, así que un campo vacío escribía null en un setter
+     * tipado y reventaba con TypeError antes de que corrieran los NotBlank
+     * (el modal quedaba sin mostrar ningún error). La obligatoriedad la
+     * imponen los NotBlank del FormType y las columnas NOT NULL de la tabla.
+     */
+    public function getNombre(): ?string { return $this->nombre; }
+    public function setNombre(?string $nombre): static { $this->nombre = $nombre; return $this; }
 
     public function getAula(): ?string { return $this->aula; }
     public function setAula(?string $aula): static { $this->aula = $aula; return $this; }
 
-    public function getHoraInicio(): DateTimeImmutable { return $this->horaInicio; }
-    public function setHoraInicio(DateTimeImmutable $h): static { $this->horaInicio = $h; return $this; }
+    public function getHoraInicio(): ?DateTimeImmutable { return $this->horaInicio; }
+    public function setHoraInicio(?DateTimeImmutable $h): static { $this->horaInicio = $h; return $this; }
 
-    public function getHoraFin(): DateTimeImmutable { return $this->horaFin; }
-    public function setHoraFin(DateTimeImmutable $h): static { $this->horaFin = $h; return $this; }
+    public function getHoraFin(): ?DateTimeImmutable { return $this->horaFin; }
+    public function setHoraFin(?DateTimeImmutable $h): static { $this->horaFin = $h; return $this; }
 
     public function getDiasSemana(): int { return $this->diasSemana; }
     public function setDiasSemana(int $d): static { $this->diasSemana = $d; return $this; }

@@ -1,0 +1,126 @@
+{% extends '@SPUI/base.html.twig' %}
+{% block title %}Códigos QR — SPUI{% endblock %}
+
+{% block body %}
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2 spui-header-actions">
+    <div>
+        <h1 style="color:var(--unraf-azul);font-family:var(--unraf-font-principal);margin:0">Códigos QR</h1>
+        <p class="text-muted mb-0">
+            Cada escaneo pasa por el CMS antes de redirigir, por eso se pueden contar y cambiar el destino sin reimprimir.
+        </p>
+    </div>
+    <button type="button" class="unraf-btn spui-btn-crear flex-shrink-0"
+            data-spui-form="{{ path('spui_cms_qr_nuevo') }}"
+            data-spui-title="Nuevo código QR"
+            data-spui-size="modal-lg">
+        + Nuevo código QR
+    </button>
+</div>
+
+<div id="spui-table-body">
+<div class="unraf-card">
+    <div class="unraf-table-responsive">
+        <table class="unraf-table unraf-table-striped w-100 spui-tabla-cards">
+            <thead>
+                <tr>
+                    <th class="p-3">QR</th>
+                    <th class="p-3">Etiqueta</th>
+                    <th class="p-3">Destino</th>
+                    <th class="p-3">Escaneos</th>
+                    <th class="p-3">Estado</th>
+                    <th class="p-3">En pantalla</th>
+                    <th class="p-3">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for qr in codigos %}
+                <tr>
+                    <td class="p-3" data-label="QR">
+                        <img src="{{ path('spui_qr_imagen', {id: qr.id}) }}"
+                             alt="QR {{ qr.etiqueta }}"
+                             width="56" height="56"
+                             style="border-radius:.25rem;background:#fff">
+                    </td>
+                    <td class="p-3" data-label="Etiqueta"><strong>{{ qr.etiqueta }}</strong></td>
+                    <td class="p-3" data-label="Destino" style="max-width:18rem">
+                        <a href="{{ qr.urlDestino }}" target="_blank" rel="noopener noreferrer"
+                           class="small text-truncate d-inline-block" style="max-width:100%">
+                            {{ qr.urlDestino }}
+                        </a>
+                    </td>
+                    <td class="p-3" data-label="Escaneos">
+                        <span class="spui-badge-publicado">{{ qr.usosCount }}</span>
+                    </td>
+                    <td class="p-3" data-label="Estado">
+                        {% if not qr.activo %}
+                            <span class="spui-badge-sin_registrar">Inactivo</span>
+                        {% elseif not qr.estaVigente %}
+                            <span class="spui-badge-archivado">Expirado</span>
+                        {% else %}
+                            <span class="spui-badge-conectado">Vigente</span>
+                        {% endif %}
+                        {% if qr.expiraEn %}
+                            <br><small class="text-muted">hasta {{ qr.expiraEn|date('d/m/Y H:i') }}</small>
+                        {% endif %}
+                    </td>
+                    <td class="p-3" data-label="En pantalla">
+                        {% set n = usos[qr.id] ?? 0 %}
+                        {% if n > 0 %}
+                            <span class="spui-badge-borrador">{{ n }} contenido(s)</span>
+                        {% else %}
+                            <span class="text-muted small">Sin usar</span>
+                        {% endif %}
+                    </td>
+                    <td class="p-3" data-label="Acciones">
+                        <div class="spui-acciones">
+                            <button type="button" class="unraf-btn spui-btn-ver unraf-btn-sm"
+                                    data-spui-form="{{ path('spui_cms_qr_ver', {id: qr.id}) }}"
+                                    data-spui-size="modal-sm"
+                                    data-spui-title="{{ qr.etiqueta }}"
+                                    title="Ver detalle">
+                                <img src="{{ asset('unraf-ui/icons/eye.svg') }}" class="spui-action-icon" alt=""> Ver
+                            </button>
+                            <button type="button" class="unraf-btn spui-btn-editar unraf-btn-sm"
+                                    data-spui-form="{{ path('spui_cms_qr_editar', {id: qr.id}) }}"
+                                    data-spui-title="Editar: {{ qr.etiqueta }}"
+                                    data-spui-size="modal-lg"
+                                    title="Editar">
+                                <img src="{{ asset('unraf-ui/icons/pencil.svg') }}" class="spui-action-icon" alt=""> Editar
+                            </button>
+                            <button type="button"
+                                    class="unraf-btn unraf-btn-sm {{ qr.activo ? 'spui-btn-desactivar' : 'spui-btn-activar' }}"
+                                    data-spui-action="{{ path('spui_cms_qr_toggle', {id: qr.id}) }}"
+                                    data-spui-title="Cambiar estado"
+                                    data-spui-message="¿{{ qr.activo ? 'Desactivar' : 'Activar' }} «{{ qr.etiqueta }}»?{{ qr.activo ? ' Quien lo escanee verá un aviso de no disponible.' : '' }}"
+                                    data-spui-variant="{{ qr.activo ? 'desactivar' : 'activar' }}"
+                                    data-spui-confirm-label="{{ qr.activo ? 'Desactivar' : 'Activar' }}"
+                                    title="{{ qr.activo ? 'Desactivar' : 'Activar' }}">
+                                <img src="{{ qr.activo ? asset('unraf-ui/icons/hand-palm.svg') : asset('unraf-ui/icons/lightning.svg') }}"
+                                     class="spui-action-icon" alt="">
+                                {{ qr.activo ? 'Desactivar' : 'Activar' }}
+                            </button>
+                            <button type="button" class="unraf-btn spui-btn-eliminar unraf-btn-sm"
+                                    data-spui-action="{{ path('spui_cms_qr_eliminar', {id: qr.id}) }}"
+                                    data-spui-title="Eliminar código QR"
+                                    data-spui-message="¿Eliminar «{{ qr.etiqueta }}»? Se pierde el historial de {{ qr.usosCount }} escaneo(s)."
+                                    data-spui-variant="eliminar"
+                                    title="Eliminar">
+                                <img src="{{ asset('unraf-ui/icons/trash.svg') }}" class="spui-action-icon" alt=""> Eliminar
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            {% else %}
+                <tr>
+                    <td colspan="7" class="p-4 text-center text-muted">
+                        No hay códigos QR creados.<br>
+                        <small>Creá uno acá y después armá un contenido de tipo QR para mostrarlo en pantalla.</small>
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+</div>
+{% endblock %}

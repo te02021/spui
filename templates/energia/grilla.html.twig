@@ -1,0 +1,89 @@
+{% extends '@SPUI/base.html.twig' %}
+{% block title %}Energía — {{ pantalla.nombre }} — SPUI{% endblock %}
+
+{% block body %}
+<div class="d-flex justify-content-between align-items-center mb-4 gap-2 flex-wrap spui-header-actions">
+    <div>
+        <h1 class="mb-0" style="color:var(--unraf-azul);font-family:var(--unraf-font-principal)">Energía — {{ pantalla.nombre }}</h1>
+        <p class="text-muted mb-0 small">
+            Encendido, apagado y brillo por día. Los días sin horario dejan la pantalla siempre encendida.
+        </p>
+    </div>
+    <a href="{{ path('spui_cms_pantallas_index') }}" class="unraf-btn spui-btn-back flex-shrink-0">← Pantallas</a>
+</div>
+
+<div id="spui-table-body">
+<div class="unraf-card">
+    <div class="unraf-table-responsive">
+        <table class="unraf-table unraf-table-striped w-100 spui-tabla-cards">
+            <thead>
+                <tr>
+                    <th class="p-3">Día</th>
+                    <th class="p-3">Encendido</th>
+                    <th class="p-3">Apagado</th>
+                    <th class="p-3">Brillo</th>
+                    <th class="p-3">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for num, nombre in dias %}
+                {% set regla = reglas[num] ?? null %}
+                <tr>
+                    <td class="p-3" data-label="Día"><strong>{{ nombre }}</strong></td>
+
+                    {% if regla %}
+                        <td class="p-3" data-label="Encendido">{{ regla.horaEncendido|date('H:i') }}</td>
+                        <td class="p-3" data-label="Apagado">{{ regla.horaApagado|date('H:i') }}</td>
+                        <td class="p-3" data-label="Brillo">
+                            <span class="spui-badge-publicado">{{ regla.nivelBrillo }}%</span>
+                        </td>
+                    {% else %}
+                        <td class="p-3 text-muted" colspan="3" data-label="Horario">
+                            <em>Sin horario — siempre encendida</em>
+                        </td>
+                    {% endif %}
+
+                    <td class="p-3" data-label="Acciones">
+                        <div class="spui-acciones">
+                            <button type="button"
+                                    class="unraf-btn unraf-btn-sm {{ regla ? 'spui-btn-editar' : 'spui-btn-crear' }}"
+                                    data-spui-form="{{ path('spui_cms_energia_editar', {id: pantalla.id, dia: num}) }}"
+                                    data-spui-title="{{ nombre }} — {{ pantalla.nombre }}"
+                                    data-spui-size="modal-sm"
+                                    title="{{ regla ? 'Editar horario' : 'Configurar horario' }}">
+                                <img src="{{ asset(regla ? 'unraf-ui/icons/pencil.svg' : 'unraf-ui/icons/plus.svg') }}"
+                                     class="spui-action-icon" alt="">
+                                {{ regla ? 'Editar' : 'Configurar' }}
+                            </button>
+
+                            {% if regla %}
+                                {% if num <= 5 %}
+                                    <button type="button" class="unraf-btn spui-btn-copiar unraf-btn-sm"
+                                            data-spui-action="{{ path('spui_cms_energia_copiar', {id: pantalla.id, dia: num}) }}"
+                                            data-spui-title="Copiar a días hábiles"
+                                            data-spui-confirm-label="Copiar"
+                                            data-spui-message="¿Copiar el horario de {{ nombre }} al resto de los días hábiles (lunes a viernes)? Se sobreescribe lo que tengan cargado."
+                                            data-spui-variant="copiar"
+                                            title="Copiar a lunes-viernes">
+                                        <img src="{{ asset('unraf-ui/icons/copy.svg') }}" class="spui-action-icon" alt=""> Copiar a L-V
+                                    </button>
+                                {% endif %}
+                                <button type="button" class="unraf-btn spui-btn-eliminar unraf-btn-sm"
+                                        data-spui-action="{{ path('spui_cms_energia_eliminar', {id: pantalla.id, dia: num}) }}"
+                                        data-spui-title="Eliminar horario"
+                                        data-spui-message="¿Eliminar el horario de {{ nombre }}? La pantalla queda siempre encendida ese día."
+                                        data-spui-variant="eliminar"
+                                        title="Eliminar">
+                                    <img src="{{ asset('unraf-ui/icons/trash.svg') }}" class="spui-action-icon" alt=""> Eliminar
+                                </button>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+</div>
+{% endblock %}

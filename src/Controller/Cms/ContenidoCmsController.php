@@ -9,7 +9,9 @@ use SPUI\Entity\Contenido;
 use SPUI\Enum\EstadoContenido;
 use SPUI\Enum\TipoContenido;
 use SPUI\Form\ContenidoType;
+use SPUI\Repository\CodigoQrRepository;
 use SPUI\Repository\ContenidoRepository;
+use SPUI\Service\AlcanceReproductorService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\Request;
@@ -20,10 +22,14 @@ use Symfony\Component\String\Slugger\SluggerInterface;
 #[Route('/spui/contenidos')]
 class ContenidoCmsController extends AbstractController
 {
+    use BloqueoOfflineTrait;
+
     private const TIPOS_ARCHIVO = ['imagen', 'video'];
 
     public function __construct(
         private readonly ContenidoRepository $repo,
+        private readonly CodigoQrRepository $codigoQrRepo,
+        private readonly AlcanceReproductorService $alcance,
         private readonly ManagerRegistry $doctrine,
         private readonly SluggerInterface $slugger,
         #[Autowire('%kernel.project_dir%/public/uploads/spui')]
@@ -35,11 +41,23 @@ class ContenidoCmsController extends AbstractController
         return $this->doctrine->getManager('SPUI');
     }
 
+    /**
+     * Códigos QR ofrecidos en el formulario de contenido.
+     *
+     * Sólo los activos: un código dado de baja no debería poder asociarse a
+     * contenido nuevo, porque su redirect ya devuelve 410.
+     */
+    private function codigosQrDisponibles(): array
+    {
+        return $this->codigoQrRepo->findBy(['activo' => true], ['etiqueta' => 'ASC']);
+    }
+
     #[Route('', name: 'spui_cms_contenidos_index', methods: ['GET'])]
     public function index(): Response
     {
         return $this->render('@SPUI/contenidos/index.html.twig', [
-            'contenidos' => $this->repo->findBy([], ['titulo' => 'ASC']),
+            'contenidos'  => $this->repo->findBy([], ['titulo' => 'ASC']),
+            'ids_offline' => $this->alcance->idsOfflineDeUnaVez(),
         ]);
     }
 
@@ -64,7 +82,7 @@ class ContenidoCmsController extends AbstractController
                     if ($request->isXmlHttpRequest()) {
                         return $this->json([
                             'success' => false,
-                            'html'    => $this->renderView('@SPUI/contenidos/_form.html.twig', ['form' => $form]),
+                            'html'    => $this->renderView('@SPUI/contenidos/_form.html.twig', ['form' => $form, 'codigos_qr' => $this->codigosQrDisponibles()]),
                         ]);
                     }
                     $this->addFlash('error', $errMsg);
@@ -84,7 +102,7 @@ class ContenidoCmsController extends AbstractController
                     if ($request->isXmlHttpRequest()) {
                         return $this->json([
                             'success' => false,
-                            'html'    => $this->renderView('@SPUI/contenidos/_form.html.twig', ['form' => $form]),
+                            'html'    => $this->renderView('@SPUI/contenidos/_form.html.twig', ['form' => $form, 'codigos_qr' => $this->codigosQrDisponibles()]),
                         ]);
                     }
                     $this->addFlash('error', 'El campo de texto/URL es requerido para este tipo.');
@@ -116,7 +134,7 @@ class ContenidoCmsController extends AbstractController
         if ($request->isXmlHttpRequest()) {
             return $this->json([
                 'title' => 'Nuevo contenido',
-                'html'  => $this->renderView('@SPUI/contenidos/_form.html.twig', ['form' => $form]),
+                'html'  => $this->renderView('@SPUI/contenidos/_form.html.twig', ['form' => $form, 'codigos_qr' => $this->codigosQrDisponibles()]),
             ]);
         }
 
@@ -168,6 +186,55 @@ class ContenidoCmsController extends AbstractController
         return $this->redirectToRoute('spui_cms_contenidos_index');
     }
 
+    /** Detalle del contenido (modal "Ver"). */
+    #[Route('/{id}/ver', name: 'spui_cms_contenidos_ver', methods: ['GET'], requirements: ['id' => '\d+'])]
+    public function ver(int $id, Request $request): Response
+    {
+        $contenido = $this->repo->find($id);
+        if (!$contenido) {
+            throw $this->createNotFoundException();
+        }
+
+        if ($request->isXmlHttpRequest()) {
+            return $this->json([
+                'title' => $contenido->getTitulo(),
+                'html'  => $this->renderView('@SPUI/contenidos/_view.html.twig', ['contenido' => $contenido]),
+            ]);
+        }
+
+        return $this->redirectToRoute('spui_cms_contenidos_index');
+    }
+
+    /**
+     * Vuelve un contenido publicado a borrador.
+     *
+     * Sacarlo de circulación sin archivarlo: deja de aparecer en el selector de
+     * playlists, pero sigue editable para volver a publicarlo.
+     */
+    #[Route('/{id}/despublicar', name: 'spui_cms_contenidos_despublicar', methods: ['POST'], requirements: ['id' => '\d+'])]
+    public function despublicar(int $id, Request $request): Response
+    {
+        $c = $this->repo->find($id);
+        if (!$c) {
+            if ($request->isXmlHttpRequest()) { return $this->json(['success' => false, 'message' => 'Contenido no encontrado.'], 404); }
+            $this->addFlash('error', 'Contenido no encontrado.');
+            return $this->redirectToRoute('spui_cms_contenidos_index');
+        }
+
+        if ($r = $this->bloquearSiOffline($this->alcance->deContenido($c), $request, 'spui_cms_contenidos_index')) {
+            return $r;
+        }
+
+        $c->setEstado(EstadoContenido::Borrador);
+        $this->em()->flush();
+        $msg = '"' . $c->getTitulo() . '" volvió a borrador.';
+        if ($request->isXmlHttpRequest()) {
+            return $this->json(['success' => true, 'message' => $msg]);
+        }
+        $this->addFlash('success', $msg);
+        return $this->redirectToRoute('spui_cms_contenidos_index');
+    }
+
     #[Route('/{id}/publicar', name: 'spui_cms_contenidos_publicar', methods: ['POST'], requirements: ['id' => '\d+'])]
     public function publicar(int $id, Request $request): Response
     {
@@ -176,6 +243,10 @@ class ContenidoCmsController extends AbstractController
             if ($request->isXmlHttpRequest()) { return $this->json(['success' => false, 'message' => 'Contenido no encontrado.'], 404); }
             $this->addFlash('error', 'Contenido no encontrado.');
             return $this->redirectToRoute('spui_cms_contenidos_index');
+        }
+
+        if ($r = $this->bloquearSiOffline($this->alcance->deContenido($c), $request, 'spui_cms_contenidos_index')) {
+            return $r;
         }
 
         $c->setEstado(EstadoContenido::Publicado);
@@ -198,6 +269,10 @@ class ContenidoCmsController extends AbstractController
             return $this->redirectToRoute('spui_cms_contenidos_index');
         }
 
+        if ($r = $this->bloquearSiOffline($this->alcance->deContenido($c), $request, 'spui_cms_contenidos_index')) {
+            return $r;
+        }
+
         $c->setEstado(EstadoContenido::Archivado);
         $this->em()->flush();
         $msg = '"' . $c->getTitulo() . '" archivado.';
@@ -218,8 +293,23 @@ class ContenidoCmsController extends AbstractController
             return $this->redirectToRoute('spui_cms_contenidos_index');
         }
 
+        // Se comprueban las dos referencias que impiden el borrado. Faltaba la
+        // de alertas: sin ella el DELETE moría con un error SQL de integridad
+        // referencial, ilegible para el operador.
+        // Los cronograma_item no hacen falta acá: su FK es ON DELETE CASCADE,
+        // así que se van con el contenido, que es lo correcto (son sus filas).
+        $bloqueos = [];
+
         if (!$c->getPlaylistItems()->isEmpty()) {
-            $msg = '"' . $c->getTitulo() . '" está en uso en ' . $c->getPlaylistItems()->count() . ' playlist(s). Retíralo primero.';
+            $bloqueos[] = 'está en uso en ' . $c->getPlaylistItems()->count() . ' playlist(s): retiralo primero';
+        }
+
+        if (!$c->getAlertas()->isEmpty()) {
+            $bloqueos[] = 'lo usan ' . $c->getAlertas()->count() . ' alerta(s) de emergencia: cambiá o eliminá esas alertas';
+        }
+
+        if ($bloqueos !== []) {
+            $msg = 'No se puede eliminar "' . $c->getTitulo() . '" porque ' . implode('; y ', $bloqueos) . '.';
             if ($request->isXmlHttpRequest()) { return $this->json(['success' => false, 'message' => $msg], 422); }
             $this->addFlash('error', $msg);
             return $this->redirectToRoute('spui_cms_contenidos_index');

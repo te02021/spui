@@ -4,14 +4,25 @@
 # HTTP — sync REST con el CMS
 requests>=2.28.0
 
-# MQTT — alertas de emergencia en tiempo real
+# MQTT — alertas de emergencia y telemetría en tiempo real
+# El código soporta tanto la API 1.x como la 2.x de paho (ver mqtt_listener.py).
 paho-mqtt>=1.6.1
 
 # VLC — reproductor multimedia
 # Requiere VLC instalado en el sistema:
 #   Pi/Linux: sudo apt install vlc
 #   Windows:  https://www.videolan.org/vlc/
-python-vlc>=3.0.20120801
+#
+# El esquema de versiones de python-vlc es 3.0.<libvlc><build>, NO una fecha:
+# 3.0.18121, 3.0.20123, 3.0.21203... Se fija la serie 3.x porque es la que
+# corresponde a VLC 3.x, que es el que trae Raspberry Pi OS Bookworm.
+python-vlc>=3.0.18121,<4
 
 # Telemetría — métricas del sistema (CPU temp, RAM, disco)
 psutil>=5.9.0
+
+# Imágenes — genera la pantalla de espera que se muestra cuando no hay
+# programación activa. Es opcional: sin Pillow el cliente cae al texto por
+# overlay, que funciona pero es menos confiable. Viene preinstalado en
+# Raspberry Pi OS.
+Pillow>=9.0.0

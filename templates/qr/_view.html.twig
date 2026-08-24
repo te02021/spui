@@ -1,0 +1,68 @@
+<div class="spui-view-header">
+    <div>
+        <p class="spui-view-title">{{ qr.etiqueta }}</p>
+        <p class="spui-view-subtitle">Código QR dinámico</p>
+    </div>
+    {% if not qr.activo %}
+        <span class="spui-badge-sin_registrar flex-shrink-0">Inactivo</span>
+    {% elseif not qr.estaVigente %}
+        <span class="spui-badge-archivado flex-shrink-0">Expirado</span>
+    {% else %}
+        <span class="spui-badge-conectado flex-shrink-0">Vigente</span>
+    {% endif %}
+</div>
+
+<div class="text-center py-3">
+    <img src="{{ path('spui_qr_imagen', {id: qr.id}) }}"
+         alt="Código QR de {{ qr.etiqueta }}"
+         width="200" height="200"
+         style="background:#fff;border-radius:.4rem">
+    <p class="text-muted small mt-2 mb-0">
+        Escaneos registrados: <strong>{{ qr.usosCount }}</strong>
+    </p>
+</div>
+
+<div class="spui-view-section">
+    <p class="spui-view-section-title">Información</p>
+    <div class="spui-view-row">
+        <span class="spui-view-row-label">Destino</span>
+        <span class="spui-view-row-value">
+            <a href="{{ qr.urlDestino }}" target="_blank" rel="noopener noreferrer">{{ qr.urlDestino }}</a>
+        </span>
+    </div>
+    <div class="spui-view-row">
+        <span class="spui-view-row-label">Estado</span>
+        <span class="spui-view-row-value">
+            {%- if not qr.activo %}Inactivo{% elseif not qr.estaVigente %}Expirado{% else %}Vigente{% endif -%}
+        </span>
+    </div>
+    <div class="spui-view-row">
+        <span class="spui-view-row-label">Expira</span>
+        <span class="spui-view-row-value">{{ qr.expiraEn ? qr.expiraEn|date('d/m/Y H:i') : 'Sin vencimiento' }}</span>
+    </div>
+    <div class="spui-view-row">
+        <span class="spui-view-row-label">Escaneos</span>
+        <span class="spui-view-row-value">{{ qr.usosCount }}</span>
+    </div>
+    <div class="spui-view-row">
+        <span class="spui-view-row-label">Creado</span>
+        <span class="spui-view-row-value">{{ qr.creadoEn|date('d/m/Y H:i') }}</span>
+    </div>
+</div>
+
+<div class="spui-view-section">
+    <p class="spui-view-section-title">Se muestra en · {{ contenidos|length }}</p>
+    {% if contenidos|length > 0 %}
+        <div class="spui-view-list">
+        {% for c in contenidos %}
+            <div class="spui-view-list-item">
+                <span class="spui-view-list-bullet"></span>
+                <span>{{ c.titulo }}</span>
+                <span class="spui-view-list-meta">{{ c.estado.etiqueta }}</span>
+            </div>
+        {% endfor %}
+        </div>
+    {% else %}
+        <p class="spui-view-empty">Todavía no se muestra en ninguna pantalla</p>
+    {% endif %}
+</div>

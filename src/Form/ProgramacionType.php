@@ -72,7 +72,7 @@ class ProgramacionType extends AbstractType
                 'widget'     => 'single_text',
                 'input'      => 'datetime_immutable',
                 'attr'       => ['class' => 'unraf-form-control'],
-                'constraints' => [new NotBlank()],
+                'constraints' => [new NotBlank(message: 'Indicá la hora de inicio.')],
             ])
             ->add('horaFin', TimeType::class, [
                 'label'      => 'Hora fin',
@@ -80,7 +80,7 @@ class ProgramacionType extends AbstractType
                 'widget'     => 'single_text',
                 'input'      => 'datetime_immutable',
                 'attr'       => ['class' => 'unraf-form-control'],
-                'constraints' => [new NotBlank()],
+                'constraints' => [new NotBlank(message: 'Indicá la hora de fin.')],
             ])
             ->add('fechaInicio', DateType::class, [
                 'label'      => 'Desde',
@@ -88,7 +88,7 @@ class ProgramacionType extends AbstractType
                 'widget'     => 'single_text',
                 'input'      => 'datetime_immutable',
                 'attr'       => ['class' => 'unraf-form-control'],
-                'constraints' => [new NotBlank()],
+                'constraints' => [new NotBlank(message: 'Indicá desde qué fecha rige la regla.')],
             ])
             ->add('fechaFin', DateType::class, [
                 'label'      => 'Hasta (opcional)',
@@ -108,7 +108,7 @@ class ProgramacionType extends AbstractType
                 'data'       => $options['dias_semana_default'],
             ])
             ->add('repetirSemanal', CheckboxType::class, [
-                'label'    => 'Repetir semanalmente',
+                'label'    => false,
                 'required' => false,
                 'data'     => true,
                 'attr'     => ['class' => 'form-check-input'],
@@ -117,10 +117,14 @@ class ProgramacionType extends AbstractType
                 'label'      => 'Prioridad',
                 'label_attr' => ['class' => 'unraf-form-label'],
                 'attr'       => ['class' => 'unraf-form-control', 'min' => 1, 'max' => 100, 'style' => 'max-width:8rem'],
-                'constraints' => [new Range(min: 1, max: 100)],
+                'constraints' => [new Range(
+                    notInRangeMessage: 'La prioridad debe estar entre {{ min }} y {{ max }}.',
+                    min: 1,
+                    max: 100,
+                )],
             ])
             ->add('activo', CheckboxType::class, [
-                'label'    => 'Activa desde el momento de creación',
+                'label'    => false,
                 'required' => false,
                 'data'     => true,
             ]);

@@ -1,13 +1,14 @@
 {% extends '@SPUI/base.html.twig' %}
+{% import '@SPUI/_macros/bloqueo.html.twig' as bloqueo %}
 {% block title %}Playlists — SPUI{% endblock %}
 
 {% block body %}
-<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2 spui-header-actions">
     <div>
         <h1 style="color:var(--unraf-azul);font-family:var(--unraf-font-principal);margin:0">Playlists</h1>
         <p class="text-muted mb-0">Colecciones ordenadas de contenidos para reproducir en las pantallas.</p>
     </div>
-    <button type="button" class="unraf-btn unraf-btn-institucion"
+    <button type="button" class="unraf-btn spui-btn-crear"
             data-spui-form="{{ path('spui_cms_playlists_nueva') }}"
             data-spui-title="Nueva playlist">
         + Nueva playlist
@@ -17,7 +18,7 @@
 <div id="spui-table-body">
 <div class="unraf-card">
     <div class="unraf-table-responsive">
-        <table class="unraf-table unraf-table-striped w-100">
+        <table class="unraf-table unraf-table-striped w-100 spui-tabla-cards">
             <thead>
                 <tr>
                     <th class="p-3">Nombre</th>
@@ -29,46 +30,47 @@
             </thead>
             <tbody>
             {% for pl in playlists %}
+                {% set motivo = spui_alcance.motivoParaEntidad(pl, ids_offline|default({})) %}
                 <tr>
-                    <td class="p-3">
+                    <td class="p-3" data-label="Nombre">
                         <strong>{{ pl.nombre }}</strong>
                         {% if pl.descripcion %}<br><small class="text-muted">{{ pl.descripcion|slice(0,80) }}</small>{% endif %}
                     </td>
-                    <td class="p-3 text-center">
+                    <td class="p-3" data-label="Ítems">
                         <span class="spui-badge-borrador">{{ pl.items|length }}</span>
                     </td>
-                    <td class="p-3">
+                    <td class="p-3" data-label="Estado">
                         {% if pl.activo %}
                             <span class="spui-badge-publicado">Activa</span>
                         {% else %}
                             <span class="spui-badge-archivado">Inactiva</span>
                         {% endif %}
                     </td>
-                    <td class="p-3"><small>{{ pl.actualizadoEn|date('d/m/Y H:i') }}</small></td>
-                    <td class="p-3">
-                        <div class="d-flex gap-1 flex-wrap align-items-center">
+                    <td class="p-3" data-label="Actualizada"><small>{{ pl.actualizadoEn|date('d/m/Y H:i') }}</small></td>
+                    <td class="p-3" data-label="Acciones">
+                        <div class="spui-acciones">
 
-                            <button type="button" class="unraf-btn unraf-btn-light unraf-btn-sm"
+                            <button type="button" class="unraf-btn spui-btn-ver unraf-btn-sm"
+                                    data-spui-form="{{ path('spui_cms_playlists_ver', {id: pl.id}) }}"
+                                    data-spui-title="{{ pl.nombre }}"
+                                    title="Ver detalle de la playlist">
+                                <img src="{{ asset('unraf-ui/icons/playlist.svg') }}" class="spui-action-icon" alt=""> Ver
+                            </button>
+
+                            <button type="button" class="unraf-btn spui-btn-editar unraf-btn-sm {{ bloqueo.clase(motivo) }}"
                                     data-spui-form="{{ path('spui_cms_playlists_editar', {id: pl.id}) }}"
                                     data-spui-title="Editar: {{ pl.nombre }}"
-                                    title="Editar datos">
+                                    {% if motivo %}{{ bloqueo.attrs(motivo) }}{% else %}title="Editar datos"{% endif %}>
                                 <img src="{{ asset('unraf-ui/icons/pencil.svg') }}" class="spui-action-icon" alt=""> Editar
                             </button>
 
-                            <a href="{{ path('spui_cms_playlists_builder', {id: pl.id}) }}"
-                               class="unraf-btn unraf-btn-sm"
-                               style="background:var(--unraf-azul,#446687);color:#fff;border:none"
-                               title="Editar ítems de la playlist">
-                                <img src="{{ asset('unraf-ui/icons/playlist.svg') }}" class="spui-action-icon" style="filter:invert(1)" alt=""> Ítems
-                            </a>
-
-                            <button type="button" class="unraf-btn-icon btn-delete"
+                            <button type="button" class="unraf-btn spui-btn-eliminar unraf-btn-sm {{ bloqueo.clase(motivo) }}"
                                     data-spui-action="{{ path('spui_cms_playlists_eliminar', {id: pl.id}) }}"
                                     data-spui-title="Eliminar playlist"
                                     data-spui-message="¿Eliminar «{{ pl.nombre }}»? Esta acción no se puede deshacer."
-                                    data-spui-variant="danger"
-                                    title="Eliminar">
-                                <img src="{{ asset('unraf-ui/icons/trash.svg') }}" class="unraf-icon-svg" alt="Eliminar">
+                                    data-spui-variant="eliminar"
+                                    {% if motivo %}{{ bloqueo.attrs(motivo) }}{% else %}title="Eliminar"{% endif %}>
+                                <img src="{{ asset('unraf-ui/icons/trash.svg') }}" class="spui-action-icon" alt=""> Eliminar
                             </button>
 
                         </div>

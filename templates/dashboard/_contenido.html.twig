@@ -1,0 +1,231 @@
+{# Contenido dinámico del dashboard.
+   Se renderiza dentro de #dashboard-zona y el refresco automático lo reemplaza
+   entero, así que TODO lo que cambie con el tiempo tiene que estar acá dentro:
+   lo que quede afuera se congela hasta que alguien recargue la página. #}
+
+{# ── Alerta activa banner ── #}
+{% if alertas_activas|length > 0 %}
+    {% for alerta in alertas_activas %}
+    <div class="spui-alerta-activa-banner">
+        <img src="{{ asset('unraf-ui/icons/warning.svg') }}" style="width:1.1rem;filter:invert(1)" alt="">
+        <span>ALERTA ACTIVA: <strong>{{ alerta.titulo }}</strong>{% if alerta.expiraEn %} — Expira: {{ alerta.expiraEn|date('d/m/Y H:i') }}{% endif %}</span>
+        <button type="button" class="unraf-btn spui-btn-desactivar ms-auto"
+                data-spui-action="{{ path('spui_cms_alertas_desactivar', {id: alerta.id}) }}"
+                data-spui-title="Desactivar alerta"
+                data-spui-confirm-label="Desactivar"
+                data-spui-message="¿Desactivar la alerta «{{ alerta.titulo }}»? Se notificará a todas las pantallas."
+                data-spui-variant="desactivar"
+                data-spui-reload
+                style="font-size:.85rem;padding:.3rem .75rem">
+            Desactivar
+        </button>
+    </div>
+    {% endfor %}
+{% endif %}
+
+<div class="p-4">
+    <div class="d-flex justify-content-between align-items-center mb-1">
+        <h1 style="color:var(--unraf-azul);font-family:var(--unraf-font-principal);margin:0">Dashboard</h1>
+        {# data-spui-refresh-btn lo asocia auto-refresh.js: fuerza un refresco
+           inmediato sin esperar el ciclo de 20 s. #}
+        <button type="button" id="btnActualizarDashboard" data-spui-refresh-btn
+                class="unraf-btn unraf-btn-light d-flex align-items-center gap-1"
+                style="font-size:.8rem;padding:.3rem .6rem"
+                title="Actualizar datos">
+            <img src="{{ asset('unraf-ui/icons/arrows-clockwise.svg') }}" style="width:.85rem;height:.85rem;flex-shrink:0" alt=""> Actualizar
+        </button>
+    </div>
+    <p class="text-muted mb-4">Resumen del estado de la red de pantallas digitales.</p>
+
+    {# ── Alerta de temperatura (CU-08) ── #}
+    {% if sobrecalentados|length > 0 %}
+        <div class="alert alert-danger d-flex align-items-start gap-2 mb-4" role="alert">
+            <img src="{{ asset('unraf-ui/icons/warning.svg') }}" style="width:1.2rem;height:1.2rem;flex-shrink:0;margin-top:.15rem" alt="">
+            <div>
+                <strong>
+                    {{ sobrecalentados|length }} reproductor(es) por encima de {{ temp_umbral|number_format(0) }}°C
+                </strong>
+                <div class="small mt-1">
+                    {% for r in reproductores|filter(r => sobrecalentados[r.id] is defined) %}
+                        <span class="d-inline-block me-3">
+                            {{ r.hostname }} — <strong>{{ sobrecalentados[r.id]|number_format(1) }}°C</strong>
+                        </span>
+                    {% endfor %}
+                </div>
+                <div class="small mt-1 text-muted">
+                    A esta temperatura la Raspberry Pi reduce su velocidad. Revisá ventilación y disipador.
+                </div>
+            </div>
+        </div>
+    {% endif %}
+
+    {# Problemas que los propios reproductores informan en su heartbeat.
+       Un equipo puede figurar conectado y aun así no estar mostrando nada en
+       pantalla: sin este aviso, eso sólo se veía entrando por SSH a la Pi. #}
+    {% set con_problemas = reproductores|filter(r => r.tieneProblemas) %}
+    {% if con_problemas|length > 0 %}
+        <div class="alert alert-warning d-flex align-items-start gap-2 mb-4" role="alert">
+            <img src="{{ asset('unraf-ui/icons/warning.svg') }}" style="width:1.2rem;height:1.2rem;flex-shrink:0;margin-top:.15rem" alt="">
+            <div>
+                <strong>
+                    {{ con_problemas|length }} reproductor(es) con problemas informados
+                </strong>
+                <div class="small mt-1">
+                    {% for r in con_problemas %}
+                        <div class="mb-1">
+                            <strong>{{ r.hostname }}</strong>
+                            <ul class="mb-0 mt-1" style="padding-left:1.1rem">
+                            {% for problema in r.diagnostico %}
+                                <li>{{ problema }}</li>
+                            {% endfor %}
+                            </ul>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    {% endif %}
+
+    {# ── Stats + tabla con overlay de carga ── #}
+    <div id="dashboard-content" style="position:relative">
+    <div id="dashboard-overlay"
+         style="display:none;position:absolute;inset:0;background:rgba(255,255,255,.6);align-items:center;justify-content:center;z-index:5;border-radius:.5rem;backdrop-filter:blur(2px)">
+        <div class="spui-spinner" style="width:2.75rem;height:2.75rem"></div>
+    </div>
+
+    {# ── Stats ── #}
+    <div id="dashboard-stats" class="row g-3 mb-4">
+        <div class="col-6 col-md-3">
+            <div class="unraf-card text-center p-3">
+                <div class="spui-stat-number" style="color:var(--unraf-azul)">{{ reproductores|length }}</div>
+                <div class="spui-stat-label">Total reproductores</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="unraf-card text-center p-3">
+                <div class="spui-stat-number" style="color:var(--unraf-success,#4A9930)">{{ conteo.conectado }}</div>
+                <div class="spui-stat-label">Conectados</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="unraf-card text-center p-3">
+                <div class="spui-stat-number" style="color:var(--unraf-error,#FF223D)">{{ conteo.desconectado }}</div>
+                <div class="spui-stat-label">Desconectados</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="unraf-card text-center p-3">
+                <div class="spui-stat-number" style="color:var(--unraf-amarillo,#FEAA20)">{{ sin_actividad }}</div>
+                <div class="spui-stat-label">Sin actividad ({{ (spui_umbral_conexion / 60)|round }} min)</div>
+            </div>
+        </div>
+    </div>
+
+    {# ── Tabla de reproductores ── #}
+    <div id="dashboard-table" class="unraf-card">
+        <div class="p-3 d-flex justify-content-between align-items-center border-bottom">
+            <strong>Estado de reproductores</strong>
+            <small class="text-muted">{{ reproductores|length }} reproductor(es) registrado(s)</small>
+        </div>
+        <div class="unraf-table-responsive">
+            <table class="unraf-table unraf-table-striped w-100 text-nowrap spui-tabla-cards">
+                <thead>
+                    <tr>
+                        <th class="p-3">Hostname</th>
+                        <th class="p-3">Pantallas</th>
+                        <th class="p-3">Estado</th>
+                        <th class="p-3">Último heartbeat</th>
+                        <th class="p-3">Temp.</th>
+                        <th class="p-3">RAM</th>
+                        <th class="p-3">Disco libre</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for r in reproductores %}
+                    {# default(null): un nodo recién registrado todavía no reportó nada #}
+                    {% set tel = telemetria[r.id]|default(null) %}
+                    <tr>
+                        <td class="p-3" data-label="Hostname">
+                            <strong>{{ r.hostname }}</strong>
+                            {% if r.versionFirmware %}<br><small class="text-muted">{{ r.versionFirmware }}</small>{% endif %}
+                        </td>
+                        <td class="p-3" data-label="Pantallas">
+                            {% if r.pantallas|length > 0 %}
+                                {% for p in r.pantallas %}
+                                    <span class="spui-badge-borrador">{{ p.nombre }}</span>
+                                    <small class="text-muted d-block" style="font-size:.7rem">
+                                        {{ p.ubicacion.edificio.nombre }}{% if p.ubicacion.sector %} — {{ p.ubicacion.sector }}{% endif %}
+                                    </small>
+                                {% endfor %}
+                            {% else %}
+                                <span class="text-muted small">Sin pantallas</span>
+                            {% endif %}
+                        </td>
+                        <td class="p-3" data-label="Estado">
+                            {# Estado CALCULADO, no la columna estado_conexion: así el
+                               panel dice la verdad aunque spui:mantenimiento no haya
+                               corrido todavía. Antes, con el cron sin agendar, un
+                               equipo apagado figuraba conectado para siempre. #}
+                            {% set est = r.estadoCalculado(spui_umbral_conexion) %}
+                            <span class="spui-badge-{{ est.value }}">{{ est.etiqueta }}</span>
+                        </td>
+                        <td class="p-3" data-label="Último heartbeat">
+                            {% if r.ultimoHeartbeat %}
+                                {{ r.ultimoHeartbeat|date('d/m H:i:s') }}
+                                {# El texto relativo lo mantiene al día tiempo-relativo.js:
+                                   calculado en el render quedaba congelado y una pantalla
+                                   abierta un rato seguía diciendo "hace 2 min" sobre un
+                                   equipo que llevaba media hora sin reportar.
+
+                                   El contenido inicial ya es el texto relativo (no la fecha
+                                   otra vez): repetirla mostraba el mismo dato dos veces
+                                   hasta que corría el primer tick del JS. #}
+                                {# Los umbrales replican los de tiempo-relativo.js: si no
+                                   coincidieran, el texto saltaría al primer tick del JS. #}
+                                {% set seg = "now"|date("U") - r.ultimoHeartbeat|date("U") %}
+                                <br><small data-spui-desde="{{ r.ultimoHeartbeat|date('c') }}"
+                                           class="{{ seg > spui_umbral_conexion ? 'is-stale' : '' }}">
+                                    {%- if seg < 90 -%}hace instantes
+                                    {%- elseif seg < 3600 -%}hace {{ (seg / 60)|round }} min
+                                    {%- elseif seg < 86400 -%}hace {{ (seg / 3600)|round }} h
+                                    {%- else -%}hace {{ (seg / 86400)|round }} días
+                                    {%- endif -%}
+                                </small>
+                            {% else %}
+                                <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+                        <td class="p-3" data-label="Temp.">
+                            {% if tel %}
+                                {% set temp = tel.temperaturaSocCelsius %}
+                                {# Aviso a partir del 85% del umbral, alarma al superarlo #}
+                                <span class="{{ temp >= temp_umbral ? 'text-danger fw-bold' : (temp >= temp_umbral * 0.85 ? 'text-warning fw-semibold' : '') }}">
+                                    {{ temp|number_format(1) }}°C
+                                    {% if temp >= temp_umbral %}
+                                        <img src="{{ asset('unraf-ui/icons/warning.svg') }}"
+                                             style="width:.9rem;height:.9rem;vertical-align:-2px"
+                                             title="Supera el umbral de {{ temp_umbral|number_format(0) }}°C" alt="">
+                                    {% endif %}
+                                </span>
+                            {% else %}<span class="text-muted">—</span>{% endif %}
+                        </td>
+                        <td class="p-3" data-label="RAM">
+                            {% if tel %}{{ tel.usoRamPorcentaje|number_format(1) }}%{% else %}<span class="text-muted">—</span>{% endif %}
+                        </td>
+                        <td class="p-3" data-label="Disco libre">
+                            {% if tel %}{{ (tel.espacioDiscoLibreMb / 1024)|number_format(1) }} GB{% else %}<span class="text-muted">—</span>{% endif %}
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr>
+                        <td colspan="7" class="p-4 text-center text-muted">
+                            No hay reproductores registrados.
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    </div>{# /dashboard-content #}
+</div>{# /p-4 #}

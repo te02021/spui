@@ -1,0 +1,20 @@
+# see https://symfony.com/doc/current/reference/configuration/framework.html
+framework:
+    secret: '%env(APP_SECRET)%'
+
+    # Note that the session will be started ONLY if you read or write from it.
+    session: true
+
+    # El config compartido de la intranet deja default_locale en "en", así que
+    # los mensajes de validación de Symfony salían en inglés ("This value should
+    # not be blank.") en medio de un CMS íntegramente en español. Con "es" toma
+    # los catálogos validators.es.xlf que ya vienen en vendor, sin necesidad de
+    # escribir un message: en cada constraint.
+    # Mismo criterio que usan viaticos y sistemasat en su propio framework.yaml.
+    default_locale: "es"
+
+when@test:
+    framework:
+        test: true
+        session:
+            storage_factory_id: session.storage.factory.mock_file

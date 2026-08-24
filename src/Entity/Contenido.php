@@ -42,6 +42,18 @@ class Contenido
     #[ORM\Column(length: 64, nullable: true)]
     private ?string $hashArchivo = null;
 
+    /**
+     * Código QR asociado, sólo para contenidos de tipo `qr`.
+     *
+     * El PNG que se muestra en pantalla se genera al guardar y se guarda como
+     * archivo (rutaArchivo), igual que una imagen, así el Pi lo descarga y lo
+     * cachea con la tubería de medios de siempre. Ese PNG codifica la URL de
+     * redirect del CMS, no la URL destino: por eso los escaneos se cuentan.
+     */
+    #[ORM\ManyToOne(targetEntity: CodigoQr::class)]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    private ?CodigoQr $codigoQr = null;
+
     #[ORM\Column(enumType: EstadoContenido::class)]
     private EstadoContenido $estado = EstadoContenido::Borrador;
 
@@ -94,6 +106,9 @@ class Contenido
 
     public function getHashArchivo(): ?string { return $this->hashArchivo; }
     public function setHashArchivo(?string $hashArchivo): static { $this->hashArchivo = $hashArchivo; return $this; }
+
+    public function getCodigoQr(): ?CodigoQr { return $this->codigoQr; }
+    public function setCodigoQr(?CodigoQr $codigoQr): static { $this->codigoQr = $codigoQr; return $this; }
 
     public function getEstado(): EstadoContenido { return $this->estado; }
     public function setEstado(EstadoContenido $estado): static { $this->estado = $estado; return $this; }

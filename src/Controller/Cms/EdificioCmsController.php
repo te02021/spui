@@ -34,6 +34,21 @@ class EdificioCmsController extends AbstractController
         ]);
     }
 
+    #[Route('/{id}/ver', name: 'spui_cms_edificios_ver', methods: ['GET'], requirements: ['id' => '\d+'])]
+    public function ver(int $id, Request $request): Response
+    {
+        $edificio = $this->repo->find($id);
+        if (!$edificio) { throw $this->createNotFoundException(); }
+
+        if ($request->isXmlHttpRequest()) {
+            return $this->json([
+                'title' => $edificio->getNombre(),
+                'html'  => $this->renderView('@SPUI/edificios/_view.html.twig', ['edificio' => $edificio]),
+            ]);
+        }
+        return $this->redirectToRoute('spui_cms_edificios_index');
+    }
+
     #[Route('/nuevo', name: 'spui_cms_edificios_nuevo', methods: ['GET', 'POST'])]
     public function nuevo(Request $request): Response
     {
@@ -60,7 +75,8 @@ class EdificioCmsController extends AbstractController
             ]);
         }
 
-        return $this->render('@SPUI/edificios/nuevo.html.twig', ['form' => $form]);
+        // El alta vive en el modal ABM; sin JS no hay pantalla propia.
+        return $this->redirectToRoute('spui_cms_edificios_index');
     }
 
     #[Route('/{id}/editar', name: 'spui_cms_edificios_editar', methods: ['GET', 'POST'], requirements: ['id' => '\d+'])]
@@ -92,10 +108,7 @@ class EdificioCmsController extends AbstractController
             ]);
         }
 
-        return $this->render('@SPUI/edificios/editar.html.twig', [
-            'form'     => $form,
-            'edificio' => $edificio,
-        ]);
+        return $this->redirectToRoute('spui_cms_edificios_index');
     }
 
     #[Route('/{id}/toggle', name: 'spui_cms_edificios_toggle', methods: ['POST'], requirements: ['id' => '\d+'])]
@@ -124,8 +137,20 @@ class EdificioCmsController extends AbstractController
             throw $this->createNotFoundException();
         }
 
+        // Igual que en ubicaciones: faltaba comprobar las programaciones, y sin
+        // eso el DELETE moría con un error SQL de integridad referencial.
+        $bloqueos = [];
+
         if (!$edificio->getUbicaciones()->isEmpty()) {
-            $msg = 'No se puede eliminar: tiene ' . $edificio->getUbicaciones()->count() . ' ubicación/es asociada/s. Eliminá las ubicaciones primero.';
+            $bloqueos[] = 'tiene ' . $edificio->getUbicaciones()->count() . ' ubicación/es asociada/s: eliminalas primero';
+        }
+
+        if (!$edificio->getProgramaciones()->isEmpty()) {
+            $bloqueos[] = 'lo usan ' . $edificio->getProgramaciones()->count() . ' regla(s) de programación: eliminá o reasigná esas reglas';
+        }
+
+        if ($bloqueos !== []) {
+            $msg = 'No se puede eliminar "' . $edificio->getNombre() . '" porque ' . implode('; y ', $bloqueos) . '.';
             if ($request->isXmlHttpRequest()) {
                 return $this->json(['success' => false, 'message' => $msg], 422);
             }

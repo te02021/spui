@@ -33,22 +33,70 @@ class SyncClient:
         resp = self._session.post(f'{self._base}/reproductores/sync', timeout=10)
         resp.raise_for_status()
         data = resp.json()
+        pantallas = data.get('pantallas') or []
+        primera   = pantallas[0] if pantallas else {}
+        prog      = primera.get('programacion_activa')
         logger.info(
             'Sync OK — pantalla=%s programacion=%s alerta=%s',
-            data.get('pantalla', {}).get('nombre', '?'),
-            data.get('programacion_activa', {}).get('id') if data.get('programacion_activa') else None,
+            primera.get('nombre', '?'),
+            prog.get('id') if prog else None,
             data.get('alerta_emergencia', {}).get('id') if data.get('alerta_emergencia') else None,
         )
         return data
 
-    def heartbeat(self) -> bool:
-        """Registra que el reproductor está vivo. Retorna True si el servidor recibió."""
+    def heartbeat(self, diagnostico: list[str] | None = None) -> bool:
+        """
+        Registra que el reproductor está vivo. Retorna True si el servidor recibió.
+
+        `diagnostico` son los problemas que el propio cliente detecta (por
+        ejemplo, que no hay entorno gráfico y no puede mostrar nada). Viajan
+        acá para que se vean en el panel del CMS: un equipo puede estar
+        conectado y sincronizando y aun así tener la pantalla en negro, y eso
+        no puede quedar sólo en el log local de la Pi.
+
+        Se envía siempre la clave, incluso con la lista vacía: así el servidor
+        sabe que el problema anterior se resolvió y limpia el aviso.
+        """
         try:
-            resp = self._session.post(f'{self._base}/reproductores/heartbeat', timeout=5)
+            resp = self._session.post(
+                f'{self._base}/reproductores/heartbeat',
+                json={'diagnostico': diagnostico or []},
+                timeout=5,
+            )
             resp.raise_for_status()
             return True
         except Exception as exc:
             logger.warning('Heartbeat falló: %s', exc)
+            return False
+
+    def enviar_telemetria(self, metricas: dict) -> bool:
+        """
+        Envía telemetría por HTTP. Es la vía de respaldo de MQTT, no la principal.
+
+        MQTT es el canal natural para métricas periódicas —fire-and-forget, con
+        pérdida tolerable— y además es lo que se documenta en la tesis. Pero si
+        el broker se cae, o el daemon que ingiere los mensajes no está corriendo,
+        la telemetría desaparece sin que nadie se entere: los mensajes se
+        publican contra un broker que no los reparte y no queda registro en
+        ninguna parte.
+
+        Este endpoint ya existía en el CMS y nadie lo usaba. Reusa la sesión con
+        X-Api-Key, así que a diferencia de MQTT no necesita credencial aparte ni
+        que el reproductor_id ya se conozca.
+
+        El servidor exige uso_ram_porcentaje y espacio_disco_libre_mb; los otros
+        dos campos son opcionales.
+        """
+        try:
+            resp = self._session.post(
+                f'{self._base}/reproductores/telemetria',
+                json=metricas,
+                timeout=5,
+            )
+            resp.raise_for_status()
+            return True
+        except Exception as exc:
+            logger.warning('Telemetría por HTTP falló: %s', exc)
             return False
 
     def descargar_media(self, url_descarga: str, hash_esperado: str | None = None) -> str:
@@ -115,9 +163,11 @@ class SyncClient:
         urls: list[tuple[str, str | None]] = []
         tipos_con_archivo = {'imagen', 'video', 'qr'}
 
-        prog = sync_data.get('programacion_activa')
-        if prog:
-            for item in prog.get('playlist', {}).get('items', []):
+        for pantalla in sync_data.get('pantallas') or []:
+            playlist = pantalla.get('playlist')
+            if not playlist:
+                continue
+            for item in playlist.get('items', []):
                 c = item.get('contenido', {})
                 if c.get('tipo') in tipos_con_archivo and c.get('url_descarga'):
                     urls.append((c['url_descarga'], c.get('hash_archivo')))

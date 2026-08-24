@@ -11,6 +11,7 @@ use PhpMqtt\Client\MqttClient;
 use SPUI\Entity\Telemetria;
 use SPUI\Repository\ReproductorRepository;
 use Symfony\Component\Console\Attribute\AsCommand;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
@@ -33,12 +34,17 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 )]
 class MqttSubscribeCommand extends Command
 {
-    private const TEMP_ALERTA_CELSIUS = 70.0;
-    private const TOPIC_TELEMETRIA    = 'spui/telemetria/+';
+    private const TOPIC_TELEMETRIA = 'spui/telemetria/+';
 
     public function __construct(
         private readonly ManagerRegistry $doctrine,
         private readonly ReproductorRepository $reproductorRepo,
+        #[Autowire('%env(float:default:spui_temp_alerta_default:SPUI_TEMP_ALERTA_CELSIUS)%')]
+        private readonly float $tempAlertaCelsius,
+        #[Autowire('%env(string:MQTT_USER)%')]
+        private readonly string $mqttUser,
+        #[Autowire('%env(string:MQTT_PASS)%')]
+        private readonly string $mqttPass,
     ) {
         parent::__construct();
     }
@@ -60,6 +66,8 @@ class MqttSubscribeCommand extends Command
         $io->info(sprintf('Broker: %s:%d | Topic: %s', $host, $port, self::TOPIC_TELEMETRIA));
 
         $settings = (new ConnectionSettings())
+            ->setUsername($this->mqttUser)
+            ->setPassword($this->mqttPass)
             ->setKeepAliveInterval(60)
             ->setConnectTimeout(5);
 
@@ -69,6 +77,20 @@ class MqttSubscribeCommand extends Command
             $mqtt->connect($settings);
         } catch (\Throwable $e) {
             $io->error('No se pudo conectar al broker MQTT: ' . $e->getMessage());
+
+            // El broker rechaza la conexión con el mismo error genérico esté
+            // caído o sean las credenciales las que no sirven, así que conviene
+            // nombrar las dos causas: sin esta pista, un usuario mal
+            // configurado se diagnostica como "Mosquitto no está corriendo".
+            $io->note(sprintf(
+                'Verificá que Mosquitto esté corriendo en %s:%d y que MQTT_USER/MQTT_PASS '
+                . 'coincidan con el cliente creado en el broker (usuario actual: %s). '
+                . 'Ver apps/spui/config/mosquitto/README.md',
+                $host,
+                $port,
+                $this->mqttUser !== '' ? $this->mqttUser : '(vacío)',
+            ));
+
             return Command::FAILURE;
         }
 
@@ -133,12 +155,12 @@ class MqttSubscribeCommand extends Command
             (int) ($data['espacio_disco_libre_mb'] ?? 0),
         ));
 
-        if ($temp >= self::TEMP_ALERTA_CELSIUS) {
+        if ($temp >= $this->tempAlertaCelsius) {
             $io->caution(sprintf(
                 'TEMPERATURA CRÍTICA en Reproductor %d: %.1f°C (umbral: %.0f°C)',
                 $reproductorId,
                 $temp,
-                self::TEMP_ALERTA_CELSIUS,
+                $this->tempAlertaCelsius,
             ));
         }
     }

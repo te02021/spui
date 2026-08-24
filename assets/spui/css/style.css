@@ -69,27 +69,9 @@
     font-weight: 600;
 }
 
-/* ----- Variantes del botón confirmar del modal ----- */
-.spui-btn-confirm-success {
-    background-color: var(--unraf-success, #4A9930);
-    color: #fff;
-    border: 1px solid var(--unraf-success, #4A9930);
-}
-.spui-btn-confirm-success:hover {
-    background-color: #3b7a25;
-    border-color: #3b7a25;
-    color: #fff;
-}
-.spui-btn-confirm-warning {
-    background-color: var(--unraf-amarillo, #FEAA20);
-    color: #212529;
-    border: 1px solid var(--unraf-amarillo, #FEAA20);
-}
-.spui-btn-confirm-warning:hover {
-    background-color: #d48f10;
-    border-color: #d48f10;
-    color: #212529;
-}
+/* Las variantes .spui-btn-confirm-success / -warning se reemplazaron por el
+   sistema de acciones (más abajo): el botón del modal ahora toma la clase de
+   la acción que lo abrió, así que no hacen falta variantes propias. */
 
 /* ----- Banner de alerta activa ----- */
 .spui-alerta-activa-banner {
@@ -200,6 +182,29 @@
 .unraf-table-responsive {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
+    /* unraf-ui le pone margin-bottom:1rem al contenedor. Acá el div siempre es
+       el último hijo de .unraf-card, así que ese margen no separa la tabla de
+       nada: sólo deja una franja de card vacía debajo del borde inferior de la
+       tabla, que se lee como si la card no terminara donde termina la tabla.
+       El envoltorio sólo aporta el scroll; el espaciado lo maneja la card.
+       Del resto de lo que da la clase (overflow, width) no se toca nada, y la
+       librería queda intacta: esto es sólo el override de SPUI. */
+    margin-bottom: 0;
+}
+
+/* La barra de scroll horizontal se dibuja DENTRO de este div, en su franja
+   inferior, y .unraf-card tiene overflow:hidden sin padding. Sin nada que la
+   separe del borde de la card, el navegador recorta el thumb: se ven el riel y
+   las flechas (que están en los extremos) pero no la barra que se arrastra.
+
+   Ese espacio hace falta únicamente mientras la tabla desborda. En pantalla
+   completa no hay scroll y el padding sería sólo aire de más bajo la tabla;
+   por debajo de 768px la tabla ya es tarjetas y tampoco hay barra. Por eso el
+   padding vive acotado al tramo intermedio, que es donde existe la barra. */
+@media (min-width: 769px) and (max-width: 1399px) {
+    .unraf-table-responsive {
+        padding-bottom: .25rem;
+    }
 }
 
 /* ----- Flash — botón cierre personalizado ----- */
@@ -251,16 +256,152 @@
     opacity: .75;
 }
 
+/* Anatomía de la tarjeta de alerta: mismo esqueleto que una tarjeta de tabla
+   (contenido arriba, acciones abajo separadas por un borde), para que Alertas
+   no desentone del resto de los listados. */
+.spui-alerta-card + .spui-alerta-card {
+    border-top: 1px solid #eceff2;
+}
+.spui-alerta-card-body {
+    padding: .9rem 1rem;
+}
+.spui-alerta-card-footer {
+    padding: .7rem 1rem;
+    background: #fbfcfd;
+    border-top: 1px solid #eceff2;
+}
+
+/* ----- Diagnóstico del reproductor -----
+   Problemas que el propio cliente Pi reporta en su heartbeat. Se muestran en
+   el CMS para que un equipo que está conectado pero no muestra nada en
+   pantalla no pase inadvertido. */
+.spui-badge-problema {
+    background-color: var(--unraf-amarillo, #FEAA20);
+    color: #212529;
+    font-size: .7rem;
+    padding: .2rem .5rem;
+    border-radius: .25rem;
+    display: inline-block;
+    font-weight: 600;
+    margin-top: .25rem;
+    cursor: help;
+}
+.spui-col-diagnostico {
+    max-width: 26rem;
+    min-width: 12rem;
+    white-space: normal;      /* la tabla es text-nowrap; acá se deja envolver */
+}
+.spui-diagnostico-lista {
+    margin: 0;
+    padding-left: 1.1rem;
+    font-size: .8rem;
+    color: #8a5a00;
+    line-height: 1.45;
+}
+.spui-diagnostico-lista li + li { margin-top: .25rem; }
+
+@media (max-width: 768px) {
+    .spui-col-diagnostico { max-width: none; min-width: 0; }
+}
+
+/* Aviso de problemas en el detalle del reproductor y en el dashboard. */
+.spui-aviso-problemas {
+    background: #fff8e6;
+    border: 1px solid #f5d78e;
+    border-left: 4px solid var(--unraf-amarillo, #FEAA20);
+    border-radius: .45rem;
+    padding: .7rem .9rem;
+    font-size: .85rem;
+    color: #6b4700;
+}
+.spui-aviso-problemas ul { margin: .35rem 0 0; padding-left: 1.1rem; }
+.spui-aviso-problemas li + li { margin-top: .25rem; }
+
+/* Columna Mensaje del listado de alertas: se acota para que un mensaje largo
+   no empuje al resto de las columnas. El texto completo está en el title y en
+   el modal Ver. */
+.spui-col-mensaje {
+    max-width: 22rem;
+    min-width: 10rem;
+}
+@media (max-width: 768px) {
+    /* Como tarjeta ya no hay columnas que empujar. */
+    .spui-col-mensaje { max-width: none; min-width: 0; }
+}
+
+/* Filas del listado de alertas: se distingue el estado con el borde izquierdo,
+   igual que hacían las tarjetas viejas, pero ahora sobre la tabla estándar
+   (que en mobile se convierte sola en tarjetas). */
+.spui-tabla-cards tr.spui-alerta-fila-activa > td:first-child {
+    box-shadow: inset 4px 0 0 0 var(--unraf-error, #FF223D);
+}
+.spui-tabla-cards tr.spui-alerta-fila-expirada > td:first-child {
+    box-shadow: inset 4px 0 0 0 #6c757d;
+}
+.spui-tabla-cards tr.spui-alerta-fila-activa {
+    background-color: rgba(255, 34, 61, .05);
+}
+/* La fila expirada se atenúa para que se lea como "ya pasó", pero las acciones
+   que siguen disponibles (Ver, Eliminar) van a color pleno: si se apagaran
+   junto con el resto parecerían deshabilitadas, que es justo lo contrario. */
+.spui-tabla-cards tr.spui-alerta-fila-expirada > td:not(:last-child) { opacity: .75; }
+.spui-tabla-cards tr.spui-alerta-fila-expirada .spui-acciones { opacity: 1; }
+
+@media (max-width: 768px) {
+    /* Como tarjeta, el indicador va en el borde de toda la fila. */
+    .spui-tabla-cards tr.spui-alerta-fila-activa > td:first-child,
+    .spui-tabla-cards tr.spui-alerta-fila-expirada > td:first-child {
+        box-shadow: none;
+    }
+    .spui-tabla-cards tr.spui-alerta-fila-activa {
+        border-left: 4px solid var(--unraf-error, #FF223D);
+    }
+    .spui-tabla-cards tr.spui-alerta-fila-expirada {
+        border-left: 4px solid #6c757d;
+    }
+}
+
+/* Selector de pantallas destinatarias en el alta/edición de alerta.
+   Lista con scroll para que el modal no crezca sin control cuando hay muchas. */
+.spui-alerta-destinos {
+    display: flex;
+    flex-direction: column;
+    gap: .1rem;
+    max-height: 12rem;
+    overflow-y: auto;
+    border: 1px solid #e9ecef;
+    border-radius: .45rem;
+    padding: .4rem;
+    background: #fdfdfe;
+}
+.spui-alerta-destino {
+    display: flex;
+    align-items: center;
+    gap: .55rem;
+    padding: .35rem .5rem;
+    border-radius: .35rem;
+    font-size: .875rem;
+    /* El checkbox y su etiqueta los emite el tema de formularios; acá sólo se
+       los alinea. Se anula el padding que Bootstrap le pone a .form-check
+       porque el gap del flex ya separa ambos elementos. */
+    margin: 0;
+    padding-left: .5rem;
+}
+.spui-alerta-destino:hover { background: #f1f3f5; }
+.spui-alerta-destino input { margin: 0; flex-shrink: 0; float: none; }
+.spui-alerta-destino label { margin: 0; cursor: pointer; }
+
 /* ----- Badges de días de la semana ----- */
 .spui-dia-badge {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
+    display: inline-block;
     width: 1.6rem;
     height: 1.6rem;
+    line-height: 1.6rem;
     border-radius: 50%;
     font-size: .7rem;
     font-weight: 700;
+    text-align: center;
+    vertical-align: middle;
 }
 .spui-dia-activo {
     background-color: var(--unraf-azul, #446687);
@@ -301,6 +442,26 @@
     white-space: nowrap;
 }
 
+/* ----- Modal de ítems de playlist: dos listados en la misma vista ----- */
+
+/* Separador entre "En la playlist" y "Agregar contenido". */
+.spui-items-separador {
+    margin-top: 1.5rem;
+    padding-top: 1.25rem;
+    border-top: 2px solid #e4e7eb;
+}
+
+/* La lista de disponibles puede ser larga: se le da scroll propio para que el
+   modal no crezca sin fin y el listado de arriba quede siempre a la vista. */
+.spui-disponibles-lista {
+    max-height: 18rem;
+    overflow-y: auto;
+}
+
+.spui-filtro-input {
+    max-width: 14rem;
+}
+
 /* ----- Botón volver con estilo consistente ----- */
 .spui-btn-back {
     border: 1px solid var(--unraf-azul, #446687);
@@ -315,17 +476,126 @@
 /* ----- Animación spin para botón Actualizar dashboard ----- */
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* ----- Botón de acción destructiva (no existe en unraf-ui base) ----- */
-.unraf-btn-danger {
+/* ----------------------------------------------------------------------------
+   Sistema de acciones — un color por acción, en todos los ABM
+   ----------------------------------------------------------------------------
+   unraf-ui base sólo define amarillo, turquesa, institucion y light: no existen
+   ni "danger", ni "success", ni "azul". Por eso el color de cada acción se
+   definía acá a mano y terminaba siendo arbitrario (Activar y Eliminar
+   compartían el rojo, y el submit de los formularios también era rojo).
+
+   El estándar:
+     · Las tres acciones comunes a todos los ABM van SÓLIDAS, y son las únicas
+       que usan estos tres colores — así se reconocen de un vistazo:
+           Ver / Crear  azul       Editar  amarillo       Eliminar  rojo
+     · El resto va en OUTLINE, con un color propio que no se repite. El relleno
+       queda reservado a las tres de arriba, que son las que mandan la jerarquía.
+
+   Al hover los outline se rellenan con su color y el ícono se invierte a blanco
+   (ver .spui-action-icon más abajo): por eso los templates NO deben llevar
+   style="filter:invert(1)" inline, que era lo que se hacía antes.
+   -------------------------------------------------------------------------- */
+
+/* ----- Acciones comunes: sólidas ----- */
+.spui-btn-ver,
+.spui-btn-crear {
+    background-color: var(--unraf-azul, #446687);
+    color: #fff;
+    border: 1px solid var(--unraf-azul, #446687);
+}
+.spui-btn-ver:hover,
+.spui-btn-crear:hover {
+    background-color: #35506b;
+    border-color: #35506b;
+    color: #fff;
+}
+
+.spui-btn-editar {
+    background-color: var(--unraf-amarillo, #FEAA20);
+    color: #212529;
+    border: 1px solid var(--unraf-amarillo, #FEAA20);
+}
+.spui-btn-editar:hover {
+    background-color: #d48f10;
+    border-color: #d48f10;
+    color: #212529;
+}
+
+.spui-btn-eliminar {
     background-color: var(--unraf-error, #FF223D);
     color: #fff;
-    border-color: var(--unraf-error, #FF223D);
+    border: 1px solid var(--unraf-error, #FF223D);
 }
-.unraf-btn-danger:hover {
+.spui-btn-eliminar:hover {
     background-color: #c01a2f;
     border-color: #c01a2f;
     color: #fff;
 }
+
+/* ----- Acciones secundarias: outline, un color único cada una ----- */
+.spui-btn-activar,
+.spui-btn-desactivar,
+.spui-btn-publicar,
+.spui-btn-despublicar,
+.spui-btn-archivar,
+.spui-btn-desarchivar,
+.spui-btn-clave,
+.spui-btn-telemetria,
+.spui-btn-energia,
+.spui-btn-items,
+.spui-btn-copiar {
+    background: transparent;
+}
+.spui-btn-activar:hover,
+.spui-btn-desactivar:hover,
+.spui-btn-publicar:hover,
+.spui-btn-despublicar:hover,
+.spui-btn-archivar:hover,
+.spui-btn-desarchivar:hover,
+.spui-btn-clave:hover,
+.spui-btn-telemetria:hover,
+.spui-btn-energia:hover,
+.spui-btn-items:hover,
+.spui-btn-copiar:hover {
+    color: #fff;
+}
+
+.spui-btn-activar      { color: #6D3FBF; border: 1px solid #6D3FBF; }
+.spui-btn-activar:hover      { background-color: #6D3FBF; border-color: #6D3FBF; }
+
+.spui-btn-desactivar   { color: #727376; border: 1px solid #727376; }
+.spui-btn-desactivar:hover   { background-color: #727376; border-color: #727376; }
+
+.spui-btn-publicar     { color: #4A9930; border: 1px solid #4A9930; }
+.spui-btn-publicar:hover     { background-color: #4A9930; border-color: #4A9930; }
+
+.spui-btn-despublicar  { color: #A1662F; border: 1px solid #A1662F; }
+.spui-btn-despublicar:hover  { background-color: #A1662F; border-color: #A1662F; }
+
+.spui-btn-archivar     { color: #6B4E3D; border: 1px solid #6B4E3D; }
+.spui-btn-archivar:hover     { background-color: #6B4E3D; border-color: #6B4E3D; }
+
+.spui-btn-desarchivar  { color: #1CA1A7; border: 1px solid #1CA1A7; }
+.spui-btn-desarchivar:hover  { background-color: #1CA1A7; border-color: #1CA1A7; }
+
+.spui-btn-clave        { color: #3F51B5; border: 1px solid #3F51B5; }
+.spui-btn-clave:hover        { background-color: #3F51B5; border-color: #3F51B5; }
+
+.spui-btn-telemetria   { color: #0E7490; border: 1px solid #0E7490; }
+.spui-btn-telemetria:hover   { background-color: #0E7490; border-color: #0E7490; }
+
+.spui-btn-energia      { color: #D9601A; border: 1px solid #D9601A; }
+.spui-btn-energia:hover      { background-color: #D9601A; border-color: #D9601A; }
+
+.spui-btn-items        { color: #8E3A64; border: 1px solid #8E3A64; }
+.spui-btn-items:hover        { background-color: #8E3A64; border-color: #8E3A64; }
+
+.spui-btn-copiar       { color: #4A5A6A; border: 1px solid #4A5A6A; }
+.spui-btn-copiar:hover       { background-color: #4A5A6A; border-color: #4A5A6A; }
+
+/* .unraf-btn-danger y .unraf-btn-success existían acá porque unraf-ui no las
+   define. Ya no quedan usos en los templates: las reemplazó el sistema de
+   acciones de arriba. */
 
 /* ----- Iconos en botones de acción de tabla ----- */
 .spui-action-icon {
@@ -334,6 +604,33 @@
     flex-shrink: 0;
     vertical-align: middle;
     display: inline-block;
+}
+
+/* Los SVG del set vienen en negro. Sobre un botón de fondo oscuro hay que
+   invertirlos a blanco; sobre uno claro (o un outline en reposo) van tal cual.
+   Antes esto se resolvía con style="filter:invert(1)" repetido en cada
+   template, que dejaba de ser correcto apenas el botón cambiaba de color. */
+.spui-btn-ver .spui-action-icon,
+.spui-btn-crear .spui-action-icon,
+.spui-btn-eliminar .spui-action-icon {
+    filter: invert(1);
+}
+/* Editar es amarillo con texto oscuro: el ícono acompaña en oscuro. */
+
+/* Los outline arrancan con el ícono en su color y lo pasan a blanco al
+   rellenarse. El filtro que sigue lleva un SVG negro a blanco puro. */
+.spui-btn-activar:hover .spui-action-icon,
+.spui-btn-desactivar:hover .spui-action-icon,
+.spui-btn-publicar:hover .spui-action-icon,
+.spui-btn-despublicar:hover .spui-action-icon,
+.spui-btn-archivar:hover .spui-action-icon,
+.spui-btn-desarchivar:hover .spui-action-icon,
+.spui-btn-clave:hover .spui-action-icon,
+.spui-btn-telemetria:hover .spui-action-icon,
+.spui-btn-energia:hover .spui-action-icon,
+.spui-btn-items:hover .spui-action-icon,
+.spui-btn-copiar:hover .spui-action-icon {
+    filter: invert(1) brightness(2);
 }
 /* unraf-btn-icon solo define font-size, no dimensiona <img>; corregimos acá */
 .unraf-btn-icon img {
@@ -344,15 +641,8 @@
 }
 
 /* ----- Ajuste de padding en mobile para el main content ----- */
-@media (max-width: 575.98px) {
-    .unraf-main-content main {
-        padding: 1rem !important;
-    }
-    .spui-alerta-activa-banner {
-        padding: .5rem 1rem;
-        font-size: .9rem;
-    }
-}
+/* El padding del main y el banner de alerta se ajustan en el bloque unificado
+   de modo móvil (768px), más abajo. */
 
 /* ----- Tabla de programación — toggle activo/inactivo ----- */
 .spui-toggle-activo {
@@ -424,6 +714,48 @@
 }
 .spui-abm-modal.modal-lg { max-width: 820px; }
 .spui-abm-modal.modal-sm { max-width: 460px; }
+
+/* ---- Segundo nivel de modal ----
+   Se apoya sobre el nivel 1 (z-index 10000) sin cerrarlo. El velo va más suave
+   que el del nivel 1: como se suman los dos, con los mismos valores el modal de
+   abajo quedaba casi negro y se perdía la noción de que sigue ahí. */
+.spui-abm-overlay-2 {
+    z-index: 10010;
+    background: rgba(15, 23, 42, .28);
+    backdrop-filter: blur(2px);
+}
+/* El nivel 1 se achica apenas cuando hay una capa encima, para que se lea cuál
+   de las dos está activa. */
+.spui-abm-overlay.is-dimmed .spui-abm-modal {
+    transform: translateY(0) scale(.98);
+}
+
+/* Confirmación dentro del nivel 2. No puede abrir un modal más (sería un tercer
+   nivel), así que la pregunta se resuelve en una franja dentro de la misma capa. */
+.spui-confirm-inline {
+    background: #fff8e6;
+    border: 1px solid #f5d78e;
+    border-radius: .5rem;
+    padding: .75rem .9rem;
+    margin-bottom: 1rem;
+    font-size: .9rem;
+}
+
+/* Previews de lo que ya está cargado, en el modal de edición de contenido. */
+.spui-media-preview {
+    max-width: 8rem;
+    max-height: 5rem;
+    object-fit: cover;
+    border: 1px solid #e4e7eb;
+    border-radius: .4rem;
+    background: #f8fafc;
+}
+.spui-qr-preview {
+    border: 1px solid #e4e7eb;
+    border-radius: .4rem;
+    background: #fff;
+    padding: .25rem;
+}
 
 .spui-abm-modal-header {
     display: flex;
@@ -516,7 +848,8 @@
 }
 
 /* Table refresh fade */
-#spui-table-body {
+#spui-table-body,
+[data-spui-refresh] {
     transition: opacity .18s ease;
 }
 #spui-table-body.is-refreshing {
@@ -524,20 +857,65 @@
     pointer-events: none;
 }
 
-/* Mobile: slide-up sheet */
-@media (max-width: 575.98px) {
+/* El refresco automático no atenúa nada: reemplaza sólo los valores que
+   cambiaron. Este estado se aplica únicamente cuando el refresco lo pidió el
+   usuario con el botón, donde sí conviene el feedback de que algo pasa. */
+[data-spui-refresh].is-refreshing {
+    opacity: .55;
+    pointer-events: none;
+}
+
+/* Destello sobre el valor recién actualizado.
+   Sin ninguna señal, el refresco es tan silencioso que uno duda de si está
+   funcionando, y un reproductor que se cae pasa desapercibido. Se resalta el
+   fondo sin mover nada de lugar: cambiar padding o borde desplazaría la fila. */
+@keyframes spui-destello-anim {
+    0%   { background-color: color-mix(in srgb, var(--unraf-amarillo, #FEAA20) 45%, transparent); }
+    100% { background-color: transparent; }
+}
+.spui-destello {
+    animation: spui-destello-anim .9s ease-out;
+    border-radius: 3px;
+}
+@media (prefers-reduced-motion: reduce) {
+    .spui-destello { animation: none; }
+}
+
+/* Heartbeat vencido: el umbral (5 min) lo aplica tiempo-relativo.js, el mismo
+   que usa spui:mantenimiento para dar por caído un reproductor. */
+[data-spui-desde].is-stale {
+    color: var(--unraf-error, #FF223D);
+    font-weight: 600;
+}
+
+/* Acción deshabilitada porque su reproductor está desconectado.
+   Se atenúa pero NO se oculta: el operador tiene que ver que la acción existe
+   y por qué no está disponible, no que desaparezca sin explicación. El motivo
+   concreto va en el title, que el navegador muestra al pasar el cursor. */
+.spui-accion-bloqueada,
+.spui-accion-bloqueada:hover {
+    opacity: .45;
+    cursor: not-allowed;
+    /* pointer-events se deja activo a propósito: si se anulan, el navegador no
+       muestra el tooltip y el usuario se queda sin saber por qué no funciona.
+       El clic lo frena el JS. */
+    filter: grayscale(1);
+    box-shadow: none;
+}
+
+/* Mobile: mismo modal centrado que en escritorio, sólo más angosto.
+   Antes subía desde abajo como bottom-sheet; se unificó para que la ventana
+   se vea igual en cualquier tamaño de pantalla. El overlay ya centra con
+   align-items/justify-content, así que acá sólo se ajustan las medidas. */
+@media (max-width: 768px) {
+    /* El modal no necesita que se le pise el max-width: como tiene width:100%,
+       su ancho usado ya es min(ancho disponible, max-width). Sólo se achica el
+       margen contra el borde y se ajusta el alto máximo. */
     .spui-abm-overlay {
-        align-items: flex-end;
-        padding: 0;
+        padding: .75rem;
     }
     .spui-abm-modal {
-        max-width: 100%;
-        max-height: 90dvh;
-        border-radius: .875rem .875rem 0 0;
-        transform: translateY(30px);
-    }
-    .spui-abm-overlay.is-open .spui-abm-modal {
-        transform: translateY(0);
+        max-height: calc(100dvh - 1.5rem);
     }
 }
 
@@ -553,4 +931,577 @@
     margin: 0 auto;
     padding: 0 1.5rem;
     text-align: center;
+}
+
+/* Tablas SPUI: centrado horizontal y vertical uniforme */
+.unraf-table th,
+.unraf-table td {
+    text-align: center;
+    vertical-align: middle;
+}
+
+/* ----------------------------------------------------------------------------
+   Zona de acciones de un listado — una sola receta de botón
+   ----------------------------------------------------------------------------
+   Todos los botones de acción comparten geometría, sin importar si el markup es
+   <button> o <a>, ni de qué color sean. Antes convivían dos geometrías: los de
+   texto (.unraf-btn-sm: padding .25rem .5rem, ancho automático) y los de sólo
+   ícono (.unraf-btn-icon: cuadrado fijo de 32×32 con padding 0), que puestos
+   uno al lado del otro nunca se veían parejos.
+
+   .unraf-btn-icon sigue existiendo para otros usos (el botón copiar del modal
+   de API key, por ejemplo); lo que no se usa más es DENTRO de .spui-acciones.
+   -------------------------------------------------------------------------- */
+.spui-acciones {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: stretch;
+    gap: .4rem;
+}
+.spui-acciones .unraf-btn,
+.spui-acciones a.unraf-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: .35rem;
+    white-space: nowrap;
+    /* Altura pareja: la fija el contenido más alto, no cada variante */
+    min-height: 2rem;
+    padding: .3rem .7rem;
+    font-size: .85rem;
+    line-height: 1.35;
+    box-sizing: border-box;
+}
+/* ============================================================================
+   MODO MÓVIL — un solo umbral para toda la app
+   ----------------------------------------------------------------------------
+   768px es el mismo ancho en el que el menú lateral pasa a hamburguesa, así que
+   "modo móvil" significa una sola cosa: menú colapsado + tablas como tarjetas.
+   Antes las tarjetas aparecían recién en 576px y entre medio quedaba una franja
+   con el menú ya colapsado pero la tabla todavía apretada.
+
+   El disparador es la clase .spui-tabla-cards en el <table>, NO la presencia de
+   celdas con data-label: una tabla vacía (sólo la fila de "no hay registros")
+   tiene que comportarse igual que una llena.
+   ========================================================================= */
+@media (max-width: 768px) {
+
+    /* Ancho de la columna de etiquetas. Un solo valor para que la sangría del
+       valor y el ancho del rótulo no se puedan desincronizar. */
+    .spui-tabla-cards {
+        --spui-label-w: 6.5rem;
+    }
+
+    /* En escritorio la .unraf-card es el panel que enmarca la tabla. En mobile
+       la tabla se disuelve en tarjetas y cada tr pasa a ser su propio panel
+       (fondo, borde y sombra), así que el panel de afuera sobra: se veía como
+       una caja blanca conteniendo tarjetas del mismo blanco, con sus bordes
+       marcando un encierro que no significa nada.
+
+       Acá la card queda como contenedor sin pintura y las tarjetas se apoyan
+       directo sobre el fondo de la página. Sólo aplica a las cards que
+       envuelven una tabla-tarjeta: las del resto de la interfaz (detalle,
+       formularios) siguen siendo paneles. */
+    .unraf-card:has(.spui-tabla-cards) {
+        background: transparent;
+        border: none;
+        border-radius: 0;
+        box-shadow: none;
+        overflow: visible;
+    }
+
+    /* ── Tabla → tarjetas ──────────────────────────────────────────────── */
+    .spui-tabla-cards,
+    .spui-tabla-cards tbody,
+    .spui-tabla-cards tr,
+    .spui-tabla-cards td {
+        display: block;
+        width: 100%;
+    }
+
+    /* El encabezado deja de tener sentido: cada valor lleva su etiqueta. */
+    .spui-tabla-cards thead {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0 0 0 0);
+        white-space: nowrap;
+    }
+
+    .spui-tabla-cards tr {
+        border: 1px solid #e4e7eb;
+        border-radius: .6rem;
+        margin-bottom: .85rem;
+        padding: .3rem 0;
+        background: #fff;
+        box-shadow: 0 1px 2px rgba(15, 23, 42, .04);
+        overflow: hidden;
+    }
+    /* El rayado alterno pierde sentido con tarjetas separadas. */
+    .spui-tabla-cards.unraf-table-striped tbody tr:nth-child(odd),
+    .spui-tabla-cards.unraf-table-striped tbody tr:nth-child(even) {
+        background: #fff;
+    }
+
+    /* Cada celda: etiqueta a la izquierda, valor a la derecha, en dos columnas
+       que se mantienen alineadas.
+
+       La etiqueta se saca del flujo (position:absolute) y el valor ocupa un
+       bloque con sangría izquierda fija. Así CUALQUIER línea del valor —la
+       primera y las que bajan— arranca exactamente en la misma x, y la columna
+       no se rompe. Con flex-wrap el texto que bajaba volvía al borde izquierdo
+       y desalineaba todo. Como el valor es un bloque normal, el markup interno
+       (<br>, <small>, <code>) se comporta como siempre. */
+    .spui-tabla-cards td {
+        display: block;
+        position: relative;
+        text-align: left !important;   /* pisa el text-align:center global */
+        padding: .5rem .9rem .5rem calc(var(--spui-label-w) + 1.35rem) !important;
+        border: none;
+        min-height: 2rem;
+        /* Vence al .text-nowrap de Bootstrap, que varias tablas usan a nivel
+           <table> y que impedía por completo que el texto se acomodara. */
+        white-space: normal !important;
+        overflow-wrap: anywhere;
+    }
+    .spui-tabla-cards td + td {
+        border-top: 1px solid #f2f4f6;
+    }
+
+    .spui-tabla-cards td::before {
+        content: attr(data-label);
+        position: absolute;
+        left: .9rem;
+        top: .5rem;
+        width: var(--spui-label-w);
+        font-size: .72rem;
+        text-transform: uppercase;
+        letter-spacing: .04em;
+        color: #6c757d;
+        font-weight: 600;
+        /* Misma altura de línea que el valor, para que arranquen parejos */
+        line-height: 1.5rem;
+    }
+    /* Una celda sin data-label no debe dejar el hueco de la etiqueta. */
+    .spui-tabla-cards td:not([data-label]) {
+        padding-left: .9rem !important;
+    }
+    .spui-tabla-cards td:not([data-label])::before {
+        display: none;
+    }
+
+    /* Los hijos no deben desbordar, y las palabras largas (URLs, MAC) se parten. */
+    .spui-tabla-cards td > * {
+        max-width: 100%;
+        white-space: normal !important;
+        overflow-wrap: anywhere;
+    }
+
+    /* Dentro de una tarjeta no se recorta con puntos suspensivos: hay ancho de
+       sobra hacia abajo, así que el texto se muestra completo. */
+    .spui-tabla-cards .text-truncate {
+        overflow: visible !important;
+        text-overflow: clip !important;
+        white-space: normal !important;
+        max-width: 100% !important;
+    }
+
+    /* ── Zona de acciones dentro de la tarjeta ─────────────────────────── */
+    .spui-tabla-cards td[data-label="Acciones"] {
+        display: block;
+        padding: .7rem .9rem !important;
+        background: #fbfcfd;
+        border-top: 1px solid #eceff2;
+    }
+    .spui-tabla-cards td[data-label="Acciones"]::before {
+        display: none;
+    }
+
+    /* ── Estado vacío ("no hay registros") ─────────────────────────────── */
+    /* Es un <td colspan> SIN data-label: no es una fila de datos, así que se
+       muestra como una tarjeta centrada. Se excluyen los colspan que sí tienen
+       etiqueta (ej. "Sin horario" en Energía), que son celdas de datos que
+       ocupan varias columnas y deben conservar su rótulo. */
+    .spui-tabla-cards td[colspan]:not([data-label]) {
+        display: block;
+        text-align: center !important;
+        padding: 2rem 1rem !important;
+        color: #6c757d;
+    }
+    .spui-tabla-cards td[colspan]:not([data-label])::before {
+        display: none;
+    }
+    .spui-tabla-cards tr:has(td[colspan]:not([data-label])) {
+        border-style: dashed;
+        background: #fbfcfd;
+    }
+
+    /* Ya no hay nada que desbordar: se saca el scroll lateral. */
+    .unraf-table-responsive:has(.spui-tabla-cards) {
+        overflow-x: visible;
+    }
+    .spui-tabla-cards {
+        white-space: normal;
+    }
+
+    /* ── Acciones: fila centrada que se acomoda sola ───────────────────── */
+    .spui-acciones {
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: center;
+        align-items: stretch;
+        gap: .45rem;
+    }
+    /* Objetivo táctil cómodo para el pulgar */
+    .spui-acciones .unraf-btn,
+    .spui-acciones a.unraf-btn {
+        min-height: 2.25rem;
+        padding: .4rem .8rem;
+    }
+
+    /* Padding lateral del contenido principal */
+    .unraf-main-content main {
+        padding: 1rem !important;
+    }
+    .spui-alerta-activa-banner {
+        padding: .5rem 1rem;
+        font-size: .9rem;
+    }
+
+    /* Filas de la vista de detalle: etiqueta arriba, valor abajo.
+       Apiladas ya no aplica el space-between del modo escritorio: ambas van
+       alineadas a la izquierda. */
+    .spui-view-row { flex-direction: column; gap: .15rem; padding: .45rem 0; justify-content: flex-start; }
+    .spui-view-row-label { min-width: 0; font-size: .72rem; text-transform: uppercase; letter-spacing: .04em; }
+    .spui-view-row-value { text-align: left; }
+}
+
+/* Pantallas muy angostas: la etiqueta pasa arriba del valor para no comerse
+   el ancho útil (7.5rem de 320px es demasiado). */
+/* Pantallas muy angostas: reservar 6.5rem para la etiqueta deja demasiado poco
+   ancho útil, así que la etiqueta pasa a ser un rótulo arriba del valor y éste
+   usa todo el ancho. Sigue alineado: la etiqueta y todas las líneas del valor
+   arrancan en la misma x. */
+@media (max-width: 400px) {
+    .spui-tabla-cards td[data-label] {
+        padding-left: .9rem !important;
+        padding-top: .45rem !important;
+    }
+    .spui-tabla-cards td[data-label]::before {
+        position: static;
+        display: block;
+        width: auto;
+        line-height: 1.35;
+        margin-bottom: .1rem;
+    }
+}
+
+/* ---- Switch toggle ON/OFF en formularios ---- */
+.form-switch .form-check-input.spui-switch-input {
+    cursor: pointer;
+    width: 2.5rem;
+    height: 1.35rem;
+}
+.form-switch .form-check-input.spui-switch-input:checked {
+    background-color: var(--unraf-success, #4A9930);
+    border-color: var(--unraf-success, #4A9930);
+}
+/* Switch secundario — azul institucional (para diferenciar del verde de días/estado) */
+.form-switch .form-check-input.spui-switch-secondary {
+    cursor: pointer;
+    width: 2.5rem;
+    height: 1.35rem;
+}
+.form-switch .form-check-input.spui-switch-secondary:checked {
+    background-color: var(--unraf-azul, #446687);
+    border-color: var(--unraf-azul, #446687);
+}
+.spui-switch-status {
+    font-size: .85rem;
+    font-weight: 600;
+    min-width: 2rem;
+}
+.spui-switch-status.on       { color: var(--unraf-success, #4A9930); }
+.spui-switch-status.off      { color: #6c757d; }
+.spui-switch-status.on-azul  { color: var(--unraf-azul, #446687); }
+.spui-switch-status.off-azul { color: #6c757d; }
+
+/* ---- Slider tipo barra de volumen (nivel de brillo) ----
+   El track y el thumb de <input type="range"> sólo se pueden pintar con los
+   pseudo-elementos de cada motor, y WebKit y Gecko no comparten sintaxis: hay
+   que declarar las dos variantes por separado (no se pueden agrupar en una
+   sola regla — si un motor no entiende un selector, descarta el bloque entero). */
+.spui-range {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 1.25rem;         /* alto del área clickeable, no de la barra */
+    background: transparent; /* el color lo pone el track */
+    cursor: pointer;
+    padding: 0;
+}
+.spui-range:focus { outline: none; }
+.spui-range:focus-visible::-webkit-slider-thumb {
+    box-shadow: 0 0 0 3px rgba(68, 102, 135, .25);
+}
+.spui-range:focus-visible::-moz-range-thumb {
+    box-shadow: 0 0 0 3px rgba(68, 102, 135, .25);
+}
+
+/* WebKit / Blink */
+.spui-range::-webkit-slider-runnable-track {
+    height: .375rem;
+    background: #e4e7eb;
+    border-radius: .25rem;
+}
+.spui-range::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 1.05rem;
+    height: 1.05rem;
+    border-radius: 50%;
+    background: var(--unraf-azul, #446687);
+    border: 2px solid #fff;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, .25);
+    /* Centrado sobre el track: (alto track - alto thumb) / 2 */
+    margin-top: -.34rem;
+    transition: background-color .15s ease;
+}
+.spui-range:hover::-webkit-slider-thumb { background: #35506b; }
+
+/* Firefox */
+.spui-range::-moz-range-track {
+    height: .375rem;
+    background: #e4e7eb;
+    border-radius: .25rem;
+}
+.spui-range::-moz-range-thumb {
+    width: 1.05rem;
+    height: 1.05rem;
+    border-radius: 50%;
+    background: var(--unraf-azul, #446687);
+    border: 2px solid #fff;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, .25);
+    transition: background-color .15s ease;
+}
+.spui-range:hover::-moz-range-thumb { background: #35506b; }
+
+/* El valor vivo al costado del slider: ancho fijo para que la barra no se
+   mueva de lugar al pasar de "5%" a "100%". */
+.spui-input-with-addon .spui-input-addon {
+    min-width: 2.75rem;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+/* ---- Tarjetas de día de la semana como switch ---- */
+.spui-dias-switches {
+    display: flex;
+    gap: .6rem;
+    flex-wrap: wrap;
+}
+.spui-dia-switch {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: .3rem;
+    padding: .4rem .5rem;
+    border-radius: .5rem;
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    min-width: 3rem;
+    transition: background .15s, border-color .15s;
+    cursor: pointer;
+}
+.spui-dia-switch:has(input:checked) {
+    background: rgba(74, 153, 48, .1);
+    border-color: var(--unraf-success, #4A9930);
+}
+.spui-dia-label {
+    font-size: .7rem;
+    font-weight: 700;
+    color: #495057;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    margin: 0;
+    user-select: none;
+}
+.spui-dia-switch .form-switch {
+    padding-left: 0;
+}
+.spui-dia-switch .form-check-input {
+    float: none;
+    margin-left: 0;
+    width: 2.25rem;
+    height: 1.2rem;
+    cursor: pointer;
+}
+.spui-dia-switch .form-check-input:checked {
+    background-color: var(--unraf-success, #4A9930);
+    border-color: var(--unraf-success, #4A9930);
+}
+
+/* ---- Campo de hora/fecha con label e input centrados ---- */
+.spui-hora-field {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+.spui-hora-field label,
+.spui-hora-field .unraf-form-label {
+    text-align: center;
+    width: 100%;
+    margin-bottom: .35rem;
+}
+.spui-hora-field .unraf-form-control {
+    text-align: center;
+}
+
+/* ---- Dialog de días ocultos (cronograma builder) ---- */
+#spuiDiasDialog {
+    border: none;
+    border-radius: .75rem;
+    padding: 0;
+    box-shadow: 0 .5rem 2rem rgba(0, 0, 0, .2);
+    min-width: 13rem;
+    max-width: 90vw;
+}
+#spuiDiasDialog::backdrop { background: rgba(0, 0, 0, .35); }
+.spui-dias-dialog-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: .6rem 1rem;
+    border-bottom: 1px solid #dee2e6;
+    font-size: .9rem;
+}
+.spui-dias-dialog-header button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 1rem;
+    line-height: 1;
+    padding: .1rem .35rem;
+    color: #6c757d;
+    border-radius: .3rem;
+}
+.spui-dias-dialog-header button:hover { background: #f8f9fa; }
+.spui-dias-dialog-body {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .4rem;
+    padding: .75rem 1rem;
+}
+
+/* ---- Vista de detalle (modales "Ver") ---- */
+.spui-view-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    padding-bottom: 1rem;
+    margin-bottom: 1.25rem;
+    border-bottom: 2px solid #e9ecef;
+}
+.spui-view-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--unraf-azul, #446687);
+    margin: 0 0 .2rem;
+    line-height: 1.3;
+}
+.spui-view-subtitle { font-size: .78rem; color: #6c757d; margin: 0; }
+.spui-view-section {
+    margin-top: 1.35rem;
+}
+.spui-view-section:first-of-type { margin-top: 0; }
+.spui-view-section-title {
+    font-size: .68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: #adb5bd;
+    margin-bottom: .5rem;
+}
+/* Fila etiqueta / valor en línea.
+   La etiqueta queda a la izquierda y el valor alineado a la derecha
+   (space-between). Antes el valor arrancaba pegado a la etiqueta con flex:1,
+   así que cada fila lo dejaba en una posición distinta según el largo del
+   texto y la columna se veía despareja. */
+.spui-view-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    align-items: baseline;
+    padding: .5rem 0;
+    border-bottom: 1px dashed #edf0f2;
+}
+.spui-view-row:last-child { border-bottom: none; }
+.spui-view-row-label {
+    min-width: 7rem;
+    flex-shrink: 0;
+    color: #6c757d;
+    font-size: .82rem;
+}
+.spui-view-row-value {
+    font-size: .9rem;
+    color: #212529;
+    line-height: 1.45;
+    min-width: 0;
+    text-align: right;
+    word-break: break-word;
+}
+/* Las filas de la vista de detalle se apilan en el bloque unificado de modo
+   móvil (768px), más arriba. */
+.spui-view-list { display: flex; flex-direction: column; gap: .35rem; }
+.spui-view-list-item {
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+    padding: .5rem .75rem;
+    background: #f8f9fa;
+    border-radius: .45rem;
+    border: 1px solid #f0f0f0;
+    font-size: .875rem;
+}
+.spui-view-list-bullet {
+    width: .45rem;
+    height: .45rem;
+    border-radius: 50%;
+    background: #ced4da;
+    flex-shrink: 0;
+}
+.spui-view-list-meta {
+    color: #6c757d;
+    font-size: .8rem;
+    margin-left: auto;
+    white-space: nowrap;
+}
+.spui-view-empty { color: #adb5bd; font-size: .875rem; font-style: italic; }
+
+/* ---- Encabezados de sección: botón centrado cuando baja a la fila de abajo ---- */
+/* justify-content:center centra el botón cuando está solo en su fila;
+   margin-right:auto en el primer hijo absorbe el espacio libre y lo empuja a la derecha
+   cuando comparte fila con el título (equivale a space-between sin media query). */
+.spui-header-actions {
+    justify-content: center !important;
+}
+.spui-header-actions > *:first-child {
+    margin-right: auto;
+}
+
+/* ---- Input con texto addon inline (ej: "segundos") ---- */
+.spui-input-with-addon {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+}
+.spui-input-addon {
+    color: #6c757d;
+    font-size: .875rem;
+    white-space: nowrap;
+    flex-shrink: 0;
 }

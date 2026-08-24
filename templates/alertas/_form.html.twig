@@ -1,5 +1,11 @@
 {{ form_start(form, {'attr': {'data-spui-ajax': '1', 'novalidate': 'novalidate'}}) }}
 
+{# Errores del form raíz (típicamente el CSRF vencido). Sin esto el modal se
+   recargaba sin ningún mensaje y el guardado parecía no responder. #}
+{% for e in form.vars.errors %}
+    <div class="alert alert-danger mb-3">{{ e.message }}</div>
+{% endfor %}
+
 <div class="mb-3">
     {{ form_label(form.titulo) }}
     {{ form_widget(form.titulo) }}
@@ -16,26 +22,61 @@
     {% endfor %}
 </div>
 
-<div class="mb-3">
-    {{ form_label(form.prioridad) }}
-    {{ form_widget(form.prioridad) }}
-    <small class="text-muted d-block mt-1">Mayor número = mayor prioridad en pantallas.</small>
-</div>
-
-<div class="mb-3">
-    {{ form_label(form.expiraEn) }}
-    {{ form_widget(form.expiraEn) }}
+<div class="row g-3 mb-3 justify-content-center">
+    <div class="col-auto spui-hora-field">
+        {{ form_label(form.prioridad) }}
+        {{ form_widget(form.prioridad) }}
+        {% for e in form.prioridad.vars.errors %}
+            <p class="text-danger small mt-1">{{ e.message }}</p>
+        {% endfor %}
+        <small class="text-muted mt-1 d-block text-center">Mayor número = mayor prioridad.</small>
+    </div>
+    <div class="col-auto spui-hora-field">
+        {{ form_label(form.expiraEn) }}
+        {{ form_widget(form.expiraEn) }}
+        {% for e in form.expiraEn.vars.errors %}
+            <p class="text-danger small mt-1">{{ e.message }}</p>
+        {% endfor %}
+    </div>
 </div>
 
 <div class="mb-4">
     {{ form_label(form.contenido) }}
     {{ form_widget(form.contenido) }}
+    {% for e in form.contenido.vars.errors %}
+        <p class="text-danger small mt-1">{{ e.message }}</p>
+    {% endfor %}
     <small class="text-muted d-block mt-1">Si se selecciona, los reproductores mostrarán esta imagen/video junto al mensaje.</small>
+</div>
+
+<div class="mb-4">
+    {{ form_label(form.pantallas) }}
+    <small class="text-muted d-block mb-2">
+        Si no elegís ninguna, la alerta llega a <strong>todas las pantallas</strong>.
+    </small>
+    {% if form.pantallas|length > 0 %}
+        {# form_row() ya emite el checkbox y su etiqueta (tema bootstrap_5).
+           Antes acá se agregaba un <span> con pantalla.vars.label además del
+           widget, y el nombre de cada pantalla salía escrito dos veces. #}
+        <div class="spui-alerta-destinos">
+            {% for pantalla in form.pantallas %}
+                <div class="spui-alerta-destino form-check">
+                    {{ form_widget(pantalla) }}
+                    {{ form_label(pantalla) }}
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <p class="spui-view-empty mb-0">No hay pantallas cargadas todavía.</p>
+    {% endif %}
+    {% for e in form.pantallas.vars.errors %}
+        <p class="text-danger small mt-1">{{ e.message }}</p>
+    {% endfor %}
 </div>
 
 <div class="d-flex justify-content-end gap-2 pt-3 border-top">
     <button type="button" class="unraf-btn spui-btn-back" data-spui-close>Cancelar</button>
-    <button type="submit" class="unraf-btn unraf-btn-danger">Crear alerta</button>
+    <button type="submit" class="unraf-btn {{ modo|default('alta') == 'edicion' ? 'spui-btn-editar' : 'spui-btn-crear' }}">Guardar</button>
 </div>
 
 {{ form_end(form) }}

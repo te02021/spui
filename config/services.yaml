@@ -1,3 +1,46 @@
+parameters:
+    # Orígenes CORS permitidos para /api/spui, separados por coma.
+    # Default de desarrollo: '*' (cualquier origen). En producción definir
+    # SPUI_CORS_ORIGINS en .env.local con los dominios reales, por ejemplo:
+    #   SPUI_CORS_ORIGINS=https://intranet.unraf.edu.ar
+    spui_cors_default: '*'
+
+    # Temperatura del SoC a partir de la cual se avisa (°C).
+    # 80 es el valor documentado en la tesis y el punto donde la Raspberry Pi 4
+    # empieza a hacer throttling; en reposo bajo carga ronda los 50-60.
+    # Se puede bajar por entorno con SPUI_TEMP_ALERTA_CELSIUS si se quiere avisar antes.
+    spui_temp_alerta_default: 80.0
+
+    # Zona horaria de la aplicación. PHP corre en UTC por defecto y la
+    # universidad está en UTC-3: sin esto las alertas expiran 3 horas antes de
+    # lo que carga el operador. Ver SPUI\EventSubscriber\TimezoneSubscriber.
+    # Se puede pisar por entorno con SPUI_TIMEZONE.
+    spui_timezone_default: 'America/Argentina/Buenos_Aires'
+
+    # Segundos sin heartbeat tras los cuales un reproductor se considera caído.
+    #
+    # 150 s = 2,5 veces el intervalo de reporte (60 s). Tolera perder un
+    # heartbeat aislado —una reconexión de wifi, un pico de carga— sin declarar
+    # caído a un equipo que está bien, pero detecta una desconexión real en
+    # menos de 3 minutos.
+    #
+    # Antes eran 5 minutos, heredados de cuando el heartbeat era menos
+    # frecuente: dejaban 4 minutos en los que el panel mostraba "conectado" un
+    # equipo ya apagado.
+    #
+    # Este es el ÚNICO lugar donde vive el umbral. Estaba repetido en el
+    # comando de mantenimiento, en el dashboard y en dos templates, y bajarlo en
+    # uno solo dejaba el panel contradiciéndose a sí mismo.
+    # Se puede pisar por entorno con SPUI_UMBRAL_CONEXION_SEG.
+    spui_umbral_conexion_default: 150
+
+    # Dónde se guardan los archivos de contenido: 'local' (public/uploads/spui)
+    # o 's3' (bucket de la intranet, mismo servicio que usa viáticos).
+    # Default 'local' para no cambiarle el comportamiento a un entorno que ya
+    # está andando; en producción conviene SPUI_STORAGE_DRIVER=s3.
+    # Ver SPUI\Service\MediaStorageService.
+    spui_storage_driver_default: 'local'
+
 services:
     _defaults:
         autowire: true

@@ -1,24 +1,43 @@
 {{ form_start(form, {'attr': {'data-spui-ajax': '1', 'novalidate': 'novalidate', 'enctype': 'multipart/form-data'}}) }}
 
-<div class="mb-3">
-    {{ form_label(form.titulo) }}
-    {{ form_widget(form.titulo) }}
-    {% for e in form.titulo.vars.errors %}
-        <p class="text-danger small mt-1">{{ e.message }}</p>
-    {% endfor %}
-</div>
+{# Archivo/texto/QR no son campos del FormType, así que sus errores llegan por
+   acá y no por form.vars.errors. #}
+{% if error|default(null) %}
+    <div class="alert alert-danger mb-3">{{ error }}</div>
+{% endif %}
 
-<div class="mb-3">
-    {{ form_label(form.tipo) }}
-    {{ form_widget(form.tipo) }}
-    {% for e in form.tipo.vars.errors %}
-        <p class="text-danger small mt-1">{{ e.message }}</p>
-    {% endfor %}
+{# Errores del form raíz (típicamente el CSRF vencido). Sin esto el modal se
+   recargaba en blanco de errores y el guardado parecía no responder. #}
+{% for e in form.vars.errors %}
+    <div class="alert alert-danger mb-3">{{ e.message }}</div>
+{% endfor %}
+
+<div class="row g-2 mb-3">
+    <div class="col">
+        {{ form_label(form.titulo) }}
+        {{ form_widget(form.titulo) }}
+        {% for e in form.titulo.vars.errors %}
+            <p class="text-danger small mt-1">{{ e.message }}</p>
+        {% endfor %}
+    </div>
+    <div class="col-12 col-sm-auto" style="min-width:160px">
+        {{ form_label(form.tipo) }}
+        {{ form_widget(form.tipo) }}
+        {% for e in form.tipo.vars.errors %}
+            <p class="text-danger small mt-1">{{ e.message }}</p>
+        {% endfor %}
+    </div>
 </div>
 
 <div class="mb-3">
     {{ form_label(form.duracionSegundos) }}
-    {{ form_widget(form.duracionSegundos) }}
+    <div class="spui-input-with-addon">
+        {{ form_widget(form.duracionSegundos) }}
+        {% for e in form.duracionSegundos.vars.errors %}
+            <p class="text-danger small mt-1">{{ e.message }}</p>
+        {% endfor %}
+        <span class="spui-input-addon">seg <small class="text-muted">(vacío = permanente)</small></span>
+    </div>
     <small class="text-muted d-block mt-1">Puede sobreescribirse por ítem en la playlist.</small>
 </div>
 
@@ -30,7 +49,7 @@
 
 <div id="campoTexto" class="mb-3" style="display:none">
     <label class="unraf-form-label" id="labelTexto">Texto <span class="text-danger">*</span></label>
-    <textarea name="contenido_texto" id="textareaTexto" class="unraf-form-control" rows="4" placeholder="Ingresá el texto a mostrar…"></textarea>
+    <textarea name="contenido_texto" id="textareaTexto" class="unraf-form-control" rows="4" placeholder="Ingresá el texto a mostrar…">{{ contenido_texto|default('') }}</textarea>
 </div>
 
 <div id="campoCronograma" class="mb-3" style="display:none">
@@ -40,45 +59,30 @@
     </div>
 </div>
 
+<div id="campoQr" class="mb-3" style="display:none">
+    <label class="unraf-form-label" for="codigoQrSelect">Código QR <span class="text-danger">*</span></label>
+    {% if codigos_qr|default([])|length > 0 %}
+        <select name="codigo_qr_id" id="codigoQrSelect" class="unraf-form-select">
+            <option value="">— seleccionar —</option>
+            {% for c in codigos_qr %}
+                <option value="{{ c.id }}"{% if codigo_qr_id|default(null) == c.id %} selected{% endif %}>{{ c.etiqueta }} — {{ c.urlDestino|slice(0, 60) }}{% if c.urlDestino|length > 60 %}…{% endif %}</option>
+            {% endfor %}
+        </select>
+        <small class="text-muted d-block mt-1">
+            La imagen del QR se genera automáticamente. Los escaneos se cuentan y podés cambiar
+            el destino después sin volver a publicar el contenido.
+        </small>
+    {% else %}
+        <div class="alert alert-info mb-0">
+            No hay códigos QR creados todavía.<br>
+            <small>Creá uno desde <strong>Códigos QR</strong> y volvé acá para mostrarlo en pantalla.</small>
+        </div>
+    {% endif %}
+</div>
+
 <div class="d-flex justify-content-end gap-2 pt-3 border-top">
     <button type="button" class="unraf-btn spui-btn-back" data-spui-close>Cancelar</button>
-    <button type="submit" class="unraf-btn unraf-btn-institucion">Guardar contenido</button>
+    <button type="submit" class="unraf-btn spui-btn-crear">Guardar</button>
 </div>
 
 {{ form_end(form) }}
-
-<script>
-(function () {
-    var tipoSelect      = document.getElementById('tipoSelect');
-    var campoArchivo    = document.getElementById('campoArchivo');
-    var campoTexto      = document.getElementById('campoTexto');
-    var campoCronograma = document.getElementById('campoCronograma');
-    var labelTexto      = document.getElementById('labelTexto');
-    var textarea        = document.getElementById('textareaTexto');
-    var archivoInput    = document.getElementById('archivoInput');
-    if (!tipoSelect) return;
-    function actualizarCampos() {
-        var tipo         = tipoSelect.value;
-        var esArchivo    = tipo === 'imagen' || tipo === 'video';
-        var esTexto      = tipo === 'texto' || tipo === 'youtube' || tipo === 'qr';
-        var esCronograma = tipo === 'cronograma';
-        if (campoArchivo)    campoArchivo.style.display    = esArchivo    ? '' : 'none';
-        if (campoTexto)      campoTexto.style.display      = esTexto      ? '' : 'none';
-        if (campoCronograma) campoCronograma.style.display = esCronograma ? '' : 'none';
-        if (archivoInput) archivoInput.required = esArchivo;
-        if (textarea)     textarea.required     = esTexto;
-        if (labelTexto) {
-            labelTexto.childNodes[0].textContent =
-                tipo === 'youtube' ? 'URL de YouTube ' :
-                tipo === 'qr'      ? 'URL para el QR ' : 'Texto a mostrar ';
-        }
-        if (textarea) {
-            textarea.placeholder =
-                tipo === 'youtube' ? 'https://www.youtube.com/watch?v=...' :
-                tipo === 'qr'      ? 'https://...' : 'Ingresá el texto a mostrar…';
-        }
-    }
-    tipoSelect.addEventListener('change', actualizarCampos);
-    actualizarCampos();
-}());
-</script>

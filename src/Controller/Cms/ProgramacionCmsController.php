@@ -8,6 +8,7 @@ use Doctrine\Persistence\ManagerRegistry;
 use SPUI\Entity\Programacion;
 use SPUI\Form\ProgramacionType;
 use SPUI\Repository\ProgramacionRepository;
+use SPUI\Service\AlcanceReproductorService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -16,8 +17,11 @@ use Symfony\Component\Routing\Attribute\Route;
 #[Route('/spui/programacion')]
 class ProgramacionCmsController extends AbstractController
 {
+    use BloqueoOfflineTrait;
+
     public function __construct(
         private readonly ProgramacionRepository $repo,
+        private readonly AlcanceReproductorService $alcance,
         private readonly ManagerRegistry $doctrine,
     ) {}
 
@@ -32,7 +36,25 @@ class ProgramacionCmsController extends AbstractController
         return $this->render('@SPUI/programacion/index.html.twig', [
             'programaciones' => $this->repo->findBy([], ['prioridad' => 'DESC', 'creadoEn' => 'DESC']),
             'dias'           => ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'],
+            'ids_offline'    => $this->alcance->idsOfflineDeUnaVez(),
         ]);
+    }
+
+    /** Detalle de la regla (modal "Ver"). */
+    #[Route('/{id}/ver', name: 'spui_cms_programacion_ver', methods: ['GET'], requirements: ['id' => '\d+'])]
+    public function ver(int $id, Request $request): Response
+    {
+        $prog = $this->repo->find($id);
+        if (!$prog) { throw $this->createNotFoundException(); }
+
+        if ($request->isXmlHttpRequest()) {
+            return $this->json([
+                'title' => 'Regla de programación',
+                'html'  => $this->renderView('@SPUI/programacion/_view.html.twig', ['prog' => $prog]),
+            ]);
+        }
+
+        return $this->redirectToRoute('spui_cms_programacion_index');
     }
 
     #[Route('/nueva-regla', name: 'spui_cms_programacion_nueva_form', methods: ['GET', 'POST'])]
@@ -50,6 +72,12 @@ class ProgramacionCmsController extends AbstractController
             foreach ($diasArray as $bit) { $bitmask |= (1 << (int) $bit); }
             $prog->setDiasSemana($bitmask ?: 127);
             $prog->setCreadoPorId((int) $this->getUser()->getId());
+
+            // El objeto ya está poblado por el formulario, así que se puede
+            // resolver a qué reproductores llegaría aunque todavía no exista.
+            if ($r = $this->bloquearSiOffline($this->alcance->deProgramacion($prog), $request, 'spui_cms_programacion_index')) {
+                return $r;
+            }
 
             $this->em()->persist($prog);
             $this->em()->flush();
@@ -94,6 +122,10 @@ class ProgramacionCmsController extends AbstractController
             foreach ($diasArray as $bit) { $bitmask |= (1 << (int) $bit); }
             $prog->setDiasSemana($bitmask ?: 127);
 
+            if ($r = $this->bloquearSiOffline($this->alcance->deProgramacion($prog), $request, 'spui_cms_programacion_index')) {
+                return $r;
+            }
+
             $this->em()->flush();
 
             if ($request->isXmlHttpRequest()) {
@@ -122,6 +154,10 @@ class ProgramacionCmsController extends AbstractController
         $prog = $this->repo->find($id);
         if (!$prog) { throw $this->createNotFoundException(); }
 
+        if ($r = $this->bloquearSiOffline($this->alcance->deProgramacion($prog), $request, 'spui_cms_programacion_index')) {
+            return $r;
+        }
+
         $prog->setActivo(!$prog->isActivo());
         $this->em()->flush();
         $msg = 'Programación ' . ($prog->isActivo() ? 'activada' : 'desactivada') . '.';
@@ -137,6 +173,12 @@ class ProgramacionCmsController extends AbstractController
     {
         $prog = $this->repo->find($id);
         if (!$prog) { throw $this->createNotFoundException(); }
+
+        // Se resuelve ANTES de borrar: después la entidad ya no tiene sus
+        // relaciones y no habría forma de saber a quién afectaba.
+        if ($r = $this->bloquearSiOffline($this->alcance->deProgramacion($prog), $request, 'spui_cms_programacion_index')) {
+            return $r;
+        }
 
         $this->em()->remove($prog);
         $this->em()->flush();

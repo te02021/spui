@@ -1,13 +1,14 @@
 {% extends '@SPUI/base.html.twig' %}
+{% import '@SPUI/_macros/bloqueo.html.twig' as bloqueo %}
 {% block title %}Programación — SPUI{% endblock %}
 
 {% block body %}
-<div class="d-flex justify-content-between align-items-center mb-1 flex-wrap gap-2">
+<div class="d-flex justify-content-between align-items-center mb-1 flex-wrap gap-2 spui-header-actions">
     <div>
         <h1 style="color:var(--unraf-azul);font-family:var(--unraf-font-principal);margin:0">Programación</h1>
         <p class="text-muted mb-0">Asignación de playlists a pantallas, sectores, edificios o todo el campus — con horarios y días específicos.</p>
     </div>
-    <button type="button" class="unraf-btn unraf-btn-institucion flex-shrink-0"
+    <button type="button" class="unraf-btn spui-btn-crear flex-shrink-0"
             data-spui-form="{{ path('spui_cms_programacion_nueva_form') }}"
             data-spui-title="Nueva regla de programación"
             data-spui-size="modal-lg">
@@ -18,7 +19,7 @@
 <div id="spui-table-body">
 <div class="unraf-card mt-4">
     <div class="unraf-table-responsive">
-        <table class="unraf-table unraf-table-striped w-100">
+        <table class="unraf-table unraf-table-striped w-100 spui-tabla-cards">
             <thead>
                 <tr>
                     <th class="p-3">Destino</th>
@@ -26,15 +27,19 @@
                     <th class="p-3">Horario</th>
                     <th class="p-3">Días</th>
                     <th class="p-3">Prioridad</th>
-                    <th class="p-3 text-center">Estado / Acciones</th>
+                    <th class="p-3">Estado</th>
+                    <th class="p-3">Acciones</th>
                 </tr>
             </thead>
             <tbody>
             {% for prog in programaciones %}
                 {% set diasLabels = ['L','M','X','J','V','S','D'] %}
                 {% set diasMasks = [1, 2, 4, 8, 16, 32, 64] %}
+                {# Una regla puede apuntar a una pantalla, ubicación, edificio o
+                   ser global: el servicio resuelve los cuatro casos. #}
+                {% set motivo = spui_alcance.motivoParaEntidad(prog, ids_offline|default({})) %}
                 <tr class="{{ not prog.activo ? 'opacity-50' : '' }}">
-                    <td class="p-3">
+                    <td class="p-3" data-label="Destino">
                         {% if prog.pantalla %}
                             <img src="{{ asset('unraf-ui/icons/monitor.svg') }}" class="unraf-icon-svg" alt=""> {{ prog.pantalla.nombre }}
                         {% elseif prog.ubicacion %}
@@ -45,10 +50,10 @@
                             <span class="text-muted">Global (todas las pantallas)</span>
                         {% endif %}
                     </td>
-                    <td class="p-3"><strong>{{ prog.playlist.nombre }}</strong></td>
-                    <td class="p-3"><small>{{ prog.horaInicio|date('H:i') }} – {{ prog.horaFin|date('H:i') }}</small></td>
-                    <td class="p-3">
-                        <div class="d-flex gap-1 flex-wrap">
+                    <td class="p-3" data-label="Playlist"><strong>{{ prog.playlist.nombre }}</strong></td>
+                    <td class="p-3" data-label="Horario"><small>{{ prog.horaInicio|date('H:i') }} – {{ prog.horaFin|date('H:i') }}</small></td>
+                    <td class="p-3" data-label="Días">
+                        <div class="d-flex gap-1 flex-wrap justify-content-center">
                         {% for i in 0..6 %}
                             {% set diaActivo = (prog.diasSemana // diasMasks[i]) is odd %}
                             <span class="spui-dia-badge {{ diaActivo ? 'spui-dia-activo' : 'spui-dia-inactivo' }}">
@@ -57,42 +62,57 @@
                         {% endfor %}
                         </div>
                     </td>
-                    <td class="p-3 text-center">
+                    <td class="p-3" data-label="Prioridad">
                         <span class="spui-badge-borrador">{{ prog.prioridad }}</span>
                     </td>
-                    <td class="p-3">
-                        <div class="d-flex gap-1 flex-wrap align-items-center">
-                            <button type="button" class="unraf-btn unraf-btn-light unraf-btn-sm"
+                    <td class="p-3" data-label="Estado">
+                        {% if prog.activo %}
+                            <span class="spui-badge-publicado">Activa</span>
+                        {% else %}
+                            <span class="spui-badge-archivado">Inactiva</span>
+                        {% endif %}
+                    </td>
+                    <td class="p-3" data-label="Acciones">
+                        <div class="spui-acciones">
+                            <button type="button" class="unraf-btn spui-btn-ver unraf-btn-sm"
+                                    data-spui-form="{{ path('spui_cms_programacion_ver', {id: prog.id}) }}"
+                                    data-spui-size="modal-sm"
+                                    data-spui-title="Regla de programación"
+                                    title="Ver detalle">
+                                <img src="{{ asset('unraf-ui/icons/eye.svg') }}" class="spui-action-icon" alt=""> Ver
+                            </button>
+                            <button type="button" class="unraf-btn spui-btn-editar unraf-btn-sm {{ bloqueo.clase(motivo) }}"
                                     data-spui-form="{{ path('spui_cms_programacion_editar', {id: prog.id}) }}"
                                     data-spui-title="Editar regla"
                                     data-spui-size="modal-lg"
-                                    title="Editar">
+                                    {% if motivo %}{{ bloqueo.attrs(motivo) }}{% else %}title="Editar"{% endif %}>
                                 <img src="{{ asset('unraf-ui/icons/pencil.svg') }}" class="spui-action-icon" alt=""> Editar
                             </button>
                             <button type="button"
-                                    class="unraf-btn unraf-btn-sm {{ prog.activo ? 'spui-toggle-activo' : 'spui-toggle-inactivo' }}"
+                                    class="unraf-btn unraf-btn-sm {{ prog.activo ? 'spui-btn-desactivar' : 'spui-btn-activar' }} {{ bloqueo.clase(motivo) }}"
                                     data-spui-action="{{ path('spui_cms_programacion_toggle', {id: prog.id}) }}"
                                     data-spui-title="{{ prog.activo ? 'Desactivar regla' : 'Activar regla' }}"
                                     data-spui-message="{{ prog.activo ? '¿Desactivar esta regla de programación?' : '¿Activar esta regla de programación?' }}"
-                                    data-spui-variant="{{ prog.activo ? 'danger' : 'success' }}"
-                                    title="{{ prog.activo ? 'Desactivar' : 'Activar' }}">
-                                <img src="{{ asset(prog.activo ? 'unraf-ui/icons/pause.svg' : 'unraf-ui/icons/play.svg') }}" class="spui-action-icon" style="filter:invert(1)" alt="">
+                                    data-spui-variant="{{ prog.activo ? 'desactivar' : 'activar' }}"
+                                    data-spui-confirm-label="{{ prog.activo ? 'Desactivar' : 'Activar' }}"
+                                    {% if motivo %}{{ bloqueo.attrs(motivo) }}{% else %}title="{{ prog.activo ? 'Desactivar' : 'Activar' }}"{% endif %}>
+                                <img src="{{ asset(prog.activo ? 'unraf-ui/icons/pause.svg' : 'unraf-ui/icons/play.svg') }}"
+                                     class="spui-action-icon" alt="">
                                 {{ prog.activo ? 'Desactivar' : 'Activar' }}
                             </button>
-                            <button type="button" class="unraf-btn-icon btn-delete"
+                            <button type="button" class="unraf-btn spui-btn-eliminar unraf-btn-sm {{ bloqueo.clase(motivo) }}"
                                     data-spui-action="{{ path('spui_cms_programacion_eliminar', {id: prog.id}) }}"
                                     data-spui-title="Eliminar regla"
                                     data-spui-message="¿Eliminar esta regla de programación? Esta acción no se puede deshacer."
-                                    data-spui-variant="danger"
-                                    title="Eliminar">
-                                <img src="{{ asset('unraf-ui/icons/trash.svg') }}" class="unraf-icon-svg" alt="Eliminar">
+                                    data-spui-variant="eliminar"
+                                    {% if motivo %}{{ bloqueo.attrs(motivo) }}{% else %}title="Eliminar"{% endif %}>
+                                <img src="{{ asset('unraf-ui/icons/trash.svg') }}" class="spui-action-icon" alt=""> Eliminar
                             </button>
                         </div>
                     </td>
                 </tr>
             {% else %}
-                <tr><td colspan="6" class="p-4 text-center text-muted">No hay reglas de programación.
-                </td></tr>
+                <tr><td colspan="7" class="p-4 text-center text-muted">No hay reglas de programación.</td></tr>
             {% endfor %}
             </tbody>
         </table>

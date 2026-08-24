@@ -8,6 +8,7 @@ use Doctrine\Persistence\ManagerRegistry;
 use SPUI\Entity\AlertaEmergencia;
 use SPUI\Form\AlertaType;
 use SPUI\Repository\AlertaEmergenciaRepository;
+use SPUI\Service\AlcanceReproductorService;
 use SPUI\Service\AlertaPublisherService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -17,9 +18,12 @@ use Symfony\Component\Routing\Attribute\Route;
 #[Route('/spui/alertas')]
 class AlertaCmsController extends AbstractController
 {
+    use BloqueoOfflineTrait;
+
     public function __construct(
         private readonly AlertaEmergenciaRepository $repo,
         private readonly AlertaPublisherService $publisher,
+        private readonly AlcanceReproductorService $alcance,
         private readonly ManagerRegistry $doctrine,
     ) {}
 
@@ -65,7 +69,83 @@ class AlertaCmsController extends AbstractController
             ]);
         }
 
-        return $this->render('@SPUI/alertas/nueva.html.twig', ['form' => $form]);
+        return $this->redirectToRoute('spui_cms_alertas_index');
+    }
+
+    /** Detalle completo de la alerta (modal "Ver"). */
+    #[Route('/{id}/ver', name: 'spui_cms_alertas_ver', methods: ['GET'], requirements: ['id' => '\d+'])]
+    public function ver(int $id, Request $request): Response
+    {
+        $alerta = $this->repo->find($id);
+        if (!$alerta) {
+            throw $this->createNotFoundException();
+        }
+
+        if ($request->isXmlHttpRequest()) {
+            return $this->json([
+                'title' => 'Alerta: ' . $alerta->getTitulo(),
+                'html'  => $this->renderView('@SPUI/alertas/_view.html.twig', ['alerta' => $alerta]),
+            ]);
+        }
+
+        return $this->redirectToRoute('spui_cms_alertas_index');
+    }
+
+    /**
+     * Editar una alerta. Sólo si está inactiva: cambiarle el texto mientras se
+     * está mostrando en las pantallas dejaría al CMS y a los nodos desincronizados
+     * (el push por MQTT ya salió con el contenido viejo).
+     */
+    #[Route('/{id}/editar', name: 'spui_cms_alertas_editar', methods: ['GET', 'POST'], requirements: ['id' => '\d+'])]
+    public function editar(int $id, Request $request): Response
+    {
+        $alerta = $this->repo->find($id);
+        if (!$alerta) {
+            throw $this->createNotFoundException();
+        }
+
+        if ($alerta->isActiva()) {
+            $msg = 'No se puede editar una alerta activa. Desactivala primero.';
+            if ($request->isXmlHttpRequest()) {
+                // En POST el JS espera {success:false}; en GET espera {title,html},
+                // así que se responde 200 con el motivo dentro del modal.
+                if ($request->isMethod('POST')) {
+                    return $this->json(['success' => false, 'message' => $msg, 'type' => 'warning'], 422);
+                }
+                return $this->json([
+                    'title' => 'Alerta activa',
+                    'html'  => '<div class="alert alert-warning mb-0">' . $msg . '</div>'
+                             . '<div class="d-flex justify-content-end pt-3 mt-3 border-top">'
+                             . '<button type="button" class="unraf-btn spui-btn-back" data-spui-close>Entendido</button></div>',
+                ]);
+            }
+            $this->addFlash('warning', $msg);
+            return $this->redirectToRoute('spui_cms_alertas_index');
+        }
+
+        $form = $this->createForm(AlertaType::class, $alerta, [
+            'action' => $this->generateUrl('spui_cms_alertas_editar', ['id' => $id]),
+        ]);
+        $form->handleRequest($request);
+
+        if ($form->isSubmitted() && $form->isValid()) {
+            $this->em()->flush();
+            $msg = 'Alerta "' . $alerta->getTitulo() . '" actualizada.';
+            if ($request->isXmlHttpRequest()) {
+                return $this->json(['success' => true, 'message' => $msg]);
+            }
+            $this->addFlash('success', $msg);
+            return $this->redirectToRoute('spui_cms_alertas_index');
+        }
+
+        if ($request->isXmlHttpRequest()) {
+            return $this->json([
+                'title' => 'Editar: ' . $alerta->getTitulo(),
+                'html'  => $this->renderView('@SPUI/alertas/_form.html.twig', ['form' => $form, 'alerta' => $alerta, 'modo' => 'edicion']),
+            ]);
+        }
+
+        return $this->redirectToRoute('spui_cms_alertas_index');
     }
 
     #[Route('/{id}/activar', name: 'spui_cms_alertas_activar', methods: ['POST'], requirements: ['id' => '\d+'])]
@@ -89,6 +169,10 @@ class AlertaCmsController extends AbstractController
             }
             $this->addFlash('error', $msg);
             return $this->redirectToRoute('spui_cms_alertas_index');
+        }
+
+        if ($r = $this->bloquearSiOffline($this->alcance->deAlerta($alerta), $request, 'spui_cms_alertas_index')) {
+            return $r;
         }
 
         $alerta->activar();
@@ -115,6 +199,10 @@ class AlertaCmsController extends AbstractController
             }
             $this->addFlash('warning', $msg);
             return $this->redirectToRoute('spui_cms_alertas_index');
+        }
+
+        if ($r = $this->bloquearSiOffline($this->alcance->deAlerta($alerta), $request, 'spui_cms_alertas_index')) {
+            return $r;
         }
 
         $alerta->desactivar();

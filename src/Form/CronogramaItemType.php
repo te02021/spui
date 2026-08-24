@@ -24,7 +24,7 @@ class CronogramaItemType extends AbstractType
                 'label'      => 'Nombre',
                 'label_attr' => ['class' => 'unraf-form-label'],
                 'attr'       => ['class' => 'unraf-form-control', 'maxlength' => 200, 'placeholder' => 'Ej: Análisis Matemático I'],
-                'constraints' => [new NotBlank()],
+                'constraints' => [new NotBlank(message: 'El nombre de la materia o actividad es requerido.')],
             ])
             ->add('aula', TextType::class, [
                 'label'      => 'Aula / Espacio (opcional)',
@@ -38,7 +38,7 @@ class CronogramaItemType extends AbstractType
                 'widget'     => 'single_text',
                 'input'      => 'datetime_immutable',
                 'attr'       => ['class' => 'unraf-form-control'],
-                'constraints' => [new NotBlank()],
+                'constraints' => [new NotBlank(message: 'Indicá la hora de inicio.')],
             ])
             ->add('horaFin', TimeType::class, [
                 'label'      => 'Hora fin',
@@ -46,7 +46,7 @@ class CronogramaItemType extends AbstractType
                 'widget'     => 'single_text',
                 'input'      => 'datetime_immutable',
                 'attr'       => ['class' => 'unraf-form-control'],
-                'constraints' => [new NotBlank()],
+                'constraints' => [new NotBlank(message: 'Indicá la hora de fin.')],
             ])
             ->add('diasSemana', ChoiceType::class, [
                 'label'      => 'Días de la semana',
@@ -62,8 +62,10 @@ class CronogramaItemType extends AbstractType
                 'label_attr' => ['class' => 'unraf-form-label'],
                 'attr'       => ['class' => 'unraf-form-control', 'min' => 0, 'style' => 'max-width:8rem'],
             ])
+            // label:false — el texto visible lo pone el <span class="spui-switch-status">
+            // que actualiza switch-toggle.js. Con un label acá saldría dos veces.
             ->add('activo', CheckboxType::class, [
-                'label'    => 'Activo',
+                'label'    => false,
                 'required' => false,
                 'data'     => true,
             ]);

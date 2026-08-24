@@ -1,63 +1,91 @@
 {{ form_start(form, {'attr': {'data-spui-ajax': '1', 'novalidate': 'novalidate'}}) }}
 
-<div class="mb-3">
-    {{ form_label(form.nombre) }}
-    {{ form_widget(form.nombre) }}
-    {% for e in form.nombre.vars.errors %}
-        <p class="text-danger small mt-1">{{ e.message }}</p>
-    {% endfor %}
+{# Errores del form raíz (típicamente el CSRF vencido). Sin esto el modal se
+   recargaba sin ningún mensaje y el guardado parecía no responder. #}
+{% for e in form.vars.errors %}
+    <div class="alert alert-danger mb-3">{{ e.message }}</div>
+{% endfor %}
+
+<div class="row g-2 mb-3">
+    <div class="col-12 col-sm">
+        {{ form_label(form.nombre) }}
+        {{ form_widget(form.nombre) }}
+        {% for e in form.nombre.vars.errors %}
+            <p class="text-danger small mt-1">{{ e.message }}</p>
+        {% endfor %}
+    </div>
+    <div class="col-12 col-sm">
+        {{ form_label(form.ubicacion) }}
+        {{ form_widget(form.ubicacion) }}
+        {% for e in form.ubicacion.vars.errors %}
+            <p class="text-danger small mt-1">{{ e.message }}</p>
+        {% endfor %}
+    </div>
+    <div class="col-12 col-sm">
+        {{ form_label(form.reproductor) }}
+        {{ form_widget(form.reproductor) }}
+        {% for e in form.reproductor.vars.errors %}
+            <p class="text-danger small mt-1">{{ e.message }}</p>
+        {% endfor %}
+        <small class="text-muted d-block mt-1">Raspberry Pi que controla esta pantalla. Opcional.</small>
+    </div>
 </div>
 
-<div class="mb-3">
-    {{ form_label(form.ubicacion) }}
-    {{ form_widget(form.ubicacion) }}
-    {% for e in form.ubicacion.vars.errors %}
-        <p class="text-danger small mt-1">{{ e.message }}</p>
-    {% endfor %}
-</div>
-
-<div class="mb-3">
-    {{ form_label(form.reproductor) }}
-    {{ form_widget(form.reproductor) }}
-    <small class="text-muted d-block mt-1">Raspberry Pi que controla esta pantalla. Opcional.</small>
-</div>
-
-<div class="mb-3">
-    {{ form_label(form.playlistFallback) }}
-    {{ form_widget(form.playlistFallback) }}
-</div>
-
-<div class="mb-3">
-    {{ form_label(form.estado) }}
-    {{ form_widget(form.estado) }}
+<div class="row g-2 mb-3 align-items-start">
+    <div class="col">
+        {{ form_label(form.playlistFallback) }}
+        {{ form_widget(form.playlistFallback) }}
+        {% for e in form.playlistFallback.vars.errors %}
+            <p class="text-danger small mt-1">{{ e.message }}</p>
+        {% endfor %}
+    </div>
+    <div class="col-12 col-sm-auto" style="min-width:160px">
+        {{ form_label(form.estado) }}
+        {{ form_widget(form.estado) }}
+        {% for e in form.estado.vars.errors %}
+            <p class="text-danger small mt-1">{{ e.message }}</p>
+        {% endfor %}
+    </div>
 </div>
 
 <div class="row g-2 mb-3">
     <div class="col">
         {{ form_label(form.macAddress) }}
         {{ form_widget(form.macAddress) }}
+        {% for e in form.macAddress.vars.errors %}
+            <p class="text-danger small mt-1">{{ e.message }}</p>
+        {% endfor %}
     </div>
     <div class="col">
         {{ form_label(form.ipAddress) }}
         {{ form_widget(form.ipAddress) }}
+        {% for e in form.ipAddress.vars.errors %}
+            <p class="text-danger small mt-1">{{ e.message }}</p>
+        {% endfor %}
     </div>
 </div>
 
-<div class="row g-2 mb-4">
-    <div class="col">
+<div class="row g-2 mb-4 justify-content-center">
+    <div class="col-auto">
         {{ form_label(form.resolucionAncho) }}
         {{ form_widget(form.resolucionAncho) }}
+        {% for e in form.resolucionAncho.vars.errors %}
+            <p class="text-danger small mt-1">{{ e.message }}</p>
+        {% endfor %}
     </div>
-    <div class="col">
+    <div class="col-auto">
         {{ form_label(form.resolucionAlto) }}
         {{ form_widget(form.resolucionAlto) }}
+        {% for e in form.resolucionAlto.vars.errors %}
+            <p class="text-danger small mt-1">{{ e.message }}</p>
+        {% endfor %}
     </div>
 </div>
 
 <div class="d-flex justify-content-end gap-2 pt-3 border-top">
     <button type="button" class="unraf-btn spui-btn-back" data-spui-close>Cancelar</button>
-    <button type="submit" class="unraf-btn unraf-btn-institucion">
-        {{ pantalla is defined and pantalla.id ? 'Guardar cambios' : 'Crear pantalla' }}
+    <button type="submit" class="unraf-btn {{ pantalla is defined and pantalla.id ? 'spui-btn-editar' : 'spui-btn-crear' }}">
+        Guardar
     </button>
 </div>
 

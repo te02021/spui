@@ -1,47 +1,139 @@
+{# Edición de un contenido.
+
+   El tipo NO se puede cambiar (un cronograma no se convierte en video), pero sí
+   se edita lo que ese tipo tiene cargado: el archivo en imagen/video, el código
+   en qr, el texto o la URL en texto/youtube.
+
+   El bloque por tipo lo resuelve el server, no content-type-fields.js: ese
+   módulo depende del <select> de tipo del alta, que acá no existe, y como el
+   tipo es inmutable alcanza con emitir el bloque que corresponde. #}
 <form method="post"
       action="{{ path('spui_cms_contenidos_editar', {id: contenido.id}) }}"
       data-spui-ajax="1"
+      enctype="multipart/form-data"
       novalidate>
 
     {% if error %}
         <div class="alert alert-danger mb-3">{{ error }}</div>
     {% endif %}
 
-    <div class="mb-3">
-        <label class="unraf-form-label text-muted">Tipo (no editable)</label>
-        <p class="mb-0 fw-semibold">{{ contenido.tipo.value|capitalize }}</p>
+    <div class="row g-3 mb-3 align-items-start">
+        <div class="col">
+            <label class="unraf-form-label" for="ed_titulo">Título <span class="text-danger">*</span></label>
+            <input type="text" id="ed_titulo" name="titulo" class="unraf-form-control"
+                   value="{{ contenido.titulo }}" maxlength="200" required>
+        </div>
+        <div class="col-auto d-flex flex-column">
+            <label class="unraf-form-label mb-2">Tipo</label>
+            {% if contenido.tipo.value == 'cronograma' %}
+                <span class="unraf-badge-turquesa">{{ contenido.tipo.etiqueta }}</span>
+            {% elseif contenido.tipo.value in ['imagen', 'qr'] %}
+                <span class="unraf-badge-info">{{ contenido.tipo.etiqueta }}</span>
+            {% elseif contenido.tipo.value in ['video', 'youtube'] %}
+                <span class="unraf-badge-azul">{{ contenido.tipo.etiqueta }}</span>
+            {% else %}
+                <span class="unraf-badge-turquesa">{{ contenido.tipo.etiqueta }}</span>
+            {% endif %}
+        </div>
     </div>
 
-    <div class="mb-3">
-        <label class="unraf-form-label" for="ed_titulo">Título <span class="text-danger">*</span></label>
-        <input type="text" id="ed_titulo" name="titulo" class="unraf-form-control"
-               value="{{ contenido.titulo }}" maxlength="200" required>
-    </div>
-
-    <div class="mb-3">
-        <label class="unraf-form-label" for="ed_duracion">Duración por defecto (segundos)</label>
-        <input type="number" id="ed_duracion" name="duracion_segundos" class="unraf-form-control"
-               value="{{ contenido.duracionSegundos ?? '' }}" min="1" max="3600"
-               style="max-width:12rem" placeholder="Vacío = permanente">
+    <div class="mb-4">
+        <label class="unraf-form-label" for="ed_duracion">Duración por defecto</label>
+        <div class="spui-input-with-addon" style="max-width:16rem">
+            <input type="number" id="ed_duracion" name="duracion_segundos" class="unraf-form-control"
+                   value="{{ contenido.duracionSegundos ?? '' }}" min="1" max="3600"
+                   placeholder="Vacío = permanente">
+            <span class="spui-input-addon">segundos</span>
+        </div>
         <small class="text-muted d-block mt-1">
-            Duración que se usa al agregar este contenido a una playlist. Se puede sobreescribir individualmente por cada ítem de playlist. Dejar vacío para contenido permanente (sin avance automático).
+            Se usa al agregar este contenido a una playlist; cada ítem puede pisarla. Vacío = permanente (sin avance automático).
         </small>
     </div>
 
-    {% if contenido.tipo.value in ['texto', 'youtube', 'qr'] %}
-    <div class="mb-3">
-        <label class="unraf-form-label" for="ed_texto">
-            {% if contenido.tipo.value == 'youtube' %}URL de YouTube
-            {% elseif contenido.tipo.value == 'qr' %}URL para el QR
-            {% else %}Texto a mostrar{% endif %}
-        </label>
-        <textarea id="ed_texto" name="contenido_texto" class="unraf-form-control" rows="3">{{ contenido.contenidoTexto }}</textarea>
-    </div>
+    {# ── Lo que carga cada tipo ── #}
+    {% if contenido.tipo.value in ['texto', 'youtube'] %}
+        <div class="mb-3">
+            <label class="unraf-form-label" for="ed_texto">
+                {{ contenido.tipo.value == 'youtube' ? 'URL de YouTube' : 'Texto a mostrar' }}
+                <span class="text-danger">*</span>
+            </label>
+            <textarea id="ed_texto" name="contenido_texto" class="unraf-form-control" rows="3"
+                      placeholder="{{ contenido.tipo.value == 'youtube' ? 'https://www.youtube.com/watch?v=…' : 'Texto que se muestra en pantalla' }}"
+                      required>{{ contenido.contenidoTexto }}</textarea>
+        </div>
+
+    {% elseif contenido.tipo.value == 'qr' %}
+        <div class="mb-3">
+            <label class="unraf-form-label" for="ed_codigo_qr">Código QR</label>
+            <div class="d-flex gap-3 align-items-start flex-wrap">
+                {% if contenido.codigoQr %}
+                    <img src="{{ path('spui_qr_imagen', {id: contenido.codigoQr.id}) }}"
+                         alt="QR actual" class="spui-qr-preview" width="96" height="96">
+                {% endif %}
+                <div class="flex-grow-1" style="min-width:14rem">
+                    {% if codigos_qr|default([])|length > 0 %}
+                        <select name="codigo_qr_id" id="ed_codigo_qr" class="unraf-form-select">
+                            {% for c in codigos_qr %}
+                                <option value="{{ c.id }}"{% if contenido.codigoQr and contenido.codigoQr.id == c.id %} selected{% endif %}>{{ c.etiqueta }} — {{ c.urlDestino|slice(0, 60) }}{% if c.urlDestino|length > 60 %}…{% endif %}</option>
+                            {% endfor %}
+                        </select>
+                        <small class="text-muted d-block mt-1">
+                            Al cambiar el código se regenera la imagen. Si sólo querés cambiar el destino,
+                            editá el código desde <strong>Códigos QR</strong> y no hace falta tocar esto.
+                        </small>
+                    {% else %}
+                        <div class="alert alert-info mb-0">No hay códigos QR creados.</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+    {% elseif contenido.tipo.value in ['imagen', 'video'] %}
+        <div class="mb-3">
+            <label class="unraf-form-label" for="ed_archivo">Reemplazar archivo</label>
+            {% if contenido.rutaArchivo %}
+                <div class="d-flex gap-3 align-items-center flex-wrap mb-2">
+                    {# rutaArchivo ya viene con el prefijo uploads/spui/ (ver
+                       MediaStorageService::guardar), así que no hay que anteponerlo.
+                       Con backend S3 el archivo no está bajo public/ y la preview
+                       no carga: por eso el onerror la esconde en vez de dejar el
+                       ícono de imagen rota. #}
+                    {% if contenido.tipo.value == 'imagen' %}
+                        <img src="{{ asset(contenido.rutaArchivo) }}"
+                             alt="Archivo actual" class="spui-media-preview"
+                             onerror="this.style.display='none'">
+                    {% endif %}
+                    <div>
+                        <code style="font-size:.78rem;word-break:break-all">{{ contenido.rutaArchivo }}</code>
+                        {% if contenido.hashArchivo %}
+                            <br><small class="text-muted" title="{{ contenido.hashArchivo }}">SHA-256 {{ contenido.hashArchivo|slice(0, 16) }}…</small>
+                        {% endif %}
+                    </div>
+                </div>
+            {% endif %}
+            <input type="file" id="ed_archivo" name="archivo" class="unraf-form-control"
+                   accept="{{ contenido.tipo.value == 'imagen' ? 'image/*' : 'video/*' }}">
+            <small class="text-muted d-block mt-1">
+                Dejalo vacío para conservar el archivo actual. Al subir uno nuevo se reemplaza y el anterior se borra.
+            </small>
+        </div>
+
+    {% elseif contenido.tipo.value == 'cronograma' %}
+        <div class="mb-3">
+            <label class="unraf-form-label">Ítems del cronograma</label>
+            <p class="text-muted small mb-2">
+                Las actividades se gestionan en el editor del cronograma, en su propia pantalla.
+            </p>
+            <a href="{{ path('spui_cms_cronograma_builder', {id: contenido.id}) }}"
+               class="unraf-btn spui-btn-items unraf-btn-sm">
+                <img src="{{ asset('unraf-ui/icons/calendar-dots.svg') }}" class="spui-action-icon" alt=""> Ir al editor de ítems
+            </a>
+        </div>
     {% endif %}
 
     <div class="d-flex justify-content-end gap-2 pt-3 border-top">
         <button type="button" class="unraf-btn spui-btn-back" data-spui-close>Cancelar</button>
-        <button type="submit" class="unraf-btn unraf-btn-institucion">Guardar cambios</button>
+        <button type="submit" class="unraf-btn spui-btn-editar">Guardar</button>
     </div>
 
 </form>

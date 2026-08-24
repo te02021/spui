@@ -38,7 +38,8 @@ class PlaylistController extends AbstractController
         return [
             'id'                   => $item->getId(),
             'orden'                => $item->getOrden(),
-            'duracion_override_seg' => $item->getDuracionOverrideSeg(),
+            // duracion_override_seg se quitó: la duración es la del contenido.
+            // duracion_efectiva_seg se mantiene — es lo que consume el cliente Pi.
             'duracion_efectiva_seg' => $item->getDuracionEfectiva(),
             'contenido'            => [
                 'id'     => $c->getId(),
@@ -198,11 +199,16 @@ class PlaylistController extends AbstractController
             return $this->json(['error' => 'Ya existe un item con orden '.$body['orden'].' en esta playlist.'], Response::HTTP_CONFLICT);
         }
 
+        if (array_key_exists('duracion_override_seg', $body)) {
+            return $this->json([
+                'error' => 'El campo "duracion_override_seg" ya no existe: la duración se define en el contenido.',
+            ], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
         $item = new PlaylistItem();
         $item->setPlaylist($playlist);
         $item->setContenido($contenido);
         $item->setOrden((int) $body['orden']);
-        $item->setDuracionOverrideSeg(isset($body['duracion_override_seg']) ? (int) $body['duracion_override_seg'] : null);
 
         $em = $this->em();
         $em->persist($item);
@@ -229,8 +235,12 @@ class PlaylistController extends AbstractController
             }
             $item->setOrden($nuevoOrden);
         }
+        // Se responde 422 en vez de ignorarlo en silencio: un integrador que
+        // siga mandando el campo tiene que enterarse de que ya no se guarda.
         if (array_key_exists('duracion_override_seg', $body)) {
-            $item->setDuracionOverrideSeg($body['duracion_override_seg'] !== null ? (int) $body['duracion_override_seg'] : null);
+            return $this->json([
+                'error' => 'El campo "duracion_override_seg" ya no existe: la duración se define en el contenido.',
+            ], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
         $this->em()->flush();

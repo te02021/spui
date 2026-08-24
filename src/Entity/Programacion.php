@@ -32,19 +32,19 @@ class Programacion
 
     #[ORM\ManyToOne(targetEntity: Playlist::class, inversedBy: 'programaciones')]
     #[ORM\JoinColumn(nullable: false)]
-    private Playlist $playlist;
+    private ?Playlist $playlist = null;
 
     #[ORM\Column(type: 'date_immutable')]
-    private DateTimeImmutable $fechaInicio;
+    private ?DateTimeImmutable $fechaInicio = null;
 
     #[ORM\Column(type: 'date_immutable', nullable: true)]
     private ?DateTimeImmutable $fechaFin = null;
 
     #[ORM\Column(type: 'time_immutable')]
-    private DateTimeImmutable $horaInicio;
+    private ?DateTimeImmutable $horaInicio = null;
 
     #[ORM\Column(type: 'time_immutable')]
-    private DateTimeImmutable $horaFin;
+    private ?DateTimeImmutable $horaFin = null;
 
     /**
      * Bitmask de días: bit0=Lun, bit1=Mar, …, bit6=Dom.
@@ -86,20 +86,33 @@ class Programacion
     public function getEdificio(): ?Edificio { return $this->edificio; }
     public function setEdificio(?Edificio $edificio): static { $this->edificio = $edificio; return $this; }
 
-    public function getPlaylist(): Playlist { return $this->playlist; }
-    public function setPlaylist(Playlist $playlist): static { $this->playlist = $playlist; return $this; }
+    public function getPlaylist(): ?Playlist { return $this->playlist; }
+    public function setPlaylist(?Playlist $playlist): static { $this->playlist = $playlist; return $this; }
 
-    public function getFechaInicio(): DateTimeImmutable { return $this->fechaInicio; }
-    public function setFechaInicio(DateTimeImmutable $fechaInicio): static { $this->fechaInicio = $fechaInicio; return $this; }
+    public function getFechaInicio(): ?DateTimeImmutable { return $this->fechaInicio; }
+    /**
+     * Los setters de los campos obligatorios aceptan null a propósito.
+     *
+     * El formulario mapea los datos al objeto ANTES de validar: con un campo
+     * de hora vacío, Symfony intentaba escribir null en un setter tipado como
+     * no-nullable y reventaba con un TypeError (HTTP 500) antes de que
+     * llegaran a correr los NotBlank. El modal recibía una respuesta rota y no
+     * mostraba ningún error, así que la regla no se podía guardar y no se veía
+     * el motivo.
+     *
+     * Que el campo sea obligatorio lo siguen garantizando los NotBlank del
+     * ProgramacionType y las columnas NOT NULL de la tabla.
+     */
+    public function setFechaInicio(?DateTimeImmutable $fechaInicio): static { $this->fechaInicio = $fechaInicio; return $this; }
 
     public function getFechaFin(): ?DateTimeImmutable { return $this->fechaFin; }
     public function setFechaFin(?DateTimeImmutable $fechaFin): static { $this->fechaFin = $fechaFin; return $this; }
 
-    public function getHoraInicio(): DateTimeImmutable { return $this->horaInicio; }
-    public function setHoraInicio(DateTimeImmutable $horaInicio): static { $this->horaInicio = $horaInicio; return $this; }
+    public function getHoraInicio(): ?DateTimeImmutable { return $this->horaInicio; }
+    public function setHoraInicio(?DateTimeImmutable $horaInicio): static { $this->horaInicio = $horaInicio; return $this; }
 
-    public function getHoraFin(): DateTimeImmutable { return $this->horaFin; }
-    public function setHoraFin(DateTimeImmutable $horaFin): static { $this->horaFin = $horaFin; return $this; }
+    public function getHoraFin(): ?DateTimeImmutable { return $this->horaFin; }
+    public function setHoraFin(?DateTimeImmutable $horaFin): static { $this->horaFin = $horaFin; return $this; }
 
     public function getDiasSemana(): int { return $this->diasSemana; }
     public function setDiasSemana(int $diasSemana): static { $this->diasSemana = $diasSemana; return $this; }

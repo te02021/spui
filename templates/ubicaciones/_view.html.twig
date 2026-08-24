@@ -1,0 +1,73 @@
+{# Detalle de una ubicación/sector. Las filas opcionales se omiten si no hay dato. #}
+<div class="spui-view-header">
+    <div>
+        <p class="spui-view-title">{{ ubicacion.sector ?: 'Sector sin nombre' }}</p>
+        <p class="spui-view-subtitle">{{ ubicacion.edificio.nombre }}</p>
+    </div>
+    {% if ubicacion.activo %}
+        <span class="spui-badge-conectado flex-shrink-0">Activa</span>
+    {% else %}
+        <span class="spui-badge-sin_registrar flex-shrink-0">Inactiva</span>
+    {% endif %}
+</div>
+
+<div class="spui-view-section">
+    <p class="spui-view-section-title">Información</p>
+    <div class="spui-view-row">
+        <span class="spui-view-row-label">Edificio</span>
+        <span class="spui-view-row-value"><strong>{{ ubicacion.edificio.nombre }}</strong></span>
+    </div>
+    {% if ubicacion.sector %}
+    <div class="spui-view-row">
+        <span class="spui-view-row-label">Sector</span>
+        <span class="spui-view-row-value">{{ ubicacion.sector }}</span>
+    </div>
+    {% endif %}
+    {% if ubicacion.descripcion %}
+    <div class="spui-view-row">
+        <span class="spui-view-row-label">Descripción</span>
+        <span class="spui-view-row-value">{{ ubicacion.descripcion }}</span>
+    </div>
+    {% endif %}
+    <div class="spui-view-row">
+        <span class="spui-view-row-label">Estado</span>
+        <span class="spui-view-row-value">{{ ubicacion.activo ? 'Activa' : 'Inactiva' }}</span>
+    </div>
+</div>
+
+<div class="spui-view-section">
+    <p class="spui-view-section-title">Pantallas · {{ ubicacion.pantallas|length }}</p>
+    {% if ubicacion.pantallas|length > 0 %}
+        <div class="spui-view-list">
+        {% for p in ubicacion.pantallas %}
+            <div class="spui-view-list-item">
+                <span class="spui-view-list-bullet"></span>
+                <span>{{ p.nombre }}</span>
+                <span class="spui-badge-{{ p.estado.value }} spui-view-list-meta">{{ p.estado.etiqueta }}</span>
+            </div>
+        {% endfor %}
+        </div>
+    {% else %}
+        <p class="spui-view-empty">Sin pantallas asignadas</p>
+    {% endif %}
+</div>
+
+<div class="spui-view-section">
+    <p class="spui-view-section-title">Reglas de programación · {{ ubicacion.programaciones|length }}</p>
+    {% if ubicacion.programaciones|length > 0 %}
+        <div class="spui-view-list">
+        {% for prog in ubicacion.programaciones %}
+            <div class="spui-view-list-item">
+                <span class="spui-view-list-bullet"></span>
+                <span>{{ prog.playlist ? prog.playlist.nombre : 'Sin playlist' }}</span>
+                <span class="spui-view-list-meta">
+                    {{ prog.horaInicio ? prog.horaInicio|date('H:i') : '—' }}–{{ prog.horaFin ? prog.horaFin|date('H:i') : '—' }}
+                    · {{ prog.activo ? 'Activa' : 'Inactiva' }}
+                </span>
+            </div>
+        {% endfor %}
+        </div>
+    {% else %}
+        <p class="spui-view-empty">Sin reglas que apliquen a todo el sector</p>
+    {% endif %}
+</div>

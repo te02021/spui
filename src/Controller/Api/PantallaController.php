@@ -9,6 +9,8 @@ use Doctrine\Persistence\ManagerRegistry;
 use SPUI\Entity\Pantalla;
 use SPUI\Enum\EstadoPantalla;
 use SPUI\Repository\PantallaRepository;
+use SPUI\Repository\PlaylistRepository;
+use SPUI\Repository\ReproductorRepository;
 use SPUI\Repository\UbicacionRepository;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -23,6 +25,8 @@ class PantallaController extends AbstractController
         private readonly ManagerRegistry $doctrine,
         private readonly PantallaRepository $repo,
         private readonly UbicacionRepository $ubicacionRepo,
+        private readonly ReproductorRepository $reproductorRepo,
+        private readonly PlaylistRepository $playlistRepo,
     ) {}
 
     private function em(): EntityManagerInterface
@@ -45,14 +49,22 @@ class PantallaController extends AbstractController
             'mac_address'      => $p->getMacAddress(),
             'resolucion_ancho' => $p->getResolucionAncho(),
             'resolucion_alto'  => $p->getResolucionAlto(),
-            'estado'           => $p->getEstado()->value,
-            'reproductor_id'   => $p->getReproductor()?->getId(),
-            'creado_en'        => $p->getCreadoEn()->format('c'),
-            'actualizado_en'   => $p->getActualizadoEn()->format('c'),
+            'estado'               => $p->getEstado()->value,
+            'reproductor_id'       => $p->getReproductor()?->getId(),
+            'playlist_fallback_id' => $p->getPlaylistFallback()?->getId(),
+            'creado_en'            => $p->getCreadoEn()->format('c'),
+            'actualizado_en'       => $p->getActualizadoEn()->format('c'),
         ];
     }
 
-    /** Valida formato MAC: AA:BB:CC:DD:EE:FF */
+    /**
+     * Valida formato MAC: AA:BB:CC:DD:EE:FF
+     *
+     * La MAC es OPCIONAL (columna nullable desde Version20260702133532, que
+     * separó Reproductor de Pantalla). Es un dato informativo para diagnóstico:
+     * la identidad del equipo la da el Reproductor vía su API key, no la MAC.
+     * Sólo se valida el formato cuando viene un valor.
+     */
     private function isValidMac(string $mac): bool
     {
         return (bool) preg_match('/^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$/', $mac);
@@ -93,9 +105,8 @@ class PantallaController extends AbstractController
         if (empty($body['ubicacion_id'])) {
             $errors[] = '"ubicacion_id" es requerido.';
         }
-        if (empty($body['mac_address'])) {
-            $errors[] = '"mac_address" es requerido.';
-        } elseif (!$this->isValidMac($body['mac_address'])) {
+        // mac_address es opcional; sólo se valida el formato si viene con valor.
+        if (!empty($body['mac_address']) && !$this->isValidMac($body['mac_address'])) {
             $errors[] = '"mac_address" debe tener formato AA:BB:CC:DD:EE:FF.';
         }
         if (!empty($errors)) {
@@ -107,22 +118,32 @@ class PantallaController extends AbstractController
             return $this->json(['error' => 'Ubicación no encontrada.'], Response::HTTP_NOT_FOUND);
         }
 
-        // Verificar mac_address única
-        $existing = $this->repo->findOneBy(['macAddress' => strtoupper($body['mac_address'])]);
-        if ($existing !== null) {
-            return $this->json(['error' => 'Ya existe una pantalla con esa MAC address.'], Response::HTTP_CONFLICT);
-        }
-
         $estado = EstadoPantalla::tryFrom($body['estado'] ?? 'activo') ?? EstadoPantalla::Activo;
 
         $pantalla = new Pantalla();
         $pantalla->setNombre(trim($body['nombre']));
         $pantalla->setUbicacion($ubicacion);
-        $pantalla->setMacAddress(strtoupper($body['mac_address']));
+        $pantalla->setMacAddress(!empty($body['mac_address']) ? strtoupper($body['mac_address']) : null);
         $pantalla->setIpAddress(isset($body['ip_address']) ? trim($body['ip_address']) : null);
         $pantalla->setResolucionAncho((int) ($body['resolucion_ancho'] ?? 1920));
         $pantalla->setResolucionAlto((int) ($body['resolucion_alto'] ?? 1080));
         $pantalla->setEstado($estado);
+
+        // Asignaciones opcionales — paridad con el formulario del CMS
+        if (!empty($body['reproductor_id'])) {
+            $reproductor = $this->reproductorRepo->find($body['reproductor_id']);
+            if ($reproductor === null) {
+                return $this->json(['error' => 'Reproductor no encontrado.'], Response::HTTP_NOT_FOUND);
+            }
+            $pantalla->setReproductor($reproductor);
+        }
+        if (!empty($body['playlist_fallback_id'])) {
+            $playlist = $this->playlistRepo->find($body['playlist_fallback_id']);
+            if ($playlist === null) {
+                return $this->json(['error' => 'Playlist de respaldo no encontrada.'], Response::HTTP_NOT_FOUND);
+            }
+            $pantalla->setPlaylistFallback($playlist);
+        }
 
         $em = $this->em();
         $em->persist($pantalla);
@@ -165,16 +186,36 @@ class PantallaController extends AbstractController
         if (array_key_exists('ip_address', $body)) {
             $pantalla->setIpAddress($body['ip_address'] !== null ? trim($body['ip_address']) : null);
         }
-        if (isset($body['mac_address'])) {
-            if (!$this->isValidMac($body['mac_address'])) {
+        if (array_key_exists('mac_address', $body)) {
+            if ($body['mac_address'] === null || $body['mac_address'] === '') {
+                $pantalla->setMacAddress(null);
+            } elseif (!$this->isValidMac($body['mac_address'])) {
                 return $this->json(['error' => '"mac_address" debe tener formato AA:BB:CC:DD:EE:FF.'], Response::HTTP_UNPROCESSABLE_ENTITY);
+            } else {
+                $pantalla->setMacAddress(strtoupper($body['mac_address']));
             }
-            $mac = strtoupper($body['mac_address']);
-            $existing = $this->repo->findOneBy(['macAddress' => $mac]);
-            if ($existing !== null && $existing->getId() !== $pantalla->getId()) {
-                return $this->json(['error' => 'Ya existe una pantalla con esa MAC address.'], Response::HTTP_CONFLICT);
+        }
+        if (array_key_exists('reproductor_id', $body)) {
+            if ($body['reproductor_id'] === null) {
+                $pantalla->setReproductor(null);
+            } else {
+                $reproductor = $this->reproductorRepo->find($body['reproductor_id']);
+                if ($reproductor === null) {
+                    return $this->json(['error' => 'Reproductor no encontrado.'], Response::HTTP_NOT_FOUND);
+                }
+                $pantalla->setReproductor($reproductor);
             }
-            $pantalla->setMacAddress($mac);
+        }
+        if (array_key_exists('playlist_fallback_id', $body)) {
+            if ($body['playlist_fallback_id'] === null) {
+                $pantalla->setPlaylistFallback(null);
+            } else {
+                $playlist = $this->playlistRepo->find($body['playlist_fallback_id']);
+                if ($playlist === null) {
+                    return $this->json(['error' => 'Playlist de respaldo no encontrada.'], Response::HTTP_NOT_FOUND);
+                }
+                $pantalla->setPlaylistFallback($playlist);
+            }
         }
         if (isset($body['resolucion_ancho'])) {
             $pantalla->setResolucionAncho((int) $body['resolucion_ancho']);

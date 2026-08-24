@@ -9,6 +9,7 @@ use SPUI\Entity\Telemetria;
 use SPUI\Repository\TelemetriaRepository;
 use SPUI\Service\ReproductorAuthService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -21,12 +22,12 @@ use Symfony\Component\Routing\Attribute\Route;
 #[Route('/api/spui/reproductores')]
 class TelemetriaController extends AbstractController
 {
-    private const TEMP_ALERTA_CELSIUS = 70.0;
-
     public function __construct(
         private readonly ReproductorAuthService $authService,
         private readonly ManagerRegistry $doctrine,
         private readonly TelemetriaRepository $repo,
+        #[Autowire('%env(float:default:spui_temp_alerta_default:SPUI_TEMP_ALERTA_CELSIUS)%')]
+        private readonly float $tempAlertaCelsius,
     ) {}
 
     #[Route('/telemetria', name: 'spui_reproductores_telemetria_ingestar', methods: ['POST'])]
@@ -68,7 +69,7 @@ class TelemetriaController extends AbstractController
             'ok'                 => true,
             'id'                 => $telemetria->getId(),
             'registrado_en'      => $telemetria->getRegistradoEn()->format('c'),
-            'alerta_temperatura' => $temp >= self::TEMP_ALERTA_CELSIUS,
+            'alerta_temperatura' => $temp >= $this->tempAlertaCelsius,
         ], Response::HTTP_CREATED);
     }
 
@@ -94,7 +95,7 @@ class TelemetriaController extends AbstractController
                 'latencia_red_ms'         => $t->getLatenciaRedMs(),
                 'espacio_disco_libre_mb'  => $t->getEspacioDiscoLibreMb(),
                 'registrado_en'           => $t->getRegistradoEn()->format('c'),
-                'alerta_temperatura'      => $t->getTemperaturaSocCelsius() >= self::TEMP_ALERTA_CELSIUS,
+                'alerta_temperatura'      => $t->getTemperaturaSocCelsius() >= $this->tempAlertaCelsius,
             ], $records),
             'total' => count($records),
         ]);

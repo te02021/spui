@@ -1,5 +1,14 @@
 {{ form_start(form, {'attr': {'data-spui-ajax': '1', 'novalidate': 'novalidate'}}) }}
 
+{# Errores del form raíz (típicamente el CSRF vencido). Sin esto el modal se
+   recargaba sin ningún mensaje y el guardado parecía no responder. #}
+{% for e in form.vars.errors %}
+    <div class="alert alert-danger mb-3">{{ e.message }}</div>
+{% endfor %}
+
+{% set swActivoId  = form.activo.vars.id %}
+{% set swRepetirId = form.repetirSemanal.vars.id %}
+
 <div class="mb-3">
     {{ form_label(form.playlist) }}
     {{ form_widget(form.playlist) }}
@@ -10,75 +19,103 @@
 
 <p class="unraf-form-label mb-1" style="font-weight:600">Destino <small class="text-muted fw-normal">(elegí uno o ninguno para global)</small></p>
 
-<div class="mb-2">
-    {{ form_label(form.pantalla) }}
-    {{ form_widget(form.pantalla) }}
+<div class="row g-2 mb-1">
+    <div class="col-12 col-sm">
+        {{ form_label(form.pantalla) }}
+        {{ form_widget(form.pantalla) }}
+    </div>
+    <div class="col-12 col-sm">
+        {{ form_label(form.ubicacion) }}
+        {{ form_widget(form.ubicacion) }}
+    </div>
+    <div class="col-12 col-sm">
+        {{ form_label(form.edificio) }}
+        {{ form_widget(form.edificio) }}
+    </div>
 </div>
+<small class="text-muted d-block mb-3">Pantalla &gt; Ubicación &gt; Edificio &gt; Global (en orden de prioridad).</small>
 
-<div class="mb-2">
-    {{ form_label(form.ubicacion) }}
-    {{ form_widget(form.ubicacion) }}
-</div>
-
-<div class="mb-3">
-    {{ form_label(form.edificio) }}
-    {{ form_widget(form.edificio) }}
-    <small class="text-muted d-block mt-1">Pantalla &gt; Ubicación &gt; Edificio &gt; Global (en orden de prioridad de destino).</small>
-</div>
-
-<div class="row g-2 mb-3">
-    <div class="col-sm-6">
+<div class="row g-3 mb-3">
+    <div class="col-6 spui-hora-field">
         {{ form_label(form.horaInicio) }}
         {{ form_widget(form.horaInicio) }}
+        {% for e in form.horaInicio.vars.errors %}
+            <p class="text-danger small mt-1">{{ e.message }}</p>
+        {% endfor %}
     </div>
-    <div class="col-sm-6">
+    <div class="col-6 spui-hora-field">
         {{ form_label(form.horaFin) }}
         {{ form_widget(form.horaFin) }}
+        {% for e in form.horaFin.vars.errors %}
+            <p class="text-danger small mt-1">{{ e.message }}</p>
+        {% endfor %}
     </div>
 </div>
 
-<div class="row g-2 mb-3">
-    <div class="col-sm-6">
+<div class="row g-3 mb-3">
+    <div class="col-6 spui-hora-field">
         {{ form_label(form.fechaInicio) }}
         {{ form_widget(form.fechaInicio) }}
+        {% for e in form.fechaInicio.vars.errors %}
+            <p class="text-danger small mt-1">{{ e.message }}</p>
+        {% endfor %}
     </div>
-    <div class="col-sm-6">
+    <div class="col-6 spui-hora-field">
         {{ form_label(form.fechaFin) }}
         {{ form_widget(form.fechaFin) }}
+        {% for e in form.fechaFin.vars.errors %}
+            <p class="text-danger small mt-1">{{ e.message }}</p>
+        {% endfor %}
     </div>
 </div>
 
 <div class="mb-3">
     {{ form_label(form.diasSemana) }}
-    <div class="d-flex gap-3 flex-wrap mt-1">
+    <div class="spui-dias-switches mt-2">
         {% for child in form.diasSemana %}
-            <div class="form-check form-check-inline m-0">
-                {{ form_widget(child, {'attr': {'class': 'form-check-input'}}) }}
-                {{ form_label(child, null, {'label_attr': {'class': 'form-check-label small'}}) }}
+            <div class="spui-dia-switch">
+                {{ form_label(child, null, {'label_attr': {'class': 'spui-dia-label'}}) }}
+                <div class="form-switch d-flex justify-content-center">
+                    {{ form_widget(child, {'attr': {'class': 'form-check-input', 'role': 'switch'}}) }}
+                </div>
             </div>
         {% endfor %}
     </div>
 </div>
 
-<div class="mb-3 form-check">
-    {{ form_widget(form.repetirSemanal, {'attr': {'class': 'form-check-input'}}) }}
-    {{ form_label(form.repetirSemanal, null, {'label_attr': {'class': 'form-check-label'}}) }}
+<div class="mb-4 d-flex flex-column" style="max-width:fit-content">
+    <label class="unraf-form-label mb-2" for="{{ swRepetirId }}">Repetir semanalmente</label>
+    <div class="d-flex align-items-center gap-2">
+        <div class="form-switch m-0">
+            {{ form_widget(form.repetirSemanal, {'attr': {'class': 'form-check-input spui-switch-secondary', 'role': 'switch', 'data-spui-switch': '1', 'data-switch-on': 'Sí', 'data-switch-off': 'No', 'data-switch-variant': 'azul'}}) }}
+        </div>
+        <span class="spui-switch-status on-azul" id="{{ swRepetirId }}_lbl">Sí</span>
+    </div>
 </div>
 
-<div class="mb-3">
-    {{ form_label(form.prioridad) }}
-    {{ form_widget(form.prioridad) }}
-    <small class="text-muted d-block mt-1">Mayor número = mayor prioridad.</small>
-</div>
-
-<div class="mb-4 form-check">
-    {{ form_widget(form.activo, {'attr': {'class': 'form-check-input'}}) }}
-    {{ form_label(form.activo, null, {'label_attr': {'class': 'form-check-label'}}) }}
+<div class="row g-3 mb-4 justify-content-center">
+    <div class="col-auto spui-hora-field">
+        <label class="unraf-form-label" for="{{ form.prioridad.vars.id }}">Prioridad</label>
+        {{ form_widget(form.prioridad) }}
+        {% for e in form.prioridad.vars.errors %}
+            <p class="text-danger small mt-1">{{ e.message }}</p>
+        {% endfor %}
+        <small class="text-muted mt-1 d-block text-center">Mayor número = mayor prioridad.</small>
+    </div>
+    <div class="col-auto spui-hora-field">
+        <label class="unraf-form-label" for="{{ swActivoId }}">Activa al crear</label>
+        <div class="d-flex align-items-center gap-2">
+            <div class="form-switch m-0">
+                {{ form_widget(form.activo, {'attr': {'class': 'form-check-input spui-switch-input', 'role': 'switch', 'data-spui-switch': '1', 'data-switch-on': 'Sí', 'data-switch-off': 'No'}}) }}
+            </div>
+            <span class="spui-switch-status on" id="{{ swActivoId }}_lbl">Sí</span>
+        </div>
+    </div>
 </div>
 
 <div class="d-flex justify-content-end gap-2 pt-3 border-top">
     <button type="button" class="unraf-btn spui-btn-back" data-spui-close>Cancelar</button>
-    <button type="submit" class="unraf-btn unraf-btn-institucion">{{ submit_label ?? 'Crear regla' }}</button>
+    <button type="submit" class="unraf-btn {{ submit_label is defined ? 'spui-btn-editar' : 'spui-btn-crear' }}">Guardar</button>
 </div>
 
 {{ form_end(form) }}

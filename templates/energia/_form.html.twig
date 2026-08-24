@@ -1,0 +1,53 @@
+{{ form_start(form, {'attr': {'data-spui-ajax': '1', 'novalidate': 'novalidate'}}) }}
+
+{# Errores del form raíz (típicamente el CSRF vencido). Sin esto el modal se
+   recargaba sin ningún mensaje y el guardado parecía no responder. #}
+{% for e in form.vars.errors %}
+    <div class="alert alert-danger mb-3">{{ e.message }}</div>
+{% endfor %}
+
+<p class="text-muted small mb-3">
+    Horario de <strong>{{ dia }}</strong> para <strong>{{ pantalla.nombre }}</strong>.
+</p>
+
+<div class="row g-3 mb-3">
+    <div class="col-12 col-sm-6">
+        {{ form_label(form.horaEncendido) }}
+        {{ form_widget(form.horaEncendido) }}
+        {% for e in form.horaEncendido.vars.errors %}
+            <p class="text-danger small mt-1">{{ e.message }}</p>
+        {% endfor %}
+    </div>
+    <div class="col-12 col-sm-6">
+        {{ form_label(form.horaApagado) }}
+        {{ form_widget(form.horaApagado) }}
+        {% for e in form.horaApagado.vars.errors %}
+            <p class="text-danger small mt-1">{{ e.message }}</p>
+        {% endfor %}
+    </div>
+</div>
+
+<div class="mb-4">
+    {{ form_label(form.nivelBrillo) }}
+    {# El addon deja de ser un "%" fijo: muestra el valor mientras se arrastra.
+       range-input.js lo busca por el id del input + _val. #}
+    <div class="spui-input-with-addon">
+        {{ form_widget(form.nivelBrillo) }}
+        <span class="spui-input-addon" id="{{ form.nivelBrillo.vars.id }}_val">{{ form.nivelBrillo.vars.value }}%</span>
+    </div>
+    {% for e in form.nivelBrillo.vars.errors %}
+        <p class="text-danger small mt-1">{{ e.message }}</p>
+    {% endfor %}
+    <small class="text-muted d-block mt-1">
+        Bajar el brillo de noche reduce el consumo y alarga la vida del panel.
+    </small>
+</div>
+
+<div class="d-flex justify-content-end gap-2 pt-3 border-top">
+    <button type="button" class="unraf-btn spui-btn-back" data-spui-close>Cancelar</button>
+    <button type="submit" class="unraf-btn {{ esNueva ? 'spui-btn-crear' : 'spui-btn-editar' }}">
+        Guardar
+    </button>
+</div>
+
+{{ form_end(form) }}

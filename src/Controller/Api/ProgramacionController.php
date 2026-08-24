@@ -107,11 +107,26 @@ class ProgramacionController extends AbstractController
             'allowExtraFields'   => true,
             'allowMissingFields' => false,
             'fields' => [
-                'playlist_id'   => [new Assert\NotBlank(), new Assert\Positive()],
-                'fecha_inicio'  => [new Assert\NotBlank(), new Assert\Date()],
-                'hora_inicio'   => [new Assert\NotBlank(), new Assert\Regex(['pattern' => '/^\d{2}:\d{2}$/', 'message' => 'Formato esperado: HH:MM'])],
-                'hora_fin'      => [new Assert\NotBlank(), new Assert\Regex(['pattern' => '/^\d{2}:\d{2}$/', 'message' => 'Formato esperado: HH:MM'])],
-                'creado_por_id' => [new Assert\NotBlank(), new Assert\Positive()],
+                'playlist_id'   => [
+                    new Assert\NotBlank(message: 'El campo "playlist_id" es requerido.'),
+                    new Assert\Positive(message: 'El campo "playlist_id" debe ser un número positivo.'),
+                ],
+                'fecha_inicio'  => [
+                    new Assert\NotBlank(message: 'El campo "fecha_inicio" es requerido.'),
+                    new Assert\Date(message: 'El campo "fecha_inicio" debe tener formato AAAA-MM-DD.'),
+                ],
+                'hora_inicio'   => [
+                    new Assert\NotBlank(message: 'El campo "hora_inicio" es requerido.'),
+                    new Assert\Regex(pattern: '/^\d{2}:\d{2}$/', message: 'Formato esperado: HH:MM'),
+                ],
+                'hora_fin'      => [
+                    new Assert\NotBlank(message: 'El campo "hora_fin" es requerido.'),
+                    new Assert\Regex(pattern: '/^\d{2}:\d{2}$/', message: 'Formato esperado: HH:MM'),
+                ],
+                'creado_por_id' => [
+                    new Assert\NotBlank(message: 'El campo "creado_por_id" es requerido.'),
+                    new Assert\Positive(message: 'El campo "creado_por_id" debe ser un número positivo.'),
+                ],
             ],
         ]));
 

@@ -6,6 +6,7 @@ namespace SPUI\Form;
 
 use SPUI\Entity\AlertaEmergencia;
 use SPUI\Entity\Contenido;
+use SPUI\Entity\Pantalla;
 use SPUI\Enum\EstadoContenido;
 use Symfony\Bridge\Doctrine\Form\Type\EntityType;
 use Symfony\Component\Form\AbstractType;
@@ -27,19 +28,19 @@ class AlertaType extends AbstractType
                 'label'      => 'Título',
                 'label_attr' => ['class' => 'unraf-form-label'],
                 'attr'       => ['class' => 'unraf-form-control', 'maxlength' => 200, 'placeholder' => 'Ej: Evacuación zona norte'],
-                'constraints' => [new NotBlank()],
+                'constraints' => [new NotBlank(message: 'El título de la alerta es requerido.')],
             ])
             ->add('mensaje', TextareaType::class, [
                 'label'      => 'Mensaje',
                 'label_attr' => ['class' => 'unraf-form-label'],
                 'attr'       => ['class' => 'unraf-form-control', 'rows' => 4, 'placeholder' => 'Instrucciones o información de emergencia...'],
-                'constraints' => [new NotBlank()],
+                'constraints' => [new NotBlank(message: 'El mensaje de la alerta es requerido.')],
             ])
             ->add('prioridad', IntegerType::class, [
                 'label'      => 'Prioridad',
                 'label_attr' => ['class' => 'unraf-form-label'],
                 'attr'       => ['class' => 'unraf-form-control', 'min' => 1, 'max' => 100, 'style' => 'max-width:8rem'],
-                'constraints' => [new Range(min: 1, max: 100)],
+                'constraints' => [new Range(notInRangeMessage: 'La prioridad debe estar entre {{ min }} y {{ max }}.', min: 1, max: 100)],
             ])
             ->add('expiraEn', DateTimeType::class, [
                 'label'      => 'Expira en (opcional)',
@@ -55,13 +56,34 @@ class AlertaType extends AbstractType
                 'class'         => Contenido::class,
                 'em'            => 'SPUI',
                 'query_builder' => fn($er) => $er->createQueryBuilder('c')
-                    ->where('c.estado = :estado')
-                    ->setParameter('estado', EstadoContenido::Publicado)
+                    ->where('c.estado != :archivado')
+                    ->setParameter('archivado', EstadoContenido::Archivado)
                     ->orderBy('c.titulo', 'ASC'),
-                'choice_label'  => fn(Contenido $c) => $c->getTitulo() . ' (' . $c->getTipo()->value . ')',
+                'choice_label'  => fn(Contenido $c) => $c->getTitulo() . ' (' . $c->getTipo()->etiqueta() . ')',
                 'placeholder'   => '— Sin contenido asociado —',
                 'required'      => false,
                 'attr'          => ['class' => 'unraf-form-select'],
+            ])
+            /**
+             * Destinatarias de la alerta.
+             * Sin ninguna elegida la alerta es global (va a todas), que es el
+             * comportamiento histórico y el que conviene en una emergencia real.
+             */
+            ->add('pantallas', EntityType::class, [
+                'label'         => 'Pantallas que la reciben',
+                'label_attr'    => ['class' => 'unraf-form-label'],
+                'class'         => Pantalla::class,
+                'em'            => 'SPUI',
+                'query_builder' => fn($er) => $er->createQueryBuilder('p')
+                    ->leftJoin('p.ubicacion', 'u')
+                    ->leftJoin('u.edificio', 'e')
+                    ->orderBy('e.nombre', 'ASC')
+                    ->addOrderBy('p.nombre', 'ASC'),
+                'choice_label'  => fn(Pantalla $p) => $p->getNombre() . ' — ' . $p->getUbicacion()->getEdificio()->getNombre(),
+                'multiple'      => true,
+                'expanded'      => true,
+                'required'      => false,
+                'by_reference'  => false,
             ]);
     }
 

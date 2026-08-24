@@ -65,12 +65,23 @@ class Pantalla
     #[ORM\OneToMany(mappedBy: 'pantalla', targetEntity: ProgramacionEnergetica::class, cascade: ['persist', 'remove'], orphanRemoval: true)]
     private Collection $programacionesEnergeticas;
 
+    /**
+     * Alertas dirigidas explícitamente a esta pantalla.
+     * Las alertas globales (sin pantallas elegidas) no aparecen acá pero
+     * igual se muestran en todas.
+     *
+     * @var Collection<int, AlertaEmergencia>
+     */
+    #[ORM\ManyToMany(targetEntity: AlertaEmergencia::class, mappedBy: 'pantallas')]
+    private Collection $alertas;
+
     public function __construct()
     {
         $this->creadoEn                  = new DateTimeImmutable();
         $this->actualizadoEn             = new DateTimeImmutable();
         $this->programaciones            = new ArrayCollection();
         $this->programacionesEnergeticas = new ArrayCollection();
+        $this->alertas                   = new ArrayCollection();
     }
 
     #[ORM\PreUpdate]
@@ -113,4 +124,7 @@ class Pantalla
 
     public function getProgramaciones(): Collection { return $this->programaciones; }
     public function getProgramacionesEnergeticas(): Collection { return $this->programacionesEnergeticas; }
+
+    /** @return Collection<int, AlertaEmergencia> */
+    public function getAlertas(): Collection { return $this->alertas; }
 }

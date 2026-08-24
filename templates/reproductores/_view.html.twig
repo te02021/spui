@@ -1,0 +1,78 @@
+{# Detalle de un reproductor (Raspberry Pi).
+   La clave API nunca se muestra: en la base sólo queda su hash SHA-256. #}
+<div class="spui-view-header">
+    <div>
+        <p class="spui-view-title">{{ reproductor.hostname }}</p>
+        <p class="spui-view-subtitle">Reproductor · Raspberry Pi</p>
+    </div>
+    <span class="spui-badge-{{ reproductor.estadoConexion.value }} flex-shrink-0">
+        {{ reproductor.estadoConexion.etiqueta }}
+    </span>
+</div>
+
+{# Lo primero que se ve: si el reproductor reporta algo, tiene que saltar a la
+   vista antes que cualquier otro dato. #}
+{% if reproductor.tieneProblemas %}
+<div class="spui-view-section">
+    <div class="spui-aviso-problemas">
+        <strong>Este reproductor reportó {{ reproductor.diagnostico|length }} problema{{ reproductor.diagnostico|length == 1 ? '' : 's' }}</strong>
+        <ul>
+        {% for problema in reproductor.diagnostico %}
+            <li>{{ problema }}</li>
+        {% endfor %}
+        </ul>
+        {% if reproductor.diagnosticoEn %}
+            <small class="d-block mt-2 text-muted">Informado el {{ reproductor.diagnosticoEn|date('d/m/Y H:i:s') }}</small>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
+<div class="spui-view-section">
+    <p class="spui-view-section-title">Dispositivo</p>
+    <div class="spui-view-row">
+        <span class="spui-view-row-label">Estado</span>
+        <span class="spui-view-row-value">{{ reproductor.estadoConexion.etiqueta }}</span>
+    </div>
+    {% if reproductor.versionFirmware %}
+    <div class="spui-view-row">
+        <span class="spui-view-row-label">Versión firmware</span>
+        <span class="spui-view-row-value">{{ reproductor.versionFirmware }}</span>
+    </div>
+    {% endif %}
+    <div class="spui-view-row">
+        <span class="spui-view-row-label">Último heartbeat</span>
+        <span class="spui-view-row-value">
+            {% if reproductor.ultimoHeartbeat %}
+                {{ reproductor.ultimoHeartbeat|date('d/m/Y H:i:s') }}
+                {% set diff = "now"|date("U") - reproductor.ultimoHeartbeat|date("U") %}
+                {% if diff > 300 %}
+                    <br><small class="text-danger fw-semibold">Hace más de 5 min</small>
+                {% endif %}
+            {% else %}
+                <span class="text-muted">Nunca</span>
+            {% endif %}
+        </span>
+    </div>
+    <div class="spui-view-row">
+        <span class="spui-view-row-label">Lecturas de telemetría</span>
+        <span class="spui-view-row-value">{{ reproductor.telemetrias|length }}</span>
+    </div>
+</div>
+
+<div class="spui-view-section">
+    <p class="spui-view-section-title">Pantallas asignadas · {{ reproductor.pantallas|length }}</p>
+    {% if reproductor.pantallas|length > 0 %}
+        <div class="spui-view-list">
+        {% for p in reproductor.pantallas %}
+            <div class="spui-view-list-item">
+                <span class="spui-view-list-bullet"></span>
+                <span><strong>{{ p.nombre }}</strong></span>
+                <span class="spui-view-list-meta">{{ p.ubicacion.edificio.nombre }}{% if p.ubicacion.sector %} · {{ p.ubicacion.sector }}{% endif %}</span>
+            </div>
+        {% endfor %}
+        </div>
+    {% else %}
+        <p class="spui-view-empty">Sin pantallas asignadas</p>
+    {% endif %}
+</div>

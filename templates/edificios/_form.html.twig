@@ -1,27 +1,41 @@
 {{ form_start(form, {'attr': {'data-spui-ajax': '1', 'novalidate': 'novalidate'}}) }}
 
-<div class="mb-3">
-    {{ form_label(form.nombre) }}
-    {{ form_widget(form.nombre) }}
-    {% for e in form.nombre.vars.errors %}
-        <p class="text-danger small mt-1">{{ e.message }}</p>
-    {% endfor %}
+{# Errores del form raíz (típicamente el CSRF vencido). Sin esto el modal se
+   recargaba sin ningún mensaje y el guardado parecía no responder. #}
+{% for e in form.vars.errors %}
+    <div class="alert alert-danger mb-3">{{ e.message }}</div>
+{% endfor %}
+
+{% set swId = form.activo.vars.id %}
+
+<div class="row g-3 mb-3">
+    <div class="col">
+        {{ form_label(form.nombre) }}
+        {{ form_widget(form.nombre) }}
+        {% for e in form.nombre.vars.errors %}
+            <p class="text-danger small mt-1">{{ e.message }}</p>
+        {% endfor %}
+    </div>
+    <div class="col-auto d-flex flex-column align-items-center" style="min-width:110px">
+        <label class="unraf-form-label mb-2 text-center" for="{{ swId }}">Estado</label>
+        <div class="d-flex align-items-center gap-2">
+            <div class="form-switch m-0">
+                {{ form_widget(form.activo, {'attr': {'class': 'form-check-input spui-switch-input', 'role': 'switch', 'data-spui-switch': '1', 'data-switch-on': 'Activo', 'data-switch-off': 'Inactivo'}}) }}
+            </div>
+            <span class="spui-switch-status off" id="{{ swId }}_lbl">Inactivo</span>
+        </div>
+    </div>
 </div>
 
-<div class="mb-3">
+<div class="mb-4">
     {{ form_label(form.descripcion) }}
     {{ form_widget(form.descripcion) }}
 </div>
 
-<div class="mb-4 form-check">
-    {{ form_widget(form.activo, {'attr': {'class': 'form-check-input'}}) }}
-    {{ form_label(form.activo, null, {'label_attr': {'class': 'form-check-label'}}) }}
-</div>
-
 <div class="d-flex justify-content-end gap-2 pt-3 border-top">
     <button type="button" class="unraf-btn spui-btn-back" data-spui-close>Cancelar</button>
-    <button type="submit" class="unraf-btn unraf-btn-institucion">
-        {{ edificio is defined and edificio.id ? 'Guardar cambios' : 'Crear edificio' }}
+    <button type="submit" class="unraf-btn {{ edificio is defined and edificio.id ? 'spui-btn-editar' : 'spui-btn-crear' }}">
+        Guardar
     </button>
 </div>
 

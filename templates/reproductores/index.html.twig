@@ -1,38 +1,55 @@
 {% extends '@SPUI/base.html.twig' %}
 {% block title %}Reproductores — SPUI{% endblock %}
 
+{% import '@SPUI/_macros/bloqueo.html.twig' as bloqueo %}
+
 {% block body %}
-<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2 spui-header-actions">
     <div>
         <h1 style="color:var(--unraf-azul);font-family:var(--unraf-font-principal);margin:0">Reproductores</h1>
         <p class="text-muted mb-0">Raspberry Pi registradas en el sistema. Cada reproductor puede controlar múltiples pantallas.</p>
     </div>
-    <button type="button" class="unraf-btn unraf-btn-institucion flex-shrink-0"
-            data-spui-form="{{ path('spui_cms_reproductores_nuevo') }}"
-            data-spui-title="Nuevo reproductor">
-        + Nuevo reproductor
-    </button>
+    <div class="d-flex gap-2 flex-shrink-0">
+        {# Refresco manual, por si el operador no quiere esperar el ciclo. #}
+        <button type="button" data-spui-refresh-btn
+                class="unraf-btn unraf-btn-light d-flex align-items-center gap-1"
+                style="font-size:.8rem;padding:.3rem .6rem"
+                title="Actualizar datos">
+            <img src="{{ asset('unraf-ui/icons/arrows-clockwise.svg') }}" style="width:.85rem;height:.85rem;flex-shrink:0" alt=""> Actualizar
+        </button>
+        <button type="button" class="unraf-btn spui-btn-crear"
+                data-spui-form="{{ path('spui_cms_reproductores_nuevo') }}"
+                data-spui-title="Nuevo reproductor">
+            + Nuevo reproductor
+        </button>
+    </div>
 </div>
 
-<div id="spui-table-body">
+{# El estado de conexión y el último heartbeat cambian cada minuto sin que
+   nadie toque nada, así que esta zona se refresca sola. #}
+<div id="spui-table-body" data-spui-refresh>
 <div class="unraf-card">
     <div class="unraf-table-responsive">
-        <table class="unraf-table unraf-table-striped w-100 text-nowrap">
+        <table class="unraf-table unraf-table-striped w-100 text-nowrap spui-tabla-cards">
             <thead>
                 <tr>
-                    <th class="p-3">Hostname</th>
+                    <th class="p-3">Nombre de host</th>
                     <th class="p-3">Pantallas asignadas</th>
-                    <th class="p-3">Firmware</th>
+                    <th class="p-3">Versión firmware</th>
                     <th class="p-3">Estado</th>
                     <th class="p-3">Último heartbeat</th>
+                    <th class="p-3">Diagnóstico</th>
                     <th class="p-3">Acciones</th>
                 </tr>
             </thead>
             <tbody>
             {% for r in reproductores %}
+                {# Motivo de bloqueo de esta fila, resuelto una sola vez.
+                   null = el equipo responde y las acciones van habilitadas. #}
+                {% set motivo = spui_alcance.motivoDe(r, ids_offline|default({})) %}
                 <tr>
-                    <td class="p-3"><strong>{{ r.hostname }}</strong></td>
-                    <td class="p-3">
+                    <td class="p-3" data-label="Nombre de host"><strong>{{ r.hostname }}</strong></td>
+                    <td class="p-3" data-label="Pantallas asignadas">
                         {% if r.pantallas|length > 0 %}
                             {% for p in r.pantallas %}
                                 <span class="spui-badge-borrador">{{ p.nombre }}</span>
@@ -41,54 +58,101 @@
                             <span class="text-muted small">Sin pantallas</span>
                         {% endif %}
                     </td>
-                    <td class="p-3"><small class="text-muted">{{ r.versionFirmware ?? '—' }}</small></td>
-                    <td class="p-3">
-                        <span class="spui-badge-{{ r.estadoConexion.value }}">
-                            {{ r.estadoConexion.value|replace({'_': ' '})|title }}
-                        </span>
+                    <td class="p-3" data-label="Versión firmware"><small class="text-muted">{{ r.versionFirmware ?? '—' }}</small></td>
+                    <td class="p-3" data-label="Estado">
+                        {# Estado CALCULADO, no la columna: no depende de que el cron
+                           de mantenimiento haya corrido. #}
+                        {% set est = r.estadoCalculado(spui_umbral_conexion) %}
+                        <span class="spui-badge-{{ est.value }}">{{ est.etiqueta }}</span>
+                        {% if r.tieneProblemas %}
+                            <br><span class="spui-badge-problema" title="{{ r.diagnostico|join(' · ') }}">
+                                {{ r.diagnostico|length }} problema{{ r.diagnostico|length == 1 ? '' : 's' }}
+                            </span>
+                        {% endif %}
                     </td>
-                    <td class="p-3">
+                    <td class="p-3" data-label="Último heartbeat">
                         {% if r.ultimoHeartbeat %}
                             {{ r.ultimoHeartbeat|date('d/m/Y H:i:s') }}
-                            {% set diff = (date() - r.ultimoHeartbeat)|abs %}
-                            {% if diff > 300 %}<br><small class="text-danger">Hace más de 5 min</small>{% endif %}
+                            {# tiempo-relativo.js lo recalcula cada 10 s y le pone
+                               .is-stale pasados los 5 min, el mismo umbral que usa
+                               spui:mantenimiento para dar por caído un equipo.
+                               El contenido inicial ya es el texto relativo: poner
+                               la hora otra vez mostraba el dato duplicado. #}
+                            {# Los umbrales replican los de tiempo-relativo.js: si no
+                               coincidieran, el texto saltaría al primer tick del JS. #}
+                            {% set seg = "now"|date("U") - r.ultimoHeartbeat|date("U") %}
+                            <br><small data-spui-desde="{{ r.ultimoHeartbeat|date('c') }}"
+                                       class="{{ seg > spui_umbral_conexion ? 'is-stale' : '' }}">
+                                {%- if seg < 90 -%}hace instantes
+                                {%- elseif seg < 3600 -%}hace {{ (seg / 60)|round }} min
+                                {%- elseif seg < 86400 -%}hace {{ (seg / 3600)|round }} h
+                                {%- else -%}hace {{ (seg / 86400)|round }} días
+                                {%- endif -%}
+                            </small>
                         {% else %}
                             <span class="text-muted">Nunca</span>
                         {% endif %}
                     </td>
-                    <td class="p-3">
-                        <div class="d-flex gap-1">
+                    <td class="p-3 spui-col-diagnostico" data-label="Diagnóstico">
+                        {% if r.tieneProblemas %}
+                            <ul class="spui-diagnostico-lista">
+                            {% for problema in r.diagnostico %}
+                                <li>{{ problema }}</li>
+                            {% endfor %}
+                            </ul>
+                        {% elseif r.ultimoHeartbeat %}
+                            <small class="text-success">Sin problemas</small>
+                        {% else %}
+                            <small class="text-muted">Sin reportes todavía</small>
+                        {% endif %}
+                    </td>
+                    <td class="p-3" data-label="Acciones">
+                        <div class="spui-acciones">
                             <button type="button"
-                                    class="unraf-btn unraf-btn-light unraf-btn-sm"
+                                    class="unraf-btn spui-btn-ver unraf-btn-sm"
+                                    data-spui-form="{{ path('spui_cms_reproductores_ver', {id: r.id}) }}"
+                                    data-spui-size="modal-sm"
+                                    data-spui-title="{{ r.hostname }}"
+                                    title="Ver detalle">
+                                <img src="{{ asset('unraf-ui/icons/eye.svg') }}" class="spui-action-icon" alt=""> Ver
+                            </button>
+                            <a href="{{ path('spui_cms_reproductores_telemetria', {id: r.id}) }}"
+                               class="unraf-btn spui-btn-telemetria unraf-btn-sm"
+                               title="Histórico de temperatura, RAM y disco">
+                                <img src="{{ asset('unraf-ui/icons/chart-line.svg') }}" class="spui-action-icon" alt=""> Telemetría
+                            </a>
+                            <button type="button"
+                                    class="unraf-btn spui-btn-editar unraf-btn-sm {{ bloqueo.clase(motivo) }}"
                                     data-spui-form="{{ path('spui_cms_reproductores_editar', {id: r.id}) }}"
                                     data-spui-title="Editar: {{ r.hostname }}"
-                                    title="Editar">
-                                <img src="{{ asset('unraf-ui/icons/pencil.svg') }}" class="spui-action-icon" alt="Editar">
+                                    {% if motivo %}{{ bloqueo.attrs(motivo) }}{% else %}title="Editar"{% endif %}>
+                                <img src="{{ asset('unraf-ui/icons/pencil.svg') }}" class="spui-action-icon" alt=""> Editar
                             </button>
                             <button type="button"
-                                    class="unraf-btn unraf-btn-sm spui-btn-confirm-warning"
+                                    class="unraf-btn spui-btn-clave unraf-btn-sm {{ bloqueo.clase(motivo) }}"
                                     data-spui-action="{{ path('spui_cms_reproductores_regenerar_clave', {id: r.id}) }}"
                                     data-spui-title="Regenerar clave API"
                                     data-spui-message="¿Regenerar la API key de «{{ r.hostname }}»? La clave anterior quedará inválida de inmediato."
-                                    data-spui-variant="warning"
-                                    title="Regenerar API key">
+                                    data-spui-variant="clave"
+                                    data-spui-confirm-label="Regenerar"
+                                    {% if motivo %}{{ bloqueo.attrs(motivo) }}{% else %}title="Regenerar API key"{% endif %}>
                                 <img src="{{ asset('unraf-ui/icons/key.svg') }}" class="spui-action-icon" alt=""> Clave
                             </button>
-                            {% if r.pantallas|length == 0 %}
-                                <button type="button" class="unraf-btn-icon btn-delete"
-                                        data-spui-action="{{ path('spui_cms_reproductores_eliminar', {id: r.id}) }}"
-                                        data-spui-title="Eliminar reproductor"
-                                        data-spui-message="¿Eliminar «{{ r.hostname }}»? El Pi dejará de poder comunicarse con el sistema."
-                                        data-spui-variant="danger" title="Eliminar">
-                                    <img src="{{ asset('unraf-ui/icons/trash.svg') }}" alt="Eliminar">
-                                </button>
-                            {% endif %}
+                            <button type="button"
+                                    class="unraf-btn spui-btn-eliminar unraf-btn-sm {{ bloqueo.clase(motivo) }}"
+                                    data-spui-action="{{ path('spui_cms_reproductores_eliminar', {id: r.id}) }}"
+                                    data-spui-title="Eliminar reproductor"
+                                    data-spui-message="¿Eliminar «{{ r.hostname }}»? El Pi dejará de poder comunicarse con el sistema."
+                                    data-spui-variant="eliminar"
+                                    {% if motivo %}{{ bloqueo.attrs(motivo) }}{% else %}title="Eliminar"{% endif %}>
+                                <img src="{{ asset('unraf-ui/icons/trash.svg') }}" class="spui-action-icon" alt=""> Eliminar
+                            </button>
                         </div>
                     </td>
                 </tr>
             {% else %}
                 <tr>
-                    <td colspan="6" class="p-4 text-center text-muted">
+                    <td colspan="7" class="p-4 text-center text-muted">
                         No hay reproductores registrados.
                     </td>
                 </tr>

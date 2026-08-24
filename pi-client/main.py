@@ -29,12 +29,14 @@ import logging
 import os
 import signal
 import sys
+import threading
 import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import config
 from spui.cache import Cache
+from spui.energia import GestorEnergia
 from spui.heartbeat import HeartbeatSender
 from spui.mqtt_listener import MqttListener
 from spui.network import NetworkMonitor
@@ -44,6 +46,50 @@ from spui.telemetria import TelemetriaPublisher
 
 # Cuántos segundos esperar entre reintentos cuando estamos offline
 _OFFLINE_RETRY_SEG = 30
+
+
+class _RegistroProblemas:
+    """
+    Problemas transitorios que se informan al CMS en el próximo heartbeat.
+
+    La idea es que ningún fallo quede sólo en el log local: si un contenido no
+    se puede reproducir o el caché está dañado, el operador tiene que verlo en
+    el panel sin entrar por SSH a la Pi.
+
+    Cada problema se guarda bajo una clave; volver a reportar la misma clave
+    pisa el mensaje anterior en lugar de acumular repetidos. Los problemas
+    caducan solos: si dejan de reportarse, desaparecen del panel en el próximo
+    heartbeat, así no quedan avisos viejos de algo ya resuelto.
+    """
+
+    # Un problema se sigue informando este tiempo desde la última vez que ocurrió.
+    _VIGENCIA_SEG = 180
+
+    def __init__(self) -> None:
+        self._lock = threading.Lock()
+        self._items: dict[str, tuple[str, float]] = {}
+
+    def reportar(self, clave: str, mensaje: str) -> None:
+        with self._lock:
+            self._items[clave] = (mensaje, time.monotonic())
+
+    def resolver(self, clave: str) -> None:
+        """Marca un problema como superado (por ejemplo, volvió la red)."""
+        with self._lock:
+            self._items.pop(clave, None)
+
+    def consultar(self) -> list[str]:
+        ahora = time.monotonic()
+        with self._lock:
+            vigentes = {
+                k: v for k, v in self._items.items()
+                if ahora - v[1] <= self._VIGENCIA_SEG
+            }
+            self._items = vigentes
+            return [mensaje for mensaje, _ in vigentes.values()]
+
+
+_PROBLEMAS = _RegistroProblemas()
 
 # ── Logging ───────────────────────────────────────────────────────────────────
 
@@ -90,8 +136,41 @@ def main() -> None:
     sync    = SyncClient(config.API_URL, config.API_KEY, config.MEDIA_DIR)
     player  = Player(config.MEDIA_DIR)
     network = NetworkMonitor(config.API_URL)
+    energia = GestorEnergia()
 
-    heartbeat = HeartbeatSender(sync, config.HEARTBEAT_INTERVAL)
+    def recolectar_diagnostico() -> list[str]:
+        """
+        Problemas que este reproductor detecta sobre sí mismo y manda al CMS en
+        cada heartbeat, para que se vean en el panel.
+
+        La regla es que nada falle en silencio: el equipo puede estar
+        conectado, sincronizando y mandando telemetría, y aun así no mostrar
+        nada en pantalla. Si eso pasa tiene que verse desde el CMS y no sólo
+        en el journal de la Pi.
+        """
+        problemas: list[str] = []
+
+        if player.motivo_simulacion:
+            problemas.append('No se está mostrando contenido en pantalla. ' + player.motivo_simulacion)
+
+        if player.problema_pantalla:
+            problemas.append(player.problema_pantalla)
+
+        if energia.en_simulacion():
+            problemas.append(
+                'Sin control de encendido/apagado de la pantalla: faltan cec-client y vcgencmd. '
+                'El horario energético se registra pero no se aplica.'
+            )
+
+        problemas.extend(_PROBLEMAS.consultar())
+
+        return problemas
+
+    heartbeat = HeartbeatSender(
+        sync,
+        config.HEARTBEAT_INTERVAL,
+        recolectar_diagnostico=recolectar_diagnostico,
+    )
     heartbeat.start()
 
     mqtt = MqttListener(
@@ -102,7 +181,14 @@ def main() -> None:
     )
     mqtt.start()
 
-    telemetria = TelemetriaPublisher(config.MQTT_HOST, config.MQTT_PORT, config.TELEMETRIA_INTERVAL)
+    # sync_client habilita el respaldo por HTTP: si el broker se cae o nadie
+    # está ingiriendo los mensajes, la telemetría igual llega al CMS.
+    telemetria = TelemetriaPublisher(
+        config.MQTT_HOST,
+        config.MQTT_PORT,
+        config.TELEMETRIA_INTERVAL,
+        sync_client=sync,
+    )
     telemetria.start()
 
     logger.info('SPUI Client iniciado. API: %s', config.API_URL)
@@ -117,18 +203,27 @@ def main() -> None:
                 sync_data = sync.sincronizar()
                 cache.guardar_sync(sync_data)
 
-                # Informar al publisher de telemetría cuál es este reproductor
+                # Informar cuál es este reproductor: la telemetría lo necesita
+                # para publicar en su topic, y el listener MQTT para suscribirse
+                # a las alertas dirigidas sólo a este reproductor.
                 reproductor_id = sync_data.get('reproductor_id')
                 if reproductor_id:
                     telemetria.set_reproductor_id(reproductor_id)
+                    mqtt.set_reproductor_id(reproductor_id)
 
                 # Prefetch proactivo — descarga todo lo que necesita la playlist
                 # mientras la red esté disponible, para que el caché esté completo
                 # antes de que la red se pierda.
                 sync.prefetch_media(sync_data)
 
+                _PROBLEMAS.resolver('sync')
+
             except Exception as exc:
                 logger.warning('Sync falló estando online: %s — usando caché.', exc)
+                _PROBLEMAS.reportar(
+                    'sync',
+                    f'No se pudo sincronizar con el CMS ({exc}). Se está reproduciendo desde el caché local.',
+                )
                 sync_data = cache.obtener_sync()
         else:
             # Offline: usar caché y reintentar pronto
@@ -137,23 +232,102 @@ def main() -> None:
 
         if sync_data is None:
             logger.error('Sin datos disponibles (ni red ni caché). Reintentando en 30s.')
-            player.mostrar_fallback(duracion=30)
+            _PROBLEMAS.reportar(
+                'sin-datos',
+                'Sin programación disponible: no hay conexión con el CMS y el caché local está vacío. '
+                'Se muestra la pantalla de espera.',
+            )
+            player.mostrar_fallback()
             _esperar_interruptible(30)
             continue
 
         # ── Decidir qué reproducir ────────────────────────────────────────
-        alerta = sync_data.get('alerta_emergencia')
-        prog   = sync_data.get('programacion_activa')
+        # El sync devuelve una lista de pantallas (una Pi puede, en teoría,
+        # controlar más de una); en la práctica cada reproductor controla
+        # exactamente una, así que se usa la primera. 'playlist' y
+        # 'programacion_activa' son hermanos dentro de cada entrada de
+        # pantallas[], no están anidados el uno en el otro.
+        pantallas     = sync_data.get('pantallas') or []
+        pantalla_data = pantallas[0] if pantallas else {}
+        alerta        = sync_data.get('alerta_emergencia')
+        playlist      = pantalla_data.get('playlist')
 
-        if alerta:
-            if not player.esta_mostrando_alerta():
-                player.mostrar_alerta(alerta)
-        elif prog:
-            items = prog.get('playlist', {}).get('items', [])
-            player.reproducir_playlist(items, sync_client=sync)
+        if not pantallas:
+            # Sin pantallas no hay nada que resolver. Se avisa con el motivo
+            # concreto: si no, el fallback permanente parece "no hay
+            # programación ahora" cuando en realidad falta configurar el CMS.
+            logger.warning(
+                'Este reproductor no tiene ninguna pantalla asignada en el CMS. '
+                'Asignásela desde el formulario de la Pantalla (campo "Reproductor").'
+            )
+            _PROBLEMAS.reportar(
+                'sin-pantallas',
+                'Este reproductor no tiene ninguna pantalla asignada. Asignásela desde el '
+                'formulario de la Pantalla, campo "Reproductor".',
+            )
         else:
-            logger.info('Sin programación activa ahora mismo.')
-            player.mostrar_fallback(duracion=espera)
+            _PROBLEMAS.resolver('sin-pantallas')
+
+        # ── Energía (CU-11) ───────────────────────────────────────────────
+        # Se aplica en cada ciclo: el sync trae el horario y el gestor decide
+        # si toca encender, apagar o cambiar el brillo. Es idempotente.
+        # Una emergencia enciende la pantalla aunque el horario diga apagar:
+        # avisar de una evacuación pesa más que el ahorro energético.
+        # Todo lo que sigue se hace bajo try: un contenido roto (un archivo que
+        # no se puede leer, un campo que llega distinto de lo esperado) tiene
+        # que costar como mucho un ciclo, no el proceso entero. Sin esto, una
+        # sola excepción mataba el cliente, systemd lo reiniciaba, volvía a
+        # fallar con el mismo contenido y la pantalla quedaba muerta.
+        try:
+            # Si se arrancó sin entorno gráfico (X11 todavía no estaba listo),
+            # se reintenta en cada ciclo hasta conseguirlo. Sin esto el
+            # reproductor quedaba en simulación hasta el próximo reinicio.
+            player.reintentar_pantalla()
+
+            energia.actualizar_reglas(pantalla_data.get('energia'))
+            energia.aplicar(hay_alerta=bool(alerta))
+
+            # El sync es la fuente de verdad sobre si hay alerta vigente: si no
+            # trae ninguna y el player todavía cree que sí, hay que apagarla.
+            #
+            # Sin esto la alerta quedaba pegada. desactivar_alerta() sólo se
+            # invocaba desde el callback MQTT, así que un reproductor que
+            # estuvo offline justo cuando se desactivó la alerta perdía ese
+            # mensaje, y al reconectar el retenido ya había sido limpiado por
+            # el CMS. La pantalla volvía a la playlist porque reproducir_playlist()
+            # la reescribe, pero _alerta seguía seteado y esta_mostrando_alerta()
+            # devolvía True para siempre: la próxima alerta real no se mostraba,
+            # porque el bloque de abajo la daba por ya visible.
+            if not alerta and player.esta_mostrando_alerta():
+                logger.info('El sync no reporta alerta activa: se desactiva la que estaba en pantalla.')
+                player.desactivar_alerta()
+
+            if alerta:
+                if not player.esta_mostrando_alerta():
+                    player.mostrar_alerta(alerta)
+            elif energia.esta_apagada():
+                logger.info('Fuera de horario: pantalla apagada, sin reproducir.')
+                _esperar_interruptible(min(espera, 60))
+                continue
+            elif playlist and playlist.get('items'):
+                player.reproducir_playlist(playlist['items'], sync_client=sync)
+            else:
+                # Cubre tanto "sin programación" como "playlist vacía". El
+                # fallback es permanente: queda en pantalla hasta que haya
+                # contenido real. Si tuviera una duración, al vencerse la
+                # pantalla volvería a quedar en negro.
+                if playlist:
+                    logger.info('La playlist programada no tiene contenidos.')
+                else:
+                    logger.info('Sin programación activa ahora mismo.')
+                player.mostrar_fallback()
+
+        except Exception as exc:
+            logger.exception('Error reproduciendo (se continúa en el próximo ciclo): %s', exc)
+            _PROBLEMAS.reportar(
+                'reproduccion',
+                f'Error al reproducir el contenido programado ({exc}). Se reintenta en el próximo ciclo.',
+            )
 
         _esperar_interruptible(espera)
 

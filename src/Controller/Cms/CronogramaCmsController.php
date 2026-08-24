@@ -12,7 +12,6 @@ use SPUI\Form\CronogramaItemType;
 use SPUI\Repository\ContenidoRepository;
 use SPUI\Repository\CronogramaItemRepository;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
-use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
@@ -73,6 +72,7 @@ class CronogramaCmsController extends AbstractController
         $horaInicio = $request->request->get('hora_inicio', '');
         $horaFin    = $request->request->get('hora_fin', '');
         $dias       = $request->request->all('dias') ?? [];
+        $activo     = (bool) $request->request->get('activo', false);
 
         $errors = [];
         if (!$nombre) { $errors[] = 'El nombre es requerido.'; }
@@ -89,7 +89,10 @@ class CronogramaCmsController extends AbstractController
                     'html'    => $this->renderView('@SPUI/cronograma/_item_agregar_form.html.twig', [
                         'action_url' => $actionUrl,
                         'errors'     => $errors,
-                        'values'     => ['nombre' => $nombre, 'aula' => $aula, 'hora_inicio' => $horaInicio, 'hora_fin' => $horaFin, 'dias' => $dias],
+                        // 'activo' va explícito (no omitido) para que al reintentar
+                        // tras un error el switch conserve lo que eligió el usuario:
+                        // el template hace v.activo ?? true, y ?? sólo captura null.
+                        'values'     => ['nombre' => $nombre, 'aula' => $aula, 'hora_inicio' => $horaInicio, 'hora_fin' => $horaFin, 'dias' => $dias, 'activo' => $activo],
                     ]),
                 ]);
             }
@@ -108,7 +111,7 @@ class CronogramaCmsController extends AbstractController
         $item->setHoraInicio(new DateTimeImmutable($horaInicio));
         $item->setHoraFin(new DateTimeImmutable($horaFin));
         $item->setDiasSemana($mask);
-        $item->setActivo(true);
+        $item->setActivo($activo);
         $item->setOrden(count($this->itemRepo->findBy(['contenido' => $contenido])) + 1);
 
         $this->em()->persist($item);
@@ -212,22 +215,4 @@ class CronogramaCmsController extends AbstractController
         return $this->redirect($builderUrl);
     }
 
-    #[Route('/items/reorder', name: 'spui_cms_cronograma_items_reorder', methods: ['POST'])]
-    public function reorderItems(int $id, Request $request): JsonResponse
-    {
-        $this->getContenidoOr404($id);
-
-        $orden = $request->toArray()['orden'] ?? [];
-        $em    = $this->em();
-
-        foreach ($orden as $posicion => $itemId) {
-            $item = $this->itemRepo->find((int) $itemId);
-            if ($item && $item->getContenido()->getId() === $id) {
-                $item->setOrden($posicion + 1);
-            }
-        }
-
-        $em->flush();
-        return $this->json(['ok' => true]);
-    }
 }

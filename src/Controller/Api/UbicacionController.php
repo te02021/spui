@@ -7,6 +7,7 @@ namespace SPUI\Controller\Api;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\Persistence\ManagerRegistry;
 use SPUI\Entity\Ubicacion;
+use SPUI\Repository\EdificioRepository;
 use SPUI\Repository\UbicacionRepository;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -20,6 +21,7 @@ class UbicacionController extends AbstractController
     public function __construct(
         private readonly ManagerRegistry $doctrine,
         private readonly UbicacionRepository $repo,
+        private readonly EdificioRepository $edificioRepo,
     ) {}
 
     private function em(): EntityManagerInterface
@@ -29,10 +31,14 @@ class UbicacionController extends AbstractController
 
     private function serialize(Ubicacion $u): array
     {
+        $e = $u->getEdificio();
         return [
             'id'              => $u->getId(),
-            'edificio'        => $u->getEdificio(),
-            'aula'            => $u->getAula(),
+            'edificio'        => [
+                'id'     => $e->getId(),
+                'nombre' => $e->getNombre(),
+            ],
+            'sector'          => $u->getSector(),
             'descripcion'     => $u->getDescripcion(),
             'activo'          => $u->isActivo(),
             'pantallas_count' => $u->getPantallas()->count(),
@@ -42,11 +48,18 @@ class UbicacionController extends AbstractController
     #[Route('', name: 'spui_ubicaciones_index', methods: ['GET'])]
     public function index(Request $request): JsonResponse
     {
-        $criteria = $request->query->has('activo')
-            ? ['activo' => $request->query->getBoolean('activo')]
-            : [];
+        $qb = $this->repo->createQueryBuilder('u')
+            ->join('u.edificio', 'e')
+            ->addSelect('e')
+            ->orderBy('e.nombre', 'ASC')
+            ->addOrderBy('u.sector', 'ASC');
 
-        $items = $this->repo->findBy($criteria, ['edificio' => 'ASC']);
+        if ($request->query->has('activo')) {
+            $qb->andWhere('u.activo = :activo')
+               ->setParameter('activo', $request->query->getBoolean('activo'));
+        }
+
+        $items = $qb->getQuery()->getResult();
 
         return $this->json([
             'data'  => array_map($this->serialize(...), $items),
@@ -59,13 +72,18 @@ class UbicacionController extends AbstractController
     {
         $body = json_decode($request->getContent(), true) ?? [];
 
-        if (empty($body['edificio'])) {
-            return $this->json(['error' => 'El campo "edificio" es requerido.'], Response::HTTP_UNPROCESSABLE_ENTITY);
+        if (empty($body['edificio_id'])) {
+            return $this->json(['error' => 'El campo "edificio_id" es requerido.'], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
+        $edificio = $this->edificioRepo->find((int) $body['edificio_id']);
+        if ($edificio === null) {
+            return $this->json(['error' => 'Edificio no encontrado.'], Response::HTTP_NOT_FOUND);
         }
 
         $ubicacion = new Ubicacion();
-        $ubicacion->setEdificio(trim($body['edificio']));
-        $ubicacion->setAula(isset($body['aula']) ? trim($body['aula']) : null);
+        $ubicacion->setEdificio($edificio);
+        $ubicacion->setSector(isset($body['sector']) ? trim($body['sector']) : null);
         $ubicacion->setDescripcion(isset($body['descripcion']) ? trim($body['descripcion']) : null);
         $ubicacion->setActivo((bool) ($body['activo'] ?? true));
 
@@ -76,7 +94,7 @@ class UbicacionController extends AbstractController
         return $this->json(['data' => $this->serialize($ubicacion)], Response::HTTP_CREATED);
     }
 
-    #[Route('/{id}', name: 'spui_ubicaciones_show', methods: ['GET'])]
+    #[Route('/{id}', name: 'spui_ubicaciones_show', methods: ['GET'], requirements: ['id' => '\d+'])]
     public function show(int $id): JsonResponse
     {
         $ubicacion = $this->repo->find($id);
@@ -87,7 +105,7 @@ class UbicacionController extends AbstractController
         return $this->json(['data' => $this->serialize($ubicacion)]);
     }
 
-    #[Route('/{id}', name: 'spui_ubicaciones_update', methods: ['PATCH'])]
+    #[Route('/{id}', name: 'spui_ubicaciones_update', methods: ['PATCH'], requirements: ['id' => '\d+'])]
     public function update(int $id, Request $request): JsonResponse
     {
         $ubicacion = $this->repo->find($id);
@@ -97,11 +115,15 @@ class UbicacionController extends AbstractController
 
         $body = json_decode($request->getContent(), true) ?? [];
 
-        if (isset($body['edificio'])) {
-            $ubicacion->setEdificio(trim($body['edificio']));
+        if (isset($body['edificio_id'])) {
+            $edificio = $this->edificioRepo->find((int) $body['edificio_id']);
+            if ($edificio === null) {
+                return $this->json(['error' => 'Edificio no encontrado.'], Response::HTTP_NOT_FOUND);
+            }
+            $ubicacion->setEdificio($edificio);
         }
-        if (array_key_exists('aula', $body)) {
-            $ubicacion->setAula($body['aula'] !== null ? trim($body['aula']) : null);
+        if (array_key_exists('sector', $body)) {
+            $ubicacion->setSector($body['sector'] !== null ? trim($body['sector']) : null);
         }
         if (array_key_exists('descripcion', $body)) {
             $ubicacion->setDescripcion($body['descripcion'] !== null ? trim($body['descripcion']) : null);
@@ -115,7 +137,7 @@ class UbicacionController extends AbstractController
         return $this->json(['data' => $this->serialize($ubicacion)]);
     }
 
-    #[Route('/{id}', name: 'spui_ubicaciones_delete', methods: ['DELETE'])]
+    #[Route('/{id}', name: 'spui_ubicaciones_delete', methods: ['DELETE'], requirements: ['id' => '\d+'])]
     public function delete(int $id): JsonResponse
     {
         $ubicacion = $this->repo->find($id);
@@ -126,6 +148,14 @@ class UbicacionController extends AbstractController
         if (!$ubicacion->getPantallas()->isEmpty()) {
             return $this->json(
                 ['error' => 'No se puede eliminar una ubicación con pantallas asignadas. Desasígnalas primero.'],
+                Response::HTTP_CONFLICT,
+            );
+        }
+
+        // Sin este guard el DELETE viola la FK de programacion.ubicacion_id
+        if (!$ubicacion->getProgramaciones()->isEmpty()) {
+            return $this->json(
+                ['error' => 'No se puede eliminar una ubicación con programaciones asociadas. Eliminalas primero.'],
                 Response::HTTP_CONFLICT,
             );
         }

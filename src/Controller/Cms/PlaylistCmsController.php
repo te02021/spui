@@ -8,8 +8,10 @@ use Doctrine\Persistence\ManagerRegistry;
 use SPUI\Entity\Playlist;
 use SPUI\Entity\PlaylistItem;
 use SPUI\Repository\ContenidoRepository;
+use SPUI\Repository\PantallaRepository;
 use SPUI\Repository\PlaylistItemRepository;
 use SPUI\Repository\PlaylistRepository;
+use SPUI\Service\AlcanceReproductorService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -19,10 +21,14 @@ use Symfony\Component\Routing\Attribute\Route;
 #[Route('/spui/playlists')]
 class PlaylistCmsController extends AbstractController
 {
+    use BloqueoOfflineTrait;
+
     public function __construct(
         private readonly PlaylistRepository $repo,
         private readonly ContenidoRepository $contenidoRepo,
         private readonly PlaylistItemRepository $itemRepo,
+        private readonly PantallaRepository $pantallaRepo,
+        private readonly AlcanceReproductorService $alcance,
         private readonly ManagerRegistry $doctrine,
     ) {}
 
@@ -35,7 +41,8 @@ class PlaylistCmsController extends AbstractController
     public function index(): Response
     {
         return $this->render('@SPUI/playlists/index.html.twig', [
-            'playlists' => $this->repo->findBy([], ['nombre' => 'ASC']),
+            'playlists'   => $this->repo->findBy([], ['nombre' => 'ASC']),
+            'ids_offline' => $this->alcance->idsOfflineDeUnaVez(),
         ]);
     }
 
@@ -100,6 +107,10 @@ class PlaylistCmsController extends AbstractController
                 return $this->redirectToRoute('spui_cms_playlists_index');
             }
 
+            if ($r = $this->bloquearSiOffline($this->alcance->dePlaylist($playlist), $request, 'spui_cms_playlists_index')) {
+                return $r;
+            }
+
             $playlist->setNombre($nombre);
             $playlist->setDescripcion(trim($request->request->get('descripcion', '')) ?: null);
             $playlist->setActivo((bool) $request->request->get('activo', false));
@@ -128,11 +139,45 @@ class PlaylistCmsController extends AbstractController
         $playlist = $this->repo->find($id);
         if (!$playlist) { throw $this->createNotFoundException(); }
 
+        // Las tres cosas que referencian una playlist se comprueban antes de
+        // borrar. Sin esto, la base rechaza el DELETE por integridad
+        // referencial y el operador ve un error SQL crudo —
+        // "Cannot delete or update a parent row" — que no dice qué hacer.
+        $bloqueos = [];
+
         if ($playlist->getItems()->count() > 0) {
-            $msg = 'Primero quitá todos los ítems de la playlist antes de eliminarla.';
-            if ($request->isXmlHttpRequest()) { return $this->json(['success' => false, 'message' => $msg]); }
+            $bloqueos[] = sprintf(
+                'tiene %d ítem(s): quitalos desde "Ver ítems"',
+                $playlist->getItems()->count(),
+            );
+        }
+
+        if ($playlist->getProgramaciones()->count() > 0) {
+            $bloqueos[] = sprintf(
+                'la usan %d regla(s) de programación: eliminá o reasigná esas reglas',
+                $playlist->getProgramaciones()->count(),
+            );
+        }
+
+        $pantallasFallback = $this->pantallaRepo->findQueUsanPlaylistComoFallback($playlist);
+        if ($pantallasFallback !== []) {
+            $nombres = implode(', ', array_map(fn($p) => '"' . $p->getNombre() . '"', $pantallasFallback));
+            $bloqueos[] = sprintf(
+                'es la playlist de respaldo de %s: cambiala en la edición de esa(s) pantalla(s)',
+                $nombres,
+            );
+        }
+
+        if ($bloqueos !== []) {
+            $msg = 'No se puede eliminar "' . $playlist->getNombre() . '" porque '
+                 . implode('; y ', $bloqueos) . '.';
+            if ($request->isXmlHttpRequest()) { return $this->json(['success' => false, 'message' => $msg], 422); }
             $this->addFlash('error', $msg);
             return $this->redirectToRoute('spui_cms_playlists_index');
+        }
+
+        if ($r = $this->bloquearSiOffline($this->alcance->dePlaylist($playlist), $request, 'spui_cms_playlists_index')) {
+            return $r;
         }
 
         $nombre = $playlist->getNombre();
@@ -142,6 +187,57 @@ class PlaylistCmsController extends AbstractController
         $msg = '"' . $nombre . '" eliminada.';
         if ($request->isXmlHttpRequest()) { return $this->json(['success' => true, 'message' => $msg]); }
         $this->addFlash('success', $msg);
+        return $this->redirectToRoute('spui_cms_playlists_index');
+    }
+
+    /** Detalle de la playlist (modal "Ver"). */
+    #[Route('/{id}/ver', name: 'spui_cms_playlists_ver', methods: ['GET'], requirements: ['id' => '\d+'])]
+    public function ver(int $id, Request $request): Response
+    {
+        $playlist = $this->repo->find($id);
+        if (!$playlist) { throw $this->createNotFoundException(); }
+
+        if ($request->isXmlHttpRequest()) {
+            return $this->json([
+                'title' => $playlist->getNombre(),
+                'html'  => $this->renderView('@SPUI/playlists/_view.html.twig', ['playlist' => $playlist]),
+            ]);
+        }
+
+        return $this->redirectToRoute('spui_cms_playlists_index');
+    }
+
+    /**
+     * Gestión de ítems de la playlist (modal de segundo nivel).
+     *
+     * Con ?ro=1 se renderiza en sólo lectura: es la vista que se abre desde el
+     * detalle, donde no corresponde ofrecer agregar ni reordenar.
+     */
+    #[Route('/{id}/items', name: 'spui_cms_playlists_items', methods: ['GET'], requirements: ['id' => '\d+'])]
+    public function items(int $id, Request $request): Response
+    {
+        $playlist = $this->repo->find($id);
+        if (!$playlist) { throw $this->createNotFoundException(); }
+
+        // Sólo los publicados: un contenido en borrador no puede reproducirse,
+        // así que ofrecerlo en el selector induciría al error.
+        $disponibles = $this->contenidoRepo->findBy(
+            ['estado' => \SPUI\Enum\EstadoContenido::Publicado],
+            ['titulo' => 'ASC'],
+        );
+        $enPlaylist  = array_map(fn($item) => $item->getContenido()->getId(), $playlist->getItems()->toArray());
+        $disponibles = array_values(array_filter($disponibles, fn($c) => !in_array($c->getId(), $enPlaylist, true)));
+
+        $html = $this->renderView('@SPUI/playlists/_items.html.twig', [
+            'playlist'    => $playlist,
+            'disponibles' => $disponibles,
+            'readonly'    => $request->query->getBoolean('ro'),
+        ]);
+
+        if ($request->isXmlHttpRequest()) {
+            return $this->json(['title' => 'Ítems de "' . $playlist->getNombre() . '"', 'html' => $html]);
+        }
+
         return $this->redirectToRoute('spui_cms_playlists_index');
     }
 
@@ -184,24 +280,32 @@ class PlaylistCmsController extends AbstractController
 
         if (!$playlist || !$contenido) { throw $this->createNotFoundException(); }
 
-        $siguiente = count($playlist->getItems()) + 1;
+        if ($r = $this->bloquearSiOffline($this->alcance->dePlaylist($playlist), $request, 'spui_cms_playlists_index')) {
+            return $r;
+        }
+
+        // MAX(orden)+1 y no count()+1: con huecos en la numeración (por ejemplo
+        // tras quitar un ítem del medio) contar daría un orden ya ocupado y
+        // reventaría contra el UNIQUE (playlist_id, orden).
+        $siguiente = 1;
+        foreach ($playlist->getItems() as $existente) {
+            $siguiente = max($siguiente, $existente->getOrden() + 1);
+        }
 
         $item = new PlaylistItem();
         $item->setPlaylist($playlist);
         $item->setContenido($contenido);
         $item->setOrden($siguiente);
-        $item->setDuracionOverrideSeg(null);
 
         $this->em()->persist($item);
         $this->em()->flush();
 
-        $msg        = '"' . $contenido->getTitulo() . '" agregado a la playlist.';
-        $builderUrl = $this->generateUrl('spui_cms_playlists_builder', ['id' => $id]);
+        $msg = '"' . $contenido->getTitulo() . '" agregado a la playlist.';
         if ($request->isXmlHttpRequest()) {
-            return $this->json(['success' => true, 'message' => $msg, 'redirect' => $builderUrl]);
+            return $this->json(['success' => true, 'message' => $msg]);
         }
         $this->addFlash('success', $msg);
-        return $this->redirectToRoute('spui_cms_playlists_builder', ['id' => $id]);
+        return $this->redirectToRoute('spui_cms_playlists_index');
     }
 
     #[Route('/{id}/items/{itemId}/quitar', name: 'spui_cms_playlists_items_quitar', methods: ['POST'], requirements: ['id' => '\d+', 'itemId' => '\d+'])]
@@ -214,6 +318,10 @@ class PlaylistCmsController extends AbstractController
             throw $this->createNotFoundException();
         }
 
+        if ($r = $this->bloquearSiOffline($this->alcance->dePlaylist($playlist), $request, 'spui_cms_playlists_index')) {
+            return $r;
+        }
+
         $titulo = $item->getContenido()->getTitulo();
 
         $em = $this->em();
@@ -222,13 +330,12 @@ class PlaylistCmsController extends AbstractController
 
         $this->renumerarItems($playlist);
 
-        $msg        = '"' . $titulo . '" quitado de la playlist.';
-        $builderUrl = $this->generateUrl('spui_cms_playlists_builder', ['id' => $id]);
+        $msg = '"' . $titulo . '" quitado de la playlist.';
         if ($request->isXmlHttpRequest()) {
-            return $this->json(['success' => true, 'message' => $msg, 'redirect' => $builderUrl]);
+            return $this->json(['success' => true, 'message' => $msg]);
         }
         $this->addFlash('success', $msg);
-        return $this->redirectToRoute('spui_cms_playlists_builder', ['id' => $id]);
+        return $this->redirectToRoute('spui_cms_playlists_index');
     }
 
     #[Route('/{id}/items/reorder', name: 'spui_cms_playlists_items_reorder', methods: ['POST'], requirements: ['id' => '\d+'])]
@@ -237,17 +344,36 @@ class PlaylistCmsController extends AbstractController
         $playlist = $this->repo->find($id);
         if (!$playlist) { return $this->json(['error' => 'Not found'], 404); }
 
+        if ($motivo = $this->alcance->bloqueoPara($this->alcance->dePlaylist($playlist))) {
+            return $this->json(['success' => false, 'message' => $motivo, 'type' => 'warning'], 409);
+        }
+
         $orden = $request->toArray()['orden'] ?? [];
         $em    = $this->em();
 
-        foreach ($orden as $posicion => $itemId) {
-            $item = $this->itemRepo->find((int) $itemId);
-            if ($item && $item->getPlaylist()->getId() === $id) {
-                $item->setOrden($posicion + 1);
+        // Dos pasadas dentro de una transacción. Asignar las posiciones finales
+        // de una sola vez choca contra el UNIQUE (playlist_id, orden): InnoDB lo
+        // valida fila por fila, así que intercambiar dos ítems produce una
+        // colisión transitoria aunque el estado final sea válido. Corriéndolos
+        // primero a un rango libre, ninguna posición intermedia se pisa.
+        $em->wrapInTransaction(function () use ($orden, $id, $em) {
+            foreach ($orden as $posicion => $itemId) {
+                $item = $this->itemRepo->find((int) $itemId);
+                if ($item && $item->getPlaylist()->getId() === $id) {
+                    $item->setOrden($posicion + 1001);
+                }
             }
-        }
+            $em->flush();
 
-        $em->flush();
+            foreach ($orden as $posicion => $itemId) {
+                $item = $this->itemRepo->find((int) $itemId);
+                if ($item && $item->getPlaylist()->getId() === $id) {
+                    $item->setOrden($posicion + 1);
+                }
+            }
+            $em->flush();
+        });
+
         return $this->json(['ok' => true]);
     }
 

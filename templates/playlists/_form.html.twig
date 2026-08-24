@@ -1,9 +1,26 @@
 <form method="post" action="{{ path('spui_cms_playlists_nueva') }}" data-spui-ajax="1" novalidate>
 
-    <div class="mb-3">
-        <label class="unraf-form-label" for="pl_nombre">Nombre <span class="text-danger">*</span></label>
-        <input type="text" id="pl_nombre" name="nombre" class="unraf-form-control" maxlength="150"
-               placeholder="Ej: Cartelera Edificio A" required>
+    {# Switch estándar del sistema. Playlists no usa FormType, así que el id va
+       literal y el span _lbl se arma a mano; switch-toggle.js lo engancha por
+       data-spui-switch. Arranca en Activa: es lo que hacía el alta antes, que
+       forzaba activo=true sin darle opción al usuario. #}
+    <div class="row g-3 mb-3 align-items-start">
+        <div class="col">
+            <label class="unraf-form-label" for="pl_nombre">Nombre <span class="text-danger">*</span></label>
+            <input type="text" id="pl_nombre" name="nombre" class="unraf-form-control" maxlength="150"
+                   placeholder="Ej: Cartelera Edificio A" required>
+        </div>
+        <div class="col-12 col-sm-auto d-flex flex-column align-items-center" style="min-width:110px">
+            <label class="unraf-form-label mb-2 text-center" for="pl_activo">Estado</label>
+            <div class="d-flex align-items-center gap-2">
+                <div class="form-switch m-0">
+                    <input class="form-check-input spui-switch-input" type="checkbox"
+                           name="activo" id="pl_activo" value="1" role="switch"
+                           data-spui-switch="1" data-switch-on="Activa" data-switch-off="Inactiva" checked>
+                </div>
+                <span class="spui-switch-status on" id="pl_activo_lbl">Activa</span>
+            </div>
+        </div>
     </div>
 
     <div class="mb-4">
@@ -14,7 +31,7 @@
 
     <div class="d-flex justify-content-end gap-2 pt-3 border-top">
         <button type="button" class="unraf-btn spui-btn-back" data-spui-close>Cancelar</button>
-        <button type="submit" class="unraf-btn unraf-btn-institucion">Crear playlist</button>
+        <button type="submit" class="unraf-btn spui-btn-crear">Guardar</button>
     </div>
 
 </form>

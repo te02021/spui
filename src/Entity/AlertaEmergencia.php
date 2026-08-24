@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace SPUI\Entity;
 
 use DateTimeImmutable;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 use SPUI\Repository\AlertaEmergenciaRepository;
 
@@ -47,9 +49,23 @@ class AlertaEmergencia
     #[ORM\Column(nullable: true)]
     private ?DateTimeImmutable $expiraEn = null;
 
+    /**
+     * Pantallas que reciben la alerta.
+     *
+     * Colección vacía = alerta global: la reciben todas. Con pantallas
+     * elegidas, sólo esas. Se modeló así para no romper las alertas ya
+     * cargadas, que eran todas globales.
+     *
+     * @var Collection<int, Pantalla>
+     */
+    #[ORM\ManyToMany(targetEntity: Pantalla::class, inversedBy: 'alertas')]
+    #[ORM\JoinTable(name: 'alerta_pantalla')]
+    private Collection $pantallas;
+
     public function __construct()
     {
-        $this->creadaEn = new DateTimeImmutable();
+        $this->creadaEn  = new DateTimeImmutable();
+        $this->pantallas = new ArrayCollection();
     }
 
     public function getId(): ?int { return $this->id; }
@@ -88,6 +104,29 @@ class AlertaEmergencia
     {
         $this->activa = false;
         return $this;
+    }
+
+    /** @return Collection<int, Pantalla> */
+    public function getPantallas(): Collection { return $this->pantallas; }
+
+    public function addPantalla(Pantalla $pantalla): static
+    {
+        if (!$this->pantallas->contains($pantalla)) {
+            $this->pantallas->add($pantalla);
+        }
+        return $this;
+    }
+
+    public function removePantalla(Pantalla $pantalla): static
+    {
+        $this->pantallas->removeElement($pantalla);
+        return $this;
+    }
+
+    /** Sin pantallas elegidas, la alerta va a todas. */
+    public function esGlobal(): bool
+    {
+        return $this->pantallas->isEmpty();
     }
 
     public function haExpirado(): bool

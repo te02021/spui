@@ -1,0 +1,71 @@
+{# Detalle de un edificio. Las filas opcionales se omiten si no hay dato. #}
+<div class="spui-view-header">
+    <div>
+        <p class="spui-view-title">{{ edificio.nombre }}</p>
+        <p class="spui-view-subtitle">Edificio del campus</p>
+    </div>
+    {% if edificio.activo %}
+        <span class="spui-badge-conectado flex-shrink-0">Activo</span>
+    {% else %}
+        <span class="spui-badge-sin_registrar flex-shrink-0">Inactivo</span>
+    {% endif %}
+</div>
+
+<div class="spui-view-section">
+    <p class="spui-view-section-title">Información</p>
+    <div class="spui-view-row">
+        <span class="spui-view-row-label">Estado</span>
+        <span class="spui-view-row-value">{{ edificio.activo ? 'Activo' : 'Inactivo' }}</span>
+    </div>
+    {% if edificio.descripcion %}
+    <div class="spui-view-row">
+        <span class="spui-view-row-label">Descripción</span>
+        <span class="spui-view-row-value">{{ edificio.descripcion }}</span>
+    </div>
+    {% endif %}
+    <div class="spui-view-row">
+        <span class="spui-view-row-label">Pantallas</span>
+        <span class="spui-view-row-value">
+            {%- set totalPantallas = 0 -%}
+            {%- for u in edificio.ubicaciones -%}{%- set totalPantallas = totalPantallas + u.pantallas|length -%}{%- endfor -%}
+            {{ totalPantallas }}
+        </span>
+    </div>
+</div>
+
+<div class="spui-view-section">
+    <p class="spui-view-section-title">Sectores · {{ edificio.ubicaciones|length }}</p>
+    {% if edificio.ubicaciones|length > 0 %}
+        <div class="spui-view-list">
+        {% for u in edificio.ubicaciones %}
+            <div class="spui-view-list-item">
+                <span class="spui-view-list-bullet"></span>
+                <span>{{ u.sector ?: 'Sector sin nombre' }}</span>
+                <span class="spui-view-list-meta">{{ u.pantallas|length }} pantalla(s)</span>
+            </div>
+        {% endfor %}
+        </div>
+    {% else %}
+        <p class="spui-view-empty">Sin sectores registrados</p>
+    {% endif %}
+</div>
+
+<div class="spui-view-section">
+    <p class="spui-view-section-title">Reglas de programación · {{ edificio.programaciones|length }}</p>
+    {% if edificio.programaciones|length > 0 %}
+        <div class="spui-view-list">
+        {% for prog in edificio.programaciones %}
+            <div class="spui-view-list-item">
+                <span class="spui-view-list-bullet"></span>
+                <span>{{ prog.playlist ? prog.playlist.nombre : 'Sin playlist' }}</span>
+                <span class="spui-view-list-meta">
+                    {{ prog.horaInicio ? prog.horaInicio|date('H:i') : '—' }}–{{ prog.horaFin ? prog.horaFin|date('H:i') : '—' }}
+                    · {{ prog.activo ? 'Activa' : 'Inactiva' }}
+                </span>
+            </div>
+        {% endfor %}
+        </div>
+    {% else %}
+        <p class="spui-view-empty">Sin reglas que apliquen a todo el edificio</p>
+    {% endif %}
+</div>

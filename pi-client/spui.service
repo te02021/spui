@@ -1,7 +1,13 @@
 # systemd service para SPUI Pi Client
 # NOTA Pi-only: Requiere Linux con systemd (Raspberry Pi OS, Ubuntu, etc.)
 #
-# Instalación:
+# User=/Group=: "pi" es un placeholder. install.sh los reemplaza
+# automáticamente por tu usuario real al instalar. Si copiás este
+# archivo a mano, editá esas dos líneas con tu usuario del sistema
+# (el que configuraste al grabar la SD).
+#
+# Instalación manual (si no usás install.sh):
+#   sed -i "s/^User=.*/User=TU_USUARIO/; s/^Group=.*/Group=TU_USUARIO/" spui.service
 #   sudo cp spui.service /etc/systemd/system/
 #   sudo systemctl daemon-reload
 #   sudo systemctl enable spui
@@ -15,16 +21,57 @@ Description=SPUI Digital Signage Client
 After=network-online.target
 Wants=network-online.target
 
+# OJO: no poner graphical.target acá ni en [Install]. En Raspberry Pi OS Lite
+# ese target NUNCA se alcanza (el sistema arranca en multi-user y X11 lo levanta
+# startx desde el autologin de la consola, no systemd). Un servicio colgado de
+# graphical.target queda en "inactive (dead)" después de cada reinicio, sin
+# ningún error en el log: no falla, simplemente nunca se lo arranca.
+# La espera de X11 se hace con el ExecStartPre de más abajo.
+
 [Service]
 Type=simple
 User=pi
 Group=pi
 WorkingDirectory=/opt/spui
 
-# Variables de entorno — crear este archivo con los valores reales
+# ── Variables de entorno ─────────────────────────────────────────────────────
+# EnvironmentFile va PRIMERO: así los Environment= de abajo tienen la última
+# palabra sobre DISPLAY y HOME. Al revés, un valor suelto en spui.env podía
+# pisarlos sin querer y dejar al cliente sin pantalla.
 EnvironmentFile=/etc/spui/spui.env
 
-ExecStart=/usr/bin/python3 /opt/spui/main.py
+# VLC necesita saber en qué pantalla dibujar. Como servicio de systemd no hay
+# sesión gráfica: sin DISPLAY, VLC aborta el proceso con "Error opening
+# terminal" y systemd lo reinicia en bucle.
+#
+# XDG_RUNTIME_DIR lo esperan varias bibliotecas de escritorio; sin él ensucian
+# el log con "XDG_RUNTIME_DIR is invalid or not set". 1000 es el UID del primer
+# usuario que se crea al instalar Raspberry Pi OS; install.sh lo ajusta al UID
+# real. Si se copia este archivo a mano y el usuario no es 1000, corregirlo.
+Environment=DISPLAY=:0
+Environment=XDG_RUNTIME_DIR=/run/user/1000
+
+# HOME y la caché de shaders: sin HOME, Mesa intenta escribir en un directorio
+# que no puede crear y ensucia el log en cada arranque con
+# "Failed to create .../mesa_shader_cache (Permission denied)---disabling".
+# No rompe la reproducción (sólo desactiva una caché de rendimiento), pero es
+# ruido que oculta los avisos que sí importan. install.sh ajusta el usuario.
+Environment=HOME=/home/pi
+Environment=XDG_CACHE_HOME=/var/cache/spui/.cache
+
+# La cookie de X (XAUTHORITY) NO se fija acá a propósito: startx la crea en
+# /tmp/serverauth.XXXXXX con un nombre distinto en cada arranque. El cliente la
+# busca en tiempo de ejecución (ver player.py::_buscar_xauthority).
+
+# Esperar a que X11 levante: graphical.target se alcanza antes de que startx
+# cree el socket. Si a los 60s no apareció, se arranca igual — el cliente
+# reintenta solo y avisa al CMS, que es mejor que no arrancar.
+ExecStartPre=/bin/sh -c 'for i in $(seq 1 60); do [ -e /tmp/.X11-unix/X0 ] && exit 0; sleep 1; done; echo "Aviso: X11 no apareció en 60s — se arranca igual y se reintentará."; exit 0'
+
+# Usa el intérprete del entorno virtual creado por install.sh, NO el del sistema:
+# las dependencias (requests, paho-mqtt, python-vlc, psutil) están instaladas ahí.
+# En Debian Bookworm el pip del sistema está bloqueado (PEP 668), por eso el venv.
+ExecStart=/opt/spui/venv/bin/python3 /opt/spui/main.py
 Restart=always
 RestartSec=10
 
@@ -37,4 +84,9 @@ SyslogIdentifier=spui
 KillMode=process
 
 [Install]
-WantedBy=graphical.target
+# multi-user.target y NO graphical.target: Raspberry Pi OS Lite arranca en
+# multi-user y nunca alcanza graphical.target (X11 lo levanta startx desde el
+# autologin de la consola, no systemd). Colgado de graphical.target el servicio
+# quedaba en "inactive (dead)" después de cada reinicio, sin ningún error: no
+# es que fallara, es que systemd nunca llegaba a arrancarlo.
+WantedBy=multi-user.target

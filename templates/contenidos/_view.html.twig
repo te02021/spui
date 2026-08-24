@@ -1,0 +1,122 @@
+{# Detalle de un contenido.
+   Las filas opcionales van dentro de un {% if %}: si el dato no está cargado
+   se omite la fila entera en vez de mostrar un guión. #}
+<div class="spui-view-header">
+    <div>
+        <p class="spui-view-title">{{ contenido.titulo }}</p>
+        <p class="spui-view-subtitle">Creado el {{ contenido.creadoEn|date('d/m/Y') }} a las {{ contenido.creadoEn|date('H:i') }}</p>
+    </div>
+    {% if contenido.tipo.value == 'cronograma' %}
+        <span class="unraf-badge-turquesa flex-shrink-0">{{ contenido.tipo.etiqueta }}</span>
+    {% elseif contenido.tipo.value in ['imagen', 'qr'] %}
+        <span class="unraf-badge-info flex-shrink-0">{{ contenido.tipo.etiqueta }}</span>
+    {% elseif contenido.tipo.value in ['video', 'youtube'] %}
+        <span class="unraf-badge-azul flex-shrink-0">{{ contenido.tipo.etiqueta }}</span>
+    {% else %}
+        <span class="unraf-badge-turquesa flex-shrink-0">{{ contenido.tipo.etiqueta }}</span>
+    {% endif %}
+</div>
+
+<div class="spui-view-section">
+    <p class="spui-view-section-title">Detalles</p>
+    <div class="spui-view-row">
+        <span class="spui-view-row-label">Tipo</span>
+        <span class="spui-view-row-value">{{ contenido.tipo.etiqueta }}</span>
+    </div>
+    <div class="spui-view-row">
+        <span class="spui-view-row-label">Estado</span>
+        <span class="spui-view-row-value"><span class="spui-badge-{{ contenido.estado.value }}">{{ contenido.estado.etiqueta }}</span></span>
+    </div>
+    <div class="spui-view-row">
+        <span class="spui-view-row-label">Duración</span>
+        <span class="spui-view-row-value">{{ contenido.duracionSegundos ? contenido.duracionSegundos ~ ' segundos' : '∞ Permanente' }}</span>
+    </div>
+    <div class="spui-view-row">
+        <span class="spui-view-row-label">Última modificación</span>
+        <span class="spui-view-row-value">{{ contenido.actualizadoEn|date('d/m/Y H:i') }}</span>
+    </div>
+    <div class="spui-view-row">
+        <span class="spui-view-row-label">Creado por</span>
+        <span class="spui-view-row-value">Usuario #{{ contenido.creadoPorId }}</span>
+    </div>
+</div>
+
+{% if contenido.contenidoTexto or contenido.rutaArchivo or contenido.hashArchivo or contenido.codigoQr %}
+<div class="spui-view-section">
+    <p class="spui-view-section-title">Contenido</p>
+    {% if contenido.contenidoTexto %}
+    <div class="spui-view-row">
+        <span class="spui-view-row-label">Texto</span>
+        <span class="spui-view-row-value text-muted" style="font-size:.85rem;white-space:pre-line;line-height:1.6">{{ contenido.contenidoTexto }}</span>
+    </div>
+    {% endif %}
+    {% if contenido.rutaArchivo %}
+    <div class="spui-view-row">
+        <span class="spui-view-row-label">Archivo</span>
+        <span class="spui-view-row-value"><code style="font-size:.8rem;word-break:break-all">{{ contenido.rutaArchivo }}</code></span>
+    </div>
+    {% endif %}
+    {% if contenido.hashArchivo %}
+    <div class="spui-view-row">
+        <span class="spui-view-row-label">Hash SHA-256</span>
+        <span class="spui-view-row-value">
+            <code style="font-size:.72rem;word-break:break-all" title="{{ contenido.hashArchivo }}">{{ contenido.hashArchivo|slice(0, 16) }}…</code>
+        </span>
+    </div>
+    {% endif %}
+    {% if contenido.codigoQr %}
+    <div class="spui-view-row">
+        <span class="spui-view-row-label">Código QR</span>
+        <span class="spui-view-row-value">{{ contenido.codigoQr.etiqueta }}</span>
+    </div>
+    <div class="spui-view-row">
+        <span class="spui-view-row-label">Destino del QR</span>
+        <span class="spui-view-row-value"><code style="font-size:.78rem;word-break:break-all">{{ contenido.codigoQr.urlDestino }}</code></span>
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+
+{# En qué playlists se usa: un mismo contenido puede estar en varias. #}
+<div class="spui-view-section">
+    <p class="spui-view-section-title">Playlists que lo usan · {{ contenido.playlistItems|length }}</p>
+    {% if contenido.playlistItems|length > 0 %}
+        <div class="spui-view-list">
+        {% for item in contenido.playlistItems %}
+            <div class="spui-view-list-item">
+                <span class="spui-view-list-bullet"></span>
+                <span>{{ item.playlist.nombre }}</span>
+                {# La duración ya no se pisa por playlist, así que lo útil acá es
+                   en qué posición aparece dentro de cada una. #}
+                <span class="spui-view-list-meta">posición {{ item.orden }}</span>
+            </div>
+        {% endfor %}
+        </div>
+    {% else %}
+        <p class="spui-view-empty">No se usa en ninguna playlist todavía</p>
+    {% endif %}
+</div>
+
+{% if contenido.alertas|length > 0 %}
+<div class="spui-view-section">
+    <p class="spui-view-section-title">Alertas que lo usan · {{ contenido.alertas|length }}</p>
+    <div class="spui-view-list">
+    {% for alerta in contenido.alertas %}
+        <div class="spui-view-list-item">
+            <span class="spui-view-list-bullet"></span>
+            <span>{{ alerta.titulo }}</span>
+            <span class="spui-view-list-meta">{{ alerta.activa ? 'Activa' : 'Inactiva' }}</span>
+        </div>
+    {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+{% if contenido.tipo.value == 'cronograma' %}
+<div class="spui-view-section">
+    <a href="{{ path('spui_cms_cronograma_builder', {id: contenido.id}) }}"
+       class="unraf-btn spui-btn-items unraf-btn-sm">
+        <img src="{{ asset('unraf-ui/icons/calendar-dots.svg') }}" class="spui-action-icon" alt=""> Ver ítems del cronograma
+    </a>
+</div>
+{% endif %}

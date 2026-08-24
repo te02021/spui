@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace SPUI\Repository;
 
+use DateTimeImmutable;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 use SPUI\Entity\Reproductor;
+use SPUI\Enum\EstadoConexion;
 
 /** @extends ServiceEntityRepository<Reproductor> */
 class ReproductorRepository extends ServiceEntityRepository
@@ -19,5 +21,25 @@ class ReproductorRepository extends ServiceEntityRepository
     public function findByApiKeyHash(string $rawKey): ?Reproductor
     {
         return $this->findOneBy(['apiKeyHash' => hash('sha256', $rawKey)]);
+    }
+
+    /**
+     * Reproductores marcados como conectados cuyo último heartbeat venció.
+     *
+     * Sólo considera los que alguna vez reportaron: un reproductor sin heartbeat
+     * nunca estuvo conectado, así que le corresponde 'sin_registrar', no 'desconectado'.
+     *
+     * @return Reproductor[]
+     */
+    public function findConectadosSinHeartbeatDesde(DateTimeImmutable $limite): array
+    {
+        return $this->createQueryBuilder('r')
+            ->where('r.estadoConexion = :conectado')
+            ->andWhere('r.ultimoHeartbeat IS NOT NULL')
+            ->andWhere('r.ultimoHeartbeat < :limite')
+            ->setParameter('conectado', EstadoConexion::Conectado)
+            ->setParameter('limite', $limite)
+            ->getQuery()
+            ->getResult();
     }
 }

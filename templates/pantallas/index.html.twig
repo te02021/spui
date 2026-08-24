@@ -1,13 +1,14 @@
 {% extends '@SPUI/base.html.twig' %}
+{% import '@SPUI/_macros/bloqueo.html.twig' as bloqueo %}
 {% block title %}Pantallas — SPUI{% endblock %}
 
 {% block body %}
-<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2 spui-header-actions">
     <div>
         <h1 style="color:var(--unraf-azul);font-family:var(--unraf-font-principal);margin:0">Pantallas</h1>
         <p class="text-muted mb-0">Pantallas físicas instaladas en cada ubicación.</p>
     </div>
-    <button type="button" class="unraf-btn unraf-btn-institucion flex-shrink-0"
+    <button type="button" class="unraf-btn spui-btn-crear flex-shrink-0"
             data-spui-form="{{ path('spui_cms_pantallas_nueva') }}"
             data-spui-title="Nueva pantalla"
             data-spui-size="modal-lg">
@@ -18,13 +19,13 @@
 <div id="spui-table-body">
 <div class="unraf-card">
     <div class="unraf-table-responsive">
-        <table class="unraf-table unraf-table-striped w-100 text-nowrap">
+        <table class="unraf-table unraf-table-striped w-100 text-nowrap spui-tabla-cards">
             <thead>
                 <tr>
                     <th class="p-3">Nombre</th>
                     <th class="p-3">Ubicación</th>
-                    <th class="p-3">MAC</th>
-                    <th class="p-3">IP</th>
+                    <th class="p-3">Dirección MAC</th>
+                    <th class="p-3">Dirección IP</th>
                     <th class="p-3">Resolución</th>
                     <th class="p-3">Estado</th>
                     <th class="p-3">Reproductor</th>
@@ -33,15 +34,17 @@
             </thead>
             <tbody>
             {% for p in pantallas %}
+                {# null = el reproductor de esta pantalla responde. #}
+                {% set motivo = spui_alcance.motivoParaEntidad(p, ids_offline|default({})) %}
                 <tr>
-                    <td class="p-3"><strong>{{ p.nombre }}</strong></td>
-                    <td class="p-3">
+                    <td class="p-3" data-label="Nombre"><strong>{{ p.nombre }}</strong></td>
+                    <td class="p-3" data-label="Ubicación">
                         {{ p.ubicacion.edificio.nombre }}{% if p.ubicacion.sector %}<br><small class="text-muted">{{ p.ubicacion.sector }}</small>{% endif %}
                     </td>
-                    <td class="p-3"><code>{{ p.macAddress ?? '—' }}</code></td>
-                    <td class="p-3">{{ p.ipAddress ?? '—' }}</td>
-                    <td class="p-3">{{ p.resolucionAncho }}×{{ p.resolucionAlto }}</td>
-                    <td class="p-3">
+                    <td class="p-3" data-label="Dirección MAC"><code>{{ p.macAddress ?? '—' }}</code></td>
+                    <td class="p-3" data-label="Dirección IP">{{ p.ipAddress ?? '—' }}</td>
+                    <td class="p-3" data-label="Resolución">{{ p.resolucionAncho }}×{{ p.resolucionAlto }}</td>
+                    <td class="p-3" data-label="Estado">
                         {% if p.estado.value == 'activo' %}
                             <span class="spui-badge-conectado">Activo</span>
                         {% elseif p.estado.value == 'mantenimiento' %}
@@ -50,43 +53,57 @@
                             <span class="spui-badge-sin_registrar">Inactivo</span>
                         {% endif %}
                     </td>
-                    <td class="p-3">
+                    <td class="p-3" data-label="Reproductor">
                         {% if p.reproductor %}
                             <span class="spui-badge-borrador">{{ p.reproductor.hostname }}</span>
                         {% else %}
                             <span class="text-muted small">Sin reproductor</span>
                         {% endif %}
                     </td>
-                    <td class="p-3">
-                        <div class="d-flex gap-1">
+                    <td class="p-3" data-label="Acciones">
+                        <div class="spui-acciones">
                             <button type="button"
-                                    class="unraf-btn unraf-btn-light unraf-btn-sm"
+                                    class="unraf-btn spui-btn-ver unraf-btn-sm"
+                                    data-spui-form="{{ path('spui_cms_pantallas_ver', {id: p.id}) }}"
+                                    data-spui-size="modal-sm"
+                                    data-spui-title="{{ p.nombre }}"
+                                    title="Ver detalle">
+                                <img src="{{ asset('unraf-ui/icons/eye.svg') }}" class="spui-action-icon" alt=""> Ver
+                            </button>
+                            <button type="button"
+                                    class="unraf-btn spui-btn-editar unraf-btn-sm {{ bloqueo.clase(motivo) }}"
                                     data-spui-form="{{ path('spui_cms_pantallas_editar', {id: p.id}) }}"
                                     data-spui-title="Editar: {{ p.nombre }}"
                                     data-spui-size="modal-lg"
-                                    title="Editar">
-                                <img src="{{ asset('unraf-ui/icons/pencil.svg') }}" class="spui-action-icon" alt="Editar">
+                                    {% if motivo %}{{ bloqueo.attrs(motivo) }}{% else %}title="Editar"{% endif %}>
+                                <img src="{{ asset('unraf-ui/icons/pencil.svg') }}" class="spui-action-icon" alt=""> Editar
                             </button>
+                            <a href="{{ path('spui_cms_energia_grilla', {id: p.id}) }}"
+                               class="unraf-btn spui-btn-energia unraf-btn-sm"
+                               title="Horarios de encendido, apagado y brillo">
+                                <img src="{{ asset('unraf-ui/icons/plug.svg') }}" class="spui-action-icon" alt=""> Energía
+                            </a>
                             <button type="button"
-                                    class="unraf-btn unraf-btn-sm {{ p.estado.value == 'activo' ? 'spui-toggle-activo' : 'spui-toggle-inactivo' }}"
+                                    class="unraf-btn unraf-btn-sm {{ p.estado.value == 'activo' ? 'spui-btn-desactivar' : 'spui-btn-activar' }} {{ bloqueo.clase(motivo) }}"
                                     data-spui-action="{{ path('spui_cms_pantallas_toggle_estado', {id: p.id}) }}"
                                     data-spui-title="Cambiar estado"
                                     data-spui-message="Cambiar estado de «{{ p.nombre }}»?"
-                                    data-spui-variant="{{ p.estado.value == 'activo' ? 'warning' : 'success' }}"
-                                    title="Toggle estado">
-                                <img src="{{ p.estado.value == 'activo' ? asset('unraf-ui/icons/x.svg') : asset('unraf-ui/icons/check.svg') }}"
-                                     class="spui-action-icon" style="filter:invert(1)" alt="">
+                                    data-spui-variant="{{ p.estado.value == 'activo' ? 'desactivar' : 'activar' }}"
+                                    data-spui-confirm-label="Cambiar estado"
+                                    {% if motivo %}{{ bloqueo.attrs(motivo) }}{% else %}title="{{ p.estado.value == 'activo' ? 'Desactivar' : 'Activar' }}"{% endif %}>
+                                <img src="{{ p.estado.value == 'activo' ? asset('unraf-ui/icons/hand-palm.svg') : asset('unraf-ui/icons/lightning.svg') }}"
+                                     class="spui-action-icon" alt="">
                                 {{ p.estado.value == 'activo' ? 'Desactivar' : 'Activar' }}
                             </button>
-                            {% if p.reproductor is null %}
-                                <button type="button" class="unraf-btn-icon btn-delete"
-                                        data-spui-action="{{ path('spui_cms_pantallas_eliminar', {id: p.id}) }}"
-                                        data-spui-title="Eliminar pantalla"
-                                        data-spui-message="¿Eliminar «{{ p.nombre }}»? Esta acción no se puede deshacer."
-                                        data-spui-variant="danger" title="Eliminar">
-                                    <img src="{{ asset('unraf-ui/icons/trash.svg') }}" alt="Eliminar">
-                                </button>
-                            {% endif %}
+                            <button type="button"
+                                    class="unraf-btn spui-btn-eliminar unraf-btn-sm"
+                                    data-spui-action="{{ path('spui_cms_pantallas_eliminar', {id: p.id}) }}"
+                                    data-spui-title="Eliminar pantalla"
+                                    data-spui-message="¿Eliminar «{{ p.nombre }}»? Esta acción no se puede deshacer."
+                                    data-spui-variant="eliminar"
+                                    title="Eliminar">
+                                <img src="{{ asset('unraf-ui/icons/trash.svg') }}" class="spui-action-icon" alt=""> Eliminar
+                            </button>
                         </div>
                     </td>
                 </tr>

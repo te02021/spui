@@ -27,10 +27,10 @@ class ProgramacionEnergetica
     private int $diaSemana;
 
     #[ORM\Column(type: 'time_immutable')]
-    private DateTimeImmutable $horaEncendido;
+    private ?DateTimeImmutable $horaEncendido = null;
 
     #[ORM\Column(type: 'time_immutable')]
-    private DateTimeImmutable $horaApagado;
+    private ?DateTimeImmutable $horaApagado = null;
 
     #[ORM\Column(type: 'smallint', options: ['unsigned' => true])]
     private int $nivelBrillo = 100;
@@ -43,11 +43,18 @@ class ProgramacionEnergetica
     public function getDiaSemana(): int { return $this->diaSemana; }
     public function setDiaSemana(int $diaSemana): static { $this->diaSemana = $diaSemana; return $this; }
 
-    public function getHoraEncendido(): DateTimeImmutable { return $this->horaEncendido; }
-    public function setHoraEncendido(DateTimeImmutable $horaEncendido): static { $this->horaEncendido = $horaEncendido; return $this; }
+    /**
+     * Campos obligatorios con setter nullable: el formulario mapea al objeto
+     * ANTES de validar, así que un campo vacío escribía null en un setter
+     * tipado y reventaba con TypeError antes de que corrieran los NotBlank
+     * (el modal quedaba sin mostrar ningún error). La obligatoriedad la
+     * imponen los NotBlank del FormType y las columnas NOT NULL de la tabla.
+     */
+    public function getHoraEncendido(): ?DateTimeImmutable { return $this->horaEncendido; }
+    public function setHoraEncendido(?DateTimeImmutable $horaEncendido): static { $this->horaEncendido = $horaEncendido; return $this; }
 
-    public function getHoraApagado(): DateTimeImmutable { return $this->horaApagado; }
-    public function setHoraApagado(DateTimeImmutable $horaApagado): static { $this->horaApagado = $horaApagado; return $this; }
+    public function getHoraApagado(): ?DateTimeImmutable { return $this->horaApagado; }
+    public function setHoraApagado(?DateTimeImmutable $horaApagado): static { $this->horaApagado = $horaApagado; return $this; }
 
     public function getNivelBrillo(): int { return $this->nivelBrillo; }
     public function setNivelBrillo(int $nivelBrillo): static { $this->nivelBrillo = max(0, min(100, $nivelBrillo)); return $this; }

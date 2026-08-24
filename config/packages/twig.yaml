@@ -4,3 +4,13 @@ twig:
     file_name_pattern: "*.twig"
     form_themes:
         - "bootstrap_5_layout.html.twig"
+    globals:
+        # Umbral de conexión disponible en todos los templates, para que no haya
+        # que pasarlo desde cada controlador ni repetir el número en el HTML.
+        # Definido en services.yaml; ver Reproductor::estadoCalculado().
+        spui_umbral_conexion: '%env(int:default:spui_umbral_conexion_default:SPUI_UMBRAL_CONEXION_SEG)%'
+
+        # Resolución de "qué reproductores afecta X" para deshabilitar acciones
+        # dirigidas a equipos desconectados. Va como global para no tener que
+        # inyectarlo y pasarlo desde cada uno de los seis controladores.
+        spui_alcance: '@SPUI\Service\AlcanceReproductorService'
