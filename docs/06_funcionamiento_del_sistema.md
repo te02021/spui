@@ -152,13 +152,15 @@ Admin presiona "Activar"
         │
         ├──► Se marca activa en la base
         │
-        ├──► MQTT: topic spui/alertas/emergencia (con retain)
-        │         └─► cada Pi la recibe en el acto e interrumpe lo que esté mostrando
-        │
-        └──► Mercure (SSE) ──► el dashboard del CMS se actualiza solo
+        └──► MQTT: topic spui/alertas/emergencia (con retain)
+                  └─► cada Pi la recibe en el acto e interrumpe lo que esté mostrando
 ```
 
 **`retain` es importante:** el broker guarda el último mensaje del topic, así que una Pi que estaba apagada y arranca después recibe la alerta apenas se conecta. Y si MQTT no está disponible, la alerta igual llega en el próximo `/sync` — solo tarda más.
+
+**Sonido de alerta.** Cada alerta puede tener un sonido personalizado (MP3/WAV, hasta 5 MB, subido desde el formulario del CMS). El payload MQTT y el REST de `/sync` llevan `sonido_url`/`sonido_hash` (no el archivo en sí), así que el sonido correcto se conoce desde el primer instante, sin depender de un segundo round-trip. Si no hay sonido personalizado, o no se puede descargar (sin red, archivo corrupto, etc.), el reproductor genera y usa un tono propio (dos frecuencias tipo "beep-beep", vía el módulo estándar `wave` de Python) — la alerta nunca queda muda por falta de configuración o de conectividad. Se repite cada `SPUI_ALERTA_SONIDO_INTERVALO_SEG` (20s por defecto) mientras la alerta siga activa, y se corta de inmediato al desactivarse: la repetición vive dentro del mismo bucle que decide si la alerta sigue viva, no en un timer aparte, para que sea imposible que quede sonando después de que la alerta terminó.
+
+**El dashboard del CMS se actualiza solo, pero no por Mercure.** El proyecto integró `symfony/mercure-bundle` en su momento, pero nunca se completó del lado del navegador: no hay ningún consumidor `EventSource` en el frontend, y `MERCURE_URL` sigue apuntando al valor por defecto. Lo que realmente refresca el panel es `auto-refresh.js` (tarea 1.7.b) — polling cada 20s a la misma ruta del dashboard, con pausa si la pestaña está oculta o hay un modal abierto. Alcanza para el caso de uso (el operador ve el estado actualizado sin recargar); Mercure quedó como dependencia sin usar. Ver `docs/README.md` para el resto de las decisiones de la tarea 1.7.
 
 Una alerta activa **enciende la pantalla aunque el horario energético diga que debe estar apagada**: avisar una evacuación pesa más que el ahorro.
 
@@ -189,7 +191,7 @@ Contra los 12 casos de uso definidos en `02_casos_de_uso.md`:
 | CU-01 Gestionar contenido | ✅ Completo. Se agregó un 6º tipo (`cronograma`) que no estaba en el diseño original |
 | CU-02 Crear playlist | ✅ Completo, con drag & drop y duración configurable por ítem |
 | CU-03 Programar reproducción | ✅ Completo, y con un alcance más que lo planeado (por edificio) |
-| CU-04 Alerta de emergencia | ✅ Completo (MQTT + Mercure) |
+| CU-04 Alerta de emergencia | ✅ Completo vía MQTT (push a la Pi) + polling (dashboard del CMS, `auto-refresh.js`) — **no** usa Mercure, ver §6 |
 | CU-05 Registrar nodo | ✅ Completo |
 | CU-06 Sincronizar contenido | ✅ Completo |
 | CU-07 Reproducir contenido | ✅ Completo. Incluye modo simulación para probar sin VLC |

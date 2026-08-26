@@ -19,6 +19,8 @@ use Symfony\Component\Routing\Attribute\Route;
 #[Route('/spui/contenidos/{id}/cronograma', requirements: ['id' => '\d+'])]
 class CronogramaCmsController extends AbstractController
 {
+    use CsrfProtegidoTrait;
+
     public function __construct(
         private readonly ContenidoRepository $contenidoRepo,
         private readonly CronogramaItemRepository $itemRepo,
@@ -198,6 +200,7 @@ class CronogramaCmsController extends AbstractController
         if (!$item || $item->getContenido()->getId() !== $id) {
             throw $this->createNotFoundException();
         }
+        if ($r = $this->denegarSiCsrfInvalido($request)) { return $r; }
 
         $nombre = $item->getNombre();
         $this->em()->remove($item);

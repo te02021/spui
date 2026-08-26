@@ -9,6 +9,7 @@ use SPUI\Entity\Programacion;
 use SPUI\Form\ProgramacionType;
 use SPUI\Repository\ProgramacionRepository;
 use SPUI\Service\AlcanceReproductorService;
+use SPUI\Service\ComandoPublisherService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -18,10 +19,12 @@ use Symfony\Component\Routing\Attribute\Route;
 class ProgramacionCmsController extends AbstractController
 {
     use BloqueoOfflineTrait;
+    use CsrfProtegidoTrait;
 
     public function __construct(
         private readonly ProgramacionRepository $repo,
         private readonly AlcanceReproductorService $alcance,
+        private readonly ComandoPublisherService $comandoPublisher,
         private readonly ManagerRegistry $doctrine,
     ) {}
 
@@ -75,12 +78,14 @@ class ProgramacionCmsController extends AbstractController
 
             // El objeto ya está poblado por el formulario, así que se puede
             // resolver a qué reproductores llegaría aunque todavía no exista.
-            if ($r = $this->bloquearSiOffline($this->alcance->deProgramacion($prog), $request, 'spui_cms_programacion_index')) {
+            $reproductores = $this->alcance->deProgramacion($prog);
+            if ($r = $this->bloquearSiOffline($reproductores, $request, 'spui_cms_programacion_index')) {
                 return $r;
             }
 
             $this->em()->persist($prog);
             $this->em()->flush();
+            $this->comandoPublisher->pedirSyncAhora($reproductores, 'programacion');
 
             if ($request->isXmlHttpRequest()) {
                 return $this->json(['success' => true, 'message' => 'Programación creada correctamente.']);
@@ -122,11 +127,13 @@ class ProgramacionCmsController extends AbstractController
             foreach ($diasArray as $bit) { $bitmask |= (1 << (int) $bit); }
             $prog->setDiasSemana($bitmask ?: 127);
 
-            if ($r = $this->bloquearSiOffline($this->alcance->deProgramacion($prog), $request, 'spui_cms_programacion_index')) {
+            $reproductores = $this->alcance->deProgramacion($prog);
+            if ($r = $this->bloquearSiOffline($reproductores, $request, 'spui_cms_programacion_index')) {
                 return $r;
             }
 
             $this->em()->flush();
+            $this->comandoPublisher->pedirSyncAhora($reproductores, 'programacion');
 
             if ($request->isXmlHttpRequest()) {
                 return $this->json(['success' => true, 'message' => 'Regla de programación actualizada.']);
@@ -153,13 +160,16 @@ class ProgramacionCmsController extends AbstractController
     {
         $prog = $this->repo->find($id);
         if (!$prog) { throw $this->createNotFoundException(); }
+        if ($r = $this->denegarSiCsrfInvalido($request)) { return $r; }
 
-        if ($r = $this->bloquearSiOffline($this->alcance->deProgramacion($prog), $request, 'spui_cms_programacion_index')) {
+        $reproductores = $this->alcance->deProgramacion($prog);
+        if ($r = $this->bloquearSiOffline($reproductores, $request, 'spui_cms_programacion_index')) {
             return $r;
         }
 
         $prog->setActivo(!$prog->isActivo());
         $this->em()->flush();
+        $this->comandoPublisher->pedirSyncAhora($reproductores, 'programacion');
         $msg = 'Programación ' . ($prog->isActivo() ? 'activada' : 'desactivada') . '.';
         if ($request->isXmlHttpRequest()) {
             return $this->json(['success' => true, 'message' => $msg]);
@@ -173,15 +183,18 @@ class ProgramacionCmsController extends AbstractController
     {
         $prog = $this->repo->find($id);
         if (!$prog) { throw $this->createNotFoundException(); }
+        if ($r = $this->denegarSiCsrfInvalido($request)) { return $r; }
 
         // Se resuelve ANTES de borrar: después la entidad ya no tiene sus
         // relaciones y no habría forma de saber a quién afectaba.
-        if ($r = $this->bloquearSiOffline($this->alcance->deProgramacion($prog), $request, 'spui_cms_programacion_index')) {
+        $reproductores = $this->alcance->deProgramacion($prog);
+        if ($r = $this->bloquearSiOffline($reproductores, $request, 'spui_cms_programacion_index')) {
             return $r;
         }
 
         $this->em()->remove($prog);
         $this->em()->flush();
+        $this->comandoPublisher->pedirSyncAhora($reproductores, 'programacion');
         if ($request->isXmlHttpRequest()) {
             return $this->json(['success' => true, 'message' => 'Programación eliminada.']);
         }

@@ -4,36 +4,33 @@ declare(strict_types=1);
 
 namespace SPUI\Command;
 
-use DateTimeImmutable;
-use Doctrine\Persistence\ManagerRegistry;
-use SPUI\Enum\EstadoConexion;
-use SPUI\Repository\AlertaEmergenciaRepository;
-use SPUI\Repository\ReproductorRepository;
-use SPUI\Repository\TelemetriaRepository;
-use SPUI\Service\AlertaPublisherService;
+use SPUI\Service\MantenimientoService;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
 /**
  * Tareas periódicas de mantenimiento de la red de reproductores.
  *
  * 1. Marca como 'desconectado' los reproductores cuyo heartbeat venció.
- *    Sin esto un nodo apagado queda 'conectado' para siempre en la BD, porque
- *    Reproductor::registrarHeartbeat() es el único punto que escribe el estado
- *    y sólo sabe ponerlo en 'conectado'.
- *
  * 2. Purga la telemetría vieja según la política de retención del proyecto.
+ * 3. Desactiva las alertas de emergencia vencidas.
+ *
+ * La lógica vive en MantenimientoService — este comando es un wrapper para
+ * uso manual/diagnóstico (--dry-run incluido). En operación normal NO hace
+ * falta cronear esto: spui:mqtt:subscribe lo dispara solo cada minuto
+ * mientras corre como servicio (ver MqttSubscribeCommand y
+ * config/servicios/). Correrlo a mano sirve para inspeccionar el estado sin
+ * esperar al próximo ciclo del daemon, o si el daemon no está disponible.
  *
  * Uso (el monolito exige --id para resolver la app):
  *   php bin/console spui:mantenimiento --id=spui
  *   php bin/console spui:mantenimiento --id=spui --minutos=10 --retencion-dias=90
  *   php bin/console spui:mantenimiento --id=spui --dry-run
- *
- * Pensado para correr cada minuto vía cron / Programador de tareas de Windows.
  */
 #[AsCommand(
     name: 'spui:mantenimiento',
@@ -41,31 +38,8 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 )]
 class MantenimientoCommand extends Command
 {
-    // El umbral de desconexión ya no vive acá: es spui_umbral_conexion_default
-    // en services.yaml, inyectado abajo. Estaba repetido en este comando, en el
-    // dashboard y en dos templates, y cambiarlo en uno solo dejaba el panel
-    // contradiciéndose.
-
-    /**
-     * Días de telemetría CRUDA a conservar.
-     *
-     * Bajó de 90 a 7 al incorporarse telemetria_hora: el histórico largo vive
-     * en el rollup, que ocupa 1/60 y es lo que los gráficos consumen para los
-     * rangos de 7 y 30 días. El crudo sólo hace falta para el detalle de las
-     * últimas 24 h, así que 7 días deja margen de sobra.
-     *
-     * IMPORTANTE: spui:telemetria:rollup tiene que correr ANTES que este
-     * comando. Si la purga se adelanta, borra lecturas que aún no fueron
-     * agregadas y esas horas se pierden del histórico.
-     */
-    private const RETENCION_DIAS_DEFAULT = 7;
-
     public function __construct(
-        private readonly ManagerRegistry $doctrine,
-        private readonly ReproductorRepository $reproductorRepo,
-        private readonly TelemetriaRepository $telemetriaRepo,
-        private readonly AlertaEmergenciaRepository $alertaRepo,
-        private readonly AlertaPublisherService $alertaPublisher,
+        private readonly MantenimientoService $mantenimiento,
         #[Autowire('%env(int:default:spui_umbral_conexion_default:SPUI_UMBRAL_CONEXION_SEG)%')]
         private readonly int $umbralConexionSeg = 150,
     ) {
@@ -86,7 +60,7 @@ class MantenimientoCommand extends Command
                 null,
                 InputOption::VALUE_REQUIRED,
                 'Días de telemetría a conservar (0 = no purgar)',
-                (string) self::RETENCION_DIAS_DEFAULT,
+                (string) MantenimientoService::RETENCION_DIAS_DEFAULT,
             )
             ->addOption(
                 'dry-run',
@@ -108,87 +82,54 @@ class MantenimientoCommand extends Command
             $io->note('Modo dry-run: no se escribe nada en la base de datos.');
         }
 
-        $em = $this->doctrine->getManager('SPUI');
+        $general    = $this->mantenimiento->ejecutarGeneral($segundos, $dias, $dryRun);
+        $expiradas  = $this->mantenimiento->revisarAlertasVencidas($dryRun);
 
         // ── 1. Reproductores caídos ──────────────────────────────────────────
-        //
-        // Desde que el panel calcula el estado con Reproductor::estadoCalculado(),
-        // esto ya no es lo que hace que un equipo caído se vea como tal: la
-        // pantalla dice la verdad aunque este comando no corra nunca. Se
-        // mantiene para que la columna estado_conexion quede coherente con lo
-        // que se muestra, porque la lee la API REST y cualquier consulta SQL
-        // directa.
-        $limite  = new DateTimeImmutable(sprintf('-%d seconds', $segundos));
-        $caidos  = $this->reproductorRepo->findConectadosSinHeartbeatDesde($limite);
-
-        if ($caidos === []) {
+        if ($general['caidos'] === []) {
             $io->text(sprintf('Reproductores: ninguno superó los %d s sin heartbeat.', $segundos));
         } else {
-            foreach ($caidos as $reproductor) {
+            foreach ($general['caidos'] as $r) {
                 $io->text(sprintf(
                     '  <comment>%s</comment> (id=%d) — último heartbeat: %s',
-                    $reproductor->getHostname(),
-                    $reproductor->getId(),
-                    $reproductor->getUltimoHeartbeat()?->format('Y-m-d H:i:s') ?? 'nunca',
+                    $r['hostname'],
+                    $r['id'],
+                    $r['ultimo_heartbeat'] ?? 'nunca',
                 ));
-                if (!$dryRun) {
-                    $reproductor->setEstadoConexion(EstadoConexion::Desconectado);
-                }
-            }
-            if (!$dryRun) {
-                $em->flush();
             }
             $io->warning(sprintf(
                 '%d reproductor(es) marcado(s) como desconectado(s) tras %d s sin heartbeat.',
-                count($caidos),
+                count($general['caidos']),
                 $segundos,
             ));
         }
 
         // ── 2. Purga de telemetría ───────────────────────────────────────────
-        if ($dias === 0) {
+        if ($general['telemetria_purga_deshabilitada']) {
             $io->text('Telemetría: purga deshabilitada (--retencion-dias=0).');
+        } elseif ($dryRun) {
+            $corte = (new \DateTimeImmutable(sprintf('-%d days', $dias)))->format('Y-m-d');
+            $io->text(sprintf('Telemetría: se purgarían los registros anteriores a %s.', $corte));
         } else {
-            $corte = new DateTimeImmutable(sprintf('-%d days', $dias));
-            if ($dryRun) {
-                $io->text(sprintf('Telemetría: se purgarían los registros anteriores a %s.', $corte->format('Y-m-d')));
-            } else {
-                $borrados = $this->telemetriaRepo->purgarAnterioresA($corte);
-                $io->text(sprintf(
-                    'Telemetría: %d registro(s) anterior(es) a %s purgado(s).',
-                    $borrados,
-                    $corte->format('Y-m-d'),
-                ));
-            }
+            $corte = (new \DateTimeImmutable(sprintf('-%d days', $dias)))->format('Y-m-d');
+            $io->text(sprintf(
+                'Telemetría: %d registro(s) anterior(es) a %s purgado(s).',
+                $general['telemetria_purgada'],
+                $corte,
+            ));
         }
 
         // ── 3. Alertas vencidas ──────────────────────────────────────────────
-        // Nada las desactivaba: quedaban con activa = 1 para siempre, seguían
-        // saliendo como vigentes en el dashboard y su mensaje MQTT retenido
-        // se le entregaba a cualquier Pi que se reconectara.
-        $expiradas = $this->alertaRepo->findActivasExpiradas();
-
         if ($expiradas === []) {
             $io->text('Alertas: ninguna activa venció.');
         } else {
-            foreach ($expiradas as $alerta) {
+            foreach ($expiradas as $a) {
                 $io->text(sprintf(
                     '  <comment>%s</comment> (id=%d) — venció el %s',
-                    $alerta->getTitulo(),
-                    $alerta->getId(),
-                    $alerta->getExpiraEn()?->format('Y-m-d H:i') ?? '—',
+                    $a['titulo'],
+                    $a['id'],
+                    $a['expiraba'] ?? '—',
                 ));
-                if (!$dryRun) {
-                    $alerta->desactivar();
-                }
-            }
-            if (!$dryRun) {
-                $em->flush();
-                // Recién después del flush: si la publicación falla, la alerta
-                // igual quedó desactivada en la base.
-                foreach ($expiradas as $alerta) {
-                    $this->alertaPublisher->publicarDesactivacion($alerta);
-                }
             }
             $io->warning(sprintf('%d alerta(s) vencida(s) desactivada(s).', count($expiradas)));
         }

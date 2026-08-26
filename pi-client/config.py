@@ -61,6 +61,24 @@ def _decimal(nombre: str, defecto: float) -> float:
         return defecto
 
 
+def _booleano(nombre: str, defecto: bool) -> bool:
+    """Variable booleana. Acepta true/false/1/0, insensible a mayúsculas."""
+    crudo = os.getenv(nombre)
+    if crudo is None or not crudo.strip():
+        return defecto
+    valor = crudo.strip().lower()
+    if valor in ('true', '1', 'si', 'sí'):
+        return True
+    if valor in ('false', '0', 'no'):
+        return False
+    print(
+        f'[SPUI][config] {nombre}={crudo!r} no es un booleano válido — '
+        f'se usa el valor por defecto ({defecto}).',
+        file=sys.stderr,
+    )
+    return defecto
+
+
 # ── API ──────────────────────────────────────────────────────────────────────
 API_URL = _texto('SPUI_API_URL', 'http://localhost/api/spui')
 API_KEY = _texto('SPUI_API_KEY', '')   # OBLIGATORIO en producción
@@ -68,6 +86,14 @@ API_KEY = _texto('SPUI_API_KEY', '')   # OBLIGATORIO en producción
 # ── MQTT (alertas de emergencia en tiempo real) ───────────────────────────────
 MQTT_HOST  = _texto('MQTT_HOST', '127.0.0.1')
 MQTT_PORT  = _entero('MQTT_PORT', 1883)
+
+# TLS (tarea 1.0.e) — false por defecto: el broker real todavía sirve por
+# 1883 sin cifrar (1.0.d escrito, no desplegado). Para migrar esta Pi cuando
+# el broker ya tenga 8883 activo: MQTT_TLS=true, MQTT_PORT=8883, y
+# MQTT_CA_CERT apuntando al ca.crt copiado desde el CMS (mismo archivo que
+# generar-certificados.ps1 deja en config/mosquitto/certs/ca.crt).
+MQTT_TLS     = _booleano('MQTT_TLS', False)
+MQTT_CA_CERT = _texto('MQTT_CA_CERT', '')
 
 # El broker exige credenciales: sin esto, cualquiera en la red del campus podría
 # publicar una alerta de emergencia en todas las pantallas.
@@ -114,6 +140,18 @@ def mqtt_usuario(reproductor_id: int) -> str:
 SYNC_INTERVAL        = max(5, _entero('SPUI_SYNC_INTERVAL', 300))     # 5 min
 HEARTBEAT_INTERVAL   = max(5, _entero('SPUI_HEARTBEAT_INTERVAL', 60))
 TELEMETRIA_INTERVAL  = max(5, _entero('SPUI_TELEMETRIA_INTERVAL', 60))  # 1 min
+
+# ── Sonido de alerta ──────────────────────────────────────────────────────────
+# El CMS puede mandar un sonido personalizado por alerta (sonido_url en el
+# payload). Si no hay red, no está cacheado todavía, o el admin no cargó
+# ninguno, el reproductor usa un tono generado localmente — nunca queda mudo.
+# ACTIVO=false es para una pantalla sin parlante conectado: evita que VLC
+# intente abrir un dispositivo de audio que no existe en cada alerta.
+ALERTA_SONIDO_ACTIVO      = _booleano('SPUI_ALERTA_SONIDO_ACTIVO', True)
+ALERTA_SONIDO_INTERVALO_SEG = max(5, _entero('SPUI_ALERTA_SONIDO_INTERVALO_SEG', 20))
+# 0-100. Se fuerza en cada reproducción: una emergencia no debería depender de
+# en qué volumen haya quedado el equipo de una prueba anterior.
+ALERTA_SONIDO_VOLUMEN     = max(0, min(100, _entero('SPUI_ALERTA_SONIDO_VOLUMEN', 100)))
 
 # ── Telemetría ────────────────────────────────────────────────────────────────
 # 80 °C: valor documentado en la tesis y punto donde la Pi 4 hace throttling.

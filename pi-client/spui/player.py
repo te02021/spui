@@ -21,10 +21,15 @@ NOTA Pi-only:
 """
 
 import logging
+import math
 import os
+import struct
 import threading
 import time
+import wave
 from typing import Optional
+
+import config
 
 logger = logging.getLogger(__name__)
 
@@ -154,13 +159,21 @@ class Player:
     #   gl/glx  → OpenGL; más rápidas pero dependen de drivers 3D bien configurados
     _VOUT_ALTERNATIVAS = ('xcb_x11', 'xcb_xv', 'gl', 'glx')
 
-    def __init__(self, media_dir: str):
+    def __init__(self, media_dir: str, sync_client=None):
         self._media_dir = media_dir
+        # Mismo cliente HTTP que ya descarga imágenes/video (sync.py): permite
+        # bajar y cachear un sonido de alerta personalizado con la misma
+        # verificación de hash. Puede llegar None (p.ej. uso directo del
+        # Player en una prueba) — se resuelve igual con lo que haya en caché.
+        self._sync_client = sync_client
         self._lock = threading.Lock()
         self._alerta: Optional[dict] = None
         self._stop = threading.Event()
         self._vlc: Optional['vlc.Instance'] = None
         self._media_player: Optional['vlc.MediaPlayer'] = None
+        # Reproductor de audio DEDICADO a la alerta, separado del que dibuja
+        # el texto/marquee: así el sonido no pisa ni es pisado por lo visual.
+        self._audio_player: Optional['vlc.MediaPlayer'] = None
         # Se completa al reproducir, si el contenido no llega a pantalla completa.
         self.problema_pantalla: Optional[str] = None
         # Evita recargar la pantalla de espera en cada ciclo (haría parpadeo).
@@ -402,12 +415,18 @@ class Player:
             with self._lock:
                 self._alerta = None
             self._parar_vlc()
+            self._detener_sonido()
 
     def desactivar_alerta(self) -> None:
         with self._lock:
             self._alerta = None
         logger.info('Alerta desactivada — volviendo a programación normal.')
         self._parar_vlc()
+        # Se corta acá mismo (no alcanza con que _esperar_alerta() lo note en
+        # su próxima vuelta, hasta 0.5s después): un sonido de alarma que
+        # sigue sonando un rato después de desactivada es exactamente el bug
+        # que no se quiere.
+        self._detener_sonido()
         # La pantalla quedó vacía: hay que volver a cargar la playlist en el
         # próximo ciclo, aunque la programación no haya cambiado.
         self._firma_actual       = None
@@ -533,6 +552,7 @@ class Player:
     def detener(self) -> None:
         self._stop.set()
         self._parar_vlc()
+        self._detener_sonido()
 
     # ── Reproducción por tipo ──────────────────────────────────────────────
 
@@ -846,8 +866,35 @@ class Player:
             time.sleep(0.5)
 
     def _esperar_alerta(self) -> None:
-        """Mantiene la alerta en pantalla hasta que se desactive o se apague el cliente."""
+        """
+        Mantiene la alerta en pantalla hasta que se desactive o se apague el
+        cliente, y repite el sonido cada SPUI_ALERTA_SONIDO_INTERVALO_SEG
+        mientras tanto.
+
+        El sonido va DENTRO de este mismo bucle a propósito, y no en un hilo
+        o timer aparte: así queda estructuralmente atado a la misma condición
+        (self._tiene_alerta()) que decide si la alerta sigue viva. Un timer
+        separado podría sobrevivir a la desactivación si algo fallaba al
+        cancelarlo — acá no hay nada que cancelar, en cuanto el bucle termina
+        no hay más repeticiones posibles.
+
+        El archivo a reproducir se resuelve una sola vez (puede implicar una
+        descarga) y se reutiliza en cada repetición, no se vuelve a resolver
+        cada vez.
+        """
+        ruta_sonido: Optional[str] = None
+        sonido_resuelto = False
+        ultimo_sonido = 0.0   # 0 fuerza la primera reproducción en la primera vuelta
+
         while self._tiene_alerta() and not self._stop.is_set():
+            ahora = time.monotonic()
+            if config.ALERTA_SONIDO_ACTIVO and (ahora - ultimo_sonido) >= config.ALERTA_SONIDO_INTERVALO_SEG:
+                if not sonido_resuelto:
+                    alerta_actual   = self._alerta_actual()
+                    ruta_sonido     = self._resolver_sonido(alerta_actual) if alerta_actual else None
+                    sonido_resuelto = True
+                self._reproducir_sonido(ruta_sonido)
+                ultimo_sonido = ahora
             time.sleep(0.5)
 
     def _esperar_simulado(self, duracion: Optional[int]) -> None:
@@ -868,9 +915,126 @@ class Player:
         with self._lock:
             return self._alerta is not None
 
+    def _alerta_actual(self) -> Optional[dict]:
+        with self._lock:
+            return self._alerta
+
     def _parar_vlc(self) -> None:
         if not self._simulacion and self._media_player:
             try:
                 self._media_player.stop()
+            except Exception:
+                pass
+
+    # ── Sonido de alerta ─────────────────────────────────────────────────
+
+    _TONO_ALERTA_NOMBRE = '_alerta_tono_default.wav'
+
+    def _resolver_sonido(self, alerta: dict) -> Optional[str]:
+        """
+        Ruta local del sonido a reproducir para esta alerta: el personalizado
+        del CMS si se puede conseguir, si no el tono generado localmente.
+
+        Nunca devuelve None salvo que ni siquiera se pueda generar el tono por
+        defecto (por ejemplo, sin espacio en disco) — es la única forma de que
+        una alerta quede sin sonido cuando se espera escuchar algo.
+        """
+        url = alerta.get('sonido_url')
+
+        if url:
+            if self._sync_client is not None:
+                try:
+                    return self._sync_client.descargar_media(url, alerta.get('sonido_hash'))
+                except Exception as exc:
+                    logger.warning(
+                        'No se pudo obtener el sonido de alerta personalizado (%s) — se usa el tono por defecto.',
+                        exc,
+                    )
+            else:
+                # Sin cliente de sync (uso directo del Player) se prueba el
+                # caché local por si ya se había descargado en otra corrida.
+                nombre = url.rstrip('/').split('/')[-1]
+                local  = os.path.join(self._media_dir, nombre)
+                if os.path.exists(local):
+                    return local
+                logger.warning('Sonido de alerta personalizado no cacheado y sin cliente de sync — se usa el tono por defecto.')
+
+        return self._tono_alerta_default()
+
+    def _tono_alerta_default(self) -> Optional[str]:
+        """
+        Tono de alerta genérico: dos frecuencias tipo "beep-beep", ~0.9s.
+
+        Se genera una sola vez con el módulo estándar 'wave' (sin bundlear
+        ningún binario ni depender de red) y se cachea en media_dir. Es lo que
+        garantiza que el reproductor JAMÁS quede mudo en una emergencia,
+        incluso sin sonido personalizado configurado y sin conexión al CMS.
+        """
+        ruta = os.path.join(self._media_dir, self._TONO_ALERTA_NOMBRE)
+        if os.path.exists(ruta):
+            return ruta
+
+        try:
+            os.makedirs(self._media_dir, exist_ok=True)
+            framerate = 22050
+            with wave.open(ruta, 'wb') as wf:
+                wf.setnchannels(1)
+                wf.setsampwidth(2)
+                wf.setframerate(framerate)
+                # (frecuencia Hz, duración s); frecuencia 0 = silencio (pausa entre beeps).
+                for frecuencia, duracion in ((880, 0.35), (0, 0.12), (660, 0.35)):
+                    n_muestras = int(framerate * duracion)
+                    for i in range(n_muestras):
+                        if frecuencia == 0:
+                            muestra = 0
+                        else:
+                            muestra = int(32767 * 0.5 * math.sin(2 * math.pi * frecuencia * i / framerate))
+                        wf.writeframesraw(struct.pack('<h', muestra))
+            logger.info('Tono de alerta por defecto generado en %s', ruta)
+            return ruta
+        except Exception as exc:
+            logger.error('No se pudo generar el tono de alerta por defecto (%s) — la alerta quedará sin sonido.', exc)
+            return None
+
+    def _sonido_player(self) -> Optional['vlc.MediaPlayer']:
+        """
+        Reproductor de audio dedicado a la alerta (una sola vez, reutilizado
+        en cada repetición). Separado del que dibuja el texto para no
+        interferir con el marquee.
+        """
+        if self._simulacion or self._vlc is None:
+            return None
+        if self._audio_player is None:
+            try:
+                self._audio_player = self._vlc.media_player_new()
+            except Exception as exc:
+                logger.warning('No se pudo crear el reproductor de audio de alerta: %s', exc)
+                return None
+        return self._audio_player
+
+    def _reproducir_sonido(self, ruta: Optional[str]) -> None:
+        if not ruta or not config.ALERTA_SONIDO_ACTIVO:
+            return
+
+        if self._simulacion:
+            logger.info('[SIM] sonido de alerta: %s', os.path.basename(ruta))
+            return
+
+        reproductor = self._sonido_player()
+        if reproductor is None:
+            return
+
+        try:
+            media = self._vlc.media_new(ruta)
+            reproductor.set_media(media)
+            reproductor.audio_set_volume(config.ALERTA_SONIDO_VOLUMEN)
+            reproductor.play()
+        except Exception as exc:
+            logger.warning('No se pudo reproducir el sonido de alerta: %s', exc)
+
+    def _detener_sonido(self) -> None:
+        if self._audio_player is not None:
+            try:
+                self._audio_player.stop()
             except Exception:
                 pass

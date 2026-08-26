@@ -44,6 +44,7 @@ final class MqttSecurityService
 
     public function __construct(
         private readonly LoggerInterface $logger,
+        private readonly MqttConnectionFactory $mqttConnection,
         #[Autowire('%env(string:MQTT_HOST)%')]
         private readonly string $mqttHost,
         #[Autowire('%env(int:MQTT_PORT)%')]
@@ -192,9 +193,8 @@ final class MqttSecurityService
 
     private function conexionAdmin(): \PhpMqtt\Client\ConnectionSettings
     {
-        return (new \PhpMqtt\Client\ConnectionSettings())
-            ->setUsername($this->adminUser)
-            ->setPassword($this->adminPass)
+        return $this->mqttConnection
+            ->paraCredenciales($this->adminUser, $this->adminPass)
             ->setConnectTimeout(3)
             ->setSocketTimeout(3);
     }

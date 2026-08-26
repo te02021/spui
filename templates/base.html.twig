@@ -3,6 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    {# Leído una vez por modal.js para los POST de un solo botón (activar/eliminar/
+       toggle/etc.) que no pasan por un Symfony Form — ver CsrfProtegidoTrait. #}
+    <meta name="spui-csrf-token" content="{{ csrf_token('spui_action') }}">
     <title>{% block title %}SPUI — Pantallas Digitales{% endblock %} | UNRaf</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 128 128%22><text y=%221.2em%22 font-size=%2296%22>🖥️</text></svg>">
 
@@ -152,6 +155,7 @@
 <script src="{{ asset('spui/js/core/range-input.js') }}"></script>
 <script src="{{ asset('spui/js/core/list-filter.js') }}"></script>
 <script src="{{ asset('spui/js/core/content-type-fields.js') }}"></script>
+<script src="{{ asset('spui/js/core/alerta-sonido-field.js') }}"></script>
 <script src="{{ asset('spui/js/core/modal.js') }}"></script>
 
 {# Refresco de datos que cambian solos. auto-refresh va DESPUÉS de modal.js

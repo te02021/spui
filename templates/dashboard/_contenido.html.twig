@@ -86,6 +86,55 @@
         </div>
     {% endif %}
 
+    {# ── Intentos de auth fallidos (tarea 1.4) ──
+       Antes esto no dejaba ningún rastro visible: el único síntoma era el 401
+       que recibía la Pi. Si alguno matchea la clave ANTERIOR de un
+       reproductor (regenerada hace poco), se lo nombra explícitamente — es
+       el caso real que costó una tarde entera de diagnóstico a ciegas. #}
+    {% if intentos_fallidos|length > 0 %}
+        <div class="alert alert-warning d-flex align-items-start gap-2 mb-4" role="alert">
+            <img src="{{ asset('unraf-ui/icons/warning.svg') }}" style="width:1.2rem;height:1.2rem;flex-shrink:0;margin-top:.15rem" alt="">
+            <div>
+                <strong>
+                    {{ intentos_fallidos|length }} intento(s) con API key inválida en la última hora
+                </strong>
+                {% if hostnames_clave_vieja|length > 0 %}
+                    <div class="small mt-1">
+                        {% for hostname in hostnames_clave_vieja %}
+                            <div>
+                                <strong>{{ hostname }}</strong> sigue usando la clave anterior a su última regeneración —
+                                copiá la clave nueva a su <code>spui.env</code> y reiniciá el servicio.
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+                <div class="small mt-1 text-muted">
+                    Últimos orígenes: {{ intentos_fallidos|slice(-5)|map(i => i.ip)|join(', ') }}
+                </div>
+            </div>
+        </div>
+    {% endif %}
+
+    {# ── Scheduler interno desactualizado ──
+       El mantenimiento y el rollup corren dentro de spui:mqtt:subscribe
+       (tareas 1.5/1.7), no como cron aparte. Si ese proceso se cae, nada más
+       lo detecta — esto compara la telemetría cruda más reciente contra la
+       última hora ya agregada. #}
+    {% if scheduler_desactualizado %}
+        <div class="alert alert-danger d-flex align-items-start gap-2 mb-4" role="alert">
+            <img src="{{ asset('unraf-ui/icons/warning.svg') }}" style="width:1.2rem;height:1.2rem;flex-shrink:0;margin-top:.15rem" alt="">
+            <div>
+                <strong>El proceso de mantenimiento/rollup parece detenido.</strong>
+                <div class="small mt-1 text-muted">
+                    Hay telemetría reciente sin agregar hace más de 2 horas — probablemente
+                    <code>spui-telemetria</code> (Windows) o el servicio equivalente en Linux no está
+                    corriendo. Sin él, la telemetría cruda no se purga y las alertas vencidas
+                    pueden tardar más en desactivarse.
+                </div>
+            </div>
+        </div>
+    {% endif %}
+
     {# ── Stats + tabla con overlay de carga ── #}
     <div id="dashboard-content" style="position:relative">
     <div id="dashboard-overlay"

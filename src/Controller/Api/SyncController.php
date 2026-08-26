@@ -321,6 +321,10 @@ class SyncController extends AbstractController
             'mensaje'   => $alerta->getMensaje(),
             'prioridad' => $alerta->getPrioridad(),
             'expira_en' => $alerta->getExpiraEn()?->format('c'),
+            'sonido_url'  => $alerta->getSonidoArchivo() !== null
+                ? $request->getSchemeAndHttpHost() . '/api/spui/media/' . rawurlencode($alerta->getSonidoArchivo())
+                : null,
+            'sonido_hash' => $alerta->getSonidoHashArchivo(),
             'contenido' => $c !== null ? [
                 'id'              => $c->getId(),
                 'tipo'            => $c->getTipo()->value,

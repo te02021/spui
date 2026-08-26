@@ -23,6 +23,7 @@ use Symfony\Component\Routing\Attribute\Route;
 class ReproductorCmsController extends AbstractController
 {
     use BloqueoOfflineTrait;
+    use CsrfProtegidoTrait;
 
     /** Rangos ofrecidos en el detalle de telemetría: etiqueta => horas hacia atrás. */
     private const RANGOS = ['24h' => 24, '7d' => 168, '30d' => 720];
@@ -208,6 +209,7 @@ class ReproductorCmsController extends AbstractController
         if (!$reproductor) {
             throw $this->createNotFoundException();
         }
+        if ($r = $this->denegarSiCsrfInvalido($request)) { return $r; }
 
         // De todas las acciones del CMS, ésta es la que peor tolera que el
         // equipo esté offline: la clave nueva hay que copiarla a mano al
@@ -216,6 +218,11 @@ class ReproductorCmsController extends AbstractController
         if ($r = $this->bloquearSiOffline([$reproductor], $request, 'spui_cms_reproductores_index')) {
             return $r;
         }
+
+        // Se guarda ANTES de pisarla: tarea 1.4, para poder distinguir en el
+        // dashboard un intento con esta clave vieja (la Pi real, con el .env
+        // sin actualizar) de un intento genuinamente desconocido.
+        $reproductor->marcarHashAnterior($reproductor->getApiKeyHash());
 
         $rawKey = bin2hex(random_bytes(32));
         $reproductor->setApiKeyHash(hash('sha256', $rawKey));
@@ -249,6 +256,7 @@ class ReproductorCmsController extends AbstractController
         if (!$reproductor) {
             throw $this->createNotFoundException();
         }
+        if ($r = $this->denegarSiCsrfInvalido($request)) { return $r; }
 
         if (!$reproductor->getPantallas()->isEmpty()) {
             $msg = 'No se puede eliminar: tiene ' . $reproductor->getPantallas()->count() . ' pantalla(s) asignada(s). Desasignálas primero desde cada pantalla.';

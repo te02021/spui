@@ -12,6 +12,7 @@ use SPUI\Repository\PantallaRepository;
 use SPUI\Repository\PlaylistItemRepository;
 use SPUI\Repository\PlaylistRepository;
 use SPUI\Service\AlcanceReproductorService;
+use SPUI\Service\ComandoPublisherService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -22,6 +23,7 @@ use Symfony\Component\Routing\Attribute\Route;
 class PlaylistCmsController extends AbstractController
 {
     use BloqueoOfflineTrait;
+    use CsrfProtegidoTrait;
 
     public function __construct(
         private readonly PlaylistRepository $repo,
@@ -29,6 +31,7 @@ class PlaylistCmsController extends AbstractController
         private readonly PlaylistItemRepository $itemRepo,
         private readonly PantallaRepository $pantallaRepo,
         private readonly AlcanceReproductorService $alcance,
+        private readonly ComandoPublisherService $comandoPublisher,
         private readonly ManagerRegistry $doctrine,
     ) {}
 
@@ -107,7 +110,8 @@ class PlaylistCmsController extends AbstractController
                 return $this->redirectToRoute('spui_cms_playlists_index');
             }
 
-            if ($r = $this->bloquearSiOffline($this->alcance->dePlaylist($playlist), $request, 'spui_cms_playlists_index')) {
+            $reproductores = $this->alcance->dePlaylist($playlist);
+            if ($r = $this->bloquearSiOffline($reproductores, $request, 'spui_cms_playlists_index')) {
                 return $r;
             }
 
@@ -115,6 +119,7 @@ class PlaylistCmsController extends AbstractController
             $playlist->setDescripcion(trim($request->request->get('descripcion', '')) ?: null);
             $playlist->setActivo((bool) $request->request->get('activo', false));
             $this->em()->flush();
+            $this->comandoPublisher->pedirSyncAhora($reproductores, 'playlist');
 
             $msg = '"' . $playlist->getNombre() . '" actualizada.';
             if ($request->isXmlHttpRequest()) {
@@ -138,6 +143,7 @@ class PlaylistCmsController extends AbstractController
     {
         $playlist = $this->repo->find($id);
         if (!$playlist) { throw $this->createNotFoundException(); }
+        if ($r = $this->denegarSiCsrfInvalido($request)) { return $r; }
 
         // Las tres cosas que referencian una playlist se comprueban antes de
         // borrar. Sin esto, la base rechaza el DELETE por integridad
@@ -279,8 +285,10 @@ class PlaylistCmsController extends AbstractController
         $contenido   = $this->contenidoRepo->find($contenidoId);
 
         if (!$playlist || !$contenido) { throw $this->createNotFoundException(); }
+        if ($r = $this->denegarSiCsrfInvalido($request)) { return $r; }
 
-        if ($r = $this->bloquearSiOffline($this->alcance->dePlaylist($playlist), $request, 'spui_cms_playlists_index')) {
+        $reproductores = $this->alcance->dePlaylist($playlist);
+        if ($r = $this->bloquearSiOffline($reproductores, $request, 'spui_cms_playlists_index')) {
             return $r;
         }
 
@@ -299,6 +307,7 @@ class PlaylistCmsController extends AbstractController
 
         $this->em()->persist($item);
         $this->em()->flush();
+        $this->comandoPublisher->pedirSyncAhora($reproductores, 'playlist');
 
         $msg = '"' . $contenido->getTitulo() . '" agregado a la playlist.';
         if ($request->isXmlHttpRequest()) {
@@ -317,8 +326,10 @@ class PlaylistCmsController extends AbstractController
         if (!$playlist || !$item || $item->getPlaylist()->getId() !== $id) {
             throw $this->createNotFoundException();
         }
+        if ($r = $this->denegarSiCsrfInvalido($request)) { return $r; }
 
-        if ($r = $this->bloquearSiOffline($this->alcance->dePlaylist($playlist), $request, 'spui_cms_playlists_index')) {
+        $reproductores = $this->alcance->dePlaylist($playlist);
+        if ($r = $this->bloquearSiOffline($reproductores, $request, 'spui_cms_playlists_index')) {
             return $r;
         }
 
@@ -329,6 +340,7 @@ class PlaylistCmsController extends AbstractController
         $em->flush();
 
         $this->renumerarItems($playlist);
+        $this->comandoPublisher->pedirSyncAhora($reproductores, 'playlist');
 
         $msg = '"' . $titulo . '" quitado de la playlist.';
         if ($request->isXmlHttpRequest()) {
@@ -344,7 +356,8 @@ class PlaylistCmsController extends AbstractController
         $playlist = $this->repo->find($id);
         if (!$playlist) { return $this->json(['error' => 'Not found'], 404); }
 
-        if ($motivo = $this->alcance->bloqueoPara($this->alcance->dePlaylist($playlist))) {
+        $reproductores = $this->alcance->dePlaylist($playlist);
+        if ($motivo = $this->alcance->bloqueoPara($reproductores)) {
             return $this->json(['success' => false, 'message' => $motivo, 'type' => 'warning'], 409);
         }
 
@@ -373,6 +386,8 @@ class PlaylistCmsController extends AbstractController
             }
             $em->flush();
         });
+
+        $this->comandoPublisher->pedirSyncAhora($reproductores, 'playlist');
 
         return $this->json(['ok' => true]);
     }

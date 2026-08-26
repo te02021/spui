@@ -38,6 +38,22 @@ _TOPIC_ALERTA = 'spui/alertas/emergencia'
 # que llega en el primer sync (mismo criterio que 'spui/telemetria/{id}').
 _TOPIC_ALERTA_REPRODUCTOR = 'spui/alertas/reproductor/{}'
 
+# Aviso de conectado/desconectado (tarea 1.3 — Last Will). El "online" lo
+# publica este cliente al conectarse; el "offline" lo publica el BROKER en
+# nuestro nombre si la conexión se corta de golpe (corte de luz, cable
+# desenchufado) sin que hayamos podido avisar nada nosotros mismos — esa es
+# la razón de ser del mecanismo: detectar justo el caso que un heartbeat HTTP
+# no puede detectar rápido.
+_TOPIC_ESTADO_REPRODUCTOR = 'spui/estado/reproductor/{}'
+
+# Comandos dirigidos a este reproductor (tarea 1.5 — push instantáneo). Hoy
+# sólo existe 'sync_ahora': el CMS lo publica cuando algo que nos afecta
+# cambió (programación, playlist, contenido, pantalla), para no esperar el
+# próximo ciclo de sync (hasta 300s). El payload NO trae el dato nuevo, sólo
+# el aviso — seguimos pidiéndolo por HTTP, con nuestra propia auth y
+# confirmación de entrega (patrón cache-invalidation, no server push de datos).
+_TOPIC_COMANDOS_REPRODUCTOR = 'spui/comandos/reproductor/{}'
+
 
 def nuevo_cliente_mqtt(
     client_id: str,
@@ -78,6 +94,13 @@ def nuevo_cliente_mqtt(
             config.MQTT_PASS,
         )
 
+    # TLS (tarea 1.0.e) — off por defecto, ver config.py. tls_set() valida el
+    # certificado del broker contra esta CA; sin ca_certs, paho usa las CAs
+    # del sistema, que nunca van a reconocer un certificado autofirmado
+    # propio (tarea 1.0.c) y la conexión fallaría siempre.
+    if config.MQTT_TLS:
+        cliente.tls_set(ca_certs=config.MQTT_CA_CERT or None)
+
     return cliente
 
 
@@ -88,12 +111,14 @@ class MqttListener(threading.Thread):
         port: int,
         on_alerta: Callable[[dict], None],
         on_desactivar: Callable[[], None],
+        on_sync_ahora: Callable[[dict], None] | None = None,
     ):
         super().__init__(daemon=True, name='mqtt-listener')
         self._host = host
         self._port = port
         self._on_alerta = on_alerta
         self._on_desactivar = on_desactivar
+        self._on_sync_ahora = on_sync_ahora
         self._client = None
         # Se conoce recién después del primer sync, igual que en telemetría.
         self._reproductor_id: int | None = None
@@ -164,6 +189,19 @@ class MqttListener(threading.Thread):
                 self._client.on_connect    = self._on_connect
                 self._client.on_message    = self._on_message
                 self._client.on_disconnect = self._on_disconnect
+
+                # Last Will: se declara ANTES de connect() porque es ahí donde
+                # el broker lo registra — declararlo después no tiene efecto.
+                # Si esta conexión se corta sin un disconnect() prolijo, el
+                # broker publica esto en nuestro nombre. retain=True para que
+                # el CMS lo vea aunque no esté escuchando en el instante exacto.
+                self._client.will_set(
+                    _TOPIC_ESTADO_REPRODUCTOR.format(self._reproductor_id),
+                    payload=json.dumps({'estado': 'offline'}),
+                    qos=1,
+                    retain=True,
+                )
+
                 self._client.connect(self._host, self._port, keepalive=60)
                 logger.info(
                     'MQTT listener conectado a %s:%d como %s',
@@ -219,6 +257,17 @@ class MqttListener(threading.Thread):
             client.subscribe(topic, qos=1)
             logger.info('MQTT suscrito a: %s', topic)
 
+            # Anuncia la reconexión ya mismo, sin esperar el próximo
+            # heartbeat HTTP — limpia cualquier "offline" que el LWT haya
+            # dejado publicado si la caída anterior fue de golpe.
+            topic_estado = _TOPIC_ESTADO_REPRODUCTOR.format(self._reproductor_id)
+            client.publish(topic_estado, json.dumps({'estado': 'online'}), qos=1, retain=True)
+            logger.info('MQTT: estado online publicado en %s', topic_estado)
+
+            topic_comandos = _TOPIC_COMANDOS_REPRODUCTOR.format(self._reproductor_id)
+            client.subscribe(topic_comandos, qos=1)
+            logger.info('MQTT suscrito a: %s', topic_comandos)
+
     def _on_message(self, client, userdata, msg):
         try:
             crudo = msg.payload.decode('utf-8').strip()
@@ -241,6 +290,11 @@ class MqttListener(threading.Thread):
             elif accion == 'desactivada':
                 logger.info('MQTT: Alerta desactivada.')
                 self._lanzar('desactivar alerta', self._on_desactivar)
+
+            elif accion == 'sync_ahora':
+                if self._on_sync_ahora is not None:
+                    logger.info('MQTT: sync inmediato pedido (motivo=%s).', payload.get('motivo'))
+                    self._lanzar('sync inmediato', self._on_sync_ahora, payload)
 
             else:
                 logger.warning('MQTT: payload desconocido: %s', payload)

@@ -30,11 +30,31 @@ class Reproductor
     #[ORM\Column(length: 64)]
     private string $apiKeyHash;
 
+    /**
+     * Hash de la clave anterior a la última regeneración (tarea 1.4), vigente
+     * por un margen corto. Permite distinguir "alguien probando claves al
+     * azar" de "esta Pi concreta todavía tiene la clave vieja en su .env" —
+     * exactamente lo que costó una tarde entera diagnosticar el 11/08, cuando
+     * lo único visible era un 401 genérico. Ver ReproductorAuthService.
+     */
+    #[ORM\Column(length: 64, nullable: true)]
+    private ?string $apiKeyHashAnterior = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?DateTimeImmutable $apiKeyHashAnteriorVenceEn = null;
+
     #[ORM\Column(nullable: true)]
     private ?DateTimeImmutable $ultimoHeartbeat = null;
 
     #[ORM\Column(enumType: EstadoConexion::class)]
     private EstadoConexion $estadoConexion = EstadoConexion::SinRegistrar;
+
+    /**
+     * Cuándo llegó el último aviso de caída del Last Will de MQTT (tarea 1.3),
+     * o null si no hay ninguno pendiente. Ver estadoCalculado().
+     */
+    #[ORM\Column(nullable: true)]
+    private ?DateTimeImmutable $lwtOfflineDesde = null;
 
     /**
      * Problemas que el propio reproductor detecta y reporta en cada heartbeat.
@@ -85,6 +105,10 @@ class Reproductor
     {
         $this->ultimoHeartbeat = new DateTimeImmutable();
         $this->estadoConexion  = EstadoConexion::Conectado;
+        // Un heartbeat HTTP es prueba inequívoca de vida, gane lo que gane el
+        // último aviso de MQTT — por ejemplo si el LWT llegó tarde o el broker
+        // reordenó mensajes retenidos al reconectar.
+        $this->lwtOfflineDesde = null;
         return $this;
     }
 
@@ -142,6 +166,16 @@ class Reproductor
             return EstadoConexion::SinRegistrar;
         }
 
+        // El Last Will de MQTT (tarea 1.3) es una señal explícita del broker
+        // de que la conexión se cortó de golpe — el reproductor no llegó a
+        // desconectarse prolijo. Gana sobre el cálculo por umbral porque es
+        // más rápida (~90s con el keepalive actual) y más precisa que esperar
+        // a que venza el heartbeat HTTP (hasta 150s). registrarHeartbeat() la
+        // limpia sola apenas hay prueba fresca de vida.
+        if ($this->lwtOfflineDesde !== null) {
+            return EstadoConexion::Desconectado;
+        }
+
         $limite = new DateTimeImmutable(sprintf('-%d seconds', $umbralSegundos));
 
         return $this->ultimoHeartbeat > $limite
@@ -162,9 +196,50 @@ class Reproductor
     public function getPantallas(): Collection { return $this->pantallas; }
     public function getTelemetrias(): Collection { return $this->telemetrias; }
 
+    // ── Last Will MQTT (tarea 1.3) ──────────────────────────────────────────
+
+    public function getLwtOfflineDesde(): ?DateTimeImmutable { return $this->lwtOfflineDesde; }
+
+    /** Llamado por MqttSubscribeCommand al recibir {"estado":"offline"} del broker. */
+    public function marcarLwtOffline(): static
+    {
+        $this->lwtOfflineDesde = new DateTimeImmutable();
+        return $this;
+    }
+
+    /** Llamado por MqttSubscribeCommand al recibir {"estado":"online"} del broker. */
+    public function marcarLwtOnline(): static
+    {
+        $this->lwtOfflineDesde = null;
+        return $this;
+    }
+
+    /**
+     * No la usa el flujo real de autenticación (ReproductorAuthService busca
+     * por hash directo en el repositorio, ReproductorRepository::findByApiKeyHash()).
+     * Se deja con hash_equals() en vez de === por si alguna vez se usa: una
+     * comparación de string común es vulnerable a timing attack, aunque acá
+     * el impacto práctico sea bajo por tratarse de un hash SHA-256 y no el
+     * secreto en texto plano.
+     */
     public function verificarApiKey(string $rawKey): bool
     {
-        return hash('sha256', $rawKey) === $this->apiKeyHash;
+        return hash_equals($this->apiKeyHash, hash('sha256', $rawKey));
+    }
+
+    /**
+     * Guarda el hash ANTERIOR a una regeneración de clave, vigente por 48h.
+     *
+     * Llamado desde ReproductorCmsController justo antes de pisar apiKeyHash
+     * con el nuevo valor. El margen de 48h cubre el caso real: alguien
+     * regenera la clave, se olvida de copiarla a la Pi hasta el día
+     * siguiente, y mientras tanto el equipo sigue autenticando con la vieja.
+     */
+    public function marcarHashAnterior(string $hashAnterior): static
+    {
+        $this->apiKeyHashAnterior = $hashAnterior;
+        $this->apiKeyHashAnteriorVenceEn = new DateTimeImmutable('+48 hours');
+        return $this;
     }
 
     // ── Credenciales MQTT ────────────────────────────────────────────────────

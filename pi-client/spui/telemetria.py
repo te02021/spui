@@ -6,7 +6,8 @@ Métricas recopiladas:
                             None en Windows/simulación sin sensor.
   uso_ram_porcentaje      : RAM usada en % (psutil).
   espacio_disco_libre_mb  : espacio libre en la partición raíz en MB (psutil).
-  latencia_red_ms         : reservado (siempre None por ahora).
+  latencia_red_ms         : TCP connect al host del CMS, en ms (NetworkMonitor).
+                            None si no se pudo conectar en el momento de medir.
 
 El reproductor_id se establece externamente vía set_reproductor_id() después del primer sync.
 El thread no publica hasta tener un reproductor_id válido.
@@ -61,6 +62,7 @@ class TelemetriaPublisher(threading.Thread):
         mqtt_port: int,
         interval: int = 60,
         sync_client=None,
+        network_monitor=None,
     ) -> None:
         super().__init__(name='telemetria', daemon=True)
         self._host     = mqtt_host
@@ -71,6 +73,9 @@ class TelemetriaPublisher(threading.Thread):
         # SyncClient, para el respaldo por HTTP. Si no se pasa, el publisher
         # funciona igual pero sin red de seguridad.
         self._sync     = sync_client
+        # NetworkMonitor ya existente en main.py — se reusa para medir
+        # latencia_red_ms en vez de armar una conexión de prueba aparte.
+        self._network  = network_monitor
         self._fallos_mqtt = 0
         self._usando_http = False
 
@@ -226,7 +231,7 @@ class TelemetriaPublisher(threading.Thread):
             'temperatura_soc_celsius': self._leer_temperatura(),
             'uso_ram_porcentaje':     self._leer_ram(),
             'espacio_disco_libre_mb': self._leer_disco(),
-            'latencia_red_ms':        None,
+            'latencia_red_ms':        self._network.medir_latencia_ms() if self._network else None,
         }
 
     def _leer_temperatura(self) -> float | None:

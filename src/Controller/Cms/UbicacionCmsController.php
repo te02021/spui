@@ -16,6 +16,8 @@ use Symfony\Component\Routing\Attribute\Route;
 #[Route('/spui/ubicaciones')]
 class UbicacionCmsController extends AbstractController
 {
+    use CsrfProtegidoTrait;
+
     public function __construct(
         private readonly UbicacionRepository $repo,
         private readonly ManagerRegistry $doctrine,
@@ -118,6 +120,7 @@ class UbicacionCmsController extends AbstractController
         if (!$ubicacion) {
             throw $this->createNotFoundException();
         }
+        if ($r = $this->denegarSiCsrfInvalido($request)) { return $r; }
 
         $ubicacion->setActivo(!$ubicacion->isActivo());
         $this->em()->flush();
@@ -136,6 +139,7 @@ class UbicacionCmsController extends AbstractController
         if (!$ubicacion) {
             throw $this->createNotFoundException();
         }
+        if ($r = $this->denegarSiCsrfInvalido($request)) { return $r; }
 
         // Dos referencias impiden borrar una ubicación. La de programaciones
         // faltaba, y sin ella el DELETE terminaba en un error SQL crudo de

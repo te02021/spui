@@ -16,6 +16,8 @@ use Symfony\Component\Routing\Attribute\Route;
 #[Route('/spui/edificios')]
 class EdificioCmsController extends AbstractController
 {
+    use CsrfProtegidoTrait;
+
     public function __construct(
         private readonly EdificioRepository $repo,
         private readonly ManagerRegistry $doctrine,
@@ -118,6 +120,7 @@ class EdificioCmsController extends AbstractController
         if (!$edificio) {
             throw $this->createNotFoundException();
         }
+        if ($r = $this->denegarSiCsrfInvalido($request)) { return $r; }
 
         $edificio->setActivo(!$edificio->isActivo());
         $this->em()->flush();
@@ -136,6 +139,7 @@ class EdificioCmsController extends AbstractController
         if (!$edificio) {
             throw $this->createNotFoundException();
         }
+        if ($r = $this->denegarSiCsrfInvalido($request)) { return $r; }
 
         // Igual que en ubicaciones: faltaba comprobar las programaciones, y sin
         // eso el DELETE moría con un error SQL de integridad referencial.

@@ -26,6 +26,8 @@ use Symfony\Component\Routing\Attribute\Route;
 #[Route('/spui/qr')]
 class CodigoQrCmsController extends AbstractController
 {
+    use CsrfProtegidoTrait;
+
     public function __construct(
         private readonly CodigoQrRepository $repo,
         private readonly ContenidoRepository $contenidoRepo,
@@ -145,6 +147,7 @@ class CodigoQrCmsController extends AbstractController
     {
         $qr = $this->repo->find($id);
         if (!$qr) { throw $this->createNotFoundException(); }
+        if ($r = $this->denegarSiCsrfInvalido($request)) { return $r; }
 
         $qr->setActivo(!$qr->isActivo());
         $this->em()->flush();
@@ -162,6 +165,7 @@ class CodigoQrCmsController extends AbstractController
     {
         $qr = $this->repo->find($id);
         if (!$qr) { throw $this->createNotFoundException(); }
+        if ($r = $this->denegarSiCsrfInvalido($request)) { return $r; }
 
         $enUso = $this->contenidosQueUsan($qr);
         if ($enUso !== []) {

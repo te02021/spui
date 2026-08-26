@@ -12,6 +12,7 @@ use SPUI\Form\ContenidoType;
 use SPUI\Repository\CodigoQrRepository;
 use SPUI\Repository\ContenidoRepository;
 use SPUI\Service\AlcanceReproductorService;
+use SPUI\Service\ComandoPublisherService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\Request;
@@ -23,6 +24,7 @@ use Symfony\Component\String\Slugger\SluggerInterface;
 class ContenidoCmsController extends AbstractController
 {
     use BloqueoOfflineTrait;
+    use CsrfProtegidoTrait;
 
     private const TIPOS_ARCHIVO = ['imagen', 'video'];
 
@@ -30,6 +32,7 @@ class ContenidoCmsController extends AbstractController
         private readonly ContenidoRepository $repo,
         private readonly CodigoQrRepository $codigoQrRepo,
         private readonly AlcanceReproductorService $alcance,
+        private readonly ComandoPublisherService $comandoPublisher,
         private readonly ManagerRegistry $doctrine,
         private readonly SluggerInterface $slugger,
         #[Autowire('%kernel.project_dir%/public/uploads/spui')]
@@ -168,6 +171,7 @@ class ContenidoCmsController extends AbstractController
             }
 
             $this->em()->flush();
+            $this->comandoPublisher->pedirSyncAhora($this->alcance->deContenido($c), 'contenido');
             $msg = '"' . $c->getTitulo() . '" actualizado.';
             if ($request->isXmlHttpRequest()) {
                 return $this->json(['success' => true, 'message' => $msg]);
@@ -220,13 +224,16 @@ class ContenidoCmsController extends AbstractController
             $this->addFlash('error', 'Contenido no encontrado.');
             return $this->redirectToRoute('spui_cms_contenidos_index');
         }
+        if ($r = $this->denegarSiCsrfInvalido($request)) { return $r; }
 
-        if ($r = $this->bloquearSiOffline($this->alcance->deContenido($c), $request, 'spui_cms_contenidos_index')) {
+        $reproductores = $this->alcance->deContenido($c);
+        if ($r = $this->bloquearSiOffline($reproductores, $request, 'spui_cms_contenidos_index')) {
             return $r;
         }
 
         $c->setEstado(EstadoContenido::Borrador);
         $this->em()->flush();
+        $this->comandoPublisher->pedirSyncAhora($reproductores, 'contenido');
         $msg = '"' . $c->getTitulo() . '" volvió a borrador.';
         if ($request->isXmlHttpRequest()) {
             return $this->json(['success' => true, 'message' => $msg]);
@@ -244,13 +251,16 @@ class ContenidoCmsController extends AbstractController
             $this->addFlash('error', 'Contenido no encontrado.');
             return $this->redirectToRoute('spui_cms_contenidos_index');
         }
+        if ($r = $this->denegarSiCsrfInvalido($request)) { return $r; }
 
-        if ($r = $this->bloquearSiOffline($this->alcance->deContenido($c), $request, 'spui_cms_contenidos_index')) {
+        $reproductores = $this->alcance->deContenido($c);
+        if ($r = $this->bloquearSiOffline($reproductores, $request, 'spui_cms_contenidos_index')) {
             return $r;
         }
 
         $c->setEstado(EstadoContenido::Publicado);
         $this->em()->flush();
+        $this->comandoPublisher->pedirSyncAhora($reproductores, 'contenido');
         $msg = '"' . $c->getTitulo() . '" publicado.';
         if ($request->isXmlHttpRequest()) {
             return $this->json(['success' => true, 'message' => $msg]);
@@ -268,13 +278,16 @@ class ContenidoCmsController extends AbstractController
             $this->addFlash('error', 'Contenido no encontrado.');
             return $this->redirectToRoute('spui_cms_contenidos_index');
         }
+        if ($r = $this->denegarSiCsrfInvalido($request)) { return $r; }
 
-        if ($r = $this->bloquearSiOffline($this->alcance->deContenido($c), $request, 'spui_cms_contenidos_index')) {
+        $reproductores = $this->alcance->deContenido($c);
+        if ($r = $this->bloquearSiOffline($reproductores, $request, 'spui_cms_contenidos_index')) {
             return $r;
         }
 
         $c->setEstado(EstadoContenido::Archivado);
         $this->em()->flush();
+        $this->comandoPublisher->pedirSyncAhora($reproductores, 'contenido');
         $msg = '"' . $c->getTitulo() . '" archivado.';
         if ($request->isXmlHttpRequest()) {
             return $this->json(['success' => true, 'message' => $msg, 'type' => 'warning']);
@@ -292,6 +305,7 @@ class ContenidoCmsController extends AbstractController
             $this->addFlash('error', 'Contenido no encontrado.');
             return $this->redirectToRoute('spui_cms_contenidos_index');
         }
+        if ($r = $this->denegarSiCsrfInvalido($request)) { return $r; }
 
         // Se comprueban las dos referencias que impiden el borrado. Faltaba la
         // de alertas: sin ella el DELETE moría con un error SQL de integridad

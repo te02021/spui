@@ -27,6 +27,8 @@ use Symfony\Component\Routing\Attribute\Route;
 #[Route('/spui/pantallas/{id}/energia', requirements: ['id' => '\d+'])]
 class ProgramacionEnergeticaCmsController extends AbstractController
 {
+    use CsrfProtegidoTrait;
+
     /** Nombres de los días indexados por su valor ISO (1=Lunes … 7=Domingo). */
     public const DIAS = [
         1 => 'Lunes',
@@ -144,6 +146,7 @@ class ProgramacionEnergeticaCmsController extends AbstractController
     public function eliminar(int $id, int $dia, Request $request): Response
     {
         $pantalla = $this->getPantallaOr404($id);
+        if ($r = $this->denegarSiCsrfInvalido($request)) { return $r; }
         $regla    = $this->repo->findOneBy(['pantalla' => $pantalla, 'diaSemana' => $dia]);
 
         $grillaUrl = $this->generateUrl('spui_cms_energia_grilla', ['id' => $id]);
@@ -177,6 +180,7 @@ class ProgramacionEnergeticaCmsController extends AbstractController
     public function copiarAHabiles(int $id, int $dia, Request $request): Response
     {
         $pantalla = $this->getPantallaOr404($id);
+        if ($r = $this->denegarSiCsrfInvalido($request)) { return $r; }
         $origen   = $this->repo->findOneBy(['pantalla' => $pantalla, 'diaSemana' => $dia]);
 
         $grillaUrl = $this->generateUrl('spui_cms_energia_grilla', ['id' => $id]);

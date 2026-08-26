@@ -4,19 +4,24 @@ declare(strict_types=1);
 
 namespace SPUI\Controller\Api;
 
-use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\Persistence\ManagerRegistry;
-use SPUI\Entity\CodigoQr;
 use SPUI\Repository\CodigoQrRepository;
 use SPUI\Service\QrGeneratorService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
-use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 
+/**
+ * Sólo la imagen del QR y su redirect — son las dos rutas públicas que de
+ * verdad escanea un celular. El CRUD (index/create/show/update/delete) que
+ * tenía este controller antes era un duplicado JSON de CodigoQrCmsController,
+ * sin ningún consumidor real (nada en el CMS ni en el pi-client lo llamaba):
+ * se dio de baja junto con el resto de la capa Api/*Controller huérfana
+ * (Alerta/Contenido/Pantalla/Playlist/Programacion/Reproductor/Ubicacion).
+ */
 #[Route('/api/spui/qr')]
 class CodigoQrController extends AbstractController
 {
@@ -30,139 +35,6 @@ class CodigoQrController extends AbstractController
     {
         return $this->doctrine->getManager('SPUI');
     }
-
-    private function serialize(CodigoQr $qr, ?string $baseUrl = null): array
-    {
-        return [
-            'id'           => $qr->getId(),
-            'etiqueta'     => $qr->getEtiqueta(),
-            'url_destino'  => $qr->getUrlDestino(),
-            'activo'       => $qr->isActivo(),
-            'esta_vigente' => $qr->estaVigente(),
-            'usos_count'   => $qr->getUsosCount(),
-            'expira_en'    => $qr->getExpiraEn()?->format('c'),
-            'creado_en'    => $qr->getCreadoEn()->format('c'),
-            'url_redirect' => $baseUrl ? $baseUrl . '/api/spui/qr/' . $qr->getId() . '/r' : null,
-            'url_imagen'   => $baseUrl ? $baseUrl . '/api/spui/qr/' . $qr->getId() . '/imagen' : null,
-        ];
-    }
-
-    // -------------------------------------------------------------------------
-    // CRUD
-    // -------------------------------------------------------------------------
-
-    #[Route('', name: 'spui_qr_index', methods: ['GET'])]
-    public function index(Request $request): JsonResponse
-    {
-        $criteria = [];
-        if ($request->query->has('activo')) {
-            $criteria['activo'] = $request->query->getBoolean('activo');
-        }
-
-        $items = $this->repo->findBy($criteria, ['creadoEn' => 'DESC']);
-        $base  = $request->getSchemeAndHttpHost();
-
-        return $this->json([
-            'data'  => array_map(fn(CodigoQr $qr) => $this->serialize($qr, $base), $items),
-            'total' => count($items),
-        ]);
-    }
-
-    #[Route('', name: 'spui_qr_create', methods: ['POST'])]
-    public function create(Request $request): JsonResponse
-    {
-        $body = json_decode($request->getContent(), true) ?? [];
-
-        $errors = [];
-        if (empty($body['etiqueta']))    $errors[] = '"etiqueta" es requerido.';
-        if (empty($body['url_destino'])) $errors[] = '"url_destino" es requerido.';
-        if (!empty($errors)) {
-            return $this->json(['errors' => $errors], Response::HTTP_UNPROCESSABLE_ENTITY);
-        }
-
-        if (!filter_var($body['url_destino'], FILTER_VALIDATE_URL)) {
-            return $this->json(['error' => '"url_destino" debe ser una URL válida.'], Response::HTTP_UNPROCESSABLE_ENTITY);
-        }
-
-        $qr = new CodigoQr();
-        $qr->setEtiqueta(trim($body['etiqueta']));
-        $qr->setUrlDestino(trim($body['url_destino']));
-        $qr->setActivo((bool) ($body['activo'] ?? true));
-
-        if (!empty($body['expira_en'])) {
-            $qr->setExpiraEn(new DateTimeImmutable($body['expira_en']));
-        }
-
-        $em = $this->em();
-        $em->persist($qr);
-        $em->flush();
-
-        return $this->json(
-            ['data' => $this->serialize($qr, $request->getSchemeAndHttpHost())],
-            Response::HTTP_CREATED,
-        );
-    }
-
-    #[Route('/{id}', name: 'spui_qr_show', methods: ['GET'], requirements: ['id' => '\d+'])]
-    public function show(int $id, Request $request): JsonResponse
-    {
-        $qr = $this->repo->find($id);
-        if ($qr === null) {
-            return $this->json(['error' => 'Código QR no encontrado.'], Response::HTTP_NOT_FOUND);
-        }
-
-        return $this->json(['data' => $this->serialize($qr, $request->getSchemeAndHttpHost())]);
-    }
-
-    #[Route('/{id}', name: 'spui_qr_update', methods: ['PATCH'], requirements: ['id' => '\d+'])]
-    public function update(int $id, Request $request): JsonResponse
-    {
-        $qr = $this->repo->find($id);
-        if ($qr === null) {
-            return $this->json(['error' => 'Código QR no encontrado.'], Response::HTTP_NOT_FOUND);
-        }
-
-        $body = json_decode($request->getContent(), true) ?? [];
-
-        if (isset($body['etiqueta'])) {
-            $qr->setEtiqueta(trim($body['etiqueta']));
-        }
-        if (isset($body['url_destino'])) {
-            if (!filter_var($body['url_destino'], FILTER_VALIDATE_URL)) {
-                return $this->json(['error' => '"url_destino" debe ser una URL válida.'], Response::HTTP_UNPROCESSABLE_ENTITY);
-            }
-            $qr->setUrlDestino(trim($body['url_destino']));
-        }
-        if (isset($body['activo'])) {
-            $qr->setActivo((bool) $body['activo']);
-        }
-        if (array_key_exists('expira_en', $body)) {
-            $qr->setExpiraEn($body['expira_en'] ? new DateTimeImmutable($body['expira_en']) : null);
-        }
-
-        $this->em()->flush();
-
-        return $this->json(['data' => $this->serialize($qr, $request->getSchemeAndHttpHost())]);
-    }
-
-    #[Route('/{id}', name: 'spui_qr_delete', methods: ['DELETE'], requirements: ['id' => '\d+'])]
-    public function delete(int $id): JsonResponse
-    {
-        $qr = $this->repo->find($id);
-        if ($qr === null) {
-            return $this->json(['error' => 'Código QR no encontrado.'], Response::HTTP_NOT_FOUND);
-        }
-
-        $em = $this->em();
-        $em->remove($qr);
-        $em->flush();
-
-        return new JsonResponse(null, Response::HTTP_NO_CONTENT);
-    }
-
-    // -------------------------------------------------------------------------
-    // Imagen y redirect
-    // -------------------------------------------------------------------------
 
     /**
      * Devuelve la imagen PNG del QR.

@@ -249,9 +249,11 @@ Cosas que hoy están bien para desarrollo y **no** para mostrar en serio:
 
 | Tema | Qué hacer |
 |---|---|
-| MQTT anónimo | Configurar usuario/contraseña en Mosquitto y agregar soporte en `AlertaPublisherService` y en el cliente Python |
-| HTTP sin cifrar | TLS: HTTPS para la API y puerto 8883 para MQTT |
+| ~~MQTT anónimo~~ | ✅ Resuelto — Dynamic Security, `allow_anonymous false`, ACL por rol (tareas 1.0.a/1.0.b) |
+| ~~MQTT sin cifrar~~ | ✅ Resuelto — certificado propio (1.0.c), listener 8883 con TLS activo en el broker (1.0.d) y CMS + reproductor 17 verificados conectando por TLS con verificación de hostname (1.0.e) |
+| HTTP sin cifrar (API REST) | Falta HTTPS para `/api/spui/...` — no forma parte de las tareas 1.0.a-f (esas son solo MQTT) |
+| 1883 sigue abierto sin TLS | **Pendiente a propósito (tarea 1.0.f)** — cerrarlo a `listener 1883 127.0.0.1` en `mosquitto.conf` una vez que 8883 lleve un tiempo probado en uso real. No se hizo apenas se desplegó 8883 para no perder el único canal de conexión si algo del TLS fallara en producción y hubiera que revertir rápido. Si en la demo/defensa las Pis ya conectan todas por 8883 sin problemas, cerrar 1883 antes de mostrarlo — dejarlo abierto sin necesidad es la única deuda de seguridad real que queda de toda la tarea 1.0 |
 | CORS abierto | Definir `SPUI_CORS_ORIGINS` con los dominios reales |
-| `spui:mantenimiento` sin programar | Ponerlo en el cron cada minuto: sin eso los nodos apagados figuran conectados para siempre y la telemetría no se purga |
-| `spui:mqtt:subscribe` a mano | Dejarlo como servicio (NSSM en Windows, systemd en Linux) |
+| ~~`spui:mantenimiento` sin programar~~ | ✅ Resuelto — ya no hace falta cronearlo: `spui:mqtt:subscribe` lo dispara internamente cada minuto (y el rollup cada hora) mientras corre como servicio. Instalar **un solo** servicio deja las tres cosas funcionando; ver `config/servicios/` (`instalar-servicio.sh` en Linux, `instalar-servicio-telemetria.ps1` en Windows) |
+| ~~`spui:mqtt:subscribe` a mano~~ | ✅ Resuelto — servicio (NSSM en Windows, systemd en Linux), mismo instalador que el punto anterior |
 | IP del host por DHCP | Reserva DHCP o nombre DNS (ver §4) |

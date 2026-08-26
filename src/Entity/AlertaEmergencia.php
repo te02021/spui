@@ -62,6 +62,24 @@ class AlertaEmergencia
     #[ORM\JoinTable(name: 'alerta_pantalla')]
     private Collection $pantallas;
 
+    /**
+     * Sonido personalizado (opcional). Sólo el nombre de archivo, no la ruta
+     * completa: se sirve por /api/spui/media/{archivo} igual que cualquier
+     * otro medio, y el Pi lo cachea con verificación de hash como el resto.
+     *
+     * Sin esto (null), el reproductor usa el tono que genera localmente —
+     * nunca queda sin sonido por falta de configuración acá.
+     */
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $sonidoArchivo = null;
+
+    #[ORM\Column(length: 64, nullable: true)]
+    private ?string $sonidoHashArchivo = null;
+
+    /** Sólo para mostrarlo en el CMS (ej. "sirena.mp3"); no se usa para servir el archivo. */
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $sonidoNombreOriginal = null;
+
     public function __construct()
     {
         $this->creadaEn  = new DateTimeImmutable();
@@ -127,6 +145,20 @@ class AlertaEmergencia
     public function esGlobal(): bool
     {
         return $this->pantallas->isEmpty();
+    }
+
+    public function getSonidoArchivo(): ?string { return $this->sonidoArchivo; }
+    public function setSonidoArchivo(?string $sonidoArchivo): static { $this->sonidoArchivo = $sonidoArchivo; return $this; }
+
+    public function getSonidoHashArchivo(): ?string { return $this->sonidoHashArchivo; }
+    public function setSonidoHashArchivo(?string $sonidoHashArchivo): static { $this->sonidoHashArchivo = $sonidoHashArchivo; return $this; }
+
+    public function getSonidoNombreOriginal(): ?string { return $this->sonidoNombreOriginal; }
+    public function setSonidoNombreOriginal(?string $sonidoNombreOriginal): static { $this->sonidoNombreOriginal = $sonidoNombreOriginal; return $this; }
+
+    public function tieneSonidoPersonalizado(): bool
+    {
+        return $this->sonidoArchivo !== null;
     }
 
     public function haExpirado(): bool

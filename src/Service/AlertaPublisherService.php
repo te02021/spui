@@ -36,6 +36,7 @@ final class AlertaPublisherService
     public function __construct(
         private readonly HubInterface $hub,
         private readonly LoggerInterface $logger,
+        private readonly MqttConnectionFactory $mqttConnection,
         #[Autowire('%env(string:MQTT_HOST)%')]
         private readonly string $mqttHost,
         #[Autowire('%env(int:MQTT_PORT)%')]
@@ -51,27 +52,44 @@ final class AlertaPublisherService
      * Los reproductores Pi recibirán el mensaje MQTT y overridearán su contenido actual.
      *
      * OJO — este payload NO es el mismo que el de SyncController::serializeAlerta().
-     * Acá viajan sólo los campos de texto, sin la clave 'contenido': la idea es
-     * que el aviso llegue en el acto y sin depender de que el archivo esté
-     * disponible. Si la alerta tiene una imagen o un video adjunto, el Pi la
-     * muestra recién cuando el siguiente sync REST le traiga la media (hasta
-     * 300 s después); mientras tanto se ve el texto, que es lo que importa en
-     * una emergencia.
+     * Acá viajan sólo los campos de texto (más el sonido, ver abajo), sin la
+     * clave 'contenido': la idea es que el aviso llegue en el acto y sin
+     * depender de que el archivo esté disponible. Si la alerta tiene una
+     * imagen o un video adjunto, el Pi la muestra recién cuando el siguiente
+     * sync REST le traiga la media (hasta 300 s después); mientras tanto se ve
+     * el texto, que es lo que importa en una emergencia.
+     *
+     * El sonido SÍ viaja acá (sonido_url + sonido_hash), a diferencia de
+     * 'contenido': son dos strings cortos, no el archivo en sí, así que no
+     * pesa nada agregarlos al push inmediato. Si sólo llegaran por REST, un
+     * reproductor podría mostrar el texto de la alerta hasta 300 s sin el
+     * sonido correcto (sonando con el tono default o en silencio si estaba
+     * desactivado) — justo lo que se quiere evitar.
      *
      * Player.mostrar_alerta() recibe las dos formas, así que sólo puede usar
      * los campos comunes. Si algún día se agrega un campo acá, hay que
      * agregarlo también del lado REST o el cliente se comportará distinto
      * según por dónde le llegó la alerta.
+     *
+     * $baseUrl: host absoluto (scheme + host) para construir sonido_url. Lo
+     * pasa el controller ($request->getSchemeAndHttpHost()) porque este
+     * servicio no tiene Request propio — se llama también desde el daemon MQTT
+     * cuando una alerta se auto-desactiva por vencida (revisarAlertasVencidas),
+     * pero esa rama es publicarDesactivacion(), que no necesita el sonido.
      */
-    public function publicarActivacion(AlertaEmergencia $alerta): void
+    public function publicarActivacion(AlertaEmergencia $alerta, ?string $baseUrl = null): void
     {
         $payload = [
-            'accion'    => 'activada',
-            'id'        => $alerta->getId(),
-            'titulo'    => $alerta->getTitulo(),
-            'mensaje'   => $alerta->getMensaje(),
-            'prioridad' => $alerta->getPrioridad(),
-            'expira_en' => $alerta->getExpiraEn()?->format('c'),
+            'accion'      => 'activada',
+            'id'          => $alerta->getId(),
+            'titulo'      => $alerta->getTitulo(),
+            'mensaje'     => $alerta->getMensaje(),
+            'prioridad'   => $alerta->getPrioridad(),
+            'expira_en'   => $alerta->getExpiraEn()?->format('c'),
+            'sonido_url'  => ($baseUrl !== null && $alerta->getSonidoArchivo() !== null)
+                ? $baseUrl . '/api/spui/media/' . rawurlencode($alerta->getSonidoArchivo())
+                : null,
+            'sonido_hash' => $alerta->getSonidoHashArchivo(),
         ];
 
         // retain=true → los reproductores que se reconecten después también reciben la alerta
@@ -147,17 +165,16 @@ final class AlertaPublisherService
     /**
      * Parámetros de conexión al broker, en un solo lugar.
      *
-     * Está centralizado a propósito: acá se agregan las credenciales hoy y el
-     * TLS más adelante (tarea 1.0.e). Cuando esto estaba duplicado en cada
-     * método que publica, cualquier cambio había que hacerlo en dos lugares y
-     * olvidarse de uno dejaba una conexión sin cifrar sin que nada fallara de
-     * forma visible.
+     * Las credenciales y el TLS (tarea 1.0.e) salen de MqttConnectionFactory,
+     * compartido con los otros tres servicios que hablan con el broker —
+     * evita que activar TLS algún día signifique tocar cuatro archivos y
+     * olvidarse uno, que es justo lo que este comentario advertía antes de
+     * que existiera el factory.
      */
     private function conexion(): ConnectionSettings
     {
-        return (new ConnectionSettings())
-            ->setUsername($this->mqttUser)
-            ->setPassword($this->mqttPass)
+        return $this->mqttConnection
+            ->paraCredenciales($this->mqttUser, $this->mqttPass)
             ->setConnectTimeout(3)
             ->setSocketTimeout(3);
     }

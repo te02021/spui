@@ -1,4 +1,17 @@
 parameters:
+    # TLS para las conexiones MQTT del CMS al broker (tarea 1.0.e).
+    # false por defecto a propósito: el certificado (1.0.c) y el listener
+    # 8883 (1.0.d) están escritos pero el broker real todavía sirve por 1883
+    # sin cifrar. Activar esto antes de desplegar el listener dejaría al CMS
+    # sin poder conectar. Para activarlo: MQTT_TLS=true y MQTT_PORT=8883.
+    spui_mqtt_tls_default: false
+
+    # Ruta al certificado de la CA propia (certs/ca.crt), para validar el
+    # certificado autofirmado del broker. Vacío = TLS sin verificar cadena,
+    # lo cual sólo tiene sentido en un entorno de prueba muy acotado — en
+    # cualquier despliegue real conviene setear MQTT_TLS_CA_FILE.
+    spui_mqtt_tls_ca_default: ''
+
     # Orígenes CORS permitidos para /api/spui, separados por coma.
     # Default de desarrollo: '*' (cualquier origen). En producción definir
     # SPUI_CORS_ORIGINS en .env.local con los dominios reales, por ejemplo:
@@ -33,6 +46,31 @@ parameters:
     # uno solo dejaba el panel contradiciéndose a sí mismo.
     # Se puede pisar por entorno con SPUI_UMBRAL_CONEXION_SEG.
     spui_umbral_conexion_default: 150
+
+    # Cada cuánto revisa spui:mqtt:subscribe si hay alertas de emergencia
+    # vencidas, en segundos. Va aparte del resto del mantenimiento porque es
+    # la única parte con urgencia real de UX: una alerta vencida que sigue
+    # interrumpiendo pantallas 60 s de más se nota. Reproductores caídos y
+    # purga de telemetría no tienen ese apuro (ver spui_intervalo_mantenimiento_default),
+    # así que revisarlas aparte y seguido es barato — son consultas indexadas
+    # sobre una tabla chica, sin ningún tráfico hacia las Pis.
+    # Se puede pisar por entorno con SPUI_INTERVALO_ALERTAS_SEG.
+    spui_intervalo_alertas_default: 10
+
+    # Cada cuánto corre el resto del mantenimiento (reproductores caídos +
+    # purga de telemetría vieja), en segundos, dentro de spui:mqtt:subscribe.
+    # No hace falta más seguido que esto: "reproductor caído" ya no depende de
+    # esto para verse bien en el panel (Reproductor::estadoCalculado() lo
+    # deriva en vivo), y la purga no necesita más granularidad que la que ya
+    # tiene — solo evita que el DELETE de cada corrida crezca demasiado.
+    # Se puede pisar por entorno con SPUI_INTERVALO_MANTENIMIENTO_SEG.
+    spui_intervalo_mantenimiento_default: 60
+
+    # Cada cuánto corre el rollup horario de telemetría, en segundos, dentro
+    # de spui:mqtt:subscribe. 3600 (1 hora) porque ningún consumidor del CMS
+    # necesita más resolución que esa — bajarlo no agrega nada, solo trabajo.
+    # Se puede pisar por entorno con SPUI_INTERVALO_ROLLUP_SEG.
+    spui_intervalo_rollup_default: 3600
 
     # Dónde se guardan los archivos de contenido: 'local' (public/uploads/spui)
     # o 's3' (bucket de la intranet, mismo servicio que usa viáticos).

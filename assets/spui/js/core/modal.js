@@ -12,6 +12,12 @@
         var closeEl = document.getElementById('spuiAbmClose');
         var closeTimer = null;
 
+        // Token CSRF para los POST de un solo botón (activar/eliminar/toggle/etc.)
+        // que arman su propio FormData acá mismo, sin pasar por un <form> de
+        // Symfony (esos ya traen el suyo). Ver CsrfProtegidoTrait del lado PHP.
+        var csrfMeta  = document.querySelector('meta[name="spui-csrf-token"]');
+        var csrfToken = csrfMeta ? csrfMeta.content : '';
+
         function openModal() {
             if (closeTimer !== null) { clearTimeout(closeTimer); closeTimer = null; }
             overlay.classList.add('is-open');
@@ -192,9 +198,11 @@
             actionBtn.addEventListener('click', function () {
                 actionBtn.classList.add('spui-btn-submitting');
                 actionBtn.disabled = true;
+                var fd = new FormData();
+                fd.append('_token', csrfToken);
                 fetch(url, {
                     method: 'POST',
-                    body: new FormData(),
+                    body: fd,
                     headers: { 'X-Requested-With': 'XMLHttpRequest' },
                 })
                 .then(function (r) { return r.json(); })
@@ -429,9 +437,11 @@
         // DOM entero; sí en el error, donde el botón sigue siendo el mismo nodo.
         function postAndRefresh2(url, body, btn, onError) {
             if (btn) { btn.disabled = true; btn.classList.add('spui-btn-submitting'); }
+            var fd = body || new FormData();
+            fd.append('_token', csrfToken);
             fetch(url, {
                 method: 'POST',
-                body: body || new FormData(),
+                body: fd,
                 headers: { 'X-Requested-With': 'XMLHttpRequest' },
             })
             .then(function (r) { return r.json(); })

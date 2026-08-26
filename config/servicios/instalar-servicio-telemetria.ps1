@@ -1,11 +1,18 @@
 # =============================================================================
-# SPUI - Instala el ingestor de telemetria como servicio de Windows
+# SPUI - Instala el daemon spui:mqtt:subscribe como servicio de Windows
 # =============================================================================
 #
-# El comando spui:mqtt:subscribe es un proceso de larga duracion: se suscribe a
-# spui/telemetria/+ y persiste cada mensaje en la base. Sin el, los
-# reproductores publican al broker y nadie escucha: la telemetria se pierde en
-# silencio, sin ningun error visible en el CMS.
+# El comando spui:mqtt:subscribe es un proceso de larga duracion que:
+#   1. Se suscribe a spui/telemetria/+ y persiste cada mensaje en la base.
+#   2. Cada minuto corre el mantenimiento de la red (reproductores caidos,
+#      purga de telemetria, alertas vencidas).
+#   3. Cada hora agrega la telemetria cruda en resumenes horarios.
+#
+# Las tres cosas viven en el mismo proceso a proposito: instalar este UNICO
+# servicio deja todo funcionando. No hace falta (ni conviene) agregar tareas
+# programadas aparte para mantenimiento/rollup -- correrian una segunda vez
+# lo que este proceso ya hace solo. Ver instalar-servicio.sh para el
+# equivalente en Linux (destino real de produccion; esto es para desarrollo).
 #
 # Se instala como servicio para que arranque solo con Windows, igual que Apache
 # o MySQL. Nadie tiene que acordarse de levantarlo.
@@ -106,8 +113,8 @@ $argumentos = '"{0}" spui:mqtt:subscribe --id=spui' -f $consola
 nssm set $NombreServicio AppParameters $argumentos
 
 nssm set $NombreServicio AppDirectory $RaizIntranet
-nssm set $NombreServicio DisplayName  "SPUI - Ingestor de telemetria MQTT"
-nssm set $NombreServicio Description  "Suscribe a spui/telemetria/+ y persiste la telemetria de los reproductores."
+nssm set $NombreServicio DisplayName  "SPUI - Ingestor MQTT + mantenimiento periodico"
+nssm set $NombreServicio Description  "Suscribe a spui/telemetria/+ y persiste la telemetria; corre mantenimiento cada minuto y rollup cada hora."
 nssm set $NombreServicio Start        SERVICE_AUTO_START
 
 # Salida a archivo: si el proceso falla al arrancar, el motivo queda aca.

@@ -87,3 +87,15 @@
     </div>
 </div>
 {% endif %}
+
+<div class="spui-view-section">
+    <p class="spui-view-section-title">Sonido</p>
+    {% if alerta.sonidoArchivo %}
+        <div class="d-flex align-items-center gap-2">
+            <audio controls preload="none" style="height:2.25rem" src="{{ path('spui_cms_alertas_sonido_preview', {id: alerta.id}) }}"></audio>
+            <span class="text-muted small">{{ alerta.sonidoNombreOriginal ?? 'sonido personalizado' }}</span>
+        </div>
+    {% else %}
+        <p class="spui-view-empty mb-0">Sin personalizar — el reproductor emite el tono por defecto.</p>
+    {% endif %}
+</div>

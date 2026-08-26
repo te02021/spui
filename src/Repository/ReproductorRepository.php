@@ -24,6 +24,22 @@ class ReproductorRepository extends ServiceEntityRepository
     }
 
     /**
+     * Reproductor cuya clave ANTERIOR (a la última regeneración) matchea la
+     * enviada — tarea 1.4. Permite distinguir un intento con la clave vieja
+     * de una regeneración reciente de un intento genuinamente desconocido.
+     */
+    public function findByApiKeyHashAnterior(string $rawKey): ?Reproductor
+    {
+        return $this->createQueryBuilder('r')
+            ->where('r.apiKeyHashAnterior = :hash')
+            ->andWhere('r.apiKeyHashAnteriorVenceEn > :ahora')
+            ->setParameter('hash', hash('sha256', $rawKey))
+            ->setParameter('ahora', new DateTimeImmutable())
+            ->getQuery()
+            ->getOneOrNullResult();
+    }
+
+    /**
      * Reproductores marcados como conectados cuyo último heartbeat venció.
      *
      * Sólo considera los que alguna vez reportaron: un reproductor sin heartbeat

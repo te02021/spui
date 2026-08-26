@@ -10,6 +10,7 @@ use SPUI\Enum\EstadoPantalla;
 use SPUI\Form\PantallaType;
 use SPUI\Repository\PantallaRepository;
 use SPUI\Service\AlcanceReproductorService;
+use SPUI\Service\ComandoPublisherService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -19,10 +20,12 @@ use Symfony\Component\Routing\Attribute\Route;
 class PantallaCmsController extends AbstractController
 {
     use BloqueoOfflineTrait;
+    use CsrfProtegidoTrait;
 
     public function __construct(
         private readonly PantallaRepository $repo,
         private readonly AlcanceReproductorService $alcance,
+        private readonly ComandoPublisherService $comandoPublisher,
         private readonly ManagerRegistry $doctrine,
     ) {}
 
@@ -73,12 +76,14 @@ class PantallaCmsController extends AbstractController
         if ($form->isSubmitted() && $form->isValid()) {
             // El formulario ya asignó el reproductor, así que se puede saber a
             // qué equipo llegaría esta pantalla aunque todavía no exista.
-            if ($r = $this->bloquearSiOffline($this->alcance->dePantalla($pantalla), $request, 'spui_cms_pantallas_index')) {
+            $reproductores = $this->alcance->dePantalla($pantalla);
+            if ($r = $this->bloquearSiOffline($reproductores, $request, 'spui_cms_pantallas_index')) {
                 return $r;
             }
 
             $this->em()->persist($pantalla);
             $this->em()->flush();
+            $this->comandoPublisher->pedirSyncAhora($reproductores, 'pantalla');
             $msg = 'Pantalla "' . $pantalla->getNombre() . '" creada correctamente.';
             if ($request->isXmlHttpRequest()) {
                 return $this->json(['success' => true, 'message' => $msg]);
@@ -111,11 +116,13 @@ class PantallaCmsController extends AbstractController
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
-            if ($r = $this->bloquearSiOffline($this->alcance->dePantalla($pantalla), $request, 'spui_cms_pantallas_index')) {
+            $reproductores = $this->alcance->dePantalla($pantalla);
+            if ($r = $this->bloquearSiOffline($reproductores, $request, 'spui_cms_pantallas_index')) {
                 return $r;
             }
 
             $this->em()->flush();
+            $this->comandoPublisher->pedirSyncAhora($reproductores, 'pantalla');
             $msg = 'Pantalla "' . $pantalla->getNombre() . '" actualizada.';
             if ($request->isXmlHttpRequest()) {
                 return $this->json(['success' => true, 'message' => $msg]);
@@ -144,8 +151,10 @@ class PantallaCmsController extends AbstractController
         if (!$pantalla) {
             throw $this->createNotFoundException();
         }
+        if ($r = $this->denegarSiCsrfInvalido($request)) { return $r; }
 
-        if ($r = $this->bloquearSiOffline($this->alcance->dePantalla($pantalla), $request, 'spui_cms_pantallas_index')) {
+        $reproductores = $this->alcance->dePantalla($pantalla);
+        if ($r = $this->bloquearSiOffline($reproductores, $request, 'spui_cms_pantallas_index')) {
             return $r;
         }
 
@@ -157,6 +166,7 @@ class PantallaCmsController extends AbstractController
 
         $pantalla->setEstado($nuevo);
         $this->em()->flush();
+        $this->comandoPublisher->pedirSyncAhora($reproductores, 'pantalla');
         $msg = 'Pantalla "' . $pantalla->getNombre() . '" → ' . $nuevo->value . '.';
         if ($request->isXmlHttpRequest()) {
             return $this->json(['success' => true, 'message' => $msg]);
@@ -172,6 +182,7 @@ class PantallaCmsController extends AbstractController
         if (!$pantalla) {
             throw $this->createNotFoundException();
         }
+        if ($r = $this->denegarSiCsrfInvalido($request)) { return $r; }
 
         if ($pantalla->getReproductor() !== null) {
             $msg = 'No se puede eliminar: tiene un reproductor asociado ("' . $pantalla->getReproductor()->getHostname() . '"). Desasignálo primero desde la edición de la pantalla.';

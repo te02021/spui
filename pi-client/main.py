@@ -5,7 +5,8 @@ SPUI Pi Client — Cliente multimedia para reproductores Raspberry Pi.
 Arquitectura de threads:
   Main thread   → loop de sync + decisión de qué reproducir
   heartbeat     → daemon, POST /reproductores/heartbeat cada 60s
-  mqtt-listener → daemon, suscrito a 'spui/alertas/emergencia'
+  mqtt-listener → daemon, suscrito a alertas, estado (LWT) y comandos
+                  ('spui/{alertas,estado,comandos}/reproductor/{id}')
   telemetria    → daemon, publica métricas del sistema vía MQTT cada 60s
 
 Flujo por ciclo (Fase 7 — offline/fail-safe):
@@ -16,7 +17,10 @@ Flujo por ciclo (Fase 7 — offline/fail-safe):
      alerta activa    → player.mostrar_alerta()
      programación     → player.reproducir_playlist()
      nada             → player.mostrar_fallback()
-  3. Esperar hasta el próximo sync (interruptible).
+  3. Esperar hasta el próximo sync — interrumpible por Ctrl+C/SIGTERM o por un
+     comando 'sync_ahora' del CMS (tarea 1.5, push instantáneo: cambios de
+     programación/playlist/contenido/pantalla llegan en segundos, no esperan
+     los 300s del ciclo normal, que sigue como red de seguridad si MQTT cae).
 
 Estrategia de fail-safe:
   - Siempre guardar el último sync exitoso en SQLite.
@@ -27,6 +31,7 @@ Estrategia de fail-safe:
 
 import logging
 import os
+import random
 import signal
 import sys
 import threading
@@ -113,10 +118,16 @@ logger = logging.getLogger('spui.main')
 
 _corriendo = True
 
+# Interrumpe la espera entre ciclos (_esperar_interruptible) antes de tiempo.
+# Dos motivos la disparan: una señal de cierre (para no tardar hasta 300s en
+# apagarse) y un 'sync_ahora' por MQTT (tarea 1.5 — push instantáneo).
+_despertar = threading.Event()
+
 def _manejar_senal(signum, frame) -> None:
     global _corriendo
     logger.info('Señal %d recibida — cerrando SPUI client.', signum)
     _corriendo = False
+    _despertar.set()
 
 
 def main() -> None:
@@ -134,7 +145,7 @@ def main() -> None:
 
     cache   = Cache(config.DB_PATH)
     sync    = SyncClient(config.API_URL, config.API_KEY, config.MEDIA_DIR)
-    player  = Player(config.MEDIA_DIR)
+    player  = Player(config.MEDIA_DIR, sync_client=sync)
     network = NetworkMonitor(config.API_URL)
     energia = GestorEnergia()
 
@@ -173,21 +184,39 @@ def main() -> None:
     )
     heartbeat.start()
 
+    def sync_ahora(payload: dict) -> None:
+        """
+        Tarea 1.5 — el CMS avisó que algo que nos afecta cambió. Se corre en
+        un hilo aparte (MqttListener._lanzar), así que dormir acá no bloquea
+        ni el loop de MQTT ni al hilo principal.
+
+        Jitter 0-2s: si el cambio afecta a muchas pantallas (por ejemplo una
+        playlist compartida), el CMS publica a todas casi al mismo tiempo —
+        sin este margen, todas le pegarían a /sync en el mismo instante.
+        """
+        time.sleep(random.uniform(0, 2))
+        logger.info('Sync inmediato (motivo=%s).', payload.get('motivo'))
+        _despertar.set()
+
     mqtt = MqttListener(
         host=config.MQTT_HOST,
         port=config.MQTT_PORT,
         on_alerta=player.mostrar_alerta,
         on_desactivar=player.desactivar_alerta,
+        on_sync_ahora=sync_ahora,
     )
     mqtt.start()
 
     # sync_client habilita el respaldo por HTTP: si el broker se cae o nadie
     # está ingiriendo los mensajes, la telemetría igual llega al CMS.
+    # network_monitor reusa el mismo NetworkMonitor de más arriba para medir
+    # latencia_red_ms — no tiene sentido armar una segunda conexión de prueba.
     telemetria = TelemetriaPublisher(
         config.MQTT_HOST,
         config.MQTT_PORT,
         config.TELEMETRIA_INTERVAL,
         sync_client=sync,
+        network_monitor=network,
     )
     telemetria.start()
 
@@ -341,10 +370,18 @@ def main() -> None:
 
 
 def _esperar_interruptible(segundos: float) -> None:
-    """Espera N segundos en incrementos de 0.5s para poder interrumpir con Ctrl+C."""
-    deadline = time.monotonic() + segundos
-    while time.monotonic() < deadline and _corriendo:
-        time.sleep(0.5)
+    """
+    Espera hasta `segundos`, o menos si algo dispara _despertar antes: una
+    señal de cierre (Ctrl+C/SIGTERM) o un 'sync_ahora' por MQTT (tarea 1.5).
+
+    Antes era un polling manual en incrementos de 0.5s sólo para poder cortar
+    con Ctrl+C. Event.wait() ya resuelve eso mejor (una sola espera, sin
+    despertar el proceso 600 veces en un ciclo de 300s) y de paso da el
+    enganche que hacía falta para el sync instantáneo, sin agregar un
+    mecanismo nuevo.
+    """
+    _despertar.wait(timeout=segundos)
+    _despertar.clear()
 
 
 if __name__ == '__main__':

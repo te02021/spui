@@ -10,6 +10,8 @@ use SPUI\Enum\EstadoConexion;
 use SPUI\Repository\AlertaEmergenciaRepository;
 use SPUI\Repository\ReproductorRepository;
 use SPUI\Repository\TelemetriaRepository;
+use SPUI\Service\ReproductorAuthService;
+use SPUI\Service\TelemetriaRollupService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\Request;
@@ -23,6 +25,8 @@ class DashboardController extends AbstractController
         private readonly ReproductorRepository $reproductorRepo,
         private readonly AlertaEmergenciaRepository $alertaRepo,
         private readonly TelemetriaRepository $telemetriaRepo,
+        private readonly ReproductorAuthService $authService,
+        private readonly TelemetriaRollupService $rollupService,
         private readonly ManagerRegistry $doctrine,
         #[Autowire('%env(float:default:spui_temp_alerta_default:SPUI_TEMP_ALERTA_CELSIUS)%')]
         private readonly float $tempAlertaCelsius,
@@ -73,13 +77,25 @@ class DashboardController extends AbstractController
         }
 
         $datos = [
-            'reproductores'   => $reproductores,
-            'telemetria'      => $telemetria,
-            'alertas_activas' => $alertasActivas,
-            'conteo'          => $conteo,
-            'sin_actividad'   => count($sinActividad),
-            'temp_umbral'     => $this->tempAlertaCelsius,
-            'sobrecalentados' => $sobrecalentados,
+            'reproductores'      => $reproductores,
+            'telemetria'         => $telemetria,
+            'alertas_activas'    => $alertasActivas,
+            'conteo'             => $conteo,
+            'sin_actividad'      => count($sinActividad),
+            'temp_umbral'        => $this->tempAlertaCelsius,
+            'sobrecalentados'    => $sobrecalentados,
+            // Tarea 1.4: intentos de auth con API key inválida en la última
+            // hora, para que un problema de credenciales se vea en el panel
+            // en vez de descubrirse por SSH horas después.
+            'intentos_fallidos'  => $intentosFallidos = $this->authService->intentosFallidosUltimaHora(),
+            'hostnames_clave_vieja' => array_values(array_unique(array_filter(
+                array_map(fn(array $i) => $i['reproductor_clave_vieja'], $intentosFallidos),
+            ))),
+            // Red de seguridad: si el scheduler interno del demonio
+            // (mantenimiento/rollup, tareas 1.5/1.7) se cayó, que se vea acá
+            // en vez de descubrirse semanas después con la tabla de
+            // telemetría desbordada.
+            'scheduler_desactualizado' => $this->rollupService->estaDesactualizado(),
         ];
 
         // El refresco automático pide esta misma ruta cada 20 s y sólo usa el

@@ -89,6 +89,13 @@ class AlertaType extends AbstractType
 
     public function configureOptions(OptionsResolver $resolver): void
     {
-        $resolver->setDefaults(['data_class' => AlertaEmergencia::class]);
+        $resolver->setDefaults([
+            'data_class' => AlertaEmergencia::class,
+            // El campo de archivo de sonido no está mapeado al form (mismo
+            // criterio que 'archivo' en ContenidoType): se lee directo de
+            // $request->files en el controller. Sin este enctype el navegador
+            // manda el formulario como texto plano y el archivo no llega.
+            'attr'       => ['enctype' => 'multipart/form-data'],
+        ]);
     }
 }

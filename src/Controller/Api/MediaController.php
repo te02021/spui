@@ -86,6 +86,8 @@ class MediaController extends AbstractController
             'webm'        => 'video/webm',
             'ogv', 'ogg'  => 'video/ogg',
             'mov'         => 'video/quicktime',
+            'mp3'         => 'audio/mpeg',
+            'wav'         => 'audio/wav',
             default       => 'application/octet-stream',
         };
     }

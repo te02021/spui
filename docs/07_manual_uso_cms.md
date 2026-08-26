@@ -208,13 +208,15 @@ La Pi recibe este horario en cada sincronización y actúa sola: apaga por HDMI-
 
 Para avisos urgentes: evacuaciones, incidentes, cambios de último momento.
 
-- **Crear:** título, mensaje, prioridad, vencimiento opcional, y contenido multimedia opcional para acompañar.
-- **Editar:** solo si está inactiva. Una alerta activa no se puede editar — hay que desactivarla primero, porque el aviso que ya salió a las pantallas no coincidiría con lo que muestra el panel.
+- **Crear:** título, mensaje, prioridad, vencimiento opcional, contenido multimedia opcional para acompañar, y **sonido de alerta opcional** (MP3 o WAV, hasta 5 MB) — se puede escuchar antes de guardar con el reproductor que aparece al elegir el archivo.
+- **Editar:** solo si está inactiva. Una alerta activa no se puede editar — hay que desactivarla primero, porque el aviso que ya salió a las pantallas no coincidiría con lo que muestra el panel. Desde acá también se reemplaza o se quita el sonido personalizado (casilla "Quitar sonido personalizado").
 - **Activar:** el aviso llega a todas las pantallas **en segundos**, interrumpiendo lo que estén mostrando. También aparece el banner rojo en el dashboard.
-- **Desactivar:** los nodos vuelven a su programación normal.
+- **Desactivar:** los nodos vuelven a su programación normal (y el sonido se corta al instante).
 - **Eliminar:** solo alertas inactivas.
 
 **Un nodo que estaba apagado recibe la alerta apenas se enciende** — el broker guarda el último aviso. Y si MQTT no está disponible, llega igual en la próxima sincronización (tarda más, pero no se pierde).
+
+**Sin sonido personalizado, cada nodo reproduce un tono genérico propio** — así ninguna pantalla queda muda por no tener un archivo cargado. El sonido (personalizado o el tono genérico) se repite cada 20 segundos mientras la alerta siga activa.
 
 **Una alerta enciende la pantalla aunque el horario energético diga que debe estar apagada.**
 

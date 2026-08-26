@@ -14,6 +14,16 @@ framework:
             interval: '1 minute'
             cache_pool: cache.app
 
+        # Reproductor → telemetría: máx 3 por minuto (el Pi envía cada 60s, igual
+        # que heartbeat). Antes no tenía ningún límite propio ni caía en spui_api
+        # (esa política nunca se cableó a ningún controller) — una key filtrada o
+        # un Pi con un bug podía insertar filas sin tope.
+        spui_reproductor_telemetria:
+            policy: sliding_window
+            limit: 3
+            interval: '1 minute'
+            cache_pool: cache.app
+
         # Admin API general: 120 req/min por IP
         spui_api:
             policy: sliding_window

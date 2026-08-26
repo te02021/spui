@@ -49,6 +49,36 @@
     <small class="text-muted d-block mt-1">Si se selecciona, los reproductores mostrarán esta imagen/video junto al mensaje.</small>
 </div>
 
+{# Campo sin mapear al form (igual que 'archivo' en el de Contenido): se lee
+   directo de request.files en el controller, ver AlertaCmsController::aplicarSonido().
+   El JS (alerta-sonido-field.js) arma la preview del archivo recién elegido y
+   maneja el botón de quitar — ver ese archivo para el detalle de por qué el
+   flag 'sonido_quitar' queda prendido en vez de usarse un checkbox aparte. #}
+{% set tieneSonido = alerta is defined and alerta.sonidoArchivo %}
+<div class="mb-4 spui-sonido-field" data-spui-sonido-field>
+    <div class="spui-sonido-field-header">
+        <label class="unraf-form-label">Sonido de alerta (opcional)</label>
+        <label class="unraf-btn spui-btn-back unraf-btn-icon spui-file-trigger" title="Elegir archivo de sonido">
+            <img src="{{ asset('unraf-ui/icons/upload-simple.svg') }}" class="spui-action-icon" alt="Elegir archivo de sonido">
+            <input type="file" name="sonido_archivo" accept="audio/mpeg,audio/wav,.mp3,.wav" data-spui-sonido-input>
+        </label>
+    </div>
+
+    <div class="spui-sonido-row" data-spui-sonido-row {{ tieneSonido ? '' : 'hidden' }}>
+        <audio controls preload="none" {% if tieneSonido %}src="{{ path('spui_cms_alertas_sonido_preview', {id: alerta.id}) }}"{% endif %}></audio>
+        <span class="spui-sonido-nombre">{{ tieneSonido ? (alerta.sonidoNombreOriginal ?? 'sonido personalizado') : '' }}</span>
+        <button type="button" class="unraf-btn spui-btn-eliminar unraf-btn-icon" data-spui-sonido-quitar title="Quitar sonido">
+            <img src="{{ asset('unraf-ui/icons/trash.svg') }}" class="spui-action-icon" alt="Quitar">
+        </button>
+    </div>
+
+    <input type="hidden" name="sonido_quitar" value="0" data-spui-sonido-quitar-flag>
+
+    <small class="text-muted d-block mt-1">
+        MP3 o WAV, hasta 5 MB. Si no se sube ninguno, el reproductor emite un tono generado automáticamente.
+    </small>
+</div>
+
 <div class="mb-4">
     {{ form_label(form.pantallas) }}
     <small class="text-muted d-block mb-2">
