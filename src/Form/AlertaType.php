@@ -8,6 +8,7 @@ use SPUI\Entity\AlertaEmergencia;
 use SPUI\Entity\Contenido;
 use SPUI\Entity\Pantalla;
 use SPUI\Enum\EstadoContenido;
+use SPUI\Enum\TipoContenido;
 use Symfony\Bridge\Doctrine\Form\Type\EntityType;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\Extension\Core\Type\DateTimeType;
@@ -55,9 +56,16 @@ class AlertaType extends AbstractType
                 'label_attr'    => ['class' => 'unraf-form-label'],
                 'class'         => Contenido::class,
                 'em'            => 'SPUI',
+                // Sólo imagen/video: es lo único que el Pi puede mostrar de
+                // fondo detrás del texto de la alerta (ver Player.mostrar_alerta
+                // del lado pi-client). Antes se podían elegir los seis tipos —
+                // un cronograma o un QR "adjunto a una alerta" no tiene forma
+                // de renderizarse ahí, quedaba seleccionable sin sentido.
                 'query_builder' => fn($er) => $er->createQueryBuilder('c')
                     ->where('c.estado != :archivado')
+                    ->andWhere('c.tipo IN (:tipos)')
                     ->setParameter('archivado', EstadoContenido::Archivado)
+                    ->setParameter('tipos', [TipoContenido::Imagen, TipoContenido::Video])
                     ->orderBy('c.titulo', 'ASC'),
                 'choice_label'  => fn(Contenido $c) => $c->getTitulo() . ' (' . $c->getTipo()->etiqueta() . ')',
                 'placeholder'   => '— Sin contenido asociado —',

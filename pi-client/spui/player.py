@@ -378,14 +378,13 @@ class Player:
         """
         Override inmediato: muestra la alerta hasta que se desactive.
 
-        Llega por dos vías con formatos distintos:
-          - MQTT (push inmediato): titulo, mensaje, prioridad, expira_en.
-            NO incluye el contenido multimedia adjunto.
-          - REST (respuesta del sync): además trae 'contenido' con la media.
-
-        Por eso sólo se usan los campos comunes a ambas. Si la alerta tenía una
-        imagen o un video adjunto, se ve recién cuando el próximo sync la traiga
-        por REST.
+        Llega por dos vías, MQTT (push inmediato) o REST (respuesta del
+        sync) — desde que AlertaPublisherService y SyncController mandan las
+        mismas claves planas (contenido_tipo/contenido_url/contenido_hash,
+        además de sonido_url/sonido_hash), da igual por cuál de las dos llegó:
+        el título y el mensaje se ven al instante siempre, y si hay una
+        imagen/video adjunto se intenta mostrar de fondo desde el primer
+        momento, sin esperar un sync REST posterior.
 
         Si algo falla acá, hay que limpiar self._alerta: el estado se marca al
         entrar, y quedarse marcado sin nada en pantalla dejaba al reproductor
@@ -409,13 +408,45 @@ class Player:
             mensaje = alerta.get('mensaje') or ''
             logger.warning('ALERTA: %s', titulo)
 
-            self._reproducir_texto(f'{titulo}\n\n{mensaje}', duracion=None, es_alerta=True)
+            fondo_ruta, fondo_tipo = self._resolver_contenido_alerta(alerta)
+            self._reproducir_texto(
+                f'{titulo}\n\n{mensaje}', duracion=None, es_alerta=True,
+                fondo_ruta=fondo_ruta, fondo_tipo=fondo_tipo,
+            )
         except Exception:
             logger.exception('Falló al mostrar la alerta — se vuelve a la programación normal.')
             with self._lock:
                 self._alerta = None
             self._parar_vlc()
             self._detener_sonido()
+
+    def _resolver_contenido_alerta(self, alerta: dict) -> tuple[Optional[str], Optional[str]]:
+        """
+        Ruta local + tipo ('imagen'/'video') del contenido adjunto a la
+        alerta, o (None, None) si no hay, no es un tipo mostrable de fondo, o
+        no se pudo resolver (sin red y sin caché). El llamador cae al texto
+        solo en cualquiera de esos casos — nunca rompe la alerta por esto, el
+        texto es lo que importa en una emergencia.
+        """
+        tipo = alerta.get('contenido_tipo')
+        url  = alerta.get('contenido_url')
+        if tipo not in ('imagen', 'video') or not url:
+            return None, None
+
+        nombre = url.rstrip('/').split('/')[-1]
+        local  = os.path.join(self._media_dir, nombre)
+        if os.path.exists(local):
+            return local, tipo
+
+        if self._sync_client is None:
+            logger.warning('Contenido de alerta no cacheado y sin cliente de sync — se muestra solo el texto.')
+            return None, None
+
+        try:
+            return self._sync_client.descargar_media(url, alerta.get('contenido_hash')), tipo
+        except Exception as exc:
+            logger.warning('No se pudo descargar el contenido de la alerta (%s) — se muestra solo el texto.', exc)
+            return None, None
 
     def desactivar_alerta(self) -> None:
         with self._lock:
@@ -792,9 +823,18 @@ class Player:
         if duracion is not None:
             self._esperar(duracion)
 
-    def _reproducir_texto(self, texto: Optional[str], duracion: Optional[int], es_alerta: bool = False) -> None:
+    def _reproducir_texto(
+        self,
+        texto: Optional[str],
+        duracion: Optional[int],
+        es_alerta: bool = False,
+        fondo_ruta: Optional[str] = None,
+        fondo_tipo: Optional[str] = None,
+    ) -> None:
         """
-        Muestra texto en pantalla.
+        Muestra texto en pantalla, opcionalmente superpuesto sobre una imagen o
+        video de fondo (fondo_ruta/fondo_tipo — hoy sólo lo usa mostrar_alerta,
+        para el contenido multimedia adjunto a una alerta).
 
         duracion=None significa "sin límite", y se resuelve distinto según el caso:
           - alerta: se queda hasta que la desactiven (bucle vigilando el estado).
@@ -805,14 +845,26 @@ class Player:
         label = 'ALERTA' if es_alerta else 'TEXTO'
 
         if self._simulacion:
-            logger.info('[SIM] %s: %s', label, texto[:120])
+            extra = f' (fondo: {os.path.basename(fondo_ruta)})' if fondo_ruta else ''
+            logger.info('[SIM] %s: %s%s', label, texto[:120], extra)
             if es_alerta and duracion is None:
                 self._esperar_alerta()
             else:
                 self._esperar_simulado(duracion)
             return
 
-        media = self._vlc.media_new('blank://')
+        if fondo_ruta:
+            media = self._vlc.media_new(fondo_ruta)
+            # Mismo criterio que _reproducir_imagen/_reproducir_video: la
+            # imagen se deja fija (el tiempo lo controla self._esperar_alerta,
+            # no VLC) y el video se repite en loop mientras dure la alerta.
+            if fondo_tipo == 'video':
+                media.add_option(':input-repeat=65535')
+            else:
+                media.add_option(':image-duration=-1')
+        else:
+            media = self._vlc.media_new('blank://')
+
         media.add_option(':sub-filter=marq')
         media.add_option(f':marq-marquee={texto}')
         media.add_option(':marq-position=8')   # centro
@@ -820,7 +872,7 @@ class Player:
         if es_alerta:
             media.add_option(':marq-color=0xFF0000')
 
-        self._reproducir_media(media)
+        self._reproducir_media(media, es_imagen_fija=bool(fondo_ruta) and fondo_tipo != 'video')
 
         if duracion is not None:
             self._esperar(duracion)

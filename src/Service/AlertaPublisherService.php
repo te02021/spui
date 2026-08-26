@@ -51,45 +51,48 @@ final class AlertaPublisherService
      * Llama esto al activar una alerta.
      * Los reproductores Pi recibirán el mensaje MQTT y overridearán su contenido actual.
      *
-     * OJO — este payload NO es el mismo que el de SyncController::serializeAlerta().
-     * Acá viajan sólo los campos de texto (más el sonido, ver abajo), sin la
-     * clave 'contenido': la idea es que el aviso llegue en el acto y sin
-     * depender de que el archivo esté disponible. Si la alerta tiene una
-     * imagen o un video adjunto, el Pi la muestra recién cuando el siguiente
-     * sync REST le traiga la media (hasta 300 s después); mientras tanto se ve
-     * el texto, que es lo que importa en una emergencia.
-     *
-     * El sonido SÍ viaja acá (sonido_url + sonido_hash), a diferencia de
-     * 'contenido': son dos strings cortos, no el archivo en sí, así que no
-     * pesa nada agregarlos al push inmediato. Si sólo llegaran por REST, un
-     * reproductor podría mostrar el texto de la alerta hasta 300 s sin el
-     * sonido correcto (sonando con el tono default o en silencio si estaba
-     * desactivado) — justo lo que se quiere evitar.
+     * OJO — este payload NO es el mismo que el de SyncController::serializeAlerta(),
+     * pero desde que se agregaron sonido_url/hash y contenido_url/tipo/hash
+     * (ver abajo) están MUY cerca: ninguno de los dos manda el archivo en sí,
+     * solo strings cortos (URL + hash), así que agregarlos al push inmediato
+     * no pesa nada. Si sólo llegaran por REST, un reproductor podría mostrar
+     * el texto de la alerta hasta 300 s sin el sonido/imagen correctos —
+     * justo lo que se quiere evitar. El propio archivo (la descarga real) el
+     * Pi la resuelve igual con su caché+hash habitual, sea por MQTT o por REST
+     * de dónde haya sacado la URL.
      *
      * Player.mostrar_alerta() recibe las dos formas, así que sólo puede usar
      * los campos comunes. Si algún día se agrega un campo acá, hay que
      * agregarlo también del lado REST o el cliente se comportará distinto
      * según por dónde le llegó la alerta.
      *
-     * $baseUrl: host absoluto (scheme + host) para construir sonido_url. Lo
-     * pasa el controller ($request->getSchemeAndHttpHost()) porque este
-     * servicio no tiene Request propio — se llama también desde el daemon MQTT
-     * cuando una alerta se auto-desactiva por vencida (revisarAlertasVencidas),
-     * pero esa rama es publicarDesactivacion(), que no necesita el sonido.
+     * $baseUrl: host absoluto (scheme + host) para construir sonido_url y
+     * contenido_url. Lo pasa el controller ($request->getSchemeAndHttpHost())
+     * porque este servicio no tiene Request propio — se llama también desde
+     * el daemon MQTT cuando una alerta se auto-desactiva por vencida
+     * (revisarAlertasVencidas), pero esa rama es publicarDesactivacion(), que
+     * no necesita ni sonido ni contenido.
      */
     public function publicarActivacion(AlertaEmergencia $alerta, ?string $baseUrl = null): void
     {
+        $contenido = $alerta->getContenido();
+
         $payload = [
-            'accion'      => 'activada',
-            'id'          => $alerta->getId(),
-            'titulo'      => $alerta->getTitulo(),
-            'mensaje'     => $alerta->getMensaje(),
-            'prioridad'   => $alerta->getPrioridad(),
-            'expira_en'   => $alerta->getExpiraEn()?->format('c'),
-            'sonido_url'  => ($baseUrl !== null && $alerta->getSonidoArchivo() !== null)
+            'accion'         => 'activada',
+            'id'             => $alerta->getId(),
+            'titulo'         => $alerta->getTitulo(),
+            'mensaje'        => $alerta->getMensaje(),
+            'prioridad'      => $alerta->getPrioridad(),
+            'expira_en'      => $alerta->getExpiraEn()?->format('c'),
+            'sonido_url'     => ($baseUrl !== null && $alerta->getSonidoArchivo() !== null)
                 ? $baseUrl . '/api/spui/media/' . rawurlencode($alerta->getSonidoArchivo())
                 : null,
-            'sonido_hash' => $alerta->getSonidoHashArchivo(),
+            'sonido_hash'    => $alerta->getSonidoHashArchivo(),
+            'contenido_tipo' => $contenido?->getTipo()->value,
+            'contenido_url'  => ($baseUrl !== null && $contenido?->getRutaArchivo() !== null)
+                ? $baseUrl . '/api/spui/media/' . rawurlencode(basename($contenido->getRutaArchivo()))
+                : null,
+            'contenido_hash' => $contenido?->getHashArchivo(),
         ];
 
         // retain=true → los reproductores que se reconecten después también reciben la alerta
