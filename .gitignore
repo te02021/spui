@@ -1,12 +1,18 @@
 # Markdown: por default no se trackea ninguno (notas de sesión, contexto de
 # desarrollo, etc.) salvo la documentación con autoridad verificada contra
-# código en docs/ (ver docs/README.md §1 para el criterio).
+# código en docs/ (ver docs/README.md §1 para el criterio) y los .md que son
+# parte del flujo del repo en sí (guía de contribución, plantilla de PR,
+# README del pi-client) — no notas de trabajo, se leen y se mantienen igual
+# que el código.
 *.md
 !docs/06_funcionamiento_del_sistema.md
 !docs/07_manual_uso_cms.md
 !docs/08_pendientes_vm.md
 !docs/09_instalacion_raspberry.md
 !docs/README.md
+!CONTRIBUTING.md
+!pi-client/README.md
+!.github/PULL_REQUEST_TEMPLATE.md
 
 # TLS del broker (tarea 1.0.c-f): las claves privadas nunca se versionan,
 # aunque el resto (CA pública, cert público, el script que las genera) sí.
