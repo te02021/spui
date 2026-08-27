@@ -223,9 +223,15 @@ class Player:
                 # Ojo con --no-autoscale: hace lo contrario, deja las imágenes
                 # chicas en su tamaño real en medio de la pantalla.
                 '--autoscale',
-                # Nada de textos ni carátulas superpuestas.
+                # Sin el "reproduciendo ahora" (metadata del archivo) sobre el
+                # contenido normal. OJO: NO se agrega --no-osd acá — ese flag
+                # apaga el mismo subsistema de overlays que usa el filtro marq
+                # de las alertas (mostrar_alerta), y con --no-osd puesto el
+                # texto rojo de la alerta nunca llegaba a dibujarse, ni con
+                # fondo ni sin él. Nada en este reproductor desatendido
+                # dispara los popups de volumen/seek que --no-osd evitaría, así
+                # que sacarlo no tiene contra en la práctica.
                 '--no-video-title-show',
-                '--no-osd',
                 # El puntero desaparece solo tras un segundo sin moverse.
                 '--mouse-hide-timeout=1000',
                 '--quiet',
@@ -557,8 +563,10 @@ class Player:
             os.environ['XAUTHORITY'] = cookie
 
         try:
+            # Sin --no-osd acá tampoco — ver el comentario en __init__ sobre
+            # por qué apagaba el texto de las alertas.
             self._vlc = vlc.Instance(
-                '--autoscale', '--no-video-title-show', '--no-osd',
+                '--autoscale', '--no-video-title-show',
                 '--mouse-hide-timeout=1000', '--quiet',
             )
             if self._vlc is None:
@@ -863,7 +871,14 @@ class Player:
             else:
                 media.add_option(':image-duration=-1')
         else:
+            # blank:// NO es infinito por default: sin esta opción, VLC
+            # termina el "clip" en un par de segundos y pasa a State.Ended,
+            # que _reproducir_media() trata como error real (es_imagen_fija
+            # queda en False acá abajo) — la alerta de texto puro quedaba sin
+            # mostrar nada. Mismo fix que ya usa el video en loop: repetir en
+            # vez de dejar que termine.
             media = self._vlc.media_new('blank://')
+            media.add_option(':input-repeat=65535')
 
         media.add_option(':sub-filter=marq')
         media.add_option(f':marq-marquee={texto}')
