@@ -325,6 +325,16 @@ class SyncController extends AbstractController
                 ? $request->getSchemeAndHttpHost() . '/api/spui/media/' . rawurlencode($alerta->getSonidoArchivo())
                 : null,
             'sonido_hash' => $alerta->getSonidoHashArchivo(),
+            // Mismas claves planas que publica AlertaPublisherService por MQTT
+            // (ver el docblock ahí) — Player.mostrar_alerta() del pi-client usa
+            // sólo estas tres, sea cual sea el canal por el que llegó la alerta.
+            // 'contenido' (el objeto anidado de abajo) queda además por si algo
+            // más necesita la forma completa (contenido_texto, id, etc.).
+            'contenido_tipo' => $c?->getTipo()->value,
+            'contenido_url'  => $c?->getRutaArchivo() !== null
+                ? $request->getSchemeAndHttpHost() . '/api/spui/media/' . rawurlencode(basename($c->getRutaArchivo()))
+                : null,
+            'contenido_hash' => $c?->getHashArchivo(),
             'contenido' => $c !== null ? [
                 'id'              => $c->getId(),
                 'tipo'            => $c->getTipo()->value,
