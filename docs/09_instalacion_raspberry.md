@@ -389,6 +389,96 @@ sudo reboot
 > conservando su proporción; si no coincide con la relación de aspecto del monitor,
 > las franjas que sobran quedan en negro (nunca recortada).
 
+### 8.6. Audio por HDMI (para que se escuchen las alertas sonoras)
+
+El sonido de las alertas **sale siempre por HDMI, hacia los parlantes del TV** — no por el jack
+de 3.5mm de la Pi. Es la arquitectura pensada del sistema: cada reproductor termina conectado a
+un TV con parlantes propios, no a un monitor de PC con un parlante aparte. Por eso esta guía no
+configura audio analógico en ningún paso: si en algún momento usaste `raspi-config` → *System
+Options* → *Audio* para forzar "Headphones", volvé a dejarlo en **HDMI** o **Auto** — "Headphones"
+apunta al jack de la Pi, que en esta arquitectura no tiene nada conectado.
+
+**Por qué hace falta un paso aparte (no "simplemente anda"):** el dispositivo ALSA crudo de HDMI
+(`hw:X,0`) sólo acepta audio ya empaquetado en tramas **IEC958** — así transporta HDMI el audio
+digital a nivel de hardware. La conversión automática de `plughw:X,0` (que sí ajusta formato, tasa
+y canales) **no sabe hacer ese empaquetado**: falla con `Sample format not available for
+playback: Invalid argument` aunque los valores pedidos sean exactamente los que el TV declara
+soportar. El paquete `alsa-lib` sí trae, por tarjeta, una definición ya armada que hace ese
+empaquetado correctamente — el nombre de dispositivo `hdmi:CARD=<id>,DEV=0` — y es la que hay que
+usar, no `hw:` ni `plughw:` directo.
+
+**Pasos (con el TV ya conectado por HDMI y encendido):**
+
+1. **Identificar la tarjeta ALSA del puerto HDMI conectado:**
+   ```bash
+   aplay -l
+   ```
+   Va a listar `card 0: vc4hdmi0 [vc4-hdmi-0], ...` y `card 1: vc4hdmi1 [vc4-hdmi-1], ...` — una
+   por cada puerto micro-HDMI de la Pi 4. Si usaste **HDMI0** (recomendado, tabla del paso 1), la
+   tarjeta suele ser `vc4hdmi0`. Para confirmar cuál está realmente conectado en vez de asumirlo:
+   ```bash
+   cat /sys/class/drm/*/status
+   ```
+   Va a devolver `connected` / `disconnected` / `unknown` en el mismo orden que las tarjetas de
+   `aplay -l` — la que diga `connected` es la que hay que usar.
+
+2. **(Recomendado) Desactivar el driver de audio analógico legacy**, que no se usa en esta
+   arquitectura y puede dejar las tarjetas numeradas de forma confusa:
+   ```bash
+   sudo nano /boot/firmware/config.txt
+   ```
+   Comentar la línea `dtparam=audio=on` (agregarle `#` adelante, no borrarla) y reiniciar:
+   ```bash
+   sudo reboot
+   ```
+   Después de esto, `aplay -l` va a mostrar **solo** las dos tarjetas HDMI, ya sin `card 0: ...
+   Headphones`, así que conviene repetir el paso 1 para confirmar la numeración final.
+
+3. **Probar el dispositivo correcto** (reemplazando `vc4hdmi0` por el nombre real que confirmaste
+   en el paso 1):
+   ```bash
+   speaker-test -c2 -D hdmi:CARD=vc4hdmi0,DEV=0 -t sine -f 440 -l 1
+   ```
+   Tiene que escucharse un tono corto por el TV. Si en cambio da error, ver §8.6.1.
+
+4. **Configurar la app** para que VLC use ese mismo dispositivo — en `/etc/spui/spui.env`
+   (editalo con `sudo nano`, paso 11.2):
+   ```
+   SPUI_AOUT_DEVICE=hdmi:CARD=vc4hdmi0,DEV=0
+   ```
+   Mismo valor que probó bien en el paso 3 — si tu tarjeta conectada resultó ser `vc4hdmi1`, va
+   `CARD=vc4hdmi1`. Sin esta variable, VLC usa el dispositivo ALSA "default" del sistema, que
+   **no** hace el empaquetado IEC958 correctamente salvo que también se reconfigure a nivel
+   sistema — más simple apuntar la app directo al dispositivo que ya funciona.
+
+5. **Reiniciar el servicio y probar con una alerta real:**
+   ```bash
+   sudo systemctl restart spui
+   journalctl -u spui -f
+   ```
+   Activá una alerta desde el CMS (`/spui/alertas`) y confirmá que se escuche.
+
+**Sobre la repetición del sonido:** mientras la alerta sigue activa, el sonido se repite en
+cuanto termina de reproducirse (no cada 20 segundos fijos como en versiones anteriores). Si
+querés una pausa entre repeticiones (por ejemplo para que no suene como una sirena continua),
+agregá en `spui.env`:
+```
+SPUI_ALERTA_SONIDO_INTERVALO_SEG=2
+```
+Sin esta variable, la pausa es 0 (repite pegado). El nombre de la variable quedó igual por
+compatibilidad, pero **ahora cuenta desde que el sonido termina, no desde que empieza**.
+
+#### 8.6.1. Troubleshooting de audio
+
+| Síntoma | Causa | Solución |
+|---|---|---|
+| `Sample format not available for playback: Invalid argument` con `hw:X,0` o `plughw:X,0` | Es esperado — esos dispositivos no hacen el empaquetado IEC958 que HDMI necesita | Usar `hdmi:CARD=<id>,DEV=0` (paso 3), nunca `hw:`/`plughw:` directo |
+| `Playback open error: -524, Unknown error 524` | La tarjeta que estás probando no tiene nada conectado en ese puerto físico | Confirmar con `cat /sys/class/drm/*/status` cuál dice `connected` (paso 1) y usar esa |
+| Después de comentar `dtparam=audio=on`, el mismo comando que antes andaba ahora da -524 | Las tarjetas se **renumeraron** al desaparecer la vieja `card 0: Headphones` | Repetir `aplay -l` y usar el índice/nombre nuevo — por eso el paso 2 pide repetir el paso 1 después |
+| `speaker-test` con `hdmi:CARD=...` funciona pero la alerta sigue muda | Falta `SPUI_AOUT_DEVICE` en `spui.env`, o tiene un valor distinto al que probó bien | Paso 4 + `sudo systemctl restart spui` |
+| El TV no tiene volumen propio o está muteado en su control remoto | El audio llega correcto desde la Pi, el TV lo descarta | Revisar volumen/mute del TV, no de la Pi |
+| Querés confirmar si el TV realmente declara soporte de audio por HDMI | Poco común que no lo declare, pero pasa en algunos monitores de PC usados para pruebas de banco | `sudo apt install -y edid-decode` y `sudo edid-decode /sys/class/drm/<conector-connected>/edid` — buscar "Audio Data Block" con Linear PCM |
+
 ---
 
 ## 9. Cargar los datos mínimos en el CMS
@@ -474,6 +564,8 @@ MQTT_PORT=1883
 > ⚠️ **`SPUI_API_URL` termina en `/api/spui`, sin `/reproductores`** — el cliente concatena el resto solo (`sync.py`).
 >
 > ⚠️ **`MQTT_HOST` es la IP del servidor donde corre Mosquitto**, no `127.0.0.1`. El default `127.0.0.1` apuntaría a la propia Pi, donde no hay broker.
+>
+> 🔊 **Para que se escuchen las alertas sonoras** hace falta agregar acá `SPUI_AOUT_DEVICE` — ver §8.6, es un paso aparte porque necesita el TV ya conectado para identificar el dispositivo correcto.
 
 **Guardar y salir de nano:** `Ctrl+O` → `Enter` → `Ctrl+X`.
 Para salir sin guardar: `Ctrl+X` y responder `N`.
@@ -525,7 +617,7 @@ Adaptado de `08_pendientes_vm.md` §6 — con hardware real, ahora **sí** aplic
 | 2 | `journalctl -u spui -f` | "Sync OK", prefetch de archivos, player reproduciendo |
 | 3 | Monitor conectado a la Pi | Contenido en pantalla, fullscreen, sin cursor |
 | 4 | Dashboard del CMS (`/spui`) | El reproductor pasa a **conectado**, heartbeat cada ~60 s |
-| 5 | Activar una alerta desde `/spui/alertas` | Aparece en el log de la Pi casi al instante |
+| 5 | Activar una alerta desde `/spui/alertas` | Aparece en el log de la Pi casi al instante, con imagen/texto en pantalla y sonido audible por el TV (ver §8.6 si no se escucha) |
 | 6 | Consola de `spui:mqtt:subscribe` | Líneas con temperatura, RAM y disco cada ~60 s |
 | 7 | `/spui/reproductores/{id}/telemetria` | Los gráficos se llenan. **Con Pi real la temperatura es un valor verdadero** (en VM venía vacía) |
 | 8 | Configurar energía con hora de apagado ya pasada | El log dice "Fuera de horario: pantalla apagada" |
@@ -563,6 +655,7 @@ Confirmá que todo levanta solo: autologin → X11 → Openbox → servicio spui
 | `Host key verification failed` | Se respondió algo distinto de `yes` al fingerprint | Reintentar y escribir `yes` completo |
 | `REMOTE HOST IDENTIFICATION HAS CHANGED` | Se reflasheó la SD: clave SSH nueva | `ssh-keygen -R <ip>` en tu PC y reconectar |
 | Temperatura > 80 °C sostenida | Disipación insuficiente | Ventilador/disipadores; revisar ventilación del case |
+| Alerta se ve en pantalla (imagen/texto) pero **no se escucha sonido** | Falta `SPUI_AOUT_DEVICE` en `spui.env`, o VLC está usando el dispositivo ALSA "default" que no empaqueta el audio en IEC958 como HDMI necesita | §8.6 — configurar `SPUI_AOUT_DEVICE=hdmi:CARD=<id>,DEV=0` |
 
 ### 14.1. Pantalla negra aunque el log diga que está reproduciendo
 

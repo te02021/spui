@@ -198,6 +198,15 @@ class Player:
         # elegida no funciona. Ver _VOUT_ALTERNATIVAS para los valores válidos.
         self._vout = os.environ.get('SPUI_VOUT', 'xcb_x11').strip() or 'xcb_x11'
 
+        # Salida de audio: por default se deja que VLC/el sistema decidan (lo
+        # normal es que respeten lo que raspi-config → System Options → Audio
+        # tenga elegido, HDMI o jack 3.5mm). Si el ruteo del sistema no queda
+        # firme, esto fuerza el dispositivo ALSA explícito sin depender de esa
+        # configuración — mismo criterio que SPUI_VOUT para el video. El valor
+        # se busca con `aplay -L` en la Pi (ej. 'plughw:CARD=Headphones,DEV=0').
+        aout_device = os.environ.get('SPUI_AOUT_DEVICE', '').strip()
+        opciones_audio = ('--aout=alsa', f'--alsa-audio-device={aout_device}') if aout_device else ()
+
         try:
             # Sólo opciones seguras y bien soportadas. Nada que pueda impedir
             # que VLC cree su ventana de salida: acá estuvo el problema de que
@@ -235,6 +244,7 @@ class Player:
                 # El puntero desaparece solo tras un segundo sin moverse.
                 '--mouse-hide-timeout=1000',
                 '--quiet',
+                *opciones_audio,
             )
             if self._vlc is None:
                 raise RuntimeError('vlc.Instance() devolvió None')
@@ -415,10 +425,24 @@ class Player:
             logger.warning('ALERTA: %s', titulo)
 
             fondo_ruta, fondo_tipo = self._resolver_contenido_alerta(alerta)
-            self._reproducir_texto(
-                f'{titulo}\n\n{mensaje}', duracion=None, es_alerta=True,
-                fondo_ruta=fondo_ruta, fondo_tipo=fondo_tipo,
-            )
+
+            # Video de fondo: la composición con Pillow es sólo para imagen
+            # fija — "hornear" texto sobre un video pediría extraer frames,
+            # fuera de alcance acá. Ese caso (y si Pillow no está disponible o
+            # la composición falla) sigue el camino anterior, marq sobre VLC.
+            imagen_alerta = None
+            if fondo_tipo != 'video':
+                imagen_alerta = self._generar_imagen_alerta(
+                    titulo, mensaje, fondo_ruta if fondo_tipo == 'imagen' else None,
+                )
+
+            if imagen_alerta:
+                self._reproducir_imagen_alerta(imagen_alerta)
+            else:
+                self._reproducir_texto(
+                    f'{titulo}\n\n{mensaje}', duracion=None, es_alerta=True,
+                    fondo_ruta=fondo_ruta, fondo_tipo=fondo_tipo,
+                )
         except Exception:
             logger.exception('Falló al mostrar la alerta — se vuelve a la programación normal.')
             with self._lock:
@@ -538,6 +562,210 @@ class Player:
             logger.warning('No se pudo generar la imagen de espera (%s) — se usará texto.', exc)
             return None
 
+    # ── Pantalla de alerta compuesta ─────────────────────────────────────
+    # Se arma como UNA imagen (fondo + título + mensaje ya "horneados" con
+    # Pillow) en vez de superponer texto en vivo con el filtro marq de VLC.
+    # Mismo motivo que ya llevó a _imagen_fallback() a preferir una imagen: el
+    # marquee es frágil (depende de opciones globales de la instancia de VLC,
+    # como se vio con --no-osd) y acá el texto es demasiado importante para
+    # dejarlo a mitad de camino de una prueba real. Con la imagen ya resuelta,
+    # se muestra por el mismo camino de imagen fija que ya es confiable.
+
+    _ALERTA_RENDER_NOMBRE = '_alerta_render.png'
+    _ALERTA_ANCHO = 1920
+    _ALERTA_ALTO  = 1080
+
+    # Paleta institucional (mismos valores que --unraf-error / --unraf-azul
+    # en assets/unraf-ui/css/unraf-estilos.min.css).
+    _ROJO_ALERTA        = (255, 34, 61)
+    _ROJO_ALERTA_OSCURO = (156, 20, 37)
+    _BLANCO             = (255, 255, 255)
+
+    def _fuente_alerta(self, tamano: int):
+        """
+        Museo 700 (la fuente de marca de UNRaf, misma familia que usa el CMS)
+        va empaquetada en pi-client/assets/ — no depende de que esté instalada
+        en el sistema. Es la primera opción; DejaVu Sans Bold (preinstalada en
+        Raspberry Pi OS, paquete fonts-dejavu-core) es el resguardo si por
+        algún motivo el archivo propio no está. Sin ninguna de las dos, cae a
+        la fuente de mapa de bits de PIL, que NO escala — el mensaje se vería
+        siempre chico sin importar `tamano`, justo lo que no se puede permitir
+        en algo que tiene que leerse de lejos, pero sigue siendo mejor que
+        romper la alerta por esto.
+        """
+        from PIL import ImageFont   # noqa: PLC0415 — opcional, sólo acá
+
+        propia = os.path.join(os.path.dirname(__file__), '..', 'assets', 'Museo700-Regular.otf')
+        for ruta in (
+            propia,
+            '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf',
+            '/usr/share/fonts/truetype/dejavu/DejaVuSansCondensed-Bold.ttf',
+        ):
+            if os.path.exists(ruta):
+                try:
+                    return ImageFont.truetype(ruta, tamano)
+                except Exception:
+                    continue
+        return ImageFont.load_default()
+
+    @staticmethod
+    def _envolver_texto(draw, texto: str, fuente, max_ancho: int) -> list[str]:
+        """Parte `texto` en líneas que entran en max_ancho, palabra por palabra."""
+        lineas: list[str] = []
+        for parrafo in texto.split('\n'):
+            palabras = parrafo.split()
+            if not palabras:
+                lineas.append('')
+                continue
+            actual = palabras[0]
+            for palabra in palabras[1:]:
+                prueba = actual + ' ' + palabra
+                caja = draw.textbbox((0, 0), prueba, font=fuente)
+                if caja[2] - caja[0] <= max_ancho:
+                    actual = prueba
+                else:
+                    lineas.append(actual)
+                    actual = palabra
+            lineas.append(actual)
+        return lineas
+
+    def _generar_imagen_alerta(self, titulo: str, mensaje: str, fondo_ruta: Optional[str]) -> Optional[str]:
+        """
+        Compone la pantalla completa de la alerta. Devuelve la ruta del PNG
+        generado, o None si Pillow no está disponible o algo falló — en ese
+        caso el llamador cae al texto por marq (versión degradada, pero mejor
+        que nada, mismo criterio de resiliencia que el resto del sistema).
+
+        La imagen adjunta (si hay) se estira al tamaño exacto del espacio
+        debajo del título: ocupa el 100% del ancho y el alto, sin recortar
+        ningún borde y sin franjas de otro color alrededor. No conserva la
+        proporción original de la foto (se deforma si no coincide con la
+        del espacio disponible) — es la contrapartida de no perder nunca
+        contenido de la imagen por un recorte. El mensaje va superpuesto con
+        una placa semitransparente oscura sólo detrás de su propio bloque de
+        texto, no sobre toda la imagen: así queda legible sin taparle los
+        colores reales a la foto.
+        """
+        try:
+            from PIL import Image, ImageDraw   # noqa: PLC0415 — opcional, sólo acá
+        except ImportError:
+            logger.warning('Pillow no disponible — la alerta se muestra con el texto superpuesto de VLC.')
+            return None
+
+        try:
+            ancho, alto = self._ALERTA_ANCHO, self._ALERTA_ALTO
+            margen = 160
+            img = Image.new('RGB', (ancho, alto), self._ROJO_ALERTA)
+            draw = ImageDraw.Draw(img)
+
+            # Banda superior: el título DE ESTA alerta (no un rótulo fijo
+            # genérico) — es lo que identifica cuál alerta es de un vistazo.
+            alto_banda = 170
+            draw.rectangle([(0, 0), (ancho, alto_banda)], fill=self._ROJO_ALERTA_OSCURO)
+            if titulo:
+                fuente_banda = self._fuente_alerta(58)
+                lineas_titulo = self._envolver_texto(draw, titulo, fuente_banda, ancho - margen)[:2]
+                alto_linea_banda = (draw.textbbox((0, 0), 'Ag', font=fuente_banda)[3]) * 1.25
+                y_banda = (alto_banda - alto_linea_banda * len(lineas_titulo)) / 2
+                for linea in lineas_titulo:
+                    caja = draw.textbbox((0, 0), linea, font=fuente_banda)
+                    draw.text(((ancho - (caja[2] - caja[0])) / 2, y_banda), linea, font=fuente_banda, fill=self._BLANCO)
+                    y_banda += alto_linea_banda
+
+            # Región de contenido: todo lo que queda debajo del título y por
+            # encima del pie. La imagen (si hay) la llena entera sin recortar.
+            y_ini = alto_banda
+            y_fin = alto - 90
+            alto_region = y_fin - y_ini
+
+            if fondo_ruta and os.path.exists(fondo_ruta):
+                try:
+                    # Estirada al tamaño exacto de la región (ancho, alto_region):
+                    # llena TODO el espacio, sin recortar ningún borde y sin
+                    # dejar franjas de otro color. No conserva la proporción
+                    # original — se deforma si la imagen no es 1920x(alto_region)
+                    # — a cambio de ocupar el 100% del espacio siempre.
+                    fondo = Image.open(fondo_ruta).convert('RGB')
+                    fondo = fondo.resize((ancho, alto_region), Image.LANCZOS)
+                    img.paste(fondo, (0, y_ini))
+                except Exception as exc:
+                    logger.warning(
+                        'No se pudo componer la imagen adjunta de la alerta (%s) — se muestra sin ella.',
+                        exc,
+                    )
+
+            # Mensaje: lo más grande e importante de toda la pantalla. Si no
+            # entra en el espacio libre, se reduce el tamaño en vez de
+            # recortarlo — nunca se pierde parte del mensaje por overflow.
+            # Se centra verticalmente en la región de contenido, no pegado
+            # arriba, para que quede bien tanto con imagen como sin ella.
+            if mensaje:
+                draw = ImageDraw.Draw(img)   # el paste de arriba invalidó el draw viejo
+                tamano = 88
+                while tamano > 36:
+                    fuente_mensaje = self._fuente_alerta(tamano)
+                    lineas = self._envolver_texto(draw, mensaje, fuente_mensaje, ancho - margen)
+                    alto_linea = (draw.textbbox((0, 0), 'Ag', font=fuente_mensaje)[3]) * 1.3
+                    if alto_linea * len(lineas) < alto_region - 40:
+                        break
+                    tamano -= 6
+
+                y = y_ini + (alto_region - alto_linea * len(lineas)) / 2
+
+                # Placa semitransparente oscura SÓLO detrás del bloque de
+                # texto (con relleno), no sobre toda la región: así el
+                # mensaje queda legible encima de cualquier imagen sin
+                # taparle los colores reales al resto de la foto.
+                if fondo_ruta and os.path.exists(fondo_ruta):
+                    relleno = 24
+                    ancho_bloque = max(
+                        (draw.textbbox((0, 0), linea, font=fuente_mensaje)[2] for linea in lineas),
+                        default=0,
+                    )
+                    placa = Image.new(
+                        'RGBA',
+                        (int(ancho_bloque + relleno * 2), int(alto_linea * len(lineas) + relleno * 2)),
+                        (0, 0, 0, 130),
+                    )
+                    img.paste(
+                        placa,
+                        (int((ancho - placa.width) / 2), int(y - relleno)),
+                        placa,
+                    )
+
+                for linea in lineas:
+                    caja = draw.textbbox((0, 0), linea, font=fuente_mensaje)
+                    draw.text(((ancho - (caja[2] - caja[0])) / 2, y), linea, font=fuente_mensaje, fill=self._BLANCO)
+                    y += alto_linea
+
+            # Pie institucional, chico y discreto.
+            draw = ImageDraw.Draw(img)
+            fuente_pie = self._fuente_alerta(28)
+            pie = 'UNRaf · Sistema de Pantallas Informativas'
+            caja = draw.textbbox((0, 0), pie, font=fuente_pie)
+            draw.text(((ancho - (caja[2] - caja[0])) / 2, alto - 55), pie, font=fuente_pie, fill=self._BLANCO)
+
+            ruta = os.path.join(self._media_dir, self._ALERTA_RENDER_NOMBRE)
+            os.makedirs(self._media_dir, exist_ok=True)
+            img.save(ruta)
+            return ruta
+        except Exception as exc:
+            logger.error('No se pudo componer la imagen de la alerta (%s) — se usa el texto superpuesto de VLC.', exc)
+            return None
+
+    def _reproducir_imagen_alerta(self, ruta: str) -> None:
+        """Muestra la pantalla de alerta ya compuesta, hasta que se desactive."""
+        if self._simulacion:
+            logger.info('[SIM] ALERTA (imagen compuesta): %s', os.path.basename(ruta))
+            self._esperar_alerta()
+            return
+
+        media = self._vlc.media_new(ruta)
+        media.add_option(':image-duration=-1')
+        self._reproducir_media(media, es_imagen_fija=True)
+        self._esperar_alerta()
+        self._parar_vlc()   # al desactivarse, se limpia para volver a la playlist
+
     def reintentar_pantalla(self) -> bool:
         """
         Vuelve a intentar tomar la pantalla si se arrancó sin entorno gráfico.
@@ -565,9 +793,12 @@ class Player:
         try:
             # Sin --no-osd acá tampoco — ver el comentario en __init__ sobre
             # por qué apagaba el texto de las alertas.
+            aout_device = os.environ.get('SPUI_AOUT_DEVICE', '').strip()
+            opciones_audio = ('--aout=alsa', f'--alsa-audio-device={aout_device}') if aout_device else ()
             self._vlc = vlc.Instance(
                 '--autoscale', '--no-video-title-show',
                 '--mouse-hide-timeout=1000', '--quiet',
+                *opciones_audio,
             )
             if self._vlc is None:
                 raise RuntimeError('vlc.Instance() devolvió None')
@@ -935,8 +1166,12 @@ class Player:
     def _esperar_alerta(self) -> None:
         """
         Mantiene la alerta en pantalla hasta que se desactive o se apague el
-        cliente, y repite el sonido cada SPUI_ALERTA_SONIDO_INTERVALO_SEG
-        mientras tanto.
+        cliente, y repite el sonido en cuanto termina de reproducirse (más la
+        pausa de SPUI_ALERTA_SONIDO_INTERVALO_SEG, que ahora es el tiempo de
+        espera DESPUÉS de terminar, no un intervalo de reloj fijo) — un
+        sonido de 1 segundo se repite cada 1 segundo (+ pausa), no cada 20,
+        que era el default viejo de esta constante mal aprovechado como
+        intervalo absoluto.
 
         El sonido va DENTRO de este mismo bucle a propósito, y no en un hilo
         o timer aparte: así queda estructuralmente atado a la misma condición
@@ -951,18 +1186,30 @@ class Player:
         """
         ruta_sonido: Optional[str] = None
         sonido_resuelto = False
-        ultimo_sonido = 0.0   # 0 fuerza la primera reproducción en la primera vuelta
+        sonando = False        # True mientras la repetición actual sigue en curso
+        fin_pausa = 0.0        # monotonic; 0 = sin pausa pendiente
 
         while self._tiene_alerta() and not self._stop.is_set():
-            ahora = time.monotonic()
-            if config.ALERTA_SONIDO_ACTIVO and (ahora - ultimo_sonido) >= config.ALERTA_SONIDO_INTERVALO_SEG:
-                if not sonido_resuelto:
-                    alerta_actual   = self._alerta_actual()
-                    ruta_sonido     = self._resolver_sonido(alerta_actual) if alerta_actual else None
-                    sonido_resuelto = True
-                self._reproducir_sonido(ruta_sonido)
-                ultimo_sonido = ahora
-            time.sleep(0.5)
+            if config.ALERTA_SONIDO_ACTIVO:
+                terminado = not sonando
+                if sonando:
+                    reproductor = self._sonido_player()
+                    estado = reproductor.get_state() if reproductor else None
+                    terminado = estado is None or estado in (
+                        vlc.State.Ended, vlc.State.Stopped, vlc.State.Error, vlc.State.NothingSpecial,
+                    )
+                    if terminado:
+                        sonando = False
+                        fin_pausa = time.monotonic() + config.ALERTA_SONIDO_PAUSA_SEG
+
+                if terminado and time.monotonic() >= fin_pausa:
+                    if not sonido_resuelto:
+                        alerta_actual   = self._alerta_actual()
+                        ruta_sonido     = self._resolver_sonido(alerta_actual) if alerta_actual else None
+                        sonido_resuelto = True
+                    self._reproducir_sonido(ruta_sonido)
+                    sonando = ruta_sonido is not None
+            time.sleep(0.3)
 
     def _esperar_simulado(self, duracion: Optional[int]) -> None:
         """
@@ -1089,13 +1336,24 @@ class Player:
 
         reproductor = self._sonido_player()
         if reproductor is None:
+            logger.warning('Sonido de alerta: no hay reproductor de audio disponible (ver warning anterior).')
             return
 
         try:
             media = self._vlc.media_new(ruta)
             reproductor.set_media(media)
             reproductor.audio_set_volume(config.ALERTA_SONIDO_VOLUMEN)
-            reproductor.play()
+            # play() devuelve -1 si no pudo arrancar — sin este chequeo (mismo
+            # caso que ya cubre _reproducir_media() para lo visual) el sonido
+            # podía fallar en silencio: ni error en el log ni audio en el
+            # parlante, sin ninguna pista de por qué.
+            if reproductor.play() == -1:
+                logger.warning('Sonido de alerta: VLC no pudo iniciar la reproducción de %s.', os.path.basename(ruta))
+                return
+            logger.info(
+                'Sonido de alerta reproduciendo: %s (volumen configurado: %d).',
+                os.path.basename(ruta), config.ALERTA_SONIDO_VOLUMEN,
+            )
         except Exception as exc:
             logger.warning('No se pudo reproducir el sonido de alerta: %s', exc)
 
