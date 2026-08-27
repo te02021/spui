@@ -17,23 +17,28 @@
     {% endfor %}
 </div>
 
-<p class="unraf-form-label mb-1" style="font-weight:600">Destino <small class="text-muted fw-normal">(elegí uno o ninguno para global)</small></p>
+{# Los tres selectores son mutuamente excluyentes (elegir uno "gana" sobre los
+   otros en el orden de prioridad de abajo) — se agrupan en una caja para que
+   se lean como una sola decisión, no como tres campos sueltos. #}
+<div class="spui-form-group-box mb-3">
+    <p class="spui-form-group-label mb-2">Destino <small class="text-muted fw-normal">(elegí uno o ninguno para global)</small></p>
 
-<div class="row g-2 mb-1">
-    <div class="col-12 col-sm">
-        {{ form_label(form.pantalla) }}
-        {{ form_widget(form.pantalla) }}
+    <div class="row g-2 mb-1">
+        <div class="col-12 col-sm">
+            {{ form_label(form.pantalla) }}
+            {{ form_widget(form.pantalla) }}
+        </div>
+        <div class="col-12 col-sm">
+            {{ form_label(form.ubicacion) }}
+            {{ form_widget(form.ubicacion) }}
+        </div>
+        <div class="col-12 col-sm">
+            {{ form_label(form.edificio) }}
+            {{ form_widget(form.edificio) }}
+        </div>
     </div>
-    <div class="col-12 col-sm">
-        {{ form_label(form.ubicacion) }}
-        {{ form_widget(form.ubicacion) }}
-    </div>
-    <div class="col-12 col-sm">
-        {{ form_label(form.edificio) }}
-        {{ form_widget(form.edificio) }}
-    </div>
+    <small class="text-muted d-block">Pantalla &gt; Ubicación &gt; Edificio &gt; Global (en orden de prioridad).</small>
 </div>
-<small class="text-muted d-block mb-3">Pantalla &gt; Ubicación &gt; Edificio &gt; Global (en orden de prioridad).</small>
 
 <div class="row g-3 mb-3">
     <div class="col-6 spui-hora-field">
