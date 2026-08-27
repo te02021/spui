@@ -1443,6 +1443,21 @@
     border-color: var(--unraf-success, #4A9930);
 }
 
+/* ---- Caja para agrupar varios campos relacionados dentro de un form ----
+   Mismo lenguaje visual que .spui-sonido-row (borde suave, radio .45rem):
+   varios campos que en conjunto son una sola decisión (ej. los tres
+   selectores mutuamente excluyentes de "Destino" en programación) se leen
+   como grupo en vez de campos sueltos flotando en el form. */
+.spui-form-group-box {
+    border: 1px solid #e9ecef;
+    border-radius: .45rem;
+    padding: .75rem .75rem .25rem;
+    background: #fdfdfe;
+}
+.spui-form-group-label {
+    font-weight: 600;
+}
+
 /* ---- Campo de hora/fecha con label e input centrados ---- */
 .spui-hora-field {
     display: flex;

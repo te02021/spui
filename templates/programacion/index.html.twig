@@ -41,11 +41,11 @@
                 <tr class="{{ not prog.activo ? 'opacity-50' : '' }}">
                     <td class="p-3" data-label="Destino">
                         {% if prog.pantalla %}
-                            <img src="{{ asset('unraf-ui/icons/monitor.svg') }}" class="unraf-icon-svg" alt=""> {{ prog.pantalla.nombre }}
+                            {{ prog.pantalla.nombre }}
                         {% elseif prog.ubicacion %}
-                            <img src="{{ asset('unraf-ui/icons/map-pin.svg') }}" class="unraf-icon-svg" alt=""> {{ prog.ubicacion.edificio.nombre }}{% if prog.ubicacion.sector %} — {{ prog.ubicacion.sector }}{% endif %}
+                            {{ prog.ubicacion.edificio.nombre }}{% if prog.ubicacion.sector %} — {{ prog.ubicacion.sector }}{% endif %}
                         {% elseif prog.edificio %}
-                            <img src="{{ asset('unraf-ui/icons/buildings.svg') }}" class="unraf-icon-svg" alt=""> {{ prog.edificio.nombre }}
+                            {{ prog.edificio.nombre }}
                         {% else %}
                             <span class="text-muted">Global (todas las pantallas)</span>
                         {% endif %}

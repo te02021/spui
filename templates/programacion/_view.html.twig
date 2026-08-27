@@ -15,25 +15,25 @@
 </div>
 
 <div class="spui-view-section">
-    <p class="spui-view-section-title">Programación</p>
+    <p class="spui-view-section-title">Destino</p>
     <div class="spui-view-row">
-        <span class="spui-view-row-label">Destino</span>
+        <span class="spui-view-row-label">Alcance</span>
         <span class="spui-view-row-value">
             {% if prog.pantalla %}
-                <img src="{{ asset('unraf-ui/icons/monitor.svg') }}" class="unraf-icon-svg" alt=""> {{ prog.pantalla.nombre }}
+                {{ prog.pantalla.nombre }}
             {% elseif prog.ubicacion %}
-                <img src="{{ asset('unraf-ui/icons/map-pin.svg') }}" class="unraf-icon-svg" alt=""> {{ prog.ubicacion.edificio.nombre }}{% if prog.ubicacion.sector %} · {{ prog.ubicacion.sector }}{% endif %}
+                {{ prog.ubicacion.edificio.nombre }}{% if prog.ubicacion.sector %} · {{ prog.ubicacion.sector }}{% endif %}
             {% elseif prog.edificio %}
-                <img src="{{ asset('unraf-ui/icons/buildings.svg') }}" class="unraf-icon-svg" alt=""> {{ prog.edificio.nombre }}
+                {{ prog.edificio.nombre }}
             {% else %}
                 <span class="text-muted">Global · todas las pantallas</span>
             {% endif %}
         </span>
     </div>
-    <div class="spui-view-row">
-        <span class="spui-view-row-label">Estado</span>
-        <span class="spui-view-row-value">{{ prog.activo ? 'Activa' : 'Inactiva' }}</span>
-    </div>
+</div>
+
+<div class="spui-view-section">
+    <p class="spui-view-section-title">Horario y vigencia</p>
     <div class="spui-view-row">
         <span class="spui-view-row-label">Horario</span>
         <span class="spui-view-row-value">
@@ -50,18 +50,6 @@
         <span class="spui-view-row-label">Repetición</span>
         <span class="spui-view-row-value">{{ prog.repetirSemanal ? 'Semanal' : 'Una sola vez' }}</span>
     </div>
-    <div class="spui-view-row">
-        <span class="spui-view-row-label">Prioridad</span>
-        <span class="spui-view-row-value">{{ prog.prioridad }}</span>
-    </div>
-    <div class="spui-view-row">
-        <span class="spui-view-row-label">Creada</span>
-        <span class="spui-view-row-value">{{ prog.creadoEn|date('d/m/Y H:i') }}</span>
-    </div>
-    <div class="spui-view-row">
-        <span class="spui-view-row-label">Creada por</span>
-        <span class="spui-view-row-value">Usuario #{{ prog.creadoPorId }}</span>
-    </div>
 </div>
 
 <div class="spui-view-section">
@@ -73,5 +61,25 @@
                 {{ diasNombres[i] }}
             </span>
         {% endfor %}
+    </div>
+</div>
+
+<div class="spui-view-section">
+    <p class="spui-view-section-title">Detalle</p>
+    <div class="spui-view-row">
+        <span class="spui-view-row-label">Estado</span>
+        <span class="spui-view-row-value">{{ prog.activo ? 'Activa' : 'Inactiva' }}</span>
+    </div>
+    <div class="spui-view-row">
+        <span class="spui-view-row-label">Prioridad</span>
+        <span class="spui-view-row-value">{{ prog.prioridad }}</span>
+    </div>
+    <div class="spui-view-row">
+        <span class="spui-view-row-label">Creada</span>
+        <span class="spui-view-row-value">{{ prog.creadoEn|date('d/m/Y H:i') }}</span>
+    </div>
+    <div class="spui-view-row">
+        <span class="spui-view-row-label">Creada por</span>
+        <span class="spui-view-row-value">Usuario #{{ prog.creadoPorId }}</span>
     </div>
 </div>
