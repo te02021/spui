@@ -96,6 +96,8 @@ Verificados contra código. Si algo "deja de andar", empezar por acá.
 
 13. **El sonido de las alertas sale por HDMI (parlantes del TV), nunca por el jack de la Pi.** Necesita `SPUI_AOUT_DEVICE=hdmi:CARD=<id>,DEV=0` en `spui.env` — sin esa variable VLC usa el dispositivo ALSA "default", que no empaqueta el audio en IEC958 como HDMI lo requiere y queda mudo sin ningún error en el log. Procedimiento completo (cómo identificar `<id>` y verificarlo) en `09_instalacion_raspberry.md` §8.6.
 
+14. **El journal de la Pi no es persistente por defecto** (`Storage=auto` sin `/var/log/journal`): un corte de luz o un `reboot` duro borra todo el historial de `journalctl`, incluida la evidencia de lo que acaba de fallar. Activarlo (`sudo mkdir -p /var/log/journal && sudo systemctl restart systemd-journald`) es un paso de instalación (`09_instalacion_raspberry.md` §6.1), no algo para hacer recién cuando ya hace falta. Relacionado: un micro-HDMI flojo puede generar hotplugs intermitentes que el driver de video no siempre recupera solo (monitor sin señal/standby, no solo pantalla negra) — ver §14.2 del mismo documento.
+
 ---
 
 ## 3.1. Registro de auditorías
@@ -143,6 +145,7 @@ lo que parecían a simple vista.
 | La pantalla de alerta decía **"Alerta de emergencia"** incluso para avisos cotidianos (cambio de aula) | Texto fijo genérico en vez de mostrar el título propio de la alerta | CMS y pantalla del reproductor renombrados a "Alerta"/"Alertas" (la entidad `AlertaEmergencia` no cambió, sólo la UI); la pantalla del Pi ahora muestra el **título real** de la alerta en la banda superior en vez de un rótulo fijo |
 | El sonido de la alerta **no se escuchaba** en hardware real aunque el log confirmaba `reproductor.play()` sin error | El audio sale por HDMI (parlantes del TV), y el dispositivo ALSA "default"/`plughw:` no empaqueta el audio en las tramas IEC958 que HDMI exige a nivel de hardware | `SPUI_AOUT_DEVICE=hdmi:CARD=<id>,DEV=0` en `spui.env` — procedimiento completo en `09_instalacion_raspberry.md` §8.6 |
 | El sonido de la alerta se repetía **cada 20 segundos fijos**, incluso para un clip de 1 segundo | `_esperar_alerta()` medía el intervalo desde el **inicio** de la reproducción anterior por reloj, no desde que terminaba | Ahora consulta el estado real de VLC (`get_state()`) y repite en cuanto pasa a `Ended`/`Stopped`; `SPUI_ALERTA_SONIDO_INTERVALO_SEG` pasó a ser la pausa **después** de terminar (default 0) |
+| El monitor se quedaba **sin señal (standby)**, no solo en negro, y no se recuperaba solo | `Xorg.0.log.old` mostró varias renegociaciones de EDID en pleno funcionamiento (patrón de hotplug HDMI intermitente, probablemente por un micro-HDMI flojo) que el driver `vc4-hdmi` no siempre recupera solo | `hdmi_force_hotplug=1` en `config.txt` + asegurar físicamente el conector — `09_instalacion_raspberry.md` §14.2. De paso se detectó que el journal de la Pi no era persistente y se perdía la evidencia de estos incidentes — activado en §6.1 |
 
 ### Funcionalidad agregada en la misma tanda
 

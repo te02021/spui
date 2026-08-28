@@ -47,7 +47,7 @@ Salida típica: `eth0: dc:a6:32:...`, `wlan0: dc:a6:32:...`, `lo: 00:00:00:00:00
 | Placa | Raspberry Pi 4 Model B — 4 GB RAM | Definido en `00_investigacion_tecnologias.md` |
 | microSD | 16 GB mínimo, clase 10 / A1 o A2 | 32 GB recomendado por la caché de media |
 | Fuente | 5V / 3A USB-C | Fuentes flojas causan reinicios y corrupción de SD |
-| Cable video | Micro-HDMI a HDMI | La Pi 4 tiene dos micro-HDMI; usar **HDMI0** (el más cercano al USB-C) |
+| Cable video | Micro-HDMI a HDMI | La Pi 4 tiene dos micro-HDMI; usar **HDMI0** (el más cercano al USB-C). **El conector micro-HDMI es físicamente frágil** — un cable/conversor que queda flojo o se mueve puede generar desconexiones intermitentes de milisegundos que el driver de video no siempre recupera solo (pantalla se queda en negro/sin señal hasta reiniciar) — ver §14.2. Asegurar el conector (cinta, soporte, sin tensión del cable) y evitar mover el equipo con todo conectado |
 | Pantalla | Monitor o TV con HDMI | 1920×1080 recomendado |
 | Red | Ethernet (preferido) o WiFi | Ethernet evita caídas y reautenticación |
 | Disipación | Case con ventilador o disipadores | Umbral de alerta del sistema: 80 °C |
@@ -147,7 +147,26 @@ Guardá y recién ahí escribí la imagen.
    sudo reboot
    ```
 
-### 6.1. Sobre la IP de la Pi
+### 6.1. Activar el journal persistente (hacerlo ahora, antes de que haga falta)
+
+Por defecto, `journalctl` en esta instalación **solo guarda en RAM**: un corte de luz o un
+`reboot` duro borra todo el historial, y si algo falla justo antes de eso, la evidencia
+desaparece con el equipo (ver §14.2 — así se perdió el log de un incidente real). Activarlo
+ahora es gratis y no tiene contras:
+
+```bash
+sudo mkdir -p /var/log/journal
+sudo systemctl restart systemd-journald
+```
+
+Verificar que quedó activo:
+```bash
+journalctl --list-boots
+```
+Después de un par de reinicios tiene que listar más de un `BOOT ID` — si siempre aparece uno
+solo, no está persistiendo.
+
+### 6.2. Sobre la IP de la Pi
 
 La Pi toma IP por DHCP. Para que no cambie, las opciones están en `tips_conectividad_acceso.md` (Tips 4 y 5): reserva DHCP por MAC si tenés acceso al router (lo correcto), o IP estática desde la Pi con `nmcli` si no lo tenés.
 
@@ -646,7 +665,8 @@ Confirmá que todo levanta solo: autologin → X11 → Openbox → servicio spui
 | Servicio se reinicia en loop | `/etc/spui/spui.env` con placeholders sin completar | `sudo cat /etc/spui/spui.env` y completar (paso 11) |
 | `SPUI_API_KEY no configurada` en el log | Falta la key en el env | Paso 11.2 |
 | Sync OK, log dice **`Modo SIMULACIÓN`** | X11 no está corriendo → el cliente ni intenta usar VLC | Paso 8; verificar con `pgrep -a Xorg` |
-| Sync OK, log dice **`VLC listo`** pero la pantalla sigue negra | VLC eligió una salida de vídeo que no dibuja | Ver §14.1 |
+| Sync OK, log dice **`VLC listo`** pero la pantalla sigue negra **con el monitor encendido/con señal** | VLC eligió una salida de vídeo que no dibuja | Ver §14.1 |
+| El monitor se queda **sin señal y entra en standby solo** (no es "negra con señal") | El driver de video no reactivó la salida después de una desconexión HDMI momentánea (cable/conversor flojo) | Ver §14.2 |
 | Reproductor **conectado** pero telemetría vacía | `spui:mqtt:subscribe` no está corriendo, o Mosquitto no acepta conexiones externas | Paso 12; revisar `listener 1883 0.0.0.0` y `allow_anonymous true` en `mosquitto.conf` |
 | Alertas no llegan al instante (sí en el próximo sync) | Sin conexión MQTT desde la Pi | Verificar `MQTT_HOST` (no `127.0.0.1`) y la regla de firewall del puerto 1883 |
 | Dejó de sincronizar sin haber tocado nada | La IP del host cambió (DHCP) | Actualizar la línea de `/etc/hosts` (paso 11.1) y las reglas del paso 7 |
@@ -696,6 +716,50 @@ VLC listo (salida de vídeo: xcb_x11) — el contenido se va a mostrar en pantal
 > uno solo. En la Pi 4 elegía uno basado en OpenGL (`gl` / `egl_x11`) que crea la ventana pero
 > no llega a dibujar — e informa `State.Playing` igual, sin ningún error. Por eso el log decía
 > que todo estaba bien.
+
+### 14.2. El monitor se queda sin señal y entra en standby (no solo "pantalla negra")
+
+Caso distinto del §14.1: acá **el monitor mismo indica que no hay señal** (entra en su propio
+modo de espera/standby), no que hay una imagen negra con la señal activa. El log del servicio
+`spui` puede seguir mostrando actividad normal (sync, alertas, etc.) — el problema está en la
+capa de video, por debajo de la app.
+
+**Causa real detectada (agosto 2026):** una desconexión eléctrica momentánea del cable/conversor
+micro-HDMI (por moverse, quedar flojo, o vibración) dispara un evento de "hotplug" que el driver
+`vc4-hdmi` no siempre recupera solo — vuelve a detectar el monitor (se puede ver en el log de
+Xorg, ver abajo) pero no reactiva la salida de video, y la pantalla queda sin señal hasta que se
+reinicia el equipo.
+
+**Cómo confirmar que es esto** (necesita el journal persistente del paso 6.1 activo, o revisar
+`/var/log/Xorg.0.log.old` si todavía no se reinició el equipo desde el incidente):
+
+```bash
+sudo cat /var/log/Xorg.0.log.old 2>/dev/null | grep -A5 "EDID vendor"
+```
+
+Si aparecen **varios bloques** de `EDID vendor "..." ... Printing DDC gathered Modelines` con
+marcas de tiempo bien separadas (no todos juntos al arrancar), eso confirma re-negociaciones de
+HDMI en pleno funcionamiento — el patrón de un hotplug intermitente, no un arranque normal.
+
+**Mitigación (dos partes, no son excluyentes):**
+
+1. **Física — asegurar el conector.** El micro-HDMI de la Pi 4 es frágil y no tiene traba; un
+   cable con algo de tensión o un golpe al mover el equipo alcanza para generar el blip. Fijar el
+   cable/conversor con cinta o un soporte, dejar longitud de sobra sin tensión, y evitar mover el
+   equipo con todo conectado.
+2. **Software — que el driver ignore los blips.** En `/boot/firmware/config.txt`:
+   ```
+   hdmi_force_hotplug=1
+   ```
+   ```bash
+   sudo reboot
+   ```
+   Esto le indica al kernel que trate el HDMI como siempre conectado, evitando que reaccione
+   (mal) a una desconexión de milisegundos.
+
+> **Nota:** no se pudo confirmar todavía si este comportamiento es específico del monitor de
+> pruebas (un Philips de escritorio) o si se repite igual en un TV, el hardware real de
+> producción. Si vuelve a pasar con un TV conectado, documentarlo acá.
 
 ---
 
