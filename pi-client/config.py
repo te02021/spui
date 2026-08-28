@@ -148,7 +148,12 @@ TELEMETRIA_INTERVAL  = max(5, _entero('SPUI_TELEMETRIA_INTERVAL', 60))  # 1 min
 # ACTIVO=false es para una pantalla sin parlante conectado: evita que VLC
 # intente abrir un dispositivo de audio que no existe en cada alerta.
 ALERTA_SONIDO_ACTIVO      = _booleano('SPUI_ALERTA_SONIDO_ACTIVO', True)
-ALERTA_SONIDO_INTERVALO_SEG = max(5, _entero('SPUI_ALERTA_SONIDO_INTERVALO_SEG', 20))
+# Pausa entre el FIN de una repetición y el INICIO de la siguiente — no un
+# intervalo fijo de reloj: el player detecta cuándo VLC termina de reproducir
+# (vlc.State.Ended/Stopped) y recién ahí cuenta esta pausa, así un sonido de
+# 1 segundo no espera 20 segundos completos para repetirse. 0 = pegado, sin
+# pausa.
+ALERTA_SONIDO_PAUSA_SEG = max(0, _entero('SPUI_ALERTA_SONIDO_INTERVALO_SEG', 0))
 # 0-100. Se fuerza en cada reproducción: una emergencia no debería depender de
 # en qué volumen haya quedado el equipo de una prueba anterior.
 ALERTA_SONIDO_VOLUMEN     = max(0, min(100, _entero('SPUI_ALERTA_SONIDO_VOLUMEN', 100)))

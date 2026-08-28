@@ -319,7 +319,7 @@ class ContenidoCmsController extends AbstractController
         }
 
         if (!$c->getAlertas()->isEmpty()) {
-            $bloqueos[] = 'lo usan ' . $c->getAlertas()->count() . ' alerta(s) de emergencia: cambiá o eliminá esas alertas';
+            $bloqueos[] = 'lo usan ' . $c->getAlertas()->count() . ' alerta(s): cambiá o eliminá esas alertas';
         }
 
         if ($bloqueos !== []) {

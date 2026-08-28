@@ -1,9 +1,9 @@
-{# Detalle de una alerta de emergencia.
+{# Detalle de una alerta.
    A diferencia del listado, acá el mensaje se muestra completo. #}
 <div class="spui-view-header">
     <div>
         <p class="spui-view-title">{{ alerta.titulo }}</p>
-        <p class="spui-view-subtitle">Alerta de emergencia · Prioridad {{ alerta.prioridad }}</p>
+        <p class="spui-view-subtitle">Alerta · Prioridad {{ alerta.prioridad }}</p>
     </div>
     {% if alerta.activa %}
         <span class="spui-badge-desconectado flex-shrink-0">Activa</span>

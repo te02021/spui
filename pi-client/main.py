@@ -184,6 +184,18 @@ def main() -> None:
     )
     heartbeat.start()
 
+    def desactivar_alerta_y_despertar() -> None:
+        """
+        Al desactivar, player.desactivar_alerta() para VLC y limpia el estado,
+        pero NADA despertaba al loop principal — se quedaba mostrando la
+        pantalla negra hasta que el sleep en curso terminara solo (hasta
+        SYNC_INTERVAL, 300s por defecto). Mismo mecanismo que sync_ahora: sin
+        esto la vuelta a la programación normal parecía "trabada" en vez de
+        instantánea.
+        """
+        player.desactivar_alerta()
+        _despertar.set()
+
     def sync_ahora(payload: dict) -> None:
         """
         Tarea 1.5 — el CMS avisó que algo que nos afecta cambió. Se corre en
@@ -202,7 +214,7 @@ def main() -> None:
         host=config.MQTT_HOST,
         port=config.MQTT_PORT,
         on_alerta=player.mostrar_alerta,
-        on_desactivar=player.desactivar_alerta,
+        on_desactivar=desactivar_alerta_y_despertar,
         on_sync_ahora=sync_ahora,
     )
     mqtt.start()

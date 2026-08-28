@@ -1,15 +1,15 @@
 {% extends '@SPUI/base.html.twig' %}
-{% block title %}Alertas de Emergencia — SPUI{% endblock %}
+{% block title %}Alertas — SPUI{% endblock %}
 
 {% block body %}
 <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2 spui-header-actions">
     <div>
-        <h1 style="color:var(--unraf-azul);font-family:var(--unraf-font-principal);margin:0">Alertas de Emergencia</h1>
+        <h1 style="color:var(--unraf-azul);font-family:var(--unraf-font-principal);margin:0">Alertas</h1>
         <p class="text-muted mb-0">Al activarse, interrumpen la programación de las pantallas destinatarias.</p>
     </div>
     <button type="button" class="unraf-btn spui-btn-crear flex-shrink-0"
             data-spui-form="{{ path('spui_cms_alertas_nueva_form') }}"
-            data-spui-title="Nueva alerta de emergencia">
+            data-spui-title="Nueva alerta">
         + Nueva alerta
     </button>
 </div>

@@ -34,7 +34,7 @@ class AlertaType extends AbstractType
             ->add('mensaje', TextareaType::class, [
                 'label'      => 'Mensaje',
                 'label_attr' => ['class' => 'unraf-form-label'],
-                'attr'       => ['class' => 'unraf-form-control', 'rows' => 4, 'placeholder' => 'Instrucciones o información de emergencia...'],
+                'attr'       => ['class' => 'unraf-form-control', 'rows' => 4, 'placeholder' => 'Instrucciones o información para las pantallas...'],
                 'constraints' => [new NotBlank(message: 'El mensaje de la alerta es requerido.')],
             ])
             ->add('prioridad', IntegerType::class, [

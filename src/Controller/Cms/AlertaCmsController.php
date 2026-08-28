@@ -154,7 +154,7 @@ class AlertaCmsController extends AbstractController
 
         if ($request->isXmlHttpRequest()) {
             return $this->json([
-                'title' => 'Nueva alerta de emergencia',
+                'title' => 'Nueva alerta',
                 'html'  => $this->renderView('@SPUI/alertas/_form.html.twig', ['form' => $form]),
             ]);
         }
