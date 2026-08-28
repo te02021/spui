@@ -136,20 +136,43 @@
     /**
      * Sincroniza atributos que el servidor puede haber cambiado.
      *
-     * Interesan sobre todo class (badges de estado, .is-stale) y los data-*
-     * que usan otros modulos. No se copian todos a ciegas para no pisar cosas
-     * que el navegador maneja, como el estado de un input.
+     * Interesan sobre todo class (badges de estado, .is-stale), title (p.ej.
+     * el motivo de bloqueo) y los data-* que usan otros modulos. No se copian
+     * todos a ciegas para no pisar cosas que el navegador maneja, como el
+     * estado de un input.
+     *
+     * Agrega/actualiza Y TAMBIEN QUITA: un atributo que la version vieja
+     * tenia pero la nueva ya no (por ejemplo data-spui-bloqueado, cuando un
+     * reproductor bloqueado vuelve a estar conectado) tiene que desaparecer
+     * del DOM, no quedar pegado. Sin este lado del sincronizado, un botón que
+     * dejó de estar bloqueado seguía disparando el aviso de "desconectado" al
+     * clickearlo — modal.js lo frena mirando justo ese atributo — hasta que
+     * el usuario recargaba la página entera a mano.
      */
     function copiarAtributos(viejo, nuevo) {
         if (viejo.className !== nuevo.className) {
             viejo.className = nuevo.className;
         }
+        if (viejo.title !== nuevo.title) {
+            viejo.title = nuevo.title;
+        }
+
         for (var i = 0; i < nuevo.attributes.length; i++) {
             var attr = nuevo.attributes[i];
             if (attr.name.indexOf('data-') !== 0) continue;
             if (viejo.getAttribute(attr.name) !== attr.value) {
                 viejo.setAttribute(attr.name, attr.value);
             }
+        }
+
+        var aSacar = [];
+        for (var j = 0; j < viejo.attributes.length; j++) {
+            var a = viejo.attributes[j];
+            if (a.name.indexOf('data-') !== 0) continue;
+            if (!nuevo.hasAttribute(a.name)) aSacar.push(a.name);
+        }
+        for (var k = 0; k < aSacar.length; k++) {
+            viejo.removeAttribute(aSacar[k]);
         }
     }
 
