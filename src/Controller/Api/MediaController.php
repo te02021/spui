@@ -39,21 +39,24 @@ class MediaController extends AbstractController
      * adivinara un nombre de archivo podía bajarlo sin credencial. El Pi ya
      * mandaba el header (reusa la misma sesión HTTP para todo), así que no
      * hubo que tocar el cliente.
+     *
+     * {filename} lleva la categoría adelante ('imagenes/foo.jpg', no sólo
+     * 'foo.jpg') desde que MediaStorageService separó spui/media/ en
+     * subcarpetas — por eso el requirement acepta una barra. La validación de
+     * que la categoría sea una de las conocidas (y que el nombre no se
+     * escape con '../') la hace MediaStorageService, no acá.
      */
-    #[Route('/{filename}', name: 'spui_media_serve', methods: ['GET'], requirements: ['filename' => '[^/]+'])]
+    #[Route('/{filename}', name: 'spui_media_serve', methods: ['GET'], requirements: ['filename' => '.+'])]
     public function serve(string $filename, Request $request): Response
     {
         if ($this->authService->autenticar($request) === null) {
             return $this->json(['error' => 'Clave de API inválida o ausente.'], Response::HTTP_UNAUTHORIZED);
         }
 
-        // Prevenir path traversal: sólo nombre de archivo, sin directorios.
-        $safeFilename = basename($filename);
-
         // Con backend local se responde con BinaryFileResponse, que delega el
         // envío al servidor web y no carga el archivo entero en memoria (los
         // videos institucionales pueden pesar bastante).
-        $rutaLocal = $this->media->rutaLocal($safeFilename);
+        $rutaLocal = $this->media->rutaLocal($filename);
         if ($rutaLocal !== null) {
             $response = new BinaryFileResponse($rutaLocal);
             $response->setAutoLastModified();
@@ -61,34 +64,16 @@ class MediaController extends AbstractController
             return $response;
         }
 
-        $contenido = $this->media->leer($safeFilename);
+        $contenido = $this->media->leer($filename);
         if ($contenido === null) {
             throw new NotFoundHttpException('Archivo no encontrado.');
         }
 
         $response = new Response($contenido, Response::HTTP_OK);
-        $response->headers->set('Content-Type', $this->tipoMime($safeFilename));
+        $response->headers->set('Content-Type', $this->media->tipoMimePorExtension($filename));
         $response->setEtag(hash('sha256', $contenido));
         $response->setPublic();
 
         return $response;
-    }
-
-    /** MIME por extensión: al leer de S3 no se conserva el Content-Type original. */
-    private function tipoMime(string $filename): string
-    {
-        return match (strtolower(pathinfo($filename, PATHINFO_EXTENSION))) {
-            'jpg', 'jpeg' => 'image/jpeg',
-            'png'         => 'image/png',
-            'gif'         => 'image/gif',
-            'webp'        => 'image/webp',
-            'mp4'         => 'video/mp4',
-            'webm'        => 'video/webm',
-            'ogv', 'ogg'  => 'video/ogg',
-            'mov'         => 'video/quicktime',
-            'mp3'         => 'audio/mpeg',
-            'wav'         => 'audio/wav',
-            default       => 'application/octet-stream',
-        };
     }
 }

@@ -13,18 +13,18 @@ use SPUI\Repository\CodigoQrRepository;
 use SPUI\Repository\ContenidoRepository;
 use SPUI\Service\AlcanceReproductorService;
 use SPUI\Service\ComandoPublisherService;
+use SPUI\Service\MediaStorageService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
-use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
-use Symfony\Component\String\Slugger\SluggerInterface;
 
 #[Route('/spui/contenidos')]
 class ContenidoCmsController extends AbstractController
 {
     use BloqueoOfflineTrait;
     use CsrfProtegidoTrait;
+    use LimiteSubidaTrait;
 
     private const TIPOS_ARCHIVO = ['imagen', 'video'];
 
@@ -34,14 +34,18 @@ class ContenidoCmsController extends AbstractController
         private readonly AlcanceReproductorService $alcance,
         private readonly ComandoPublisherService $comandoPublisher,
         private readonly ManagerRegistry $doctrine,
-        private readonly SluggerInterface $slugger,
-        #[Autowire('%kernel.project_dir%/public/uploads/spui')]
-        private readonly string $uploadDir,
+        private readonly MediaStorageService $media,
     ) {}
 
     private function em()
     {
         return $this->doctrine->getManager('SPUI');
+    }
+
+    /** Subcarpeta de MediaStorageService que corresponde a cada tipo de archivo. */
+    private static function categoriaDeTipo(string $tipoValue): string
+    {
+        return $tipoValue === 'video' ? 'videos' : 'imagenes';
     }
 
     /**
@@ -73,6 +77,18 @@ class ContenidoCmsController extends AbstractController
         ]);
         $form->handleRequest($request);
 
+        // ANTES de mirar el form: si el body se descartó por tamaño, todos
+        // los campos (título incluido) llegan vacíos y el form tiraría
+        // "este campo no puede estar vacío" en cada uno — un mensaje que no
+        // tiene nada que ver con la causa real. Ver LimiteSubidaTrait.
+        if ($request->isMethod('POST') && ($errLimite = $this->excedioLimiteSubida($request))) {
+            if ($request->isXmlHttpRequest()) {
+                return $this->json(['success' => false, 'message' => $errLimite, 'type' => 'error'], 422);
+            }
+            $this->addFlash('error', $errLimite);
+            return $this->redirectToRoute('spui_cms_contenidos_index');
+        }
+
         if ($form->isSubmitted() && $form->isValid()) {
             $tipo = $contenido->getTipo();
             $contenido->setEstado(EstadoContenido::Borrador);
@@ -80,35 +96,39 @@ class ContenidoCmsController extends AbstractController
 
             if (in_array($tipo->value, self::TIPOS_ARCHIVO, true)) {
                 $archivo = $request->files->get('archivo');
-                if (!$archivo || !$archivo->isValid()) {
+                if (!$archivo) {
                     $errMsg = 'El archivo es requerido para el tipo "' . $tipo->value . '".';
                     if ($request->isXmlHttpRequest()) {
-                        return $this->json([
-                            'success' => false,
-                            'html'    => $this->renderView('@SPUI/contenidos/_form.html.twig', ['form' => $form, 'codigos_qr' => $this->codigosQrDisponibles()]),
-                        ]);
+                        // Sin 'html' a propósito: si viniera junto con 'html', el JS
+                        // del modal (modal.js) sólo reemplaza el cuerpo y nunca
+                        // muestra 'message' — quedaría en silencio. Ver el mismo
+                        // comentario en AlertaCmsController::aplicarSonido().
+                        return $this->json(['success' => false, 'message' => $errMsg, 'type' => 'error']);
                     }
                     $this->addFlash('error', $errMsg);
                     return $this->render('@SPUI/contenidos/new.html.twig', ['form' => $form]);
                 }
-                $ext      = $archivo->guessExtension() ?? $archivo->getClientOriginalExtension();
-                $slug     = $this->slugger->slug(pathinfo($archivo->getClientOriginalName(), PATHINFO_FILENAME));
-                $filename = $slug . '-' . uniqid() . '.' . $ext;
-                $archivo->move($this->uploadDir, $filename);
-                $contenido->setRutaArchivo('uploads/spui/' . $filename);
-                $contenido->setHashArchivo(hash_file('sha256', $this->uploadDir . '/' . $filename));
+                if ($errValidacion = $this->media->validar($archivo)) {
+                    if ($request->isXmlHttpRequest()) {
+                        return $this->json(['success' => false, 'message' => $errValidacion, 'type' => 'error']);
+                    }
+                    $this->addFlash('error', $errValidacion);
+                    return $this->render('@SPUI/contenidos/new.html.twig', ['form' => $form]);
+                }
+                $hash = $this->media->hashArchivoSubido($archivo);
+                $ruta = $this->media->guardar($archivo, self::categoriaDeTipo($tipo->value));
+                $contenido->setRutaArchivo($ruta);
+                $contenido->setHashArchivo($hash);
             } elseif ($tipo === TipoContenido::Cronograma) {
                 // El cronograma no requiere archivo ni texto — los ítems se gestionan en el builder
             } else {
                 $texto = trim($request->request->get('contenido_texto', ''));
                 if (!$texto) {
+                    $errMsg = 'El campo de texto/URL es requerido para este tipo.';
                     if ($request->isXmlHttpRequest()) {
-                        return $this->json([
-                            'success' => false,
-                            'html'    => $this->renderView('@SPUI/contenidos/_form.html.twig', ['form' => $form, 'codigos_qr' => $this->codigosQrDisponibles()]),
-                        ]);
+                        return $this->json(['success' => false, 'message' => $errMsg, 'type' => 'error']);
                     }
-                    $this->addFlash('error', 'El campo de texto/URL es requerido para este tipo.');
+                    $this->addFlash('error', $errMsg);
                     return $this->render('@SPUI/contenidos/new.html.twig', ['form' => $form]);
                 }
                 $contenido->setContenidoTexto($texto);
@@ -151,6 +171,18 @@ class ContenidoCmsController extends AbstractController
         if (!$c) { throw $this->createNotFoundException(); }
 
         if ($request->isMethod('POST')) {
+            // ANTES que cualquier campo: si el body se descartó por tamaño,
+            // 'titulo' llega vacío igual que si no se hubiera tipeado nada —
+            // sin este chequeo el error decía "El título es requerido" con
+            // el título bien escrito. Ver LimiteSubidaTrait.
+            if ($errLimite = $this->excedioLimiteSubida($request)) {
+                if ($request->isXmlHttpRequest()) {
+                    return $this->json(['success' => false, 'html' => $this->renderView('@SPUI/contenidos/_edit_form.html.twig', ['contenido' => $c, 'error' => $errLimite])]);
+                }
+                $this->addFlash('error', $errLimite);
+                return $this->redirectToRoute('spui_cms_contenidos_index');
+            }
+
             $titulo = trim($request->request->get('titulo', ''));
             if (!$titulo) {
                 $error = 'El título es requerido.';
@@ -168,6 +200,28 @@ class ContenidoCmsController extends AbstractController
             if (in_array($c->getTipo()->value, ['texto', 'youtube', 'qr'], true)) {
                 $texto = trim($request->request->get('contenido_texto', ''));
                 if ($texto !== '') { $c->setContenidoTexto($texto); }
+            }
+
+            if (in_array($c->getTipo()->value, self::TIPOS_ARCHIVO, true)) {
+                $archivo = $request->files->get('archivo');
+                if ($archivo) {
+                    if ($errValidacion = $this->media->validar($archivo)) {
+                        if ($request->isXmlHttpRequest()) {
+                            return $this->json(['success' => false, 'html' => $this->renderView('@SPUI/contenidos/_edit_form.html.twig', ['contenido' => $c, 'error' => $errValidacion])]);
+                        }
+                        $this->addFlash('error', $errValidacion);
+                        return $this->redirectToRoute('spui_cms_contenidos_index');
+                    }
+                    // Se borra el viejo DESPUÉS de guardar el nuevo, no antes: si
+                    // guardar() falla (S3 caído, disco lleno), el contenido no se
+                    // queda sin ningún archivo.
+                    $anterior = $c->getRutaArchivo();
+                    $hash = $this->media->hashArchivoSubido($archivo);
+                    $ruta = $this->media->guardar($archivo, self::categoriaDeTipo($c->getTipo()->value));
+                    $c->setRutaArchivo($ruta);
+                    $c->setHashArchivo($hash);
+                    $this->media->borrar($anterior);
+                }
             }
 
             $this->em()->flush();
@@ -207,6 +261,35 @@ class ContenidoCmsController extends AbstractController
         }
 
         return $this->redirectToRoute('spui_cms_contenidos_index');
+    }
+
+    /**
+     * Sirve el archivo de un Contenido (imagen/video) para el visor del CMS —
+     * tanto la miniatura chica de los modales Ver/Editar como el visor a
+     * pantalla completa. Ruta aparte de /api/spui/media/{filename}: esa exige
+     * X-Api-Key (es para el Pi), acá alcanza con la sesión normal del
+     * firewall de /spui/... . Mismo patrón que
+     * AlertaCmsController::sonidoPreview().
+     */
+    #[Route('/{id}/archivo-preview', name: 'spui_cms_contenidos_archivo_preview', methods: ['GET'], requirements: ['id' => '\d+'])]
+    public function archivoPreview(int $id): Response
+    {
+        $contenido = $this->repo->find($id);
+        if (!$contenido || $contenido->getRutaArchivo() === null) {
+            throw $this->createNotFoundException();
+        }
+
+        $binario = $this->media->leer($contenido->getRutaArchivo());
+        if ($binario === null) {
+            throw $this->createNotFoundException();
+        }
+
+        $response = new Response($binario, Response::HTTP_OK);
+        $response->headers->set('Content-Type', $this->media->tipoMimePorExtension($contenido->getRutaArchivo()));
+        $response->setEtag($contenido->getHashArchivo() ?? hash('sha256', $binario));
+        $response->setPublic();
+
+        return $response;
     }
 
     /**
@@ -330,8 +413,14 @@ class ContenidoCmsController extends AbstractController
         }
 
         $titulo = $c->getTitulo();
+        // El archivo se borra DESPUÉS de confirmar el remove: si algo fallara
+        // antes, no queremos haber borrado el archivo de un contenido que
+        // sigue existiendo. No estaba pasando en absoluto — quedaban huérfanos
+        // para siempre pese a lo que decía la documentación.
+        $rutaArchivo = $c->getRutaArchivo();
         $this->em()->remove($c);
         $this->em()->flush();
+        $this->media->borrar($rutaArchivo);
         $msg = '"' . $titulo . '" eliminado.';
         if ($request->isXmlHttpRequest()) {
             return $this->json(['success' => true, 'message' => $msg]);

@@ -46,7 +46,7 @@ final class ContenidoQrService
         $png      = $this->qrGenerator->generarPng($redirectUrl);
 
         // El almacenamiento (disco o S3) lo resuelve MediaStorageService.
-        $rutaArchivo = $this->media->guardarContenido($png, $filename);
+        $rutaArchivo = $this->media->guardarContenido($png, $filename, 'qr');
 
         $contenido->setCodigoQr($codigo);
         $contenido->setRutaArchivo($rutaArchivo);

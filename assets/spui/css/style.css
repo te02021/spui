@@ -484,6 +484,157 @@
     flex-shrink: 0;
 }
 
+/* ----- Fila de archivo de Contenido (imagen/video): mismo lenguaje visual
+   que .spui-sonido-row, con miniatura opcional + nombre + ícono de vista
+   previa en vez del reproductor de audio. ----- */
+.spui-archivo-row {
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+    padding: .5rem .6rem;
+    border: 1px solid #e9ecef;
+    border-radius: .45rem;
+    background: #fdfdfe;
+    margin-bottom: .4rem;
+}
+.spui-archivo-row .spui-media-preview {
+    width: 2.25rem;
+    height: 2.25rem;
+    object-fit: cover;
+    border-radius: .3rem;
+    flex-shrink: 0;
+}
+.spui-archivo-row .spui-archivo-nombre {
+    font-size: .85rem;
+    color: #495057;
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+/* Centrado a prueba de balas, igual motivo y misma solución que
+   .spui-sonido-row / .spui-sonido-field más arriba: .unraf-btn (width:100%)
+   le gana a los 32×32 de .unraf-btn-icon si no se lo pisa con un selector
+   más específico. Cubre tanto el botón de vista previa (dentro de la fila)
+   como el de subir/reemplazar (en el header, fuera de la fila) — de ahí que
+   el selector sea el campo entero, no sólo .spui-archivo-row. También cubre
+   el botón de vista previa del modal "Ver" (.spui-view-row), mismo ícono,
+   mismo problema. */
+[data-spui-archivo-field] .unraf-btn-icon,
+.spui-view-row .unraf-btn-icon {
+    display: inline-grid;
+    place-items: center;
+    line-height: 1;
+    width: 32px;
+    flex-shrink: 0;
+}
+[data-spui-archivo-field] .unraf-btn-icon img,
+.spui-view-row .unraf-btn-icon img {
+    display: block;
+    margin: 0;
+}
+
+/* ----- Visor de media a pantalla completa (Contenido, y lo que se sume
+   después). Blur claro sobre el CMS, no un negro tapa-todo — mismo criterio
+   de "segundo nivel de modal" que .spui-abm-overlay-2 pero más claro
+   todavía, porque acá el fondo es la app entera, no otro modal. ----- */
+.spui-visor-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 10020;
+    background: rgba(255, 255, 255, .55);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    flex-direction: column;
+}
+.spui-visor-overlay.is-open {
+    display: flex;
+}
+
+.spui-visor-header {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: .75rem 1.25rem;
+}
+.spui-visor-nombre {
+    font-size: .9rem;
+    font-weight: 600;
+    color: var(--unraf-azul, #446687);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+}
+.spui-visor-herramientas {
+    display: flex;
+    align-items: center;
+    gap: .4rem;
+    flex-shrink: 0;
+}
+.spui-visor-zoom-pct {
+    font-size: .78rem;
+    color: #495057;
+    min-width: 3rem;
+    text-align: center;
+    user-select: none;
+}
+/* Mismo problema de especificidad que el resto de los botones ícono de esta
+   hoja — acá también hace falta pisar el width:100% de .unraf-btn. */
+.spui-visor-header .unraf-btn-icon {
+    display: inline-grid;
+    place-items: center;
+    line-height: 1;
+    width: 32px;
+    flex-shrink: 0;
+}
+.spui-visor-header .unraf-btn-icon img {
+    display: block;
+    margin: 0;
+}
+/* El video trae su propia barra de controles nativa; el zoom del visor sólo
+   tiene sentido para imágenes. */
+.spui-visor-sin-zoom [data-spui-visor-zoom-in],
+.spui-visor-sin-zoom [data-spui-visor-zoom-out],
+.spui-visor-sin-zoom .spui-visor-zoom-pct {
+    display: none;
+}
+
+.spui-visor-viewport {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+}
+.spui-visor-contenido {
+    margin: auto;
+}
+.spui-visor-contenido img,
+.spui-visor-contenido video {
+    display: block;
+    max-width: min(92vw, 92%);
+    max-height: 78vh;
+    transition: transform .05s linear;
+}
+/* OJO: max-width/max-height se dejan SIEMPRE puestos, zoomeada o no.
+   transform:scale() agranda el resultado visual sin importarle esos topes
+   (son límites de layout, no de pintado) — sacarlos acá fue el bug real: la
+   imagen volvía a su tamaño nativo completo (mucho más grande que el
+   recuadro de 100%) y RECIÉN ahí se le aplicaba el 110%, un salto brusco en
+   vez de un zoom gradual. Con el tope siempre puesto, escalar desde ahí es
+   liso: 100%→110%→120%… crecen del mismo punto de partida cada vez. */
+.spui-visor-contenido img.is-zoomed,
+.spui-visor-contenido video.is-zoomed {
+    cursor: grab;
+}
+
 /* ----- Badges de días de la semana ----- */
 .spui-dia-badge {
     display: inline-block;

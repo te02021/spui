@@ -41,7 +41,7 @@
     </div>
 </div>
 
-{% if contenido.contenidoTexto or contenido.rutaArchivo or contenido.hashArchivo or contenido.codigoQr %}
+{% if contenido.contenidoTexto or contenido.rutaArchivo or contenido.codigoQr %}
 <div class="spui-view-section">
     <p class="spui-view-section-title">Contenido</p>
     {% if contenido.contenidoTexto %}
@@ -53,14 +53,14 @@
     {% if contenido.rutaArchivo %}
     <div class="spui-view-row">
         <span class="spui-view-row-label">Archivo</span>
-        <span class="spui-view-row-value"><code style="font-size:.8rem;word-break:break-all">{{ contenido.rutaArchivo }}</code></span>
-    </div>
-    {% endif %}
-    {% if contenido.hashArchivo %}
-    <div class="spui-view-row">
-        <span class="spui-view-row-label">Hash SHA-256</span>
-        <span class="spui-view-row-value">
-            <code style="font-size:.72rem;word-break:break-all" title="{{ contenido.hashArchivo }}">{{ contenido.hashArchivo|slice(0, 16) }}…</code>
+        <span class="spui-view-row-value d-flex align-items-center gap-2">
+            {{ contenido.rutaArchivo|split('/')|last }}
+            <a href="#" class="unraf-btn spui-btn-back unraf-btn-icon" title="Vista previa"
+               data-spui-preview-url="{{ path('spui_cms_contenidos_archivo_preview', {id: contenido.id}) }}"
+               data-spui-preview-tipo="{{ contenido.tipo.value }}"
+               data-spui-preview-nombre="{{ contenido.rutaArchivo|split('/')|last }}">
+                <img src="{{ asset('unraf-ui/icons/eye.svg') }}" class="spui-action-icon" alt="Vista previa">
+            </a>
         </span>
     </div>
     {% endif %}

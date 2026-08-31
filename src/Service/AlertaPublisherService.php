@@ -36,6 +36,7 @@ final class AlertaPublisherService
     public function __construct(
         private readonly HubInterface $hub,
         private readonly LoggerInterface $logger,
+        private readonly MediaStorageService $media,
         private readonly MqttConnectionFactory $mqttConnection,
         #[Autowire('%env(string:MQTT_HOST)%')]
         private readonly string $mqttHost,
@@ -84,13 +85,13 @@ final class AlertaPublisherService
             'mensaje'        => $alerta->getMensaje(),
             'prioridad'      => $alerta->getPrioridad(),
             'expira_en'      => $alerta->getExpiraEn()?->format('c'),
-            'sonido_url'     => ($baseUrl !== null && $alerta->getSonidoArchivo() !== null)
-                ? $baseUrl . '/api/spui/media/' . rawurlencode($alerta->getSonidoArchivo())
+            'sonido_url'     => ($baseUrl !== null && $this->media->rutaParaUrl($alerta->getSonidoArchivo()) !== null)
+                ? $baseUrl . '/api/spui/media/' . $this->media->rutaParaUrl($alerta->getSonidoArchivo())
                 : null,
             'sonido_hash'    => $alerta->getSonidoHashArchivo(),
             'contenido_tipo' => $contenido?->getTipo()->value,
-            'contenido_url'  => ($baseUrl !== null && $contenido?->getRutaArchivo() !== null)
-                ? $baseUrl . '/api/spui/media/' . rawurlencode(basename($contenido->getRutaArchivo()))
+            'contenido_url'  => ($baseUrl !== null && $contenido !== null && $this->media->rutaParaUrl($contenido->getRutaArchivo()) !== null)
+                ? $baseUrl . '/api/spui/media/' . $this->media->rutaParaUrl($contenido->getRutaArchivo())
                 : null,
             'contenido_hash' => $contenido?->getHashArchivo(),
         ];
