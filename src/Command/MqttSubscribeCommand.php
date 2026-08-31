@@ -377,7 +377,11 @@ class MqttSubscribeCommand extends Command
             $reproductor->marcarLwtOffline();
             $io->writeln(sprintf('[%s] Reproductor <error>%d</error> — LWT: caída detectada por el broker.', $this->ts(), $reproductorId));
         } elseif ($data['estado'] === 'online') {
-            $reproductor->marcarLwtOnline();
+            // La Pi publica esto apenas reconecta (mqtt_listener.py::_on_connect),
+            // sin esperar su próximo heartbeat HTTP programado — puede ahorrar
+            // hasta 60s de demora. Se trata como una prueba de vida más, igual
+            // que un heartbeat HTTP (mismo método, ver su docblock).
+            $reproductor->registrarHeartbeat();
             $io->writeln(sprintf('[%s] Reproductor <info>%d</info> — LWT: conectado.', $this->ts(), $reproductorId));
         } else {
             $io->warning(sprintf('[%s] Estado desconocido "%s" en %s', $this->ts(), $data['estado'], $topic));

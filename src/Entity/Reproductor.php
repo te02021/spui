@@ -51,7 +51,20 @@ class Reproductor
 
     /**
      * Cuándo llegó el último aviso de caída del Last Will de MQTT (tarea 1.3),
-     * o null si no hay ninguno pendiente. Ver estadoCalculado().
+     * o null si no hay ninguno pendiente.
+     *
+     * NO lo consulta estadoCalculado() (ver el docblock de ese método): un
+     * aviso de caída, solo, no fuerza "Desconectado" — es demasiado propenso
+     * a falsos positivos por un blip de red. Sigue guardándose (vía
+     * marcarLwtOffline()) por si en el futuro se lo quiere mostrar como señal
+     * aparte ("posible problema de red, sin confirmar"), disponible vía
+     * getLwtOfflineDesde().
+     *
+     * El aviso de RECONEXIÓN ({"estado":"online"}), en cambio, sí pesa —
+     * pero no acá: llama directo a registrarHeartbeat(), tratándolo como una
+     * prueba de vida más, igual que un heartbeat HTTP. Confirmar que algo
+     * volvió es seguro acelerarlo; sospechar que algo se cayó no lo es —
+     * misma asimetría que documenta marcarLwtOffline().
      */
     #[ORM\Column(nullable: true)]
     private ?DateTimeImmutable $lwtOfflineDesde = null;
@@ -101,13 +114,20 @@ class Reproductor
 
     public function getUltimoHeartbeat(): ?DateTimeImmutable { return $this->ultimoHeartbeat; }
 
+    /**
+     * Registra prueba de vida del reproductor — llamado tanto por el
+     * heartbeat HTTP (cada 60s, SyncController) como por MqttSubscribeCommand
+     * al recibir {"estado":"online"} del broker (la Pi lo publica apenas
+     * reconecta, sin esperar su próximo heartbeat programado — ver
+     * mqtt_listener.py::_on_connect). Cualquiera de los dos canales que
+     * llegue primero cuenta: no tiene sentido esperar al heartbeat HTTP si
+     * el aviso de MQTT ya demostró que el equipo está vivo, y es varias
+     * decenas de segundos más rápido en el caso típico de una reconexión.
+     */
     public function registrarHeartbeat(): static
     {
         $this->ultimoHeartbeat = new DateTimeImmutable();
         $this->estadoConexion  = EstadoConexion::Conectado;
-        // Un heartbeat HTTP es prueba inequívoca de vida, gane lo que gane el
-        // último aviso de MQTT — por ejemplo si el LWT llegó tarde o el broker
-        // reordenó mensajes retenidos al reconectar.
         $this->lwtOfflineDesde = null;
         return $this;
     }
@@ -155,6 +175,19 @@ class Reproductor
      * sincronizada por compatibilidad (consultas SQL, la API REST), pero para
      * mostrar en pantalla siempre gana este método.
      *
+     * Depende SÓLO del heartbeat HTTP, sin mirar el LWT de MQTT
+     * (getLwtOfflineDesde() / marcarLwtOffline()) — se probó dándole prioridad
+     * al LWT (más rápido, ~90s de keepalive, contra hasta 150s del heartbeat)
+     * y generaba el problema inverso: un blip de red (no una caída real)
+     * dejaba el equipo calculado como "Desconectado" durante esa ventana,
+     * aunque el heartbeat siguiera perfecto — y como esto alimenta tanto el
+     * badge visual como el bloqueo de acciones administrativas (ver
+     * AlcanceReproductorService::idsOfflineDeUnaVez()), las dos cosas podían
+     * quedar en desacuerdo entre sí (una decía una cosa, la otra hacía otra).
+     * Con una sola señal para las dos, nunca más se pueden contradecir: el
+     * costo es perder la detección rápida del LWT a favor de la, más lenta
+     * pero más estable, del heartbeat.
+     *
      * @param int $umbralSegundos Ver spui_umbral_conexion_default en services.yaml.
      */
     public function estadoCalculado(int $umbralSegundos): EstadoConexion
@@ -164,16 +197,6 @@ class Reproductor
         // que todavía no se registró.
         if ($this->ultimoHeartbeat === null) {
             return EstadoConexion::SinRegistrar;
-        }
-
-        // El Last Will de MQTT (tarea 1.3) es una señal explícita del broker
-        // de que la conexión se cortó de golpe — el reproductor no llegó a
-        // desconectarse prolijo. Gana sobre el cálculo por umbral porque es
-        // más rápida (~90s con el keepalive actual) y más precisa que esperar
-        // a que venza el heartbeat HTTP (hasta 150s). registrarHeartbeat() la
-        // limpia sola apenas hay prueba fresca de vida.
-        if ($this->lwtOfflineDesde !== null) {
-            return EstadoConexion::Desconectado;
         }
 
         $limite = new DateTimeImmutable(sprintf('-%d seconds', $umbralSegundos));
@@ -200,17 +223,26 @@ class Reproductor
 
     public function getLwtOfflineDesde(): ?DateTimeImmutable { return $this->lwtOfflineDesde; }
 
-    /** Llamado por MqttSubscribeCommand al recibir {"estado":"offline"} del broker. */
+    /**
+     * Llamado por MqttSubscribeCommand al recibir {"estado":"offline"} del
+     * broker (el LWT real, disparado por el broker cuando el cliente se cae
+     * de golpe).
+     *
+     * A propósito NO hay un "marcarLwtOffline forzando Desconectado" en
+     * estadoCalculado() — ver el docblock de ese método. Un aviso de caída
+     * es una señal razonable para acelerar la CONFIRMACIÓN de que algo volvió
+     * (por eso {"estado":"online"} sí llama a registrarHeartbeat()), pero
+     * acelerar la sospecha de que algo se cayó es al revés: un blip de red
+     * (no una caída real) generaría bloqueos falsos, que es justo el bug que
+     * motivó sacar el LWT de estadoCalculado(). Se sigue guardando el
+     * timestamp (queda disponible vía getLwtOfflineDesde()) por si más
+     * adelante se lo quiere mostrar como una señal aparte, del estilo
+     * "posible problema de red, sin confirmar todavía" — no confundirla con
+     * "Desconectado".
+     */
     public function marcarLwtOffline(): static
     {
         $this->lwtOfflineDesde = new DateTimeImmutable();
-        return $this;
-    }
-
-    /** Llamado por MqttSubscribeCommand al recibir {"estado":"online"} del broker. */
-    public function marcarLwtOnline(): static
-    {
-        $this->lwtOfflineDesde = null;
         return $this;
     }
 

@@ -44,6 +44,10 @@ final class AlcanceReproductorService
      * Una sola consulta para todo el request. El estado sale de
      * Reproductor::estadoCalculado(), no de la columna estado_conexion, que
      * puede estar desactualizada si el comando de mantenimiento no corrió.
+     * Es la MISMA fuente que usa el badge visual del listado (el template
+     * llama a estadoCalculado() directo) — a propósito: badge y bloqueo
+     * nunca deberían poder contradecirse entre sí. Ver el docblock de
+     * estadoCalculado() sobre por qué ya no depende del LWT de MQTT.
      *
      * SinRegistrar NO cuenta como offline: un reproductor recién dado de alta
      * nunca se comunicó todavía, y bloquear acciones por él impediría la
