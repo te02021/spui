@@ -73,11 +73,13 @@ parameters:
     spui_intervalo_rollup_default: 3600
 
     # Dónde se guardan los archivos de contenido: 'local' (public/uploads/spui)
-    # o 's3' (bucket de la intranet, mismo servicio que usa viáticos).
-    # Default 'local' para no cambiarle el comportamiento a un entorno que ya
-    # está andando; en producción conviene SPUI_STORAGE_DRIVER=s3.
+    # o 's3' (bucket de la intranet, mismo servicio que usa viáticos, prefijo
+    # spui/media/ dentro de ese bucket). Default 's3': el almacenamiento local
+    # no debe usarse ni siquiera en desarrollo — 'local' sigue soportado en
+    # MediaStorageService sólo como resguardo (por ejemplo si el S3 de la
+    # intranet no está disponible en algún entorno), no como el modo esperado.
     # Ver SPUI\Service\MediaStorageService.
-    spui_storage_driver_default: 'local'
+    spui_storage_driver_default: 's3'
 
 services:
     _defaults:

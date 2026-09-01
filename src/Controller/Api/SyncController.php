@@ -19,6 +19,7 @@ use SPUI\Repository\AlertaEmergenciaRepository;
 use SPUI\Repository\CronogramaItemRepository;
 use SPUI\Repository\ProgramacionEnergeticaRepository;
 use SPUI\Repository\ProgramacionRepository;
+use SPUI\Service\MediaStorageService;
 use SPUI\Service\ReproductorAuthService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -41,6 +42,7 @@ class SyncController extends AbstractController
         private readonly CronogramaItemRepository $cronogramaItemRepo,
         private readonly ProgramacionEnergeticaRepository $energiaRepo,
         private readonly ManagerRegistry $doctrine,
+        private readonly MediaStorageService $media,
         private readonly RateLimiterFactory $spuiReproductorSyncLimiter,
         private readonly RateLimiterFactory $spuiReproductorHeartbeatLimiter,
         private readonly LoggerInterface $logger,
@@ -304,8 +306,8 @@ class SyncController extends AbstractController
                 'tipo'             => $c->getTipo()->value,
                 'contenido_texto'  => $c->getContenidoTexto(),
                 'hash_archivo'     => $c->getHashArchivo(),
-                'url_descarga'     => $c->getRutaArchivo() !== null
-                    ? $request->getSchemeAndHttpHost() . '/api/spui/media/' . rawurlencode(basename($c->getRutaArchivo()))
+                'url_descarga'     => $this->media->rutaParaUrl($c->getRutaArchivo()) !== null
+                    ? $request->getSchemeAndHttpHost() . '/api/spui/media/' . $this->media->rutaParaUrl($c->getRutaArchivo())
                     : null,
                 'cronograma_items' => $cronogramaItems,
             ],
@@ -321,8 +323,8 @@ class SyncController extends AbstractController
             'mensaje'   => $alerta->getMensaje(),
             'prioridad' => $alerta->getPrioridad(),
             'expira_en' => $alerta->getExpiraEn()?->format('c'),
-            'sonido_url'  => $alerta->getSonidoArchivo() !== null
-                ? $request->getSchemeAndHttpHost() . '/api/spui/media/' . rawurlencode($alerta->getSonidoArchivo())
+            'sonido_url'  => $this->media->rutaParaUrl($alerta->getSonidoArchivo()) !== null
+                ? $request->getSchemeAndHttpHost() . '/api/spui/media/' . $this->media->rutaParaUrl($alerta->getSonidoArchivo())
                 : null,
             'sonido_hash' => $alerta->getSonidoHashArchivo(),
             // Mismas claves planas que publica AlertaPublisherService por MQTT
@@ -331,16 +333,16 @@ class SyncController extends AbstractController
             // 'contenido' (el objeto anidado de abajo) queda además por si algo
             // más necesita la forma completa (contenido_texto, id, etc.).
             'contenido_tipo' => $c?->getTipo()->value,
-            'contenido_url'  => $c?->getRutaArchivo() !== null
-                ? $request->getSchemeAndHttpHost() . '/api/spui/media/' . rawurlencode(basename($c->getRutaArchivo()))
+            'contenido_url'  => $c !== null && $this->media->rutaParaUrl($c->getRutaArchivo()) !== null
+                ? $request->getSchemeAndHttpHost() . '/api/spui/media/' . $this->media->rutaParaUrl($c->getRutaArchivo())
                 : null,
             'contenido_hash' => $c?->getHashArchivo(),
             'contenido' => $c !== null ? [
                 'id'              => $c->getId(),
                 'tipo'            => $c->getTipo()->value,
                 'contenido_texto' => $c->getContenidoTexto(),
-                'url_descarga'    => $c->getRutaArchivo() !== null
-                    ? $request->getSchemeAndHttpHost() . '/api/spui/media/' . rawurlencode(basename($c->getRutaArchivo()))
+                'url_descarga'    => $this->media->rutaParaUrl($c->getRutaArchivo()) !== null
+                    ? $request->getSchemeAndHttpHost() . '/api/spui/media/' . $this->media->rutaParaUrl($c->getRutaArchivo())
                     : null,
             ] : null,
         ];

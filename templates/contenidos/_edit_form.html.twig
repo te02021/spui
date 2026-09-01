@@ -89,33 +89,40 @@
         </div>
 
     {% elseif contenido.tipo.value in ['imagen', 'video'] %}
-        <div class="mb-3">
-            <label class="unraf-form-label" for="ed_archivo">Reemplazar archivo</label>
-            {% if contenido.rutaArchivo %}
-                <div class="d-flex gap-3 align-items-center flex-wrap mb-2">
-                    {# rutaArchivo ya viene con el prefijo uploads/spui/ (ver
-                       MediaStorageService::guardar), así que no hay que anteponerlo.
-                       Con backend S3 el archivo no está bajo public/ y la preview
-                       no carga: por eso el onerror la esconde en vez de dejar el
-                       ícono de imagen rota. #}
-                    {% if contenido.tipo.value == 'imagen' %}
-                        <img src="{{ asset(contenido.rutaArchivo) }}"
-                             alt="Archivo actual" class="spui-media-preview"
-                             onerror="this.style.display='none'">
-                    {% endif %}
-                    <div>
-                        <code style="font-size:.78rem;word-break:break-all">{{ contenido.rutaArchivo }}</code>
-                        {% if contenido.hashArchivo %}
-                            <br><small class="text-muted" title="{{ contenido.hashArchivo }}">SHA-256 {{ contenido.hashArchivo|slice(0, 16) }}…</small>
-                        {% endif %}
-                    </div>
-                </div>
-            {% endif %}
-            <input type="file" id="ed_archivo" name="archivo" class="unraf-form-control"
-                   accept="{{ contenido.tipo.value == 'imagen' ? 'image/*' : 'video/*' }}">
-            <small class="text-muted d-block mt-1">
-                Dejalo vacío para conservar el archivo actual. Al subir uno nuevo se reemplaza y el anterior se borra.
-            </small>
+        <div class="mb-3" data-spui-archivo-field>
+            {# Título y botón de subida en la misma línea, botón a la derecha
+               de todo — mismo layout que ya usa el campo de sonido de alerta. #}
+            <div class="spui-sonido-field-header">
+                <label class="unraf-form-label">Archivo</label>
+                <label class="unraf-btn spui-btn-back unraf-btn-icon spui-file-trigger"
+                       title="{{ contenido.rutaArchivo ? 'Reemplazar archivo' : 'Elegir archivo' }}">
+                    <img src="{{ asset('unraf-ui/icons/upload-simple.svg') }}" class="spui-action-icon" alt="Elegir archivo">
+                    <input type="file" id="ed_archivo" name="archivo" data-spui-archivo-input
+                           accept="{{ contenido.tipo.value == 'imagen' ? 'image/*' : 'video/*' }}">
+                </label>
+            </div>
+
+            {# Fila del archivo actual (o del que se acaba de elegir, sin
+               guardar todavía — la actualiza contenido-archivo-field.js).
+               Nombre solo, sin la ruta completa ni el hash: es información de
+               implementación, no algo que el operador necesite ver acá. #}
+            <div class="spui-archivo-row" data-spui-archivo-row{{ contenido.rutaArchivo ? '' : ' hidden' }}>
+                {% if contenido.tipo.value == 'imagen' %}
+                    <img alt="" class="spui-media-preview" data-spui-archivo-thumb
+                         {% if contenido.rutaArchivo %}src="{{ path('spui_cms_contenidos_archivo_preview', {id: contenido.id}) }}"{% endif %}
+                         onerror="this.style.display='none'">
+                {% endif %}
+                <span class="spui-archivo-nombre" data-spui-archivo-nombre>{{ contenido.rutaArchivo ? contenido.rutaArchivo|split('/')|last : '' }}</span>
+                <a href="#" class="unraf-btn spui-btn-back unraf-btn-icon" title="Vista previa"
+                   data-spui-archivo-preview-btn
+                   data-spui-preview-nombre="{{ contenido.rutaArchivo ? contenido.rutaArchivo|split('/')|last : '' }}"
+                   data-spui-preview-tipo="{{ contenido.tipo.value }}"
+                   {% if contenido.rutaArchivo %}data-spui-preview-url="{{ path('spui_cms_contenidos_archivo_preview', {id: contenido.id}) }}"{% endif %}>
+                    <img src="{{ asset('unraf-ui/icons/eye.svg') }}" class="spui-action-icon" alt="Vista previa">
+                </a>
+            </div>
+
+            <small class="text-muted d-block">Dejalo vacío para conservar el archivo actual.</small>
         </div>
 
     {% elseif contenido.tipo.value == 'cronograma' %}

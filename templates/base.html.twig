@@ -156,6 +156,19 @@
 <script src="{{ asset('spui/js/core/list-filter.js') }}"></script>
 <script src="{{ asset('spui/js/core/content-type-fields.js') }}"></script>
 <script src="{{ asset('spui/js/core/alerta-sonido-field.js') }}"></script>
+<script src="{{ asset('spui/js/core/contenido-archivo-field.js') }}"></script>
+{# AssetMapper versiona los .svg con un hash: media-viewer.js no puede
+   armar esas URLs por su cuenta, así que se las pasamos acá. #}
+<script>
+    window.spui = window.spui || {};
+    window.spui.iconos = {
+        magnifyingGlassPlus: "{{ asset('unraf-ui/icons/magnifying-glass-plus.svg') }}",
+        magnifyingGlassMinus: "{{ asset('unraf-ui/icons/magnifying-glass-minus.svg') }}",
+        download: "{{ asset('unraf-ui/icons/download.svg') }}",
+        x: "{{ asset('unraf-ui/icons/x.svg') }}"
+    };
+</script>
+<script src="{{ asset('spui/js/core/media-viewer.js') }}"></script>
 <script src="{{ asset('spui/js/core/modal.js') }}"></script>
 
 {# Refresco de datos que cambian solos. auto-refresh va DESPUÉS de modal.js

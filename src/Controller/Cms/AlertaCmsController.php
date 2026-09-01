@@ -10,24 +10,28 @@ use SPUI\Form\AlertaType;
 use SPUI\Repository\AlertaEmergenciaRepository;
 use SPUI\Service\AlcanceReproductorService;
 use SPUI\Service\AlertaPublisherService;
+use SPUI\Service\MediaStorageService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
-use Symfony\Component\DependencyInjection\Attribute\Autowire;
-use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
-use Symfony\Component\String\Slugger\SluggerInterface;
 
 #[Route('/spui/alertas')]
 class AlertaCmsController extends AbstractController
 {
     use BloqueoOfflineTrait;
     use CsrfProtegidoTrait;
+    use LimiteSubidaTrait;
 
     /**
      * Sólo mp3/wav — evita la ambigüedad de .ogg (audio vs video, ver
      * MediaController::tipoMime) y alcanza para un clip corto de alarma.
+     *
+     * Validación propia y no MediaStorageService::validar(): ese método sólo
+     * admite imagen/video (el sistema no reproduce audio suelto en pantalla),
+     * con límites pensados para eso — un video institucional puede pesar
+     * mucho más que el clip corto de una alarma.
      */
     private const SONIDO_MIME_PERMITIDOS = ['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/x-wav', 'audio/wave'];
     private const SONIDO_EXTENSIONES_PERMITIDAS = ['mp3', 'wav'];
@@ -38,9 +42,7 @@ class AlertaCmsController extends AbstractController
         private readonly AlertaPublisherService $publisher,
         private readonly AlcanceReproductorService $alcance,
         private readonly ManagerRegistry $doctrine,
-        private readonly SluggerInterface $slugger,
-        #[Autowire('%kernel.project_dir%/public/uploads/spui')]
-        private readonly string $uploadDir,
+        private readonly MediaStorageService $media,
     ) {}
 
     private function em()
@@ -75,15 +77,22 @@ class AlertaCmsController extends AbstractController
                 return 'Formato de sonido no admitido. Se aceptan MP3 y WAV.';
             }
 
-            $this->borrarSonido($alerta->getSonidoArchivo());
+            // Se guarda ANTES de borrar el viejo: si el almacenamiento falla
+            // (S3 caído, disco lleno), la alerta no se queda sin sonido.
+            //
+            // sonidoArchivo guarda la ruta relativa completa
+            // ('uploads/spui/alertas/<nombre>'), igual formato que
+            // Contenido::rutaArchivo — así MediaStorageService::rutaParaUrl()
+            // sabe en qué subcarpeta buscarlo sin adivinar nada.
+            $anterior = $alerta->getSonidoArchivo();
+            $hash     = $this->media->hashArchivoSubido($archivo);
+            $ruta     = $this->media->guardar($archivo, 'alertas');
 
-            $slug     = $this->slugger->slug(pathinfo($archivo->getClientOriginalName(), PATHINFO_FILENAME));
-            $filename = 'alerta-sonido-' . $slug . '-' . uniqid() . '.' . $ext;
-            $archivo->move($this->uploadDir, $filename);
-
-            $alerta->setSonidoArchivo($filename);
-            $alerta->setSonidoHashArchivo(hash_file('sha256', $this->uploadDir . '/' . $filename));
+            $alerta->setSonidoArchivo($ruta);
+            $alerta->setSonidoHashArchivo($hash);
             $alerta->setSonidoNombreOriginal($archivo->getClientOriginalName());
+
+            $this->borrarSonido($anterior);
 
             return null;
         }
@@ -98,15 +107,9 @@ class AlertaCmsController extends AbstractController
         return null;
     }
 
-    private function borrarSonido(?string $archivo): void
+    private function borrarSonido(?string $rutaRelativa): void
     {
-        if ($archivo === null) {
-            return;
-        }
-        $ruta = $this->uploadDir . '/' . basename($archivo);
-        if (is_file($ruta)) {
-            @unlink($ruta);
-        }
+        $this->media->borrar($rutaRelativa);
     }
 
     #[Route('', name: 'spui_cms_alertas_index', methods: ['GET'])]
@@ -126,6 +129,14 @@ class AlertaCmsController extends AbstractController
             'action' => $this->generateUrl('spui_cms_alertas_nueva_form'),
         ]);
         $form->handleRequest($request);
+
+        if ($request->isMethod('POST') && ($errLimite = $this->excedioLimiteSubida($request))) {
+            if ($request->isXmlHttpRequest()) {
+                return $this->json(['success' => false, 'message' => $errLimite, 'type' => 'error'], 422);
+            }
+            $this->addFlash('error', $errLimite);
+            return $this->redirectToRoute('spui_cms_alertas_index');
+        }
 
         if ($form->isSubmitted() && $form->isValid()) {
             if ($errorSonido = $this->aplicarSonido($alerta, $request)) {
@@ -217,6 +228,14 @@ class AlertaCmsController extends AbstractController
             'action' => $this->generateUrl('spui_cms_alertas_editar', ['id' => $id]),
         ]);
         $form->handleRequest($request);
+
+        if ($request->isMethod('POST') && ($errLimite = $this->excedioLimiteSubida($request))) {
+            if ($request->isXmlHttpRequest()) {
+                return $this->json(['success' => false, 'message' => $errLimite, 'type' => 'error'], 422);
+            }
+            $this->addFlash('error', $errLimite);
+            return $this->redirectToRoute('spui_cms_alertas_index');
+        }
 
         if ($form->isSubmitted() && $form->isValid()) {
             if ($errorSonido = $this->aplicarSonido($alerta, $request)) {
@@ -358,15 +377,21 @@ class AlertaCmsController extends AbstractController
             throw $this->createNotFoundException();
         }
 
-        $ruta = $this->uploadDir . '/' . basename($alerta->getSonidoArchivo());
-        if (!is_file($ruta)) {
+        $rutaRelativa = $alerta->getSonidoArchivo();
+
+        // No BinaryFileResponse: eso sólo sirve un archivo del disco local, y
+        // con S3 el sonido no vive ahí. media->leer() abstrae los dos casos
+        // igual que ya hace MediaController para la Pi — acá el destino es el
+        // navegador del CMS, no la Pi, pero el mecanismo es el mismo.
+        $contenido = $this->media->leer($rutaRelativa);
+        if ($contenido === null) {
             throw $this->createNotFoundException();
         }
 
-        $response = new BinaryFileResponse($ruta);
+        $response = new Response($contenido, Response::HTTP_OK);
         $response->headers->set(
             'Content-Type',
-            str_ends_with(strtolower($ruta), '.wav') ? 'audio/wav' : 'audio/mpeg',
+            str_ends_with(strtolower($rutaRelativa), '.wav') ? 'audio/wav' : 'audio/mpeg',
         );
         return $response;
     }
