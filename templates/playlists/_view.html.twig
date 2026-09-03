@@ -34,7 +34,7 @@
     </div>
     <div class="spui-view-row">
         <span class="spui-view-row-label">Creada por</span>
-        <span class="spui-view-row-value">Usuario #{{ playlist.creadoPorId }}</span>
+        <span class="spui-view-row-value">{{ creado_por_email|default('Usuario #' ~ playlist.creadoPorId) }}</span>
     </div>
 </div>
 

@@ -11,6 +11,7 @@ use SPUI\Repository\AlertaEmergenciaRepository;
 use SPUI\Service\AlcanceReproductorService;
 use SPUI\Service\AlertaPublisherService;
 use SPUI\Service\MediaStorageService;
+use SPUI\Service\UsuarioResolverService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\HttpFoundation\Request;
@@ -43,6 +44,7 @@ class AlertaCmsController extends AbstractController
         private readonly AlcanceReproductorService $alcance,
         private readonly ManagerRegistry $doctrine,
         private readonly MediaStorageService $media,
+        private readonly UsuarioResolverService $usuarios,
     ) {}
 
     private function em()
@@ -185,7 +187,10 @@ class AlertaCmsController extends AbstractController
         if ($request->isXmlHttpRequest()) {
             return $this->json([
                 'title' => 'Alerta: ' . $alerta->getTitulo(),
-                'html'  => $this->renderView('@SPUI/alertas/_view.html.twig', ['alerta' => $alerta]),
+                'html'  => $this->renderView('@SPUI/alertas/_view.html.twig', [
+                    'alerta'           => $alerta,
+                    'creado_por_email' => $this->usuarios->email($alerta->getCreadoPorId()),
+                ]),
             ]);
         }
 

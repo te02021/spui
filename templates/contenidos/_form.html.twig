@@ -1,7 +1,7 @@
 {{ form_start(form, {'attr': {'data-spui-ajax': '1', 'novalidate': 'novalidate', 'enctype': 'multipart/form-data'}}) }}
 
-{# Archivo/texto/QR no son campos del FormType, así que sus errores llegan por
-   acá y no por form.vars.errors. #}
+{# Archivo, texto y los datos del código QR no son campos del FormType, así que
+   sus errores llegan por acá y no por form.vars.errors. #}
 {% if error|default(null) %}
     <div class="alert alert-danger mb-3">{{ error }}</div>
 {% endif %}
@@ -59,25 +59,25 @@
     </div>
 </div>
 
-<div id="campoQr" class="mb-3" style="display:none">
-    <label class="unraf-form-label" for="codigoQrSelect">Código QR <span class="text-danger">*</span></label>
-    {% if codigos_qr|default([])|length > 0 %}
-        <select name="codigo_qr_id" id="codigoQrSelect" class="unraf-form-select">
-            <option value="">— seleccionar —</option>
-            {% for c in codigos_qr %}
-                <option value="{{ c.id }}"{% if codigo_qr_id|default(null) == c.id %} selected{% endif %}>{{ c.etiqueta }} — {{ c.urlDestino|slice(0, 60) }}{% if c.urlDestino|length > 60 %}…{% endif %}</option>
-            {% endfor %}
-        </select>
+{# El código QR se carga acá mismo: no hay que crearlo antes en ningún otro
+   lado. La etiqueta del código la toma del título del contenido. #}
+<div id="campoQr" style="display:none">
+    <div class="mb-3">
+        <label class="unraf-form-label" for="qrUrlDestino">URL destino <span class="text-danger">*</span></label>
+        <input type="url" name="qr_url_destino" id="qrUrlDestino" class="unraf-form-control"
+               maxlength="500" placeholder="https://…" value="{{ qr_url_destino|default('') }}">
         <small class="text-muted d-block mt-1">
-            La imagen del QR se genera automáticamente. Los escaneos se cuentan y podés cambiar
-            el destino después sin volver a publicar el contenido.
+            A dónde llega quien escanea. La imagen del QR se genera sola, y se puede cambiar el
+            destino después sin reimprimir nada.
         </small>
-    {% else %}
-        <div class="alert alert-info mb-0">
-            No hay códigos QR creados todavía.<br>
-            <small>Creá uno desde <strong>Códigos QR</strong> y volvé acá para mostrarlo en pantalla.</small>
-        </div>
-    {% endif %}
+    </div>
+
+    <div class="mb-3">
+        <label class="unraf-form-label" for="qrExpiraEn">Expira el <small class="text-muted">(opcional)</small></label>
+        <input type="datetime-local" name="qr_expira_en" id="qrExpiraEn" class="unraf-form-control"
+               style="max-width:16rem" value="{{ qr_expira_en|default('') }}">
+        <small class="text-muted d-block mt-1">Pasada esa fecha el código deja de redirigir. Vacío = sin vencimiento.</small>
+    </div>
 </div>
 
 <div class="d-flex justify-content-end gap-2 pt-3 border-top">

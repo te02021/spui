@@ -74,9 +74,6 @@
                 <a href="{{ path('spui_cms_programacion_index') }}" class="unraf-nav-item {{ app.request.get('_route') starts with 'spui_cms_programacion' ? 'active' : '' }}">
                     <img src="{{ asset('unraf-ui/icons/calendar-dots.svg') }}" class="unraf-icon-svg" alt=""> Programación
                 </a>
-                <a href="{{ path('spui_cms_qr_index') }}" class="unraf-nav-item {{ app.request.get('_route') starts with 'spui_cms_qr' ? 'active' : '' }}">
-                    <img src="{{ asset('unraf-ui/icons/qr-code.svg') }}" class="unraf-icon-svg" alt=""> Códigos QR
-                </a>
 
                 <p class="unraf-nav-separator">Operaciones</p>
                 <a href="{{ path('spui_cms_alertas_index') }}" class="unraf-nav-item {{ app.request.get('_route') starts with 'spui_cms_alertas' ? 'active' : '' }}">
@@ -149,6 +146,7 @@
 </div>
 
 {# ── JS núcleo (usado por todos los templates) ── #}
+<script src="{{ asset('spui/js/core/badge-contraste.js') }}"></script>
 <script src="{{ asset('spui/js/core/helpers.js') }}"></script>
 <script src="{{ asset('spui/js/core/sidebar.js') }}"></script>
 <script src="{{ asset('spui/js/core/switch-toggle.js') }}"></script>

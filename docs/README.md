@@ -107,6 +107,7 @@ Verificados contra código. Si algo "deja de andar", empezar por acá.
 | Fecha | Alcance | Resultado |
 |---|---|---|
 | Agosto 2026 | Auditoría cruzada de código vs. documentación: 13 entidades, 11 controllers API, 12 controllers CMS, formularios, migraciones y los 8 módulos del cliente Python | 9 inconsistencias detectadas y corregidas. Detalle en `06_funcionamiento_del_sistema.md` §10.1 |
+| Septiembre 2026 | Auditoría sistemática de todo el proyecto (CMS + cliente Pi) posterior al merge de `fix/media-storage-s3`: seguridad, consistencia de negocio, bloqueo por reproductor desconectado, resiliencia del cliente Python y código muerto | Hallazgos y correcciones en §3.3. El más grave: el tipo de contenido **QR** nunca funcionó pese a figurar completo en CU-10 |
 | 10/08/2026 | Reescritura de `00`–`05` contra el código real + corrección de bugs reportados en pruebas de uso | Docs `00`–`05` actualizados (ERD con las 13 entidades, flujos reales, árbol de directorios real). Corregidos: zona horaria, expiración de alertas, API key al regenerar, errores de formulario en español, modales de detalle, alertas dirigidas, almacenamiento S3. Ver §3.2 |
 
 Resumen de lo corregido (todo aplicado, nada pendiente):
@@ -179,6 +180,143 @@ lo que parecían a simple vista.
 > — `playlist_item` es tabla puente y el filtro del selector sólo evita repetirlo dentro de la
 > misma playlist. Dura lo mismo en todas: la duración la define el contenido y es su única
 > fuente de verdad. No hizo falta ningún cambio.
+
+---
+
+## 3.3. Auditoría de septiembre 2026 (CMS + cliente Pi)
+
+Barrido sistemático de todo el proyecto —CMS Symfony y cliente Python— buscando inconsistencias,
+huecos de seguridad, funcionalidad que aparenta funcionar pero no, y código muerto. A diferencia de
+§3.2, estos hallazgos **no** salieron de usar el sistema sino de leerlo entero: varios son cosas que
+nunca funcionaron y que nadie había probado todavía.
+
+Dos áreas se revisaron a fondo y **no** tuvieron hallazgos: inyección SQL/comandos, exposición de
+secretos, path traversal en media, y la validación real de MIME en las subidas (se valida por
+contenido, no por el `Content-Type` que declara el cliente).
+
+| Síntoma | Causa real | Dónde se arregló |
+|---|---|---|
+| Crear un Contenido de tipo **QR** fallaba siempre, con el mensaje "El campo de texto/URL es requerido para este tipo" — un campo que su propio formulario no muestra | `ContenidoCmsController` **nunca leía `codigo_qr_id`** de la request: `qr` no estaba en `TIPOS_ARCHIVO` ni era `Cronograma`, así que caía en el `else` genérico que exige `contenido_texto`. Como consecuencia directa, `ContenidoQrService::materializar()` (que genera el PNG y lo asocia) no se invocaba desde ningún lado y figuraba como código muerto. CU-10 estaba documentado como completo | Rama propia para `TipoContenido::Qr` en `nuevo()` y en `editar()`, que llama a `materializar()`. Al arreglarlo quedó a la vista que el flujo en sí no cerraba —había que crear el código en otra sección antes de poder usarlo— y se reorganizó entero: ver "Los códigos QR pasan a vivir dentro de Contenidos", abajo |
+| El `<select>` de código QR del formulario de **edición** decía siempre "No hay códigos QR creados", hubiera o no | `editar()` renderizaba `_edit_form.html.twig` sin pasarle nunca `codigos_qr` | Sin efecto ya: ese `<select>` no existe más (los datos del código se cargan en el mismo formulario). Queda anotado porque explica por qué el tipo QR tampoco se podía arreglar editando |
+| Entrar a `/spui/contenidos/nuevo` fuera del modal (o un POST directo que fallara) devolvía **HTTP 500** | Las cuatro salidas no-XHR de `nuevo()` renderizaban `@SPUI/contenidos/new.html.twig`, una plantilla que **no existe** en este repo | Todas pasan por `errorAlta()`, que hace flash + redirect al listado — el mismo patrón que ya usaba `editar()` |
+
+### Los códigos QR pasan a vivir dentro de Contenidos
+
+Un código QR no es una entidad que el operador administre por su cuenta: existe **para** un contenido
+y no se comparte con ningún otro. Tenerlo en su propia sección (`/spui/qr`) obligaba a un rodeo que
+ningún otro tipo de contenido pide —crear primero el código, después el contenido, y elegirlo de una
+lista— y dejaba el mismo nombre cargado dos veces (la etiqueta del código y el título del contenido).
+
+Qué cambió:
+
+- **Se eliminó la sección `/spui/qr`** y su ítem del menú, junto con `CodigoQrCmsController`,
+  `CodigoQrType` y `templates/qr/`. Las dos rutas **públicas** siguen igual y son las que importan
+  de verdad: `GET /api/spui/qr/{id}/r` (lo abre el celular al escanear) y `/imagen`.
+- **El formulario de Contenido se adapta al tipo `qr`** y pide ahí mismo URL destino y vencimiento
+  opcional (`content-type-fields.js`, igual que ya hacía con archivo/texto/cronograma). La etiqueta
+  del código sale del título del contenido, y el código queda siempre activo: para cortar el
+  redirect están el vencimiento y eliminar el contenido.
+- **Editar el contenido edita su código**, como en cualquier otro tipo. Cambiar la URL destino **no**
+  regenera el PNG ni invalida los QR ya impresos: lo que el código lleva adentro es el redirect del
+  CMS, que no cambia.
+- **Los escaneos, el destino y el vencimiento** se ven en el modal **Ver** del contenido, único lugar
+  del CMS donde quedan. La **imagen** no se muestra incrustada en ningún lado: se mira con el mismo
+  botón del ojo que abre el archivo de una imagen o un video (`data-spui-preview-url` →
+  `media-viewer.js`). Un tipo de contenido no tiene por qué verse distinto que el resto sólo por ser
+  QR, y con la imagen ya a la vista el botón del ojo quedaba de adorno.
+- **El contador de escaneos se actualiza en vivo**, empujado por el broker: al escanear,
+  `CodigoQrController::redirigir()` publica `spui/qr/escaneo/{id}` con el total ya persistido
+  (`QrEscaneoPublisherService`), y el navegador que tenga el modal abierto lo recibe por el listener
+  **WebSocket** del broker (`qr-escaneos-vivo.js`, suscrito sólo mientras ese modal está abierto).
+  **No hay ningún endpoint que se consulte cada X segundos**, y se descartó a propósito: entre
+  escaneo y escaneo pueden pasar días, así que preguntar a intervalo fijo gasta ancho de banda casi
+  siempre para no enterarse de nada. Piezas nuevas que esto trae: el listener `9001 websockets` en
+  `config/mosquitto/mosquitto.conf`, el usuario MQTT de sólo lectura `spui-cms-web` —contraseña
+  derivada de `SPUI_MQTT_SALT`, dado de alta solo por `MqttSecurityService::asegurarClienteWeb()`,
+  sin variable de entorno ni paso manual— y `mqtt.js` por CDN, cargado únicamente en la página de
+  Contenidos. Si el broker está caído no se rompe nada: el escaneo cuenta igual en la base y el
+  número aparece bien al reabrir el modal.
+- **La URL del broker que recibe el navegador sale del host por el que entró al CMS**, no de
+  `MQTT_HOST` (`MqttSecurityService::urlWebsocket()`). `MQTT_HOST` vale hoy
+  `spui-broker.unraf.local`, un nombre que sólo existe en el archivo `hosts` de la máquina del CMS:
+  dárselo a un operador que abre el panel desde otra computadora lo dejaría conectando a un host
+  inexistente. Mismo criterio que `QrGeneratorService::urlRedirect()`. Vale mientras el broker
+  corra en la misma máquina que el CMS, que es como está desplegado.
+- **Con el CMS por HTTPS la URL pasa a `wss://` por el 443 del sitio**, no al 9001: un navegador
+  bloquea `ws://` dentro de una página `https://` (contenido mixto) sin avisar, y lo único visible
+  sería un contador que no se mueve. `urlWebsocket()` decide por `Request::isSecure()` y arma
+  `wss://<host><base_path>` + `MqttSecurityService::RUTA_WEBSOCKET`; lo reexpone Apache con
+  `mod_proxy_wstunnel` hacia `ws://127.0.0.1:9001`, sin abrir ningún puerto ni emitir un
+  certificado para el broker. La ruta lleva el prefijo de la instalación porque el vhost es
+  compartido con el resto de las apps de la intranet. Config de Apache y verificación en
+  `config/mosquitto/README.md`, sección *Producción*.
+- **Eliminar un contenido QR elimina su código** (salvo que datos viejos lo compartan con otro
+  contenido, que se comprueba antes).
+- **`Version20260901123000`** borra los códigos que no pertenecen a ningún contenido: sin la sección
+  quedarían en la base sin ninguna pantalla desde donde verlos.
+
+Verificado con harness real contra S3 y MySQL: alta en una sola pasada (con `unraf.edu.ar/…` sin
+esquema, que se completa a `https://`), vencimiento persistido, etiqueta igual al título, PNG en S3
+con hash coincidente, edición del destino sin regenerar el PNG, los tres mensajes de validación, y
+el borrado del código junto con el contenido. Más la regresión de los otros tipos (`index`, `ver`,
+`editar` y guardar en imagen y video, con la ruta del archivo intacta).
+
+### El PNG guardado llevaba adentro un host que nadie podía resolver
+
+Salió al probar un QR desde un celular: escaneaba y no llegaba nunca al destino.
+
+`ContenidoQrService` armaba la URL con `ABSOLUTE_URL`, o sea el host del request que creó el
+contenido. Como al CMS se llega por el nombre `intranet` del `/etc/hosts` —así lo hacen el operador
+y también la Pi (`09_instalacion_raspberry.md`)—, el PNG quedaba con `http://intranet/…` adentro
+**para siempre**. Ningún celular resuelve ese nombre. Creado desde `localhost` es peor: cada
+teléfono resuelve `localhost` a sí mismo. Y desde consola no hay request, así que el router cae a su
+host por defecto. Aparte, `CodigoQrController::imagen()` armaba la URL **por su cuenta**
+(`$request->getSchemeAndHttpHost() . '/api/spui/qr/…'`), con lo que la vista previa del CMS y el PNG
+que va a la pantalla podían apuntar a hosts distintos sin que nada lo avisara.
+
+- **`QrGeneratorService::urlRedirect()`** es ahora el único punto que decide qué URL codifica un QR;
+  lo usan el que guarda el PNG y el que sirve la vista previa, así no pueden discrepar.
+- **Sin configuración.** Se usa el host del request sólo si cualquiera lo puede resolver: una IP, o
+  un nombre con dominio (`intranet.unraf.edu.ar` — que además es el único caso donde HTTPS tiene un
+  certificado válido, por eso se prefiere a la IP). Un nombre corto (`intranet`, `localhost`) o
+  `.local`/`.lan` sale del `/etc/hosts` o del mDNS del propio equipo, así que se descarta y se usa
+  **la IP de red del equipo**, detectada sola: se "conecta" un socket UDP a una dirección de
+  TEST-NET-3 —lo que no envía ningún paquete, sólo hace que el sistema elija la interfaz de salida—
+  y se lee el extremo local. `gethostbyname(gethostname())` no sirve acá: devuelve la IP del
+  adaptador host-only de VirtualBox. Al caer a la IP el esquema es siempre `http` (una IP privada no
+  puede tener certificado válido y el redirect es un 302 público).
+- **`spui:qr:regenerar`** (comando nuevo, con `--dry-run`): cambiar de red, de equipo o mudar el CMS
+  a la VM no toca los PNG ya guardados, que siguen apuntando a la dirección vieja. Esto los pone a
+  todos al día sin borrar y recrear nada — el contador de escaneos y la URL destino se conservan,
+  porque no toca el `CodigoQr`. Avisa si la detección falló y los códigos van a quedar inservibles.
+- **`SPUI_URL_PUBLICA` es obligatoria en la VM, y sólo por ese comando.** Guardar un contenido QR
+  desde el panel saca dominio y prefijo del request y no necesita nada. Pero `spui:qr:regenerar`
+  corre en consola, donde no hay request: sin esta variable escribiría la IP privada de la VM y una
+  ruta sin el prefijo de la intranet, es decir códigos impresos que dejan de abrir sin que nada
+  falle a la vista. Lleva esquema, dominio y prefijo juntos, y se verifica con `--dry-run`, que
+  imprime la URL exacta antes de tocar un solo PNG. Sin definir —desarrollo— el comportamiento es
+  el de la IP detectada sola, sin cambio alguno.
+
+### La pantalla que ve quien escanea un código caído
+
+Un código eliminado o vencido puede seguir escaneándose: queda impreso en un cartel, o guardado en el
+historial del teléfono. Antes esa respuesta era un `<h2>` suelto sobre fondo blanco, sin contexto.
+Ahora es `templates/qr/no_disponible.html.twig`, con dos variantes —**vencido** (dice hasta cuándo
+estuvo activo) y **dado de baja**— porque para quien escanea no son lo mismo.
+
+No extiende `@SPUI/base.html.twig` a propósito, y es la excepción a la regla de reutilizar el layout
+del CMS: esa plantilla trae el sidebar, el link a la intranet y da por sentada una sesión iniciada,
+mientras que del otro lado hay un celular ajeno que no tiene ninguna de las tres cosas. Por el mismo
+motivo va todo autocontenido (CSS inline, SVG inline, sin CDN ni fuentes externas): tiene que verse
+bien aunque la señal sea mala. Respeta `prefers-color-scheme`. La respuesta lleva
+`Cache-Control: no-store` — un 410 cacheado en el teléfono dejaría el código roto para esa persona
+aunque después vuelva a estar vigente.
+
+> **Para probar el escaneo desde un celular en desarrollo** hace falta además que Apache atienda por
+> IP: el vhost `intranet` lleva `ServerAlias 10.*.*.* 192.168.*.* 172.16.*.*` (sin eso un request con
+> `Host: <ip>` cae en el vhost por defecto de WAMP y devuelve 404), y su `<Directory>` necesita un
+> `Require ip` que cubra la red del celular. Ojo con lo segundo: ese bloque lo comparten **todas** las
+> apps del monolito — ver `../../CLAUDE.md`, "Entorno local (WAMP)".
 
 ---
 

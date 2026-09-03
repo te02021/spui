@@ -55,7 +55,7 @@
     </div>
     <div class="spui-view-row">
         <span class="spui-view-row-label">Creada por</span>
-        <span class="spui-view-row-value">Usuario #{{ alerta.creadoPorId }}</span>
+        <span class="spui-view-row-value">{{ creado_por_email|default('Usuario #' ~ alerta.creadoPorId) }}</span>
     </div>
 </div>
 
