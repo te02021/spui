@@ -116,7 +116,7 @@ El repositorio de todo lo que puede aparecer en una pantalla. Seis tipos:
 | **Imagen** | Archivo JPG, PNG, GIF o WebP | Se calcula su hash para que la Pi detecte cambios |
 | **Video** | Archivo MP4 o WebM | Ídem |
 | **YouTube** | La URL del video | Se reproduce a pantalla completa |
-| **QR** | Se elige un código de la sección Códigos QR | El sistema genera la imagen automáticamente |
+| **QR** | URL destino y vencimiento opcional, en el mismo formulario | El sistema genera la imagen automáticamente (ver §3.3) |
 | **Cronograma** | Nada al crearlo | Al guardar redirige al editor de ítems |
 
 Además se define **título** y **duración en segundos** (vacío = permanente).
@@ -141,17 +141,38 @@ Un contenido tipo cronograma es una tabla de horarios (materias, aulas). Al crea
 
 La Pi recibe **solo los ítems del día actual**, ya filtrados. Se ordenan por hora de inicio, igual que en el CMS.
 
-### 3.3 Códigos QR — `/spui/qr`
+### 3.3 Códigos QR — dentro de Contenidos
 
-QR dinámicos con estadística de escaneos.
+**No hay una sección aparte de códigos QR.** Un QR es un tipo de contenido más y se administra
+como cualquier otro: Contenidos → Nuevo → tipo **QR**.
 
-- **Crear:** etiqueta (nombre interno, no se muestra en pantalla), URL destino, y vencimiento opcional.
-- **La imagen se genera sola.** El QR no codifica la URL destino sino un redirect del CMS: por eso se pueden contar los escaneos **y cambiar el destino sin reimprimir nada**.
-- **Escaneos:** el contador sube cada vez que alguien lo escanea.
-- **Desactivar:** quien lo escanee ve un aviso de no disponible; el contador deja de subir.
-- **Eliminar:** solo si ningún contenido lo usa.
+- **Crear:** el formulario se adapta al elegir el tipo y pide **URL destino** (a dónde llega quien
+  escanea) y un **vencimiento opcional**. Nada más: el nombre del código es el título del contenido.
+- **La imagen se genera sola.** El QR no codifica la URL destino sino un redirect del CMS: por eso
+  se pueden contar los escaneos **y cambiar el destino sin reimprimir nada**.
+- **Editar:** desde Editar del contenido, igual que se edita el archivo de una imagen o el texto de
+  un cartel. Cambiar el destino **no invalida** los QR ya impresos ni el que está en pantalla.
+- **Escaneos:** el contador se ve en el modal **Ver** del contenido, junto con su destino y su
+  vencimiento, y **se actualiza solo, en el momento del escaneo**: si tenés el modal abierto, el
+  número cambia sin tocar nada ni recargar la página. La imagen del código se abre con el botón del
+  ojo, igual que la de una imagen o un video.
+- **Si alguien escanea un código eliminado o vencido** —queda impreso en un cartel, o guardado en el
+  historial del teléfono— ve una pantalla que se lo explica, distinta según el caso, en vez de un
+  error del navegador. Nunca se lo manda a otro destino sin avisar.
+- **Cortar el redirect:** ponerle vencimiento, o eliminar el contenido. Al eliminar un contenido QR
+  se elimina también su código.
 
-**Para que aparezca en una pantalla:** crear el código acá, después ir a Contenidos → Nuevo → tipo QR y elegirlo de la lista.
+Si un QR está vencido, quien lo escanee ve un aviso de no disponible y el contador deja de subir.
+
+> **Si el número no se mueve solo**, el escaneo igual se contó: al cerrar y volver a abrir el modal
+> aparece bien. Lo que falta en ese caso es el aviso instantáneo, que viaja por el broker MQTT —
+> revisar que Mosquitto esté corriendo y que tenga el listener WebSocket del puerto 9001
+> (`config/mosquitto/mosquitto.conf`). Nunca se pierde un escaneo por esto.
+
+> **Si el CMS cambia de equipo o de dirección de red**, los códigos ya generados siguen apuntando a
+> la anterior y dejan de abrir. Se arreglan todos de una con
+> `php bin/console spui:qr:regenerar --id=spui`, sin perder el contador de escaneos ni la URL
+> destino. No hace falta para un cambio de destino: eso no toca la imagen.
 
 ### 3.4 Playlists — `/spui/playlists`
 
@@ -259,5 +280,5 @@ Los datos se agrupan por hora: con una lectura por minuto, 7 días serían unos 
 | Un contenido no aparece al armar la playlist | Está en borrador o archivado: hay que publicarlo |
 | La alerta tarda en llegar | MQTT no disponible; llega igual en el próximo sync (hasta 5 min) |
 | No hay datos de telemetría | Falta el daemon `spui:mqtt:subscribe --id=spui` |
-| El QR no cuenta escaneos | Se cargó la URL como texto en vez de elegir un código de la sección Códigos QR |
+| El QR no cuenta escaneos | Se cargó la URL como contenido de tipo texto en vez de crear un contenido de tipo **QR** |
 | Un comando de consola falla con un error sobre `apps/guess` | Falta el flag `--id=spui` |

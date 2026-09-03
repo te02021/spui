@@ -37,14 +37,16 @@
     </div>
     <div class="spui-view-row">
         <span class="spui-view-row-label">Creado por</span>
-        <span class="spui-view-row-value">Usuario #{{ contenido.creadoPorId }}</span>
+        <span class="spui-view-row-value">{{ creado_por_email|default('Usuario #' ~ contenido.creadoPorId) }}</span>
     </div>
 </div>
 
-{% if contenido.contenidoTexto or contenido.rutaArchivo or contenido.codigoQr %}
+{% if contenido.contenidoTexto or contenido.rutaArchivo %}
 <div class="spui-view-section">
     <p class="spui-view-section-title">Contenido</p>
-    {% if contenido.contenidoTexto %}
+    {# En un QR el texto guarda el destino, que ya se muestra completo en su
+       propia sección de abajo — repetirlo acá sólo llena la pantalla. #}
+    {% if contenido.contenidoTexto and contenido.tipo.value != 'qr' %}
     <div class="spui-view-row">
         <span class="spui-view-row-label">Texto</span>
         <span class="spui-view-row-value text-muted" style="font-size:.85rem;white-space:pre-line;line-height:1.6">{{ contenido.contenidoTexto }}</span>
@@ -64,16 +66,54 @@
         </span>
     </div>
     {% endif %}
-    {% if contenido.codigoQr %}
+</div>
+{% endif %}
+
+{# Los datos del código QR y su estadística de escaneos: es el único lugar del
+   CMS donde se ven, desde que los códigos se administran acá adentro y no en
+   una sección aparte.
+
+   La imagen NO se muestra incrustada acá: se mira con el botón del ojo de la
+   fila "Archivo", igual que la de una imagen o un video. Un tipo de contenido
+   no tiene por qué verse distinto que el resto sólo por ser QR. #}
+{% if contenido.codigoQr %}
+{% set qr = contenido.codigoQr %}
+<div class="spui-view-section">
+    <p class="spui-view-section-title">Código QR</p>
+
     <div class="spui-view-row">
-        <span class="spui-view-row-label">Código QR</span>
-        <span class="spui-view-row-value">{{ contenido.codigoQr.etiqueta }}</span>
+        <span class="spui-view-row-label">Destino</span>
+        <span class="spui-view-row-value">
+            <a href="{{ qr.urlDestino }}" target="_blank" rel="noopener noreferrer"
+               style="word-break:break-all">{{ qr.urlDestino }}</a>
+        </span>
     </div>
     <div class="spui-view-row">
-        <span class="spui-view-row-label">Destino del QR</span>
-        <span class="spui-view-row-value"><code style="font-size:.78rem;word-break:break-all">{{ contenido.codigoQr.urlDestino }}</code></span>
+        <span class="spui-view-row-label">Expira</span>
+        <span class="spui-view-row-value">{{ qr.expiraEn ? qr.expiraEn|date('d/m/Y H:i') : 'Sin vencimiento' }}</span>
     </div>
-    {% endif %}
+    <div class="spui-view-row">
+        <span class="spui-view-row-label">Estado</span>
+        <span class="spui-view-row-value">{{ qr.estaVigente ? 'Vigente' : 'Vencido — ya no redirige' }}</span>
+    </div>
+    {# El número arranca con lo que dice la base y después lo mueve el broker:
+       qr-escaneos-vivo.js se suscribe por WebSocket al topic de este código y
+       lo actualiza en el instante del escaneo. Los data-* van acá y no en una
+       variable global porque este HTML se inyecta en el modal por AJAX: viajan
+       con el fragmento y desaparecen con él al cerrarlo.
+
+       Sin mqtt_web (broker caído, o contenido sin código) queda el número de la
+       base y nada más: el modal no intenta conectarse a ningún lado. #}
+    <div class="spui-view-row">
+        <span class="spui-view-row-label">Escaneos</span>
+        <span class="spui-view-row-value" data-spui-qr-escaneos
+              {% if mqtt_web|default(null) %}
+                  data-spui-mqtt-url="{{ mqtt_web.url }}"
+                  data-spui-mqtt-usuario="{{ mqtt_web.usuario }}"
+                  data-spui-mqtt-password="{{ mqtt_web.password }}"
+                  data-spui-mqtt-topic="{{ mqtt_web.topic }}"
+              {% endif %}>{{ qr.usosCount }}</span>
+    </div>
 </div>
 {% endif %}
 

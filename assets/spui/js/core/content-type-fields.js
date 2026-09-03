@@ -17,11 +17,12 @@
         var labelTexto      = document.getElementById('labelTexto');
         var textarea        = document.getElementById('textareaTexto');
         var archivoInput    = document.getElementById('archivoInput');
-        var qrSelect        = document.getElementById('codigoQrSelect');
+        var qrUrl           = document.getElementById('qrUrlDestino');
 
         var esArchivo    = tipo === 'imagen' || tipo === 'video';
-        // El QR ya no se carga como texto: se elige un código de la lista y el
-        // CMS genera la imagen, para que los escaneos se puedan contar.
+        // El QR no se carga como texto: se cargan acá mismo el destino y el
+        // vencimiento, y el CMS genera la imagen — así los escaneos se pueden
+        // contar y no hay que pasar antes por ninguna otra pantalla.
         var esTexto      = tipo === 'texto' || tipo === 'youtube';
         var esCronograma = tipo === 'cronograma';
         var esQr         = tipo === 'qr';
@@ -32,7 +33,7 @@
         if (campoQr)         campoQr.style.display         = esQr         ? '' : 'none';
         if (archivoInput)    archivoInput.required = esArchivo;
         if (textarea)        textarea.required     = esTexto;
-        if (qrSelect)        qrSelect.required     = esQr;
+        if (qrUrl)           qrUrl.required        = esQr;
 
         if (labelTexto && labelTexto.childNodes[0]) {
             labelTexto.childNodes[0].textContent =

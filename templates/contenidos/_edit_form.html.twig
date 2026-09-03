@@ -1,8 +1,8 @@
 {# Edición de un contenido.
 
    El tipo NO se puede cambiar (un cronograma no se convierte en video), pero sí
-   se edita lo que ese tipo tiene cargado: el archivo en imagen/video, el código
-   en qr, el texto o la URL en texto/youtube.
+   se edita lo que ese tipo tiene cargado: el archivo en imagen/video, el destino
+   y el vencimiento del código en qr, el texto o la URL en texto/youtube.
 
    El bloque por tipo lo resuelve el server, no content-type-fields.js: ese
    módulo depende del <select> de tipo del alta, que acá no existe, y como el
@@ -63,30 +63,51 @@
         </div>
 
     {% elseif contenido.tipo.value == 'qr' %}
+        {% set qr = contenido.codigoQr %}
         <div class="mb-3">
-            <label class="unraf-form-label" for="ed_codigo_qr">Código QR</label>
-            <div class="d-flex gap-3 align-items-start flex-wrap">
-                {% if contenido.codigoQr %}
-                    <img src="{{ path('spui_qr_imagen', {id: contenido.codigoQr.id}) }}"
-                         alt="QR actual" class="spui-qr-preview" width="96" height="96">
-                {% endif %}
-                <div class="flex-grow-1" style="min-width:14rem">
-                    {% if codigos_qr|default([])|length > 0 %}
-                        <select name="codigo_qr_id" id="ed_codigo_qr" class="unraf-form-select">
-                            {% for c in codigos_qr %}
-                                <option value="{{ c.id }}"{% if contenido.codigoQr and contenido.codigoQr.id == c.id %} selected{% endif %}>{{ c.etiqueta }} — {{ c.urlDestino|slice(0, 60) }}{% if c.urlDestino|length > 60 %}…{% endif %}</option>
-                            {% endfor %}
-                        </select>
-                        <small class="text-muted d-block mt-1">
-                            Al cambiar el código se regenera la imagen. Si sólo querés cambiar el destino,
-                            editá el código desde <strong>Códigos QR</strong> y no hace falta tocar esto.
-                        </small>
-                    {% else %}
-                        <div class="alert alert-info mb-0">No hay códigos QR creados.</div>
-                    {% endif %}
-                </div>
-            </div>
+            <label class="unraf-form-label" for="ed_qr_url">URL destino <span class="text-danger">*</span></label>
+            <input type="url" id="ed_qr_url" name="qr_url_destino" class="unraf-form-control"
+                   maxlength="500" placeholder="https://…"
+                   value="{{ qr ? qr.urlDestino : '' }}" required>
+            <small class="text-muted d-block mt-1">
+                Cambiarla <strong>no invalida</strong> los códigos ya impresos ni el que está en pantalla.
+            </small>
         </div>
+
+        <div class="mb-3">
+            <label class="unraf-form-label" for="ed_qr_expira">Expira el <small class="text-muted">(opcional)</small></label>
+            <input type="datetime-local" id="ed_qr_expira" name="qr_expira_en" class="unraf-form-control"
+                   style="max-width:16rem"
+                   value="{{ qr and qr.expiraEn ? qr.expiraEn|date('Y-m-d\\TH:i') : '' }}">
+            <small class="text-muted d-block mt-1">Pasada esa fecha deja de redirigir. Vacío = sin vencimiento.</small>
+        </div>
+
+        {% if qr and contenido.rutaArchivo %}
+            {# Misma fila que usan imagen y video para su archivo, pero sin
+               miniatura: la única forma de ver el código es el botón del ojo.
+               data-spui-archivo-field no es decorativo — es lo que engancha la
+               regla que centra el ícono dentro del botón (ver style.css, el
+               comentario de .spui-archivo-row); sin él quedaba descolocado
+               respecto del resto de los modales de edición. #}
+            <div class="mb-3" data-spui-archivo-field>
+                <label class="unraf-form-label">Imagen del QR</label>
+                <div class="spui-archivo-row">
+                    <span class="spui-archivo-nombre">{{ contenido.rutaArchivo|split('/')|last }}</span>
+                    <a href="#" class="unraf-btn spui-btn-back unraf-btn-icon" title="Vista previa"
+                       data-spui-preview-url="{{ path('spui_cms_contenidos_archivo_preview', {id: contenido.id}) }}"
+                       data-spui-preview-tipo="qr"
+                       data-spui-preview-nombre="{{ contenido.rutaArchivo|split('/')|last }}">
+                        <img src="{{ asset('unraf-ui/icons/eye.svg') }}" class="spui-action-icon" alt="Vista previa">
+                    </a>
+                </div>
+                <small class="text-muted d-block mt-1">
+                    Escaneado <strong>{{ qr.usosCount }}</strong> vez/veces.
+                    {% if not qr.estaVigente %}
+                        <span class="text-danger">Vencido: quien lo escanee ve un aviso de no disponible.</span>
+                    {% endif %}
+                </small>
+            </div>
+        {% endif %}
 
     {% elseif contenido.tipo.value in ['imagen', 'video'] %}
         <div class="mb-3" data-spui-archivo-field>

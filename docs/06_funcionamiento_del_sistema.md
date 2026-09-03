@@ -67,7 +67,7 @@ Cadena: `Edificio → Ubicacion → Pantalla → Reproductor`.
 |---|---|
 | **Contenido** | Una pieza a mostrar. Seis tipos: `texto`, `imagen`, `video`, `youtube`, `qr`, `cronograma` |
 | **CronogramaItem** | Las filas de un contenido tipo cronograma (materia, aula, horario, días) |
-| **CodigoQr** | Un QR dinámico con URL destino, vencimiento y contador de escaneos |
+| **CodigoQr** | Un QR dinámico con URL destino, vencimiento y contador de escaneos. Pertenece al `Contenido` de tipo `qr` que lo muestra: se crea, se edita y se borra desde ahí, no desde una sección propia |
 | **Playlist** | Una lista ordenada de contenidos |
 | **PlaylistItem** | Un contenido dentro de una playlist, con su orden y duración propia |
 
@@ -197,7 +197,7 @@ Contra los 12 casos de uso definidos en `02_casos_de_uso.md`:
 | CU-07 Reproducir contenido | ✅ Completo. Incluye modo simulación para probar sin VLC |
 | CU-08 Telemetría | ✅ Completo. Umbral configurable (80 °C por defecto) y aviso visible en el dashboard |
 | CU-09 Modo offline | ✅ Completo |
-| CU-10 Códigos QR | ✅ Completo. El QR codifica el redirect del CMS, por eso se cuentan los escaneos |
+| CU-10 Códigos QR | ✅ Completo. El QR codifica el redirect del CMS, por eso se cuentan los escaneos. Se administra desde Contenidos (tipo `qr`), sin sección propia — ver `README.md` §3.3 |
 | CU-11 Programación energética | ✅ Completo (CMS + API + módulo en el cliente Pi) |
 | CU-12 Monitorear nodos | ✅ Completo, con histórico y gráficos |
 

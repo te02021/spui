@@ -13,6 +13,7 @@ use SPUI\Repository\PlaylistItemRepository;
 use SPUI\Repository\PlaylistRepository;
 use SPUI\Service\AlcanceReproductorService;
 use SPUI\Service\ComandoPublisherService;
+use SPUI\Service\UsuarioResolverService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -33,6 +34,7 @@ class PlaylistCmsController extends AbstractController
         private readonly AlcanceReproductorService $alcance,
         private readonly ComandoPublisherService $comandoPublisher,
         private readonly ManagerRegistry $doctrine,
+        private readonly UsuarioResolverService $usuarios,
     ) {}
 
     private function em()
@@ -206,7 +208,10 @@ class PlaylistCmsController extends AbstractController
         if ($request->isXmlHttpRequest()) {
             return $this->json([
                 'title' => $playlist->getNombre(),
-                'html'  => $this->renderView('@SPUI/playlists/_view.html.twig', ['playlist' => $playlist]),
+                'html'  => $this->renderView('@SPUI/playlists/_view.html.twig', [
+                    'playlist'         => $playlist,
+                    'creado_por_email' => $this->usuarios->email($playlist->getCreadoPorId()),
+                ]),
             ]);
         }
 

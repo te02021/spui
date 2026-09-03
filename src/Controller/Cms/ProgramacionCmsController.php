@@ -10,6 +10,7 @@ use SPUI\Form\ProgramacionType;
 use SPUI\Repository\ProgramacionRepository;
 use SPUI\Service\AlcanceReproductorService;
 use SPUI\Service\ComandoPublisherService;
+use SPUI\Service\UsuarioResolverService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -26,6 +27,7 @@ class ProgramacionCmsController extends AbstractController
         private readonly AlcanceReproductorService $alcance,
         private readonly ComandoPublisherService $comandoPublisher,
         private readonly ManagerRegistry $doctrine,
+        private readonly UsuarioResolverService $usuarios,
     ) {}
 
     private function em()
@@ -53,7 +55,10 @@ class ProgramacionCmsController extends AbstractController
         if ($request->isXmlHttpRequest()) {
             return $this->json([
                 'title' => 'Regla de programación',
-                'html'  => $this->renderView('@SPUI/programacion/_view.html.twig', ['prog' => $prog]),
+                'html'  => $this->renderView('@SPUI/programacion/_view.html.twig', [
+                    'prog'             => $prog,
+                    'creado_por_email' => $this->usuarios->email($prog->getCreadoPorId()),
+                ]),
             ]);
         }
 

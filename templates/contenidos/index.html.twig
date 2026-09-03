@@ -23,6 +23,19 @@
     </button>
 </div>
 
+{# Los códigos QR se ponen al día solos al entrar acá (ver
+   ContenidoCmsController::sincronizarQr()): no hay ningún control manual,
+   ni falta hace. Esto es sólo el aviso para cuando ni la dirección
+   detectada sola sirve. #}
+{% if hay_qr|default(false) and qr_inalcanzable|default(false) %}
+    <div class="alert alert-warning" role="alert">
+        <strong>Los códigos QR no se van a poder abrir desde un celular.</strong>
+        La dirección que están guardando sólo se resuelve desde este equipo, así que quien
+        escanee no va a llegar a ningún lado. Suele pasar cuando la computadora quedó sin
+        conexión de red. Revisá la conexión y volvé a entrar a esta pantalla.
+    </div>
+{% endif %}
+
 <div id="spui-table-body">
 <div class="unraf-card">
     <div class="unraf-table-responsive">
@@ -148,4 +161,15 @@
     </div>
 </div>
 </div>
+{% endblock %}
+
+{# Contador de escaneos de un QR en vivo. Sólo en esta página: es la única con
+   el modal Ver de un contenido QR, así que el resto del CMS no carga mqtt.js.
+
+   Por CDN igual que Bootstrap y SortableJS en base.html.twig. Es el bundle de
+   navegador de mqtt.js (UMD): define el global `mqtt` que usa el script de
+   abajo, y por eso va primero. #}
+{% block javascripts %}
+    <script src="https://cdn.jsdelivr.net/npm/mqtt@5.10.1/dist/mqtt.min.js"></script>
+    <script src="{{ asset('spui/js/core/qr-escaneos-vivo.js') }}"></script>
 {% endblock %}
