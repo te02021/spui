@@ -285,17 +285,23 @@ que va a la pantalla podían apuntar a hosts distintos sin que nada lo avisara.
   y se lee el extremo local. `gethostbyname(gethostname())` no sirve acá: devuelve la IP del
   adaptador host-only de VirtualBox. Al caer a la IP el esquema es siempre `http` (una IP privada no
   puede tener certificado válido y el redirect es un 302 público).
-- **`spui:qr:regenerar`** (comando nuevo, con `--dry-run`): cambiar de red, de equipo o mudar el CMS
-  a la VM no toca los PNG ya guardados, que siguen apuntando a la dirección vieja. Esto los pone a
-  todos al día sin borrar y recrear nada — el contador de escaneos y la URL destino se conservan,
-  porque no toca el `CodigoQr`. Avisa si la detección falló y los códigos van a quedar inservibles.
-- **`SPUI_URL_PUBLICA` es obligatoria en la VM, y sólo por ese comando.** Guardar un contenido QR
-  desde el panel saca dominio y prefijo del request y no necesita nada. Pero `spui:qr:regenerar`
-  corre en consola, donde no hay request: sin esta variable escribiría la IP privada de la VM y una
-  ruta sin el prefijo de la intranet, es decir códigos impresos que dejan de abrir sin que nada
-  falle a la vista. Lleva esquema, dominio y prefijo juntos, y se verifica con `--dry-run`, que
-  imprime la URL exacta antes de tocar un solo PNG. Sin definir —desarrollo— el comportamiento es
-  el de la IP detectada sola, sin cambio alguno.
+- **Se corrige solo, sin comando ni variable de entorno.** Hubo una versión anterior con un comando
+  `spui:qr:regenerar` y una variable `SPUI_URL_PUBLICA` para correrlo en producción — se descartó:
+  obligaba a declarar en la VM algo que el CMS ya sabe (dominio y prefijo salen del request), y si
+  alguien la olvidaba el resultado eran QR impresos que no abrían, sin ningún error a la vista.
+  Ahora `ContenidoCmsController::index()` compara, cada vez que se entra a Contenidos, la dirección
+  actual contra la que guarda `CodigoQr::urlGenerada` (la URL que quedó codificada la última vez que
+  se generó el PNG) y llama a `ContenidoQrService::sincronizarUrls()` si hace falta. Guardado con
+  caché (`spui.qr.base_reconciliada`) para no recorrer nada cuando la dirección no cambió — que es
+  el caso normal y el de producción siempre, porque ahí la base es el dominio y no cambia nunca.
+- **Regla anti-churn: nunca se degrada la base.** `QrGeneratorService::rangoDeBase()` ordena una URL
+  por qué tan pública es (`https` + dominio → mejor; `http` + dominio; IP → peor) y `sincronizarUrls()`
+  sólo regenera si la base nueva es igual o mejor que la guardada. Sin esto, un contenido QR que está
+  en la playlist de un reproductor cambiaría de archivo cada vez que alguien entrara al CMS por una
+  dirección distinta (la IP de la VM en vez del dominio, por ejemplo) — y el reproductor tiene que
+  redescargar el PNG por su nombre nuevo, así que regenerar de más se ve como un parpadeo en la
+  pantalla real. El botón **"Actualizar direcciones de los QR"** del listado de Contenidos fuerza la
+  regeneración saltándose esta regla, para el caso deliberado de bajar a una dirección menos pública.
 
 ### La pantalla que ve quien escanea un código caído
 

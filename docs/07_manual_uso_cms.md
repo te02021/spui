@@ -169,10 +169,13 @@ Si un QR está vencido, quien lo escanee ve un aviso de no disponible y el conta
 > revisar que Mosquitto esté corriendo y que tenga el listener WebSocket del puerto 9001
 > (`config/mosquitto/mosquitto.conf`). Nunca se pierde un escaneo por esto.
 
-> **Si el CMS cambia de equipo o de dirección de red**, los códigos ya generados siguen apuntando a
-> la anterior y dejan de abrir. Se arreglan todos de una con
-> `php bin/console spui:qr:regenerar --id=spui`, sin perder el contador de escaneos ni la URL
-> destino. No hace falta para un cambio de destino: eso no toca la imagen.
+> **Si el CMS cambia de equipo o de dirección de red**, los códigos se arreglan solos: al entrar a
+> esta pantalla, el sistema nota que la dirección cambió y rehace los PNG viejos, sin perder el
+> contador de escaneos ni la URL destino. Puede tardar en notarlo si, por ejemplo, alguien entra por
+> una dirección menos "pública" que la habitual (una IP en vez del dominio) — en ese caso, para no
+> arriesgar que los códigos dejen de abrir por una entrada ocasional, no se actualizan solos. El botón
+> **"Actualizar direcciones de los QR"** de esta pantalla fuerza la corrección con la dirección
+> actual. No hace falta nada de esto para un cambio de destino: eso no toca la imagen.
 
 ### 3.4 Playlists — `/spui/playlists`
 
