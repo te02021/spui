@@ -3,8 +3,6 @@
 **SPUI — Sistema de Pantallas Informativas Universitarias (UNRaf)**
 Guía paso a paso del panel. Para cómo funciona por dentro, ver `06_funcionamiento_del_sistema.md`.
 
-> Reemplaza a `MANUAL_CMS.md` (raíz del proyecto), que quedó desactualizado: describe como pendientes varias cosas que ya están implementadas.
-
 **Acceso:** `/spui` — requiere sesión de la intranet y rol `ROLE_SPUI` o `ROLE_SUPERADMIN`.
 
 ---
@@ -35,8 +33,8 @@ Los pasos 1 a 4 se hacen una vez por pantalla instalada. Del 5 en adelante es el
 Es la pantalla de inicio. Muestra:
 
 - **Cuatro tarjetas:** total de reproductores, conectados, desconectados, y cuántos llevan más de 5 minutos sin dar señal.
-- **Banner rojo** si hay una alerta de emergencia activa, con un botón para desactivarla ahí mismo.
-- **Banner de temperatura** si algún nodo superó los 80 °C, listando cuáles y a cuánto están.
+- **Banner rojo** si hay una alerta activa, con un botón para desactivarla ahí mismo.
+- **Banner de temperatura** si algún reproductor superó los 80 °C, listando cuáles y a cuánto están.
 - **Tabla de reproductores** con estado, último heartbeat, temperatura, RAM y disco libre.
 - Botón **Actualizar** que refresca los datos sin recargar la página.
 
@@ -71,16 +69,16 @@ El monitor físico.
 - **Reproductor:** acá se asigna qué Raspberry Pi maneja esta pantalla. **La asignación se hace desde este formulario, no desde el de Reproductores.**
 
 > **Sobre el campo MAC:** es opcional y **no lo usa ninguna función del sistema** (sync, heartbeat y telemetría identifican al equipo por su API key, no por MAC). Viene del diseño original, cuando `pantalla` representaba al dispositivo; con el refactor a `Reproductor` (migración `Version20260702133532`) dejó de ser obligatoria y se quitó su índice único. Si querés completarla, lo útil es poner la MAC de la Raspberry Pi que maneja la pantalla, para pedir reservas DHCP e identificarla en la red.
->
-> El endpoint `POST /api/spui/pantallas` acepta `mac_address` como opcional (sólo valida el formato si viene con valor) y también admite `reproductor_id` y `playlist_fallback_id`.
+
 - **Estados:** *Activo*, *Inactivo*, *Mantenimiento*.
 - **Playlist de respaldo:** qué se reproduce cuando ninguna programación aplica en ese momento. Sin esto, la pantalla queda en espera.
-- **Botón Energía:** abre la grilla de horarios de esa pantalla (ver 4.2).
+- **Botón Energía:** abre la grilla de horarios de esa pantalla en una ventana emergente (ver 4.2).
 - **Eliminar:** solo si no tiene reproductor asignado.
+- Si el reproductor de la pantalla está **desconectado**, editarla, cambiarle el estado, eliminarla y tocar su energía quedan bloqueados hasta que vuelva (ver 6).
 
 ### 2.4 Reproductores — `/spui/reproductores`
 
-La Raspberry Pi. **Acá se genera la clave que necesita el nodo.**
+La Raspberry Pi. **Acá se genera la clave que necesita el reproductor.**
 
 **Al registrar uno:**
 
@@ -91,16 +89,20 @@ La Raspberry Pi. **Acá se genera la clave que necesita el nodo.**
 
 Si se pierde, se usa **Regenerar clave** — eso invalida la anterior de inmediato y hay que actualizar la Pi.
 
-**Botón Telemetría:** abre el histórico de ese nodo (ver 5).
+**Botón Telemetría:** abre el histórico de ese reproductor (ver 5).
+
+**Editar** y **Regenerar clave** quedan bloqueados mientras el reproductor esté desconectado (ver 6). **Eliminar no**, a propósito: dar de baja un equipo es justamente lo que se hace cuando se rompió y no va a volver. Al eliminarlo se revoca también su usuario del broker MQTT.
 
 **Configurar la Pi** — en `/etc/spui/spui.env`:
 
 ```
 SPUI_API_URL=http://tu-servidor/api/spui
 SPUI_API_KEY=<la clave que copiaste>
+SPUI_MQTT_SALT=<el mismo valor que tiene el CMS>
 ```
 
 ⚠️ `SPUI_API_URL` termina en `/api/spui`, **sin** `/reproductores`: el cliente arma el resto solo.
+⚠️ Sin `SPUI_MQTT_SALT` (o con un valor distinto al del CMS) el broker rechaza al reproductor: sincroniza por HTTP pero **no recibe las alertas al instante**. La configuración completa está en `09_instalacion_raspberry.md` §11.2.
 
 ---
 
@@ -181,13 +183,14 @@ Si un QR está vencido, quien lo escanee ve un aviso de no disponible y el conta
 
 Listas ordenadas que se reproducen en loop.
 
-- **Crear:** nombre y descripción.
-- **Editor (builder):** se entra con "Ver". Ahí se puede:
-  - **Agregar contenido** — solo aparecen los publicados que todavía no están en la lista.
-  - **Reordenar** arrastrando por el ícono de seis puntos. Se guarda solo.
-  - **Cambiar la duración de un ítem** — clic en el número de segundos. El mismo contenido puede durar distinto en cada playlist. Un asterisco indica que la duración está pisada.
-  - **Quitar ítems.**
-- Abajo se ve la duración total de la vuelta completa.
+- **Crear:** nombre, descripción y, opcionalmente, sus ítems desde el mismo formulario (botón **Ver ítems**). Los ítems elegidos ahí se guardan recién con el **Guardar** de la playlist: si se cancela el alta, no queda nada.
+- **Ítems:** desde **Editar** → **Ver ítems** se abre una segunda ventana, encima del formulario, con dos listas:
+  - arriba, los ítems de la playlist: se **reordenan** arrastrando por el ícono de seis puntos y se **quitan** con su botón;
+  - abajo, los contenidos que se pueden **agregar**: sólo los publicados que todavía no están en la lista.
+- **Nada se guarda al tocar los botones.** Agregar, quitar y reordenar sólo cambian la ventana; el botón **Guardar cambios** aparece cuando la lista difiere de la guardada, y cerrar sin guardar descarta todo. Al guardar, las pantallas que usan esa playlist reciben el cambio en segundos.
+- **La duración la define el contenido**, no la playlist: un mismo contenido dura lo mismo en todas las playlists donde esté.
+- Desde **Ver** se consulta la lista de ítems en modo sólo lectura.
+- Si alguna pantalla que usa la playlist tiene su reproductor **desconectado**, editarla y eliminarla quedan bloqueados (ver 6).
 
 ---
 
@@ -212,11 +215,11 @@ Al crear una regla:
 
 Las reglas se pueden desactivar sin borrarlas, para pausarlas temporalmente.
 
-> Las alertas de emergencia tienen prioridad absoluta sobre cualquier programación, sin importar el número.
+> Las alertas tienen prioridad absoluta sobre cualquier programación, sin importar el número.
 
-### 4.2 Energía — `/spui/pantallas/{id}/energia`
+### 4.2 Energía
 
-Se entra con el botón **Energía** del listado de pantallas. Es una grilla de los siete días.
+Se abre con el botón **Energía** del listado de pantallas, en una ventana emergente — no tiene pantalla propia. Es una grilla de los siete días. Mientras el reproductor de esa pantalla esté desconectado, el botón queda deshabilitado (ver 6).
 
 Para cada día se configura:
 - **Hora de encendido** y **hora de apagado** (el apagado tiene que ser posterior)
@@ -226,27 +229,28 @@ Para cada día se configura:
 
 El botón **Copiar a L-V** replica el horario de ese día al resto de los días hábiles, que es el caso más común: mismo horario de lunes a viernes y algo distinto el fin de semana.
 
-La Pi recibe este horario en cada sincronización y actúa sola: apaga por HDMI-CEC (apaga el televisor de verdad) o cortando la salida de video, y ajusta el brillo donde el panel lo permita.
+Cada cambio le llega a la Pi en segundos (el CMS le avisa que sincronice), y la Pi actúa sola: apaga por HDMI-CEC (apaga el televisor de verdad) o cortando la salida de video, y ajusta el brillo donde el panel lo permita.
 
-### 4.3 Alertas de emergencia — `/spui/alertas`
+### 4.3 Alertas — `/spui/alertas`
 
-Para avisos urgentes: evacuaciones, incidentes, cambios de último momento.
+Para avisos urgentes o de último momento: evacuaciones, incidentes, un cambio de aula.
 
 - **Crear:** título, mensaje, prioridad, vencimiento opcional, contenido multimedia opcional para acompañar, y **sonido de alerta opcional** (MP3 o WAV, hasta 5 MB) — se puede escuchar antes de guardar con el reproductor que aparece al elegir el archivo.
 - **Editar:** solo si está inactiva. Una alerta activa no se puede editar — hay que desactivarla primero, porque el aviso que ya salió a las pantallas no coincidiría con lo que muestra el panel. Desde acá también se reemplaza o se quita el sonido personalizado (casilla "Quitar sonido personalizado").
 - **Activar:** el aviso llega a todas las pantallas **en segundos**, interrumpiendo lo que estén mostrando. También aparece el banner rojo en el dashboard.
-- **Desactivar:** los nodos vuelven a su programación normal (y el sonido se corta al instante).
+- **Desactivar:** los reproductores vuelven a su programación normal (y el sonido se corta al instante).
 - **Eliminar:** solo alertas inactivas.
+- **Activar** y **Desactivar** quedan bloqueados si alguna pantalla a la que va la alerta tiene su reproductor desconectado (ver 6).
 
-**Un nodo que estaba apagado recibe la alerta apenas se enciende** — el broker guarda el último aviso. Y si MQTT no está disponible, llega igual en la próxima sincronización (tarda más, pero no se pierde).
+**Un reproductor que estaba apagado recibe la alerta apenas se enciende** — el broker guarda el último aviso. Y si MQTT no está disponible, llega igual en la próxima sincronización (tarda más, pero no se pierde).
 
-**Sin sonido personalizado, cada nodo reproduce un tono genérico propio** — así ninguna pantalla queda muda por no tener un archivo cargado. El sonido (personalizado o el tono genérico) se repite cada 20 segundos mientras la alerta siga activa.
+**Sin sonido personalizado, cada reproductor reproduce un tono genérico propio** — así ninguna pantalla queda muda por no tener un archivo cargado. El sonido (personalizado o el tono genérico) vuelve a sonar apenas termina, mientras la alerta siga activa. La pausa entre repeticiones se configura en cada Pi (`SPUI_ALERTA_SONIDO_INTERVALO_SEG`, 0 por defecto — ver `09_instalacion_raspberry.md` §8.6).
 
 **Una alerta enciende la pantalla aunque el horario energético diga que debe estar apagada.**
 
 ---
 
-## 5. Telemetría de un nodo — `/spui/reproductores/{id}/telemetria`
+## 5. Telemetría de un reproductor — `/spui/reproductores/{id}/telemetria`
 
 Se entra con el botón **Telemetría** del listado de reproductores.
 
@@ -258,7 +262,7 @@ Se entra con el botón **Telemetría** del listado de reproductores.
 
 Los datos se agrupan por hora: con una lectura por minuto, 7 días serían unos 10 000 puntos imposibles de leer.
 
-**Si dice que no hay datos:** verificar que el nodo esté encendido y que el daemon `spui:mqtt:subscribe` esté corriendo en el servidor. Sin ese proceso, la telemetría que publica la Pi no llega a la base.
+**Si dice que no hay datos:** verificar que el reproductor esté encendido y que el daemon `spui:mqtt:subscribe` esté corriendo en el servidor. Sin ese proceso, la telemetría que publica la Pi no llega a la base.
 
 ---
 
@@ -266,9 +270,24 @@ Los datos se agrupan por hora: con una lectura por minuto, 7 días serían unos 
 
 **El panel funciona en celular.** Por debajo de 768 px el menú pasa a hamburguesa y las tablas se convierten en tarjetas apiladas.
 
-**Casi todo se hace en ventanas emergentes** sin salir del listado. Las excepciones son las pantallas que necesitan espacio: los editores de playlist y cronograma, la grilla de energía y el histórico de telemetría.
+**Casi todo se hace en ventanas emergentes** sin salir del listado, incluidos los ítems de una playlist y la grilla de energía. Las únicas excepciones son las pantallas que necesitan espacio: el editor de ítems de un cronograma y el histórico de telemetría.
 
 **Los borrados están protegidos.** El sistema no deja eliminar algo que otra cosa esté usando; avisa qué lo está bloqueando.
+
+**No se puede cambiar lo que muestra un reproductor desconectado.** Si una acción afecta a alguna pantalla cuyo reproductor está desconectado, el botón aparece atenuado y, al pasar el mouse, dice qué equipo está caído y hace cuánto. Así nadie guarda un cambio creyendo que llegó a una pantalla que no lo va a recibir. Se bloquean:
+
+- Pantallas: editar, activar/desactivar, eliminar y energía.
+- Reproductores: editar y regenerar la clave (eliminar **no**, ver 2.4).
+- Contenidos: editar, publicar, despublicar, archivar, eliminar y los ítems de un cronograma.
+- Playlists: editar (incluidos sus ítems) y eliminar.
+- Programación: crear, editar, pausar y eliminar reglas.
+- Alertas: activar y desactivar.
+
+El bloqueo lo decide el servidor, no sólo el botón: si el equipo se cae entre que se abrió la página y el clic, la acción se rechaza igual y aparece el aviso. Los botones se habilitan solos cuando el reproductor vuelve a dar señal, y se atenúan solos cuando se cae, sin recargar la página: en **Reproductores** y **Alertas** porque esos listados se actualizan cada 20 segundos, y en **Pantallas, Contenidos, Playlists y Programación** porque el sistema avisa en el momento en que un equipo cambia de estado. Si el aviso no llega (broker MQTT caído), recargar la página muestra el estado real; y si el botón quedó habilitado por error, el servidor rechaza la acción igual.
+
+> Al caerse un equipo, el botón tarda en atenuarse lo que el sistema tarda en darlo por desconectado: hasta unos 3 minutos sin señal (el umbral de 150 s más la revisión que corre cada minuto).
+
+**Los cambios llegan en segundos.** Al guardar algo que afecta a una pantalla (programación, playlist, contenido, cronograma, energía), el CMS le avisa al reproductor que sincronice en ese momento, sin esperar su ciclo de 5 minutos. Si el broker MQTT no está disponible, el cambio llega igual en el próximo ciclo.
 
 **Requiere JavaScript.** El CMS es una aplicación de panel, no un sitio de contenido; sin JS los formularios no se abren.
 
@@ -278,7 +297,8 @@ Los datos se agrupan por hora: con una lectura por minuto, 7 días serían unos 
 
 | Síntoma | Causa probable |
 |---|---|
-| El nodo figura "conectado" pero está apagado | El comando `spui:mantenimiento` no está programado en el cron |
+| El reproductor figura "conectado" pero está apagado | El servicio `spui:mqtt:subscribe` no está corriendo: es el que marca como desconectados a los equipos sin señal, cada minuto |
+| Un botón aparece atenuado y no hace nada | Afecta a una pantalla con el reproductor desconectado — el motivo aparece al pasar el mouse (ver 6) |
 | La pantalla no muestra nada | Sin programación vigente y sin playlist de respaldo |
 | Un contenido no aparece al armar la playlist | Está en borrador o archivado: hay que publicarlo |
 | La alerta tarda en llegar | MQTT no disponible; llega igual en el próximo sync (hasta 5 min) |

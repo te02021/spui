@@ -60,9 +60,13 @@ Esta es la terminología real del sistema. **No usar sinónimos** en documentaci
 |---|---|---|
 | `spui/alertas/emergencia` | CMS → Pi (con `retain`) | `AlertaPublisherService::MQTT_TOPIC_ALERTA` y `mqtt_listener.py` |
 | `spui/alertas/reproductor/{reproductor_id}` | CMS → Pi (con `retain`) | Alertas dirigidas a pantallas puntuales |
+| `spui/comandos/reproductor/{reproductor_id}` | CMS → Pi (sin `retain`, QoS 0) | `ComandoPublisherService::pedirSyncAhora()` → `{"accion":"sync_ahora"}`, único comando que existe. Ver `06` §6.1 |
 | `spui/telemetria/{reproductor_id}` | Pi → CMS | `telemetria.py` y `MqttSubscribeCommand::TOPIC_TELEMETRIA` |
+| `spui/estado/reproductor/{reproductor_id}` | Pi → CMS | `mqtt_listener.py`: `online` al conectar, `offline` como LWT. Lo consume `MqttSubscribeCommand::procesarEstado()` (ver §3.2) |
+| `spui/qr/escaneo/{codigo_qr_id}` | CMS → navegador (WebSocket, 9001) | `QrEscaneoPublisherService` → `qr-escaneos-vivo.js`. Ver §3.3 |
+| `spui/cms/conexion/{reproductor_id}` | CMS → navegador (WebSocket, 9001, sin `retain`) | `ConexionPublisherService` → `conexion-vivo.js`: un reproductor cambió de estado de conexión, el navegador vuelve a pedir la tabla. Ver §3.4 y `06` §6.2 |
 
-> **No hay topics de control** (`power` / `brightness`): el encendido y apagado los resuelve el cliente Pi con el horario energético que baja por `/sync`, así que sigue funcionando aunque el broker esté caído.
+> **No hay topics de power/brightness:** el encendido, el apagado y el brillo los resuelve el cliente Pi con el horario energético que baja por `/sync`, así que siguen funcionando aunque el broker esté caído. El único comando que el CMS le manda a una Pi es `sync_ahora`, que no lleva datos: sólo adelanta el próximo sync.
 
 ---
 
@@ -70,7 +74,7 @@ Esta es la terminología real del sistema. **No usar sinónimos** en documentaci
 
 Verificados contra código. Si algo "deja de andar", empezar por acá.
 
-1. **La telemetría viaja solo por MQTT.** El Pi la publica al broker; el CMS la persiste con el daemon `php bin/console spui:mqtt:subscribe --id=spui`. **Sin ese proceso corriendo, el dashboard no muestra métricas** aunque la Pi esté publicando bien. (Existe además un endpoint REST `/api/spui/reproductores/telemetria`, pero el cliente Python actual **no lo usa**.)
+1. **La telemetría viaja solo por MQTT.** El Pi la publica al broker; el CMS la persiste con el daemon `php bin/console spui:mqtt:subscribe --id=spui`. **Sin ese proceso corriendo, el dashboard no muestra métricas** aunque la Pi esté publicando bien — y tampoco corren el mantenimiento (reproductores caídos, alertas vencidas, purga) ni el rollup horario, que viven dentro del mismo proceso. Se instala como servicio con `config/servicios/` (ver `06` §11). (Existe además un endpoint REST `/api/spui/reproductores/telemetria`, pero el cliente Python actual **no lo usa**.)
 
 2. **El flag `--id=spui` es obligatorio** en todos los comandos de consola. El monolito aloja varias apps y por consola no hay URL que le indique cuál cargar.
 
@@ -78,11 +82,11 @@ Verificados contra código. Si algo "deja de andar", empezar por acá.
 
 4. **El formulario de Reproductor solo pide hostname y versión de firmware.** La pantalla NO se asigna desde ahí — se asigna desde el formulario de **Pantalla**, campo "Reproductor (Raspberry Pi)". La relación es `Pantalla → Reproductor` (ManyToOne): un reproductor puede tener varias pantallas.
 
-5. **La API key se muestra una sola vez**, tanto al registrar el reproductor como al regenerarla, con botón de copiar. No es recuperable: en la base sólo queda su hash. Al regenerarla, la anterior deja de servir en el acto y hay que actualizar `API_KEY` en `/etc/spui/spui.env` y reiniciar el servicio.
+5. **La API key se muestra una sola vez**, tanto al registrar el reproductor como al regenerarla, con botón de copiar. No es recuperable: en la base sólo queda su hash. Al regenerarla, la anterior deja de servir en el acto y hay que actualizar `SPUI_API_KEY` en `/etc/spui/spui.env` y reiniciar el servicio. La contraseña MQTT de la Pi se deriva de esa clave, así que se renueva sola con ella.
 
 6. **Rate limiting activo:** 2 sync/min y 3 heartbeat/min por reproductor (`config/packages/rate_limiter.yaml`). Al hacer pruebas manuales con `curl` es fácil comerse un 429.
 
-7. **La config de Mosquitto se pierde al reinstalar** (`listener 1883 0.0.0.0` + `allow_anonymous true`). Ya pasó dos veces — ver `08_pendientes_vm.md` §3.
+7. **La config de Mosquitto se pierde al reinstalar.** La que vale es la versionada en `config/mosquitto/mosquitto.conf` (listeners 1883, 8883 con TLS y 9001 WebSocket, `allow_anonymous false`, plugin Dynamic Security); la copia del directorio de instalación es descartable. Ya pasó dos veces — procedimiento en `config/mosquitto/README.md`, sección *Recuperación ante reinstalación de Mosquitto*.
 
 8. **El player necesita entorno gráfico.** `python-vlc` no puede renderizar sobre Raspberry Pi OS Lite pelado; si no hay X11 activo, entra en modo simulación y loguea lo que reproduciría.
 
@@ -100,6 +104,10 @@ Verificados contra código. Si algo "deja de andar", empezar por acá.
 
 15. **El `php.ini` que de verdad usa Apache en este WAMP no es el que apunta `PHPIniDir`.** Apache corre con `mod_fcgid`, y `httpd-vhosts.conf` le fija `FcgidInitialEnv PHPRC` apuntando directo a `C:\wamp64\bin\php\<versión>\php.ini` — un archivo distinto del symlink `apache2.4.59\bin\php.ini` (→ `phpForApache.ini`) que referencia `PHPIniDir` en `httpd.conf`. `PHPRC` le gana a `PHPIniDir`, así que editar el symlink o `phpForApache.ini` no cambia nada en la práctica, ni siquiera reiniciando WAMP. Para confirmar cuál es el real (antes de tocar cualquier límite de subida), servir un script con `php_ini_loaded_file()` y pedirlo por HTTP — nunca asumir por el nombre del archivo. Los límites que le importan a SPUI (`upload_max_filesize`, `post_max_size`, `memory_limit`) viven en ese `php.ini` real, fuera del repo.
 
+16. **`SPUI_MQTT_SALT` tiene que ser idéntico en el CMS y en cada Pi.** La contraseña MQTT de un reproductor es `sha256(api_key + salt)`; con un salt distinto el broker lo rechaza (`Not authorized`). El síntoma engaña: el sync y el heartbeat van por HTTP y siguen andando, así que la pantalla funciona, pero **las alertas no llegan al instante**, los cambios no llegan en segundos (`sync_ahora`) y la telemetría no se registra. Va en `/etc/spui/spui.env` — ver `09_instalacion_raspberry.md` §11.2.
+
+17. **Con un reproductor desconectado, el CMS no deja cambiar lo que muestra** (botones atenuados + 409 del servidor, ver `06` §6.2). La única acción permitida sobre un equipo caído es darlo de baja. Si un botón "no hace nada", mirar su tooltip antes de buscar un bug. Los botones se destraban solos cuando el equipo vuelve; en Pantallas, Contenidos, Playlists y Programación eso depende del aviso MQTT `spui/cms/conexion/...`: si no se destraban, revisar que el broker y el listener WebSocket 9001 estén arriba — y que el daemon `spui:mqtt:subscribe` esté corriendo, que es quien avisa cuando un equipo se cae.
+
 ---
 
 ## 3.1. Registro de auditorías
@@ -108,6 +116,7 @@ Verificados contra código. Si algo "deja de andar", empezar por acá.
 |---|---|---|
 | Agosto 2026 | Auditoría cruzada de código vs. documentación: 13 entidades, 11 controllers API, 12 controllers CMS, formularios, migraciones y los 8 módulos del cliente Python | 9 inconsistencias detectadas y corregidas. Detalle en `06_funcionamiento_del_sistema.md` §10.1 |
 | Septiembre 2026 | Auditoría sistemática de todo el proyecto (CMS + cliente Pi) posterior al merge de `fix/media-storage-s3`: seguridad, consistencia de negocio, bloqueo por reproductor desconectado, resiliencia del cliente Python y código muerto | Hallazgos y correcciones en §3.3. El más grave: el tipo de contenido **QR** nunca funcionó pese a figurar completo en CU-10 |
+| 25/09/2026 | Rama `fix/offline-blocking-csrf` + revisión de consistencia de `06`, `07`, `08`, `09` y este README contra el código | Cambios de código en §3.4. En los docs se corrigieron afirmaciones que habían quedado viejas: topics MQTT (faltaban comandos, estado y QR), broker descripto como anónimo, CSRF listado como deuda ya resuelta, `spui:mantenimiento` "a programar en cron" (corre dentro del daemon), `SPUI_MQTT_SALT` ausente de la configuración de la Pi, API REST de administración ya dada de baja, duración por ítem de playlist ya eliminada, repetición del sonido "cada 20 s", y "Nodo" en lugar de "Reproductor" |
 | 10/08/2026 | Reescritura de `00`–`05` contra el código real + corrección de bugs reportados en pruebas de uso | Docs `00`–`05` actualizados (ERD con las 13 entidades, flujos reales, árbol de directorios real). Corregidos: zona horaria, expiración de alertas, API key al regenerar, errores de formulario en español, modales de detalle, alertas dirigidas, almacenamiento S3. Ver §3.2 |
 
 Resumen de lo corregido (todo aplicado, nada pendiente):
@@ -233,8 +242,9 @@ Qué cambió:
   siempre para no enterarse de nada. Piezas nuevas que esto trae: el listener `9001 websockets` en
   `config/mosquitto/mosquitto.conf`, el usuario MQTT de sólo lectura `spui-cms-web` —contraseña
   derivada de `SPUI_MQTT_SALT`, dado de alta solo por `MqttSecurityService::asegurarClienteWeb()`,
-  sin variable de entorno ni paso manual— y `mqtt.js` por CDN, cargado únicamente en la página de
-  Contenidos. Si el broker está caído no se rompe nada: el escaneo cuenta igual en la base y el
+  sin variable de entorno ni paso manual— y `mqtt.js` por CDN, cargado entonces únicamente en la
+  página de Contenidos (desde §3.4 también en Pantallas, Playlists y Programación, y el mismo usuario
+  web lee además `spui/cms/conexion/#`). Si el broker está caído no se rompe nada: el escaneo cuenta igual en la base y el
   número aparece bien al reabrir el modal.
 - **La URL del broker que recibe el navegador sale del host por el que entró al CMS**, no de
   `MQTT_HOST` (`MqttSecurityService::urlWebsocket()`). `MQTT_HOST` vale hoy
@@ -323,6 +333,27 @@ aunque después vuelva a estar vigente.
 > `Host: <ip>` cae en el vhost por defecto de WAMP y devuelve 404), y su `<Directory>` necesita un
 > `Require ip` que cubra la red del celular. Ojo con lo segundo: ese bloque lo comparten **todas** las
 > apps del monolito — ver `../../CLAUDE.md`, "Entorno local (WAMP)".
+
+---
+
+## 3.4. Bloqueo por reproductor desconectado, CSRF e ítems de playlist (septiembre 2026)
+
+Rama `fix/offline-blocking-csrf`. Completa el bloqueo por reproductor desconectado y el CSRF, que en la auditoría de §3.3 habían quedado aplicados sólo en parte, y rehace la edición de ítems de playlist.
+
+| Síntoma | Causa real | Dónde se arregló |
+|---|---|---|
+| Crear una playlist daba **HTTP 500** | Después de crearla se redirigía a `spui_cms_playlists_builder`, que renderizaba `playlists/builder.html.twig`: una plantilla que **nunca existió** (el diseño de editor a pantalla completa se abandonó a medio camino) | `nueva()` vuelve al listado. Se eliminaron la ruta `builder`, `agregarItemForm` y `assets/spui/js/playlists/builder.js` |
+| Los ítems de una playlist **se guardaban solos** al agregar, quitar o reordenar, sin forma de cancelar | Tres endpoints (`agregar`, `quitar`, `reorder`) que persistían cada acción en el momento, y un aviso `sync_ahora` por cada una | Un solo `POST /spui/playlists/{id}/items/guardar`: el navegador (`playlists/items.js`) acumula los cambios y los manda juntos; `sincronizarItems()` reconcilia altas, bajas y orden en una transacción, con un solo aviso al reproductor. En el alta de una playlist los ítems se eligen antes de que exista (`items/nueva`) y se persisten con el Guardar principal |
+| El botón **Energía** se veía atenuado con el reproductor caído, pero el clic entraba igual a una pantalla donde nada se podía guardar | Era un `<a href>` a una página propia: el bloqueo del lado del cliente sólo intercepta los botones de modal | La grilla de energía pasó a ser un modal (`energia/_grilla.html.twig`); la cubre el mismo interceptor que al resto |
+| Cambios en **cronograma** y **energía** no se bloqueaban con el reproductor caído ni llegaban en segundos | `CronogramaCmsController` y `ProgramacionEnergeticaCmsController` no usaban ni `BloqueoOfflineTrait` ni `ComandoPublisherService` | Ambos bloquean y piden `sync_ahora`. También se sumó el bloqueo a editar/eliminar Contenido y a eliminar Pantalla, y los botones de Activar/Desactivar alertas y Editar/Eliminar contenido muestran el bloqueo en la interfaz |
+| Un reproductor roto **no se podía dar de baja** | El bloqueo por desconexión también frenaba `eliminar()`, y un equipo que no vuelve nunca se reconecta | Excepción deliberada: la baja se permite desconectado (no cambia lo que muestra ninguna pantalla y revoca la credencial MQTT). Ver `06` §6.2 |
+| Alta y edición de playlist, edición de Contenido y alta de ítems de cronograma sin token CSRF | Eran POST armados a mano, sin Symfony Form, y no pasaban por `CsrfProtegidoTrait` | Token `spui_action` en esos formularios y chequeo en los controllers. El trait además acepta el header `X-Csrf-Token` para POST con body JSON. En `modal.js`, el nivel 2 puede abrirse como sub-vista del nivel 1 y confirmar acciones desde ahí (lo usa la grilla de energía para el formulario de cada día) |
+| Los mensajes del CMS quedaban **detrás del velo** del modal, a medias y sin poder cerrarse | El contenedor de mensajes tenía `z-index` 9999, por debajo de los dos niveles de modal (10000 y 10010) | `z-index: 10030` en `style.css` |
+
+| En el alta de una playlist, las filas agregadas salían **sin íconos**; al editar, un ítem quitado sin guardar **no se podía volver a agregar**; reabrir "Ver ítems" en el alta **perdía la selección**; y el aviso decía "0 ítems guardados" tras agregar | `items.js` copiaba los íconos de una fila existente (no hay ninguna en una lista vacía); `items()` filtraba del catálogo lo que ya estaba en la playlist; la selección del alta vive en inputs hidden que nadie releía; `sincronizarItems()` persistía los ítems nuevos sin sumarlos a la colección en memoria | Íconos en `data-icono-*` de la raíz; el catálogo va completo y el JS oculta/muestra; `restaurarSeleccion()` al reabrir; `addItem()`. Verificado con el HTML real del servidor en un DOM simulado (jsdom) |
+| En Pantallas, Contenidos, Playlists y Programación un botón bloqueado **seguía bloqueado** hasta recargar la página aunque el reproductor ya hubiera vuelto (el comentario de `bloqueo.html.twig` decía lo contrario) | Esas tablas no tenían ningún refresco: sólo Reproductores, Alertas y el Dashboard tienen zonas `[data-spui-refresh]` con intervalo | **Push por MQTT, sin polling:** `ConexionPublisherService` publica `spui/cms/conexion/{id}` en los tres puntos donde el estado cambia de verdad —heartbeat HTTP y "online" por MQTT si venía caído, y el mantenimiento que marca caídos—, siempre después de grabar. `conexion-vivo.js` escucha por WebSocket y vuelve a pedir la tabla (zona `data-spui-refresh="push"`, que no arranca el intervalo de 20 s). Lo publica el CMS y no la Pi porque el estado lo decide el CMS por el heartbeat: el LWT de la Pi no cambia nada, y escucharlo directo tenía una carrera con la escritura del heartbeat. Ver `06` §6.2 |
+
+Verificado sin tocar datos reales (todo dentro de una transacción revertida): cada acción con y sin token CSRF y con el reproductor caído y conectado; los tres orígenes del aviso de conexión contra el broker real, con un suscriptor que usa las mismas credenciales y URL que recibe el navegador (vuelve → `conectado`; ya conectado u `offline` por LWT → nada; caído por mantenimiento → `desconectado`); y el JS de ítems y de avisos en jsdom.
 
 ---
 
