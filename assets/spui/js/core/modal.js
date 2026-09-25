@@ -36,6 +36,10 @@
             overlay.setAttribute('aria-hidden', 'true');
             document.body.style.overflow = '';
             nivel1Url = null;
+            // Para quien haya postergado algo mientras el modal estaba abierto
+            // (conexion-vivo.js no refresca la tabla de atrás con un modal
+            // encima, y la refresca al cerrarlo).
+            document.dispatchEvent(new CustomEvent('spui:modal:cerrado'));
             closeTimer = setTimeout(function () {
                 closeTimer = null;
                 bodyEl.innerHTML = '';

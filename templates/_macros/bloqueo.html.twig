@@ -19,8 +19,11 @@
     AlcanceReproductorService::motivoBloqueo().
 
     El botón NO se oculta: tiene que verse que la acción existe y por qué no
-    está disponible. Se rehabilita solo, porque las tablas viven dentro de
-    zonas [data-spui-refresh] que se recargan cada 20 s.
+    está disponible. Se rehabilita solo porque las tablas viven dentro de
+    zonas [data-spui-refresh]: en Reproductores y Alertas se recargan cada
+    20 s; en Pantallas, Contenidos, Playlists y Programación son
+    data-spui-refresh="push" y se recargan cuando el CMS avisa por MQTT que un
+    reproductor cambió de estado (conexion-vivo.js).
 #}
 
 {% macro clase(motivo) %}{{ motivo ? 'spui-accion-bloqueada' : '' }}{% endmacro %}

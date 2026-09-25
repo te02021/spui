@@ -23,8 +23,17 @@
     var enVuelo = false;
     var timer   = null;
 
+    // Todas las zonas refrescables, incluidas las data-spui-refresh="push".
     function zonas() {
         return document.querySelectorAll('[data-spui-refresh]');
+    }
+
+    // Sólo las que se refrescan por intervalo. Las "push" se piden únicamente
+    // cuando llega un aviso (conexion-vivo.js) o al volver a la pestaña: si
+    // arrancaran el timer, la página haría un GET cada 20 s aunque nada cambie,
+    // que es justo lo que el push evita.
+    function zonasPorIntervalo() {
+        return document.querySelectorAll('[data-spui-refresh]:not([data-spui-refresh="push"])');
     }
 
     /**
@@ -292,7 +301,7 @@
     }
 
     function arrancar() {
-        if (timer || !zonas().length) return;
+        if (timer || !zonasPorIntervalo().length) return;
         timer = setInterval(tick, INTERVALO_MS);
     }
 
@@ -336,5 +345,10 @@
         });
     });
 
-    window.spui.autoRefresh = { arrancar: arrancar, detener: detener, refrescar: refrescar };
+    window.spui.autoRefresh = {
+        arrancar: arrancar,
+        detener: detener,
+        refrescar: refrescar,
+        hayModalAbierto: hayModalAbierto,
+    };
 }());

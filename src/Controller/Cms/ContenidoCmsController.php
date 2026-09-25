@@ -500,16 +500,11 @@ class ContenidoCmsController extends AbstractController
     private function mqttWebParaQr(Contenido $contenido, Request $request): ?array
     {
         $qr = $contenido->getCodigoQr();
-        if ($qr === null || !$this->mqttSeguridad->asegurarClienteWeb()) {
+        if ($qr === null) {
             return null;
         }
 
-        return [
-            'url'      => $this->mqttSeguridad->urlWebsocket($request),
-            'usuario'  => MqttSecurityService::USUARIO_WEB,
-            'password' => $this->mqttSeguridad->passwordWeb(),
-            'topic'    => QrEscaneoPublisherService::topicPara($qr->getId()),
-        ];
+        return $this->mqttSeguridad->paraNavegador($request, QrEscaneoPublisherService::topicPara($qr->getId()));
     }
 
     #[Route('/{id}/ver', name: 'spui_cms_contenidos_ver', methods: ['GET'], requirements: ['id' => '\d+'])]

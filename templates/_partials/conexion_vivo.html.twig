@@ -1,0 +1,26 @@
+{# Avisos de conexión de reproductores, en vivo (ver conexion-vivo.js).
+
+   Se incluye desde el bloque javascripts de los listados cuyas acciones se
+   bloquean por reproductor desconectado y que no se refrescan por intervalo:
+   Pantallas, Contenidos, Playlists y Programación. La zona a refrescar es la
+   marcada con data-spui-refresh="push".
+
+   Las credenciales son las del usuario web de sólo lectura (MqttSecurityService),
+   el mismo del contador de escaneos de un QR. Si el broker no confirmó su alta,
+   no se emite nada: la página funciona igual, sólo que hay que recargarla.
+
+   incluir_mqtt: false cuando la página ya carga mqtt.js por su cuenta
+   (Contenidos, por el contador de QR). #}
+{% set cfg = spui_mqtt_web.paraNavegador(app.request, constant('SPUI\\Service\\ConexionPublisherService::TOPIC_TODOS')) %}
+{% if cfg %}
+    <div hidden
+         data-spui-conexion-vivo
+         data-spui-mqtt-url="{{ cfg.url }}"
+         data-spui-mqtt-usuario="{{ cfg.usuario }}"
+         data-spui-mqtt-password="{{ cfg.password }}"
+         data-spui-mqtt-topic="{{ cfg.topic }}"></div>
+    {% if incluir_mqtt ?? true %}
+        <script src="https://cdn.jsdelivr.net/npm/mqtt@5.10.1/dist/mqtt.min.js"></script>
+    {% endif %}
+    <script src="{{ asset('spui/js/core/conexion-vivo.js') }}"></script>
+{% endif %}

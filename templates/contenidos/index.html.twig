@@ -38,7 +38,9 @@
 
 <div id="spui-table-body">
 <div class="unraf-card">
-    <div class="unraf-table-responsive">
+    {# Se vuelve a pedir cuando llega un aviso de conexión por MQTT (conexion-vivo.js),
+       no por intervalo: destraba o traba los botones si un reproductor vuelve o se cae. #}
+    <div class="unraf-table-responsive" id="spui-tabla-conexion" data-spui-refresh="push">
         <table class="unraf-table unraf-table-striped w-100 spui-tabla-cards">
             <thead>
                 <tr>
@@ -163,13 +165,14 @@
 </div>
 {% endblock %}
 
-{# Contador de escaneos de un QR en vivo. Sólo en esta página: es la única con
-   el modal Ver de un contenido QR, así que el resto del CMS no carga mqtt.js.
+{# Contador de escaneos de un QR en vivo (el modal Ver de un contenido QR) y
+   avisos de conexión de reproductores para destrabar los botones del listado.
 
    Por CDN igual que Bootstrap y SortableJS en base.html.twig. Es el bundle de
-   navegador de mqtt.js (UMD): define el global `mqtt` que usa el script de
-   abajo, y por eso va primero. #}
+   navegador de mqtt.js (UMD): define el global `mqtt` que usan los scripts de
+   abajo, y por eso va primero — y una sola vez, de ahí incluir_mqtt: false. #}
 {% block javascripts %}
     <script src="https://cdn.jsdelivr.net/npm/mqtt@5.10.1/dist/mqtt.min.js"></script>
     <script src="{{ asset('spui/js/core/qr-escaneos-vivo.js') }}"></script>
+    {{ include('@SPUI/_partials/conexion_vivo.html.twig', {incluir_mqtt: false}) }}
 {% endblock %}

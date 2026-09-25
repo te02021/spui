@@ -8,7 +8,9 @@ use DateTimeImmutable;
 use Doctrine\Persistence\ManagerRegistry;
 use PhpMqtt\Client\MqttClient;
 use SPUI\Entity\Telemetria;
+use SPUI\Enum\EstadoConexion;
 use SPUI\Repository\ReproductorRepository;
+use SPUI\Service\ConexionPublisherService;
 use SPUI\Service\MantenimientoService;
 use SPUI\Service\MqttConnectionFactory;
 use SPUI\Service\TelemetriaRollupService;
@@ -86,6 +88,7 @@ class MqttSubscribeCommand extends Command
         private readonly MantenimientoService $mantenimiento,
         private readonly TelemetriaRollupService $rollup,
         private readonly MqttConnectionFactory $mqttConnection,
+        private readonly ConexionPublisherService $conexionPublisher,
         #[Autowire('%env(float:default:spui_temp_alerta_default:SPUI_TEMP_ALERTA_CELSIUS)%')]
         private readonly float $tempAlertaCelsius,
         #[Autowire('%env(int:default:spui_umbral_conexion_default:SPUI_UMBRAL_CONEXION_SEG)%')]
@@ -373,6 +376,7 @@ class MqttSubscribeCommand extends Command
             return;
         }
 
+        $volvio = false;
         if ($data['estado'] === 'offline') {
             $reproductor->marcarLwtOffline();
             $io->writeln(sprintf('[%s] Reproductor <error>%d</error> — LWT: caída detectada por el broker.', $this->ts(), $reproductorId));
@@ -381,6 +385,7 @@ class MqttSubscribeCommand extends Command
             // sin esperar su próximo heartbeat HTTP programado — puede ahorrar
             // hasta 60s de demora. Se trata como una prueba de vida más, igual
             // que un heartbeat HTTP (mismo método, ver su docblock).
+            $volvio = $reproductor->estadoCalculado($this->umbralConexionSeg) !== EstadoConexion::Conectado;
             $reproductor->registrarHeartbeat();
             $io->writeln(sprintf('[%s] Reproductor <info>%d</info> — LWT: conectado.', $this->ts(), $reproductorId));
         } else {
@@ -391,6 +396,12 @@ class MqttSubscribeCommand extends Command
         $em = $this->doctrine->getManager('SPUI');
         $em->flush();
         $em->clear();
+
+        // Después de grabar: el navegador que reciba esto va a volver a pedir
+        // la tabla y tiene que encontrar el heartbeat ya guardado.
+        if ($volvio) {
+            $this->conexionPublisher->avisar([$reproductorId], ConexionPublisherService::CONECTADO);
+        }
     }
 
     private function ts(): string

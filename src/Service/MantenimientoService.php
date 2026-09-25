@@ -49,6 +49,7 @@ final class MantenimientoService
         private readonly TelemetriaRepository $telemetriaRepo,
         private readonly AlertaEmergenciaRepository $alertaRepo,
         private readonly AlertaPublisherService $alertaPublisher,
+        private readonly ConexionPublisherService $conexionPublisher,
     ) {
     }
 
@@ -93,6 +94,15 @@ final class MantenimientoService
         }
         if (!$dryRun && $caidosInfo !== []) {
             $em->flush();
+
+            // Éste es el único punto donde "se cayó" se vuelve un hecho: el
+            // estado se deduce del tiempo, y nada más lo nota. Avisarle al
+            // panel después de grabar, para que trabe los botones de las
+            // pantallas afectadas sin que nadie recargue.
+            $this->conexionPublisher->avisar(
+                array_column($caidosInfo, 'id'),
+                ConexionPublisherService::DESCONECTADO,
+            );
         }
 
         // ── Purga de telemetría ──────────────────────────────────────────────

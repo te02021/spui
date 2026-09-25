@@ -50,10 +50,11 @@ final class MqttSecurityService
 
     /**
      * Usuario y rol del navegador: el panel del CMS suscrito a spui/qr/# para
-     * ver los escaneos en vivo. Es el único cliente MQTT cuyas credenciales
-     * viajan al navegador, así que su rol es de SÓLO LECTURA y sólo sobre
-     * spui/qr/# — quien las tome de la página no puede publicar nada ni leer
-     * alertas, comandos ni telemetría.
+     * ver los escaneos en vivo, y a spui/cms/conexion/# para destrabar los
+     * botones de los listados cuando un reproductor vuelve. Es el único
+     * cliente MQTT cuyas credenciales viajan al navegador, así que su rol es
+     * de SÓLO LECTURA y sólo sobre esos dos topics — quien las tome de la
+     * página no puede publicar nada ni leer alertas, comandos ni telemetría.
      */
     public const USUARIO_WEB = 'spui-cms-web';
     public const ROL_WEB     = 'spui-cms-web';
@@ -251,7 +252,10 @@ final class MqttSecurityService
      */
     public function asegurarClienteWeb(): bool
     {
-        return $this->cache->get('spui.mqtt.cliente_web', function (ItemInterface $item): bool {
+        // La clave lleva versión: al sumar permisos (v2: avisos de conexión),
+        // cambiarla fuerza a rehacer el alta en el próximo pedido en vez de
+        // esperar a que venza la que quedó cacheada con los permisos viejos.
+        return $this->cache->get('spui.mqtt.cliente_web.v2', function (ItemInterface $item): bool {
             $comandos = [
                 ['command' => 'createRole', 'rolename' => self::ROL_WEB],
                 [
@@ -296,6 +300,34 @@ final class MqttSecurityService
                     'priority' => -1,
                     'allow'    => true,
                 ],
+                // Avisos de conexión de reproductores (ConexionPublisherService):
+                // el navegador los lee para destrabar/trabar los botones de los
+                // listados sin recargar. Siguen siendo de sólo lectura, y el
+                // mensaje no dice nada que no muestre ya la tabla.
+                [
+                    'command'  => 'addRoleACL',
+                    'rolename' => self::ROL_WEB,
+                    'acltype'  => 'subscribePattern',
+                    'topic'    => ConexionPublisherService::TOPIC_PATRON,
+                    'priority' => -1,
+                    'allow'    => true,
+                ],
+                [
+                    'command'  => 'addRoleACL',
+                    'rolename' => self::ROL_WEB,
+                    'acltype'  => 'publishClientReceive',
+                    'topic'    => ConexionPublisherService::TOPIC_PATRON,
+                    'priority' => -1,
+                    'allow'    => true,
+                ],
+                [
+                    'command'  => 'addRoleACL',
+                    'rolename' => self::ROL_CMS,
+                    'acltype'  => 'publishClientSend',
+                    'topic'    => ConexionPublisherService::TOPIC_PATRON,
+                    'priority' => -1,
+                    'allow'    => true,
+                ],
             ];
 
             $ok = $this->enviar($comandos, 'alta del cliente web', self::USUARIO_WEB);
@@ -306,6 +338,31 @@ final class MqttSecurityService
 
             return $ok;
         });
+    }
+
+    /**
+     * Todo lo que necesita el navegador para suscribirse a un topic.
+     *
+     * Un solo lugar para armarlo, lo use quien lo use (el contador de
+     * escaneos de un QR, los avisos de conexión de los listados). Devuelve
+     * null si no se pudo dar de alta el cliente web: mejor una página que no
+     * se actualiza sola que un navegador reintentando contra un broker que no
+     * lo va a dejar entrar.
+     *
+     * @return array{url:string,usuario:string,password:string,topic:string}|null
+     */
+    public function paraNavegador(Request $request, string $topic): ?array
+    {
+        if (!$this->asegurarClienteWeb()) {
+            return null;
+        }
+
+        return [
+            'url'      => $this->urlWebsocket($request),
+            'usuario'  => self::USUARIO_WEB,
+            'password' => $this->passwordWeb(),
+            'topic'    => $topic,
+        ];
     }
 
     // -------------------------------------------------------------------------
