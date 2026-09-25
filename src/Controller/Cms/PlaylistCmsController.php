@@ -290,16 +290,14 @@ class PlaylistCmsController extends AbstractController
         $playlist = $this->repo->find($id);
         if (!$playlist) { throw $this->createNotFoundException(); }
 
-        $enPlaylist  = array_map(fn($item) => $item->getContenido()->getId(), $playlist->getItems()->toArray());
-        $disponibles = array_values(array_filter(
-            $this->contenidosPublicados(),
-            fn($c) => !in_array($c->getId(), $enPlaylist, true),
-        ));
-
+        // Todos los publicados, incluidos los que ya están en la playlist: el
+        // navegador oculta o muestra cada fila según dónde esté el contenido en
+        // ese momento. Filtrarlos acá hacía que un ítem quitado sin guardar no
+        // se pudiera volver a agregar, porque su fila nunca llegaba al DOM.
         $html = $this->renderView('@SPUI/playlists/_items.html.twig', [
             'playlist'    => $playlist,
             'items'       => $playlist->getItems(),
-            'disponibles' => $disponibles,
+            'disponibles' => $this->contenidosPublicados(),
             'readonly'    => $request->query->getBoolean('ro'),
         ]);
 
@@ -408,9 +406,13 @@ class PlaylistCmsController extends AbstractController
                     if ($contenido === null || $contenido->getEstado() !== EstadoContenido::Publicado) {
                         continue;
                     }
+                    // addItem() y no sólo setPlaylist(): además de colgarlo de
+                    // la playlist lo suma a su colección en memoria. Sin eso,
+                    // el conteo del mensaje ("N ítems guardados") salía de una
+                    // colección desactualizada y decía 0 tras agregar.
                     $item = new PlaylistItem();
-                    $item->setPlaylist($playlist);
                     $item->setContenido($contenido);
+                    $playlist->addItem($item);
                     $em->persist($item);
                 }
 
@@ -430,6 +432,8 @@ class PlaylistCmsController extends AbstractController
     {
         $crudos = $request->request->all('contenido_ids');
 
-        return array_values(array_filter(array_map('intval', $crudos)));
+        // Sin repetidos: la interfaz no los genera, pero un POST armado a mano
+        // podría, y el mismo contenido dos veces en la lista crearía dos ítems.
+        return array_values(array_unique(array_filter(array_map('intval', $crudos))));
     }
 }

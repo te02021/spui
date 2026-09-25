@@ -34,8 +34,14 @@
         this.acciones    = root.querySelector('[data-spui-items-acciones]');
         this.btnGuardar  = root.querySelector('[data-spui-items-guardar]');
 
-        // Estado persistido contra el que se comparan los cambios. En alta
-        // arranca vacío: no hay nada guardado todavía.
+        // En alta el servidor no sabe qué se eligió antes: la selección vive en
+        // los inputs hidden del formulario principal. Sin esto, reabrir "Ver
+        // ítems" mostraba la lista vacía y el siguiente Guardar la pisaba.
+        this.baseline = [];   // agregar() compara contra esto mientras se restaura
+        if (this.esAlta) this.restaurarSeleccion();
+
+        // Estado contra el que se comparan los cambios: lo persistido en
+        // edición, lo ya confirmado en alta.
         this.baseline = this.idsActuales();
 
         this.bindAgregar();
@@ -115,15 +121,29 @@
         this.sincronizarVista();
     };
 
-    // Los íconos salen de los que ya están en el DOM: así se respeta el hash de
-    // AssetMapper sin tener que pasarlo por otro data-*.
+    // Las URLs de los íconos vienen de la raíz (con el hash de AssetMapper ya
+    // resuelto por Twig). No se pueden sacar de una fila existente: con la
+    // lista vacía —siempre en un alta— no hay ninguna.
     ListaItems.prototype.iconoArrastre = function () {
-        var img = this.root.querySelector('.item-drag-handle img');
-        return img ? img.getAttribute('src') : '';
+        return this.root.dataset.iconoArrastre || '';
     };
     ListaItems.prototype.iconoTacho = function () {
-        var img = this.root.querySelector('[data-spui-item-quitar] img');
-        return img ? img.getAttribute('src') : '';
+        return this.root.dataset.iconoQuitar || '';
+    };
+
+    /** Alta: vuelve a dibujar arriba lo que ya se había confirmado. */
+    ListaItems.prototype.restaurarSeleccion = function () {
+        var form = document.querySelector('#spuiAbmBody form[data-spui-ajax]');
+        if (!form || !this.disponibles) return;
+
+        var self = this;
+        form.querySelectorAll('[data-spui-items-hidden]').forEach(function (input) {
+            var fila = self.disponibles.querySelector('[data-contenido-id="' + parseInt(input.value, 10) + '"]');
+            // Un contenido que dejó de estar publicado mientras tanto ya no
+            // figura en el catálogo: se descarta en vez de dibujar una fila
+            // sin datos (el servidor lo ignoraría igual al crear).
+            if (fila) self.agregar(fila.dataset);
+        });
     };
 
     ListaItems.prototype.bindQuitar = function () {

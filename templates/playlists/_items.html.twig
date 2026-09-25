@@ -22,7 +22,9 @@
 
 <div data-spui-items-root
      {% if not esAlta %}data-guardar-url="{{ path('spui_cms_playlists_items_guardar', {id: playlist.id}) }}"{% endif %}
-     data-alta="{{ esAlta ? '1' : '0' }}">
+     data-alta="{{ esAlta ? '1' : '0' }}"
+     data-icono-arrastre="{{ asset('unraf-ui/icons/dots-six-vertical.svg') }}"
+     data-icono-quitar="{{ asset('unraf-ui/icons/trash.svg') }}">
 
     {# ── Ítems en la playlist ────────────────────────────────────────────── #}
     <div class="d-flex justify-content-between align-items-center mb-2 gap-2 flex-wrap">
@@ -52,7 +54,7 @@
             <span class="spui-badge-borrador" style="min-width:1.8rem;text-align:center" data-spui-item-orden>{{ loop.index }}</span>
             <div class="flex-grow-1">
                 <strong>{{ c.titulo }}</strong>
-                <small class="text-muted ms-2">{{ c.tipo.value }}</small>
+                <small class="text-muted ms-2">{{ c.tipo.etiqueta }}</small>
             </div>
             <span class="duracion-badge text-muted small">
                 {{ c.duracionSegundos ? c.duracionSegundos ~ 's' : 'Permanente' }}
@@ -97,12 +99,12 @@
                     <li class="d-flex align-items-center gap-2 p-3 border-bottom"
                         data-contenido-id="{{ c.id }}"
                         data-titulo="{{ c.titulo }}"
-                        data-tipo="{{ c.tipo.value }}"
+                        data-tipo="{{ c.tipo.etiqueta }}"
                         data-duracion="{{ c.duracionSegundos ? c.duracionSegundos ~ 's' : 'Permanente' }}"
-                        data-filter-text="{{ (c.titulo ~ ' ' ~ c.tipo.value)|lower }}">
+                        data-filter-text="{{ (c.titulo ~ ' ' ~ c.tipo.etiqueta)|lower }}">
                         <div class="flex-grow-1">
                             <strong>{{ c.titulo }}</strong>
-                            <small class="text-muted ms-2">{{ c.tipo.value }}</small>
+                            <small class="text-muted ms-2">{{ c.tipo.etiqueta }}</small>
                         </div>
                         <span class="duracion-badge text-muted small">
                             {{ c.duracionSegundos ? c.duracionSegundos ~ 's' : 'Permanente' }}
