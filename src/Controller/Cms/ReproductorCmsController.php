@@ -267,10 +267,14 @@ class ReproductorCmsController extends AbstractController
             return $this->redirectToRoute('spui_cms_reproductores_index');
         }
 
-        if ($r = $this->bloquearSiOffline([$reproductor], $request, 'spui_cms_reproductores_index')) {
-            return $r;
-        }
-
+        // Excepción deliberada a la regla de bloquear todo lo que toque un
+        // reproductor desconectado: dar de baja un equipo es justamente lo que
+        // se hace CUANDO se rompió y no va a volver. Bloquearlo por estar
+        // offline dejaba el hardware muerto imposible de sacar del sistema sin
+        // tocar la base a mano. No hay riesgo de descoordinación: no cambia
+        // nada de lo que una pantalla activa esté mostrando — la fila se va del
+        // CMS y la credencial MQTT se revoca acá abajo.
+        //
         // Revocar antes de borrar la fila: después ya no se puede derivar el
         // usuario MQTT, y la credencial quedaría válida en el broker para
         // siempre — un equipo dado de baja podría seguir conectándose.

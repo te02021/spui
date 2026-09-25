@@ -137,13 +137,16 @@
                                     {% if motivo %}{{ bloqueo.attrs(motivo) }}{% else %}title="Regenerar API key"{% endif %}>
                                 <img src="{{ asset('unraf-ui/icons/key.svg') }}" class="spui-action-icon" alt=""> Clave
                             </button>
+                            {# Sin bloqueo por conectividad a propósito: dar de baja un
+                               equipo es lo que se hace cuando se rompió y no vuelve.
+                               Ver el comentario en ReproductorCmsController::eliminar(). #}
                             <button type="button"
-                                    class="unraf-btn spui-btn-eliminar unraf-btn-sm {{ bloqueo.clase(motivo) }}"
+                                    class="unraf-btn spui-btn-eliminar unraf-btn-sm"
                                     data-spui-action="{{ path('spui_cms_reproductores_eliminar', {id: r.id}) }}"
                                     data-spui-title="Eliminar reproductor"
                                     data-spui-message="¿Eliminar «{{ r.hostname }}»? El Pi dejará de poder comunicarse con el sistema."
                                     data-spui-variant="eliminar"
-                                    {% if motivo %}{{ bloqueo.attrs(motivo) }}{% else %}title="Eliminar"{% endif %}>
+                                    title="Eliminar">
                                 <img src="{{ asset('unraf-ui/icons/trash.svg') }}" class="spui-action-icon" alt=""> Eliminar
                             </button>
                         </div>

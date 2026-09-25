@@ -35,6 +35,7 @@
             overlay.classList.remove('is-open');
             overlay.setAttribute('aria-hidden', 'true');
             document.body.style.overflow = '';
+            nivel1Url = null;
             closeTimer = setTimeout(function () {
                 closeTimer = null;
                 bodyEl.innerHTML = '';
@@ -74,8 +75,14 @@
                 .finally(function () { tableEl.classList.remove('is-refreshing'); });
         }
 
+        // URL que cargó el modal de nivel 1. La necesita el nivel 2 para poder
+        // refrescar la capa de abajo después de guardar (ver
+        // closeModal2YRefrescaNivel1).
+        var nivel1Url = null;
+
         // ── Abrir formulario en modal ──
         function openFormModal(url, title, size) {
+            nivel1Url = url;
             showSpinner(title);
             if (size) modal.classList.add(size);
             openModal();
@@ -379,11 +386,35 @@
 
         // Vuelve a la vista de fondo. La usan las acciones de adentro
         // (agregar/quitar) para reflejar el cambio sin cerrar nada.
+        //
+        // Si el nivel 2 NO tiene vista de fondo propia (baseUrl2 === null) es
+        // porque se abrió como sub-vista de un modal de nivel 1 —el caso de la
+        // grilla de energía, que vive abajo y abre el form de cada día acá
+        // arriba—. Ahí "volver" significa cerrar esta capa y refrescar la de
+        // abajo, que es la que quedó desactualizada.
         function refreshModal2() {
-            if (!baseUrl2) return;
+            if (!baseUrl2) { closeModal2YRefrescaNivel1(); return; }
             titleEl2.textContent = baseTitle2 || '';
             modal2.className = 'spui-abm-modal' + (baseSize2 ? ' ' + baseSize2 : '');
             cargarEnNivel2(baseUrl2);
+        }
+
+        // Cierra el nivel 2 y recarga el contenido del nivel 1 desde el
+        // servidor, para que refleje lo que se acaba de guardar arriba.
+        function closeModal2YRefrescaNivel1() {
+            closeModal2();
+            if (nivel1Url) {
+                fetch(nivel1Url, { headers: { 'X-Requested-With': 'XMLHttpRequest' }, cache: 'no-store' })
+                    .then(function (r) { return r.json(); })
+                    .then(function (data) {
+                        if (data.title) setTitle(data.title);
+                        bodyEl.innerHTML = data.html || '';
+                        notifyLoaded();
+                        bindFormInBody();
+                        bindOpeners2();
+                    })
+                    .catch(function () { /* el modal de abajo queda como estaba */ });
+            }
         }
 
         function bindFormInBody2() {
@@ -537,15 +568,105 @@
             });
         }
 
-        // Botones del NIVEL 1 que abren el nivel 2 (ej: "Ver ítems" dentro del
-        // modal de edición). Idempotente, igual que bindTableButtons.
+        // Botones del NIVEL 1 que operan sobre el nivel 2 (ej: "Ver ítems"
+        // dentro del modal de edición de una playlist, o cada día dentro del
+        // modal de energía). Idempotente, igual que bindTableButtons.
         function bindOpeners2() {
             if (!overlay2) return;
+
+            // Abre una vista en el nivel 2. Con data-spui-subvista la capa de
+            // arriba NO se queda como vista de fondo propia: al guardar se
+            // cierra y se refresca la de abajo. Es lo que corresponde cuando el
+            // nivel 1 ya es la lista (energía) y no un formulario de edición
+            // como en playlists, donde el nivel 2 sí tiene su propia lista.
             document.querySelectorAll('[data-spui-form2]').forEach(function (btn) {
                 if (btn._spuiBound2) return;
                 btn._spuiBound2 = true;
                 btn.addEventListener('click', function () {
+                    if (bloqueado(btn)) return;
+                    if (btn.dataset.spuiSubvista !== undefined) {
+                        baseUrl2 = baseTitle2 = baseSize2 = null;
+                        titleEl2.textContent = btn.dataset.spuiTitle || '';
+                        modal2.className = 'spui-abm-modal' + (btn.dataset.spuiSize ? ' ' + btn.dataset.spuiSize : '');
+                        openModal2();
+                        cargarEnNivel2(btn.dataset.spuiForm2);
+                        return;
+                    }
                     openFormModal2(btn.dataset.spuiForm2, btn.dataset.spuiTitle, btn.dataset.spuiSize || null);
+                });
+            });
+
+            // Acciones con confirmación que se ejecutan contra el servidor y
+            // refrescan la capa de abajo. Antes sólo existían dentro del nivel
+            // 2; la grilla de energía las necesita desde el nivel 1.
+            document.querySelectorAll('[data-spui-action2]').forEach(function (btn) {
+                if (btn._spuiBound2) return;
+                btn._spuiBound2 = true;
+                btn.addEventListener('click', function () {
+                    if (bloqueado(btn)) return;
+                    abrirConfirmacionNivel2(
+                        btn.dataset.spuiAction2,
+                        btn.dataset.spuiTitle,
+                        btn.dataset.spuiMessage || '¿Confirmar esta acción?',
+                        btn.dataset.spuiVariant,
+                        btn.dataset.spuiConfirmLabel
+                    );
+                });
+            });
+        }
+
+        /**
+         * Confirmación en el nivel 2 para una acción disparada desde el nivel 1.
+         *
+         * Se dibuja como una capa propia encima (no una franja dentro del modal
+         * de abajo) para respetar el patrón del CMS: lo que pide confirmación
+         * aparece por encima de lo que se está mirando. Al aceptar, ejecuta y
+         * refresca la capa de abajo con el resultado.
+         */
+        function abrirConfirmacionNivel2(url, title, message, variant, confirmLabel) {
+            baseUrl2 = baseTitle2 = baseSize2 = null;
+            titleEl2.textContent = title || 'Confirmar';
+            modal2.className = 'spui-abm-modal';
+            openModal2();
+
+            var btnCls = variant ? 'spui-btn-' + variant : 'spui-btn-eliminar';
+            bodyEl2.innerHTML =
+                '<p class="mb-0 text-secondary" style="font-size:.95rem">' + window.spui.escHtml(message) + '</p>' +
+                '<div class="d-flex justify-content-end gap-2 pt-3 mt-3 border-top">' +
+                '<button type="button" class="unraf-btn spui-btn-back" data-confirm-no>Cancelar</button>' +
+                '<button type="button" class="unraf-btn ' + btnCls + '" data-confirm-si>' +
+                window.spui.escHtml(confirmLabel || 'Confirmar') + '</button>' +
+                '</div>';
+
+            bodyEl2.querySelector('[data-confirm-no]').addEventListener('click', closeModal2);
+
+            var btnSi = bodyEl2.querySelector('[data-confirm-si]');
+            btnSi.addEventListener('click', function () {
+                btnSi.disabled = true;
+                btnSi.classList.add('spui-btn-submitting');
+                var fd = new FormData();
+                fd.append('_token', csrfToken);
+                fetch(url, {
+                    method: 'POST',
+                    body: fd,
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                })
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (data.message) {
+                        window.spui.showFlash(data.message, data.success !== false ? 'success' : (data.type || 'error'));
+                    }
+                    if (data.success !== false) {
+                        closeModal2YRefrescaNivel1();
+                    } else {
+                        btnSi.disabled = false;
+                        btnSi.classList.remove('spui-btn-submitting');
+                    }
+                })
+                .catch(function () {
+                    btnSi.disabled = false;
+                    btnSi.classList.remove('spui-btn-submitting');
+                    window.spui.showFlash('Error de red. Intentá de nuevo.', 'error');
                 });
             });
         }

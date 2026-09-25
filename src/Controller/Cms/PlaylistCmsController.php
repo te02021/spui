@@ -7,6 +7,7 @@ namespace SPUI\Controller\Cms;
 use Doctrine\Persistence\ManagerRegistry;
 use SPUI\Entity\Playlist;
 use SPUI\Entity\PlaylistItem;
+use SPUI\Enum\EstadoContenido;
 use SPUI\Repository\ContenidoRepository;
 use SPUI\Repository\PantallaRepository;
 use SPUI\Repository\PlaylistItemRepository;
@@ -55,6 +56,8 @@ class PlaylistCmsController extends AbstractController
     public function nueva(Request $request): Response
     {
         if ($request->isMethod('POST')) {
+            if ($r = $this->denegarSiCsrfInvalido($request)) { return $r; }
+
             $nombre = trim($request->request->get('nombre', ''));
             if (!$nombre) {
                 if ($request->isXmlHttpRequest()) {
@@ -73,16 +76,31 @@ class PlaylistCmsController extends AbstractController
             $this->em()->persist($playlist);
             $this->em()->flush();
 
+            // Los ítems que se cargaron en el modal antes de guardar. Viajan
+            // acá y no se persistieron antes porque un PlaylistItem necesita
+            // una playlist ya existente (playlist_id es NOT NULL): recién en
+            // este punto hay a qué colgarlos. Si el operador hubiera cerrado
+            // el modal sin guardar, no habría quedado nada en la base.
+            $iniciales = $this->idsDeContenidoDelRequest($request);
+            if ($iniciales !== []) {
+                $this->sincronizarItems($playlist, $iniciales);
+            }
+
+            // El destino real después de crear es el listado, no un "builder" a
+            // pantalla completa: ese diseño se abandonó en algún momento (la
+            // plantilla @SPUI/playlists/builder.html.twig nunca llegó a
+            // existir; esta ruta reventaba con un "template not found" cada
+            // vez que se creaba una playlist).
             if ($request->isXmlHttpRequest()) {
                 return $this->json([
                     'success'  => true,
                     'message'  => 'Playlist "' . $nombre . '" creada.',
-                    'redirect' => $this->generateUrl('spui_cms_playlists_builder', ['id' => $playlist->getId()]),
+                    'redirect' => $this->generateUrl('spui_cms_playlists_index'),
                 ]);
             }
 
             $this->addFlash('success', 'Playlist "' . $nombre . '" creada.');
-            return $this->redirectToRoute('spui_cms_playlists_builder', ['id' => $playlist->getId()]);
+            return $this->redirectToRoute('spui_cms_playlists_index');
         }
 
         if ($request->isXmlHttpRequest()) {
@@ -102,6 +120,8 @@ class PlaylistCmsController extends AbstractController
         if (!$playlist) { throw $this->createNotFoundException(); }
 
         if ($request->isMethod('POST')) {
+            if ($r = $this->denegarSiCsrfInvalido($request)) { return $r; }
+
             $nombre = trim($request->request->get('nombre', ''));
             if (!$nombre) {
                 $error = 'El nombre es requerido.';
@@ -219,6 +239,46 @@ class PlaylistCmsController extends AbstractController
     }
 
     /**
+     * Catálogo de contenidos que se pueden agregar a una playlist.
+     *
+     * Sólo los publicados: un contenido en borrador no puede reproducirse, así
+     * que ofrecerlo en el selector induciría al error.
+     *
+     * @return list<\SPUI\Entity\Contenido>
+     */
+    private function contenidosPublicados(): array
+    {
+        return $this->contenidoRepo->findBy(
+            ['estado' => EstadoContenido::Publicado],
+            ['titulo' => 'ASC'],
+        );
+    }
+
+    /**
+     * Lista de ítems para el modal, en ALTA (todavía no hay playlist).
+     *
+     * Existe como ruta propia porque un PlaylistItem no puede existir sin su
+     * playlist (playlist_id es NOT NULL): durante el alta la lista vive sólo
+     * en el navegador y se persiste recién con el Guardar del modal principal.
+     */
+    #[Route('/items/nueva', name: 'spui_cms_playlists_items_nueva', methods: ['GET'])]
+    public function itemsNueva(Request $request): Response
+    {
+        $html = $this->renderView('@SPUI/playlists/_items.html.twig', [
+            'playlist'    => null,
+            'items'       => [],
+            'disponibles' => $this->contenidosPublicados(),
+            'readonly'    => false,
+        ]);
+
+        if ($request->isXmlHttpRequest()) {
+            return $this->json(['title' => 'Ítems de la playlist', 'html' => $html]);
+        }
+
+        return $this->redirectToRoute('spui_cms_playlists_index');
+    }
+
+    /**
      * Gestión de ítems de la playlist (modal de segundo nivel).
      *
      * Con ?ro=1 se renderiza en sólo lectura: es la vista que se abre desde el
@@ -230,17 +290,15 @@ class PlaylistCmsController extends AbstractController
         $playlist = $this->repo->find($id);
         if (!$playlist) { throw $this->createNotFoundException(); }
 
-        // Sólo los publicados: un contenido en borrador no puede reproducirse,
-        // así que ofrecerlo en el selector induciría al error.
-        $disponibles = $this->contenidoRepo->findBy(
-            ['estado' => \SPUI\Enum\EstadoContenido::Publicado],
-            ['titulo' => 'ASC'],
-        );
         $enPlaylist  = array_map(fn($item) => $item->getContenido()->getId(), $playlist->getItems()->toArray());
-        $disponibles = array_values(array_filter($disponibles, fn($c) => !in_array($c->getId(), $enPlaylist, true)));
+        $disponibles = array_values(array_filter(
+            $this->contenidosPublicados(),
+            fn($c) => !in_array($c->getId(), $enPlaylist, true),
+        ));
 
         $html = $this->renderView('@SPUI/playlists/_items.html.twig', [
             'playlist'    => $playlist,
+            'items'       => $playlist->getItems(),
             'disponibles' => $disponibles,
             'readonly'    => $request->query->getBoolean('ro'),
         ]);
@@ -252,44 +310,19 @@ class PlaylistCmsController extends AbstractController
         return $this->redirectToRoute('spui_cms_playlists_index');
     }
 
-    #[Route('/{id}/items/agregar-form', name: 'spui_cms_playlists_items_agregar_form', methods: ['GET'], requirements: ['id' => '\d+'])]
-    public function agregarItemForm(int $id): Response
-    {
-        $playlist    = $this->repo->find($id);
-        if (!$playlist) { throw $this->createNotFoundException(); }
-
-        $disponibles = $this->contenidoRepo->findBy(['estado' => \SPUI\Enum\EstadoContenido::Publicado], ['titulo' => 'ASC']);
-        $enPlaylist  = array_map(fn($item) => $item->getContenido()->getId(), $playlist->getItems()->toArray());
-        $disponibles = array_values(array_filter($disponibles, fn($c) => !in_array($c->getId(), $enPlaylist, true)));
-
-        return $this->json([
-            'title' => 'Agregar contenido',
-            'html'  => $this->renderView('@SPUI/playlists/_agregar_form.html.twig', [
-                'playlist'    => $playlist,
-                'disponibles' => $disponibles,
-            ]),
-        ]);
-    }
-
-    #[Route('/{id}', name: 'spui_cms_playlists_builder', methods: ['GET'], requirements: ['id' => '\d+'])]
-    public function builder(int $id): Response
+    /**
+     * Guarda de una sola vez la lista de ítems tal como quedó en el modal.
+     *
+     * Reemplaza a los tres endpoints que había antes (agregar / quitar /
+     * reorder), que persistían cada acción en el momento: por eso la lista se
+     * guardaba sola y no había forma de cancelar. Ahora el navegador acumula
+     * los cambios y los manda todos juntos cuando el operador aprieta Guardar.
+     */
+    #[Route('/{id}/items/guardar', name: 'spui_cms_playlists_items_guardar', methods: ['POST'], requirements: ['id' => '\d+'])]
+    public function guardarItems(int $id, Request $request): Response
     {
         $playlist = $this->repo->find($id);
         if (!$playlist) { throw $this->createNotFoundException(); }
-
-        return $this->render('@SPUI/playlists/builder.html.twig', [
-            'playlist' => $playlist,
-        ]);
-    }
-
-    #[Route('/{id}/items/agregar', name: 'spui_cms_playlists_items_agregar', methods: ['POST'], requirements: ['id' => '\d+'])]
-    public function agregarItem(int $id, Request $request): Response
-    {
-        $playlist    = $this->repo->find($id);
-        $contenidoId = (int) $request->request->get('contenido_id');
-        $contenido   = $this->contenidoRepo->find($contenidoId);
-
-        if (!$playlist || !$contenido) { throw $this->createNotFoundException(); }
         if ($r = $this->denegarSiCsrfInvalido($request)) { return $r; }
 
         $reproductores = $this->alcance->dePlaylist($playlist);
@@ -297,104 +330,18 @@ class PlaylistCmsController extends AbstractController
             return $r;
         }
 
-        // MAX(orden)+1 y no count()+1: con huecos en la numeración (por ejemplo
-        // tras quitar un ítem del medio) contar daría un orden ya ocupado y
-        // reventaría contra el UNIQUE (playlist_id, orden).
-        $siguiente = 1;
-        foreach ($playlist->getItems() as $existente) {
-            $siguiente = max($siguiente, $existente->getOrden() + 1);
-        }
-
-        $item = new PlaylistItem();
-        $item->setPlaylist($playlist);
-        $item->setContenido($contenido);
-        $item->setOrden($siguiente);
-
-        $this->em()->persist($item);
-        $this->em()->flush();
+        $this->sincronizarItems($playlist, $this->idsDeContenidoDelRequest($request));
         $this->comandoPublisher->pedirSyncAhora($reproductores, 'playlist');
 
-        $msg = '"' . $contenido->getTitulo() . '" agregado a la playlist.';
+        $total = $playlist->getItems()->count();
+        $msg   = $total === 1 ? '1 ítem guardado.' : $total . ' ítems guardados.';
+
         if ($request->isXmlHttpRequest()) {
             return $this->json(['success' => true, 'message' => $msg]);
         }
+
         $this->addFlash('success', $msg);
         return $this->redirectToRoute('spui_cms_playlists_index');
-    }
-
-    #[Route('/{id}/items/{itemId}/quitar', name: 'spui_cms_playlists_items_quitar', methods: ['POST'], requirements: ['id' => '\d+', 'itemId' => '\d+'])]
-    public function quitarItem(int $id, int $itemId, Request $request): Response
-    {
-        $playlist = $this->repo->find($id);
-        $item     = $this->itemRepo->find($itemId);
-
-        if (!$playlist || !$item || $item->getPlaylist()->getId() !== $id) {
-            throw $this->createNotFoundException();
-        }
-        if ($r = $this->denegarSiCsrfInvalido($request)) { return $r; }
-
-        $reproductores = $this->alcance->dePlaylist($playlist);
-        if ($r = $this->bloquearSiOffline($reproductores, $request, 'spui_cms_playlists_index')) {
-            return $r;
-        }
-
-        $titulo = $item->getContenido()->getTitulo();
-
-        $em = $this->em();
-        $em->remove($item);
-        $em->flush();
-
-        $this->renumerarItems($playlist);
-        $this->comandoPublisher->pedirSyncAhora($reproductores, 'playlist');
-
-        $msg = '"' . $titulo . '" quitado de la playlist.';
-        if ($request->isXmlHttpRequest()) {
-            return $this->json(['success' => true, 'message' => $msg]);
-        }
-        $this->addFlash('success', $msg);
-        return $this->redirectToRoute('spui_cms_playlists_index');
-    }
-
-    #[Route('/{id}/items/reorder', name: 'spui_cms_playlists_items_reorder', methods: ['POST'], requirements: ['id' => '\d+'])]
-    public function reorderItems(int $id, Request $request): JsonResponse
-    {
-        $playlist = $this->repo->find($id);
-        if (!$playlist) { return $this->json(['error' => 'Not found'], 404); }
-
-        $reproductores = $this->alcance->dePlaylist($playlist);
-        if ($motivo = $this->alcance->bloqueoPara($reproductores)) {
-            return $this->json(['success' => false, 'message' => $motivo, 'type' => 'warning'], 409);
-        }
-
-        $orden = $request->toArray()['orden'] ?? [];
-        $em    = $this->em();
-
-        // Dos pasadas dentro de una transacción. Asignar las posiciones finales
-        // de una sola vez choca contra el UNIQUE (playlist_id, orden): InnoDB lo
-        // valida fila por fila, así que intercambiar dos ítems produce una
-        // colisión transitoria aunque el estado final sea válido. Corriéndolos
-        // primero a un rango libre, ninguna posición intermedia se pisa.
-        $em->wrapInTransaction(function () use ($orden, $id, $em) {
-            foreach ($orden as $posicion => $itemId) {
-                $item = $this->itemRepo->find((int) $itemId);
-                if ($item && $item->getPlaylist()->getId() === $id) {
-                    $item->setOrden($posicion + 1001);
-                }
-            }
-            $em->flush();
-
-            foreach ($orden as $posicion => $itemId) {
-                $item = $this->itemRepo->find((int) $itemId);
-                if ($item && $item->getPlaylist()->getId() === $id) {
-                    $item->setOrden($posicion + 1);
-                }
-            }
-            $em->flush();
-        });
-
-        $this->comandoPublisher->pedirSyncAhora($reproductores, 'playlist');
-
-        return $this->json(['ok' => true]);
     }
 
     private function renumerarItems(Playlist $playlist): void
@@ -404,5 +351,85 @@ class PlaylistCmsController extends AbstractController
             $item->setOrden($i + 1);
         }
         $em->flush();
+    }
+
+    /**
+     * Deja los ítems de la playlist exactamente como los mandó el navegador.
+     *
+     * Un solo endpoint en lugar de los tres que había antes (agregar / quitar /
+     * reorder): esos persistían cada acción por separado en el momento, y por
+     * eso la lista se guardaba sola sin que el operador confirmara nada. Acá el
+     * navegador manda la lista completa y el servidor la reconcilia — alta de
+     * los nuevos, baja de los que ya no están, reasignación del orden — en una
+     * sola transacción y con un solo aviso al reproductor.
+     *
+     * @param list<int> $contenidoIds Ids de contenido, en el orden final deseado.
+     */
+    private function sincronizarItems(Playlist $playlist, array $contenidoIds): void
+    {
+        $em = $this->em();
+
+        $em->wrapInTransaction(function () use ($em, $playlist, $contenidoIds) {
+            // Primer paso: correr TODO a un rango libre. El UNIQUE
+            // (playlist_id, orden) se valida fila por fila, así que sin esto
+            // cualquier intercambio de posiciones choca en un estado
+            // intermedio aunque el resultado final sea válido.
+            $offset = 1000;
+            foreach ($playlist->getItems() as $item) {
+                $item->setOrden($offset++);
+            }
+            $em->flush();
+
+            /** @var array<int, \SPUI\Entity\PlaylistItem> $porContenido */
+            $porContenido = [];
+            foreach ($playlist->getItems() as $item) {
+                $porContenido[$item->getContenido()->getId()] = $item;
+            }
+
+            // Los que el navegador ya no manda se van.
+            foreach ($porContenido as $contenidoId => $item) {
+                if (!in_array($contenidoId, $contenidoIds, true)) {
+                    $playlist->getItems()->removeElement($item);
+                    $em->remove($item);
+                }
+            }
+
+            // Los que siguen se reubican; los nuevos se crean.
+            $orden = 1;
+            foreach ($contenidoIds as $contenidoId) {
+                $item = $porContenido[$contenidoId] ?? null;
+
+                if ($item === null) {
+                    $contenido = $this->contenidoRepo->find($contenidoId);
+                    // Un id que no existe o que dejó de estar publicado se
+                    // ignora en silencio: puede haber cambiado entre que se
+                    // dibujó la lista y se apretó Guardar, y abortar todo por
+                    // eso le haría perder al operador el resto del trabajo.
+                    if ($contenido === null || $contenido->getEstado() !== EstadoContenido::Publicado) {
+                        continue;
+                    }
+                    $item = new PlaylistItem();
+                    $item->setPlaylist($playlist);
+                    $item->setContenido($contenido);
+                    $em->persist($item);
+                }
+
+                $item->setOrden($orden++);
+            }
+
+            $em->flush();
+        });
+    }
+
+    /**
+     * Ids de contenido que llegan en el POST de guardado de ítems.
+     *
+     * @return list<int>
+     */
+    private function idsDeContenidoDelRequest(Request $request): array
+    {
+        $crudos = $request->request->all('contenido_ids');
+
+        return array_values(array_filter(array_map('intval', $crudos)));
     }
 }

@@ -402,6 +402,13 @@ class ContenidoCmsController extends AbstractController
         if (!$c) { throw $this->createNotFoundException(); }
 
         if ($request->isMethod('POST')) {
+            if ($r = $this->denegarSiCsrfInvalido($request)) { return $r; }
+
+            $reproductores = $this->alcance->deContenido($c);
+            if ($r = $this->bloquearSiOffline($reproductores, $request, 'spui_cms_contenidos_index')) {
+                return $r;
+            }
+
             // ANTES que cualquier campo: si el body se descartó por tamaño,
             // 'titulo' llega vacío igual que si no se hubiera tipeado nada —
             // sin este chequeo el error decía "El título es requerido" con
@@ -456,7 +463,7 @@ class ContenidoCmsController extends AbstractController
             }
 
             $this->em()->flush();
-            $this->comandoPublisher->pedirSyncAhora($this->alcance->deContenido($c), 'contenido');
+            $this->comandoPublisher->pedirSyncAhora($reproductores, 'contenido');
             $msg = '"' . $c->getTitulo() . '" actualizado.';
             if ($request->isXmlHttpRequest()) {
                 return $this->json(['success' => true, 'message' => $msg]);
@@ -674,6 +681,15 @@ class ContenidoCmsController extends AbstractController
             if ($request->isXmlHttpRequest()) { return $this->json(['success' => false, 'message' => $msg], 422); }
             $this->addFlash('error', $msg);
             return $this->redirectToRoute('spui_cms_contenidos_index');
+        }
+
+        // En la práctica un contenido que llega hasta acá no está en ninguna
+        // playlist (el chequeo de arriba ya lo rechazó), así que esto no
+        // debería bloquear nunca hoy. Se deja explícito igual, no implícito en
+        // la lógica de arriba: si el día de mañana cambia qué impide borrar,
+        // este chequeo sigue protegiendo sin que nadie tenga que acordarse de él.
+        if ($r = $this->bloquearSiOffline($this->alcance->deContenido($c), $request, 'spui_cms_contenidos_index')) {
+            return $r;
         }
 
         $titulo = $c->getTitulo();

@@ -1,5 +1,7 @@
 <form method="post" action="{{ path('spui_cms_playlists_nueva') }}" data-spui-ajax="1" novalidate>
 
+    <input type="hidden" name="_token" value="{{ csrf_token('spui_action') }}">
+
     {# Switch estándar del sistema. Playlists no usa FormType, así que el id va
        literal y el span _lbl se arma a mano; switch-toggle.js lo engancha por
        data-spui-switch. Arranca en Activa: es lo que hacía el alta antes, que
@@ -29,9 +31,21 @@
                   placeholder="Descripción breve de la playlist…"></textarea>
     </div>
 
-    <div class="d-flex justify-content-end gap-2 pt-3 border-top">
-        <button type="button" class="unraf-btn spui-btn-back" data-spui-close>Cancelar</button>
-        <button type="submit" class="unraf-btn spui-btn-crear">Guardar</button>
+    {# Los ítems elegidos acá no se persisten hasta el Guardar de este form: un
+       PlaylistItem necesita una playlist ya existente. items.js los deja como
+       inputs hidden dentro de este mismo <form>, así viajan solos en el submit. #}
+    <div class="d-flex justify-content-between align-items-center gap-2 pt-3 border-top flex-wrap">
+        <button type="button" class="unraf-btn spui-btn-items unraf-btn-sm"
+                data-spui-form2="{{ path('spui_cms_playlists_items_nueva') }}"
+                data-spui-title="Ítems de la playlist"
+                data-spui-size="modal-lg">
+            <img src="{{ asset('unraf-ui/icons/playlist.svg') }}" class="spui-action-icon" alt="">
+            Ver ítems <span class="text-muted ms-1" data-spui-items-resumen>Sin ítems</span>
+        </button>
+        <div class="d-flex gap-2 ms-auto">
+            <button type="button" class="unraf-btn spui-btn-back" data-spui-close>Cancelar</button>
+            <button type="submit" class="unraf-btn spui-btn-crear">Guardar</button>
+        </div>
     </div>
 
 </form>

@@ -77,11 +77,14 @@
                                     {% if motivo %}{{ bloqueo.attrs(motivo) }}{% else %}title="Editar"{% endif %}>
                                 <img src="{{ asset('unraf-ui/icons/pencil.svg') }}" class="spui-action-icon" alt=""> Editar
                             </button>
-                            <a href="{{ path('spui_cms_energia_grilla', {id: p.id}) }}"
-                               class="unraf-btn spui-btn-energia unraf-btn-sm"
-                               title="Horarios de encendido, apagado y brillo">
+                            <button type="button"
+                                    class="unraf-btn spui-btn-energia unraf-btn-sm {{ bloqueo.clase(motivo) }}"
+                                    data-spui-form="{{ path('spui_cms_energia_grilla', {id: p.id}) }}"
+                                    data-spui-title="Energía — {{ p.nombre }}"
+                                    data-spui-size="modal-lg"
+                                    {% if motivo %}{{ bloqueo.attrs(motivo) }}{% else %}title="Horarios de encendido, apagado y brillo"{% endif %}>
                                 <img src="{{ asset('unraf-ui/icons/plug.svg') }}" class="spui-action-icon" alt=""> Energía
-                            </a>
+                            </button>
                             <button type="button"
                                     class="unraf-btn unraf-btn-sm {{ p.estado.value == 'activo' ? 'spui-btn-desactivar' : 'spui-btn-activar' }} {{ bloqueo.clase(motivo) }}"
                                     data-spui-action="{{ path('spui_cms_pantallas_toggle_estado', {id: p.id}) }}"
@@ -95,12 +98,12 @@
                                 {{ p.estado.value == 'activo' ? 'Desactivar' : 'Activar' }}
                             </button>
                             <button type="button"
-                                    class="unraf-btn spui-btn-eliminar unraf-btn-sm"
+                                    class="unraf-btn spui-btn-eliminar unraf-btn-sm {{ bloqueo.clase(motivo) }}"
                                     data-spui-action="{{ path('spui_cms_pantallas_eliminar', {id: p.id}) }}"
                                     data-spui-title="Eliminar pantalla"
                                     data-spui-message="¿Eliminar «{{ p.nombre }}»? Esta acción no se puede deshacer."
                                     data-spui-variant="eliminar"
-                                    title="Eliminar">
+                                    {% if motivo %}{{ bloqueo.attrs(motivo) }}{% else %}title="Eliminar"{% endif %}>
                                 <img src="{{ asset('unraf-ui/icons/trash.svg') }}" class="spui-action-icon" alt=""> Eliminar
                             </button>
                         </div>

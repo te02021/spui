@@ -50,7 +50,8 @@ final class ComandoPublisherService
      *
      * @param Reproductor[] $reproductores Los que resolvió AlcanceReproductorService.
      * @param string        $motivo        Sólo para el log — qué disparó el aviso
-     *                                     ('programacion', 'playlist', 'contenido', 'pantalla').
+     *                                     ('programacion', 'playlist', 'contenido', 'pantalla',
+     *                                     'cronograma', 'programacion_energetica').
      */
     public function pedirSyncAhora(array $reproductores, string $motivo): void
     {

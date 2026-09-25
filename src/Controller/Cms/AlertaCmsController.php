@@ -118,7 +118,8 @@ class AlertaCmsController extends AbstractController
     public function index(): Response
     {
         return $this->render('@SPUI/alertas/index.html.twig', [
-            'alertas' => $this->repo->findBy([], ['activa' => 'DESC', 'prioridad' => 'DESC', 'creadaEn' => 'DESC']),
+            'alertas'     => $this->repo->findBy([], ['activa' => 'DESC', 'prioridad' => 'DESC', 'creadaEn' => 'DESC']),
+            'ids_offline' => $this->alcance->idsOfflineDeUnaVez(),
         ]);
     }
 

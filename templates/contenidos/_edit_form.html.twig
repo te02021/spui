@@ -13,6 +13,8 @@
       enctype="multipart/form-data"
       novalidate>
 
+    <input type="hidden" name="_token" value="{{ csrf_token('spui_action') }}">
+
     {% if error %}
         <div class="alert alert-danger mb-3">{{ error }}</div>
     {% endif %}

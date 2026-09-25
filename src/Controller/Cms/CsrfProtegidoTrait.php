@@ -19,7 +19,9 @@ use Symfony\Component\HttpFoundation\Response;
  * El JS (modal.js) manda el token en el campo '_token' de cada POST que
  * dispara desde data-spui-action / data-spui-action2 / data-spui-action2-now /
  * data-spui-post2, leído una sola vez de <meta name="spui-csrf-token"> en
- * base.html.twig.
+ * base.html.twig. Un POST con body JSON (Content-Type: application/json) no
+ * tiene dónde poner un campo de formulario, así que ahí el token viaja en el
+ * header X-Csrf-Token en su lugar — mismo meta tag, mismo valor.
  *
  * Un solo intent ('spui_action') para todas: no hace falta uno distinto por
  * endpoint — el token igual queda atado a la sesión del usuario autenticado y
@@ -33,7 +35,9 @@ trait CsrfProtegidoTrait
 {
     private function denegarSiCsrfInvalido(Request $request): ?Response
     {
-        if ($this->isCsrfTokenValid('spui_action', $request->request->get('_token'))) {
+        $token = $request->request->get('_token') ?? $request->headers->get('X-Csrf-Token');
+
+        if ($this->isCsrfTokenValid('spui_action', $token)) {
             return null;
         }
 

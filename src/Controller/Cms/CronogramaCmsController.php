@@ -11,6 +11,8 @@ use SPUI\Enum\TipoContenido;
 use SPUI\Form\CronogramaItemType;
 use SPUI\Repository\ContenidoRepository;
 use SPUI\Repository\CronogramaItemRepository;
+use SPUI\Service\AlcanceReproductorService;
+use SPUI\Service\ComandoPublisherService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -19,12 +21,15 @@ use Symfony\Component\Routing\Attribute\Route;
 #[Route('/spui/contenidos/{id}/cronograma', requirements: ['id' => '\d+'])]
 class CronogramaCmsController extends AbstractController
 {
+    use BloqueoOfflineTrait;
     use CsrfProtegidoTrait;
 
     public function __construct(
         private readonly ContenidoRepository $contenidoRepo,
         private readonly CronogramaItemRepository $itemRepo,
         private readonly ManagerRegistry $doctrine,
+        private readonly AlcanceReproductorService $alcance,
+        private readonly ComandoPublisherService $comandoPublisher,
     ) {}
 
     private function em()
@@ -69,6 +74,8 @@ class CronogramaCmsController extends AbstractController
             return $this->redirect($builderUrl);
         }
 
+        if ($r = $this->denegarSiCsrfInvalido($request)) { return $r; }
+
         $nombre     = trim($request->request->get('nombre', ''));
         $aula       = trim($request->request->get('aula', '')) ?: null;
         $horaInicio = $request->request->get('hora_inicio', '');
@@ -102,6 +109,11 @@ class CronogramaCmsController extends AbstractController
             return $this->redirect($builderUrl);
         }
 
+        $reproductores = $this->alcance->deContenido($contenido);
+        if ($r = $this->bloquearSiOffline($reproductores, $request, 'spui_cms_cronograma_builder', ['id' => $id])) {
+            return $r;
+        }
+
         $mask = 0;
         foreach ($dias as $bit) { $mask |= (1 << (int) $bit); }
         if ($mask === 0) { $mask = 127; }
@@ -118,6 +130,7 @@ class CronogramaCmsController extends AbstractController
 
         $this->em()->persist($item);
         $this->em()->flush();
+        $this->comandoPublisher->pedirSyncAhora($reproductores, 'cronograma');
 
         $msg = '"' . $nombre . '" agregado al cronograma.';
         if ($request->isXmlHttpRequest()) {
@@ -160,6 +173,11 @@ class CronogramaCmsController extends AbstractController
                 return $this->redirectToRoute('spui_cms_cronograma_builder', ['id' => $id]);
             }
 
+            $reproductores = $this->alcance->deContenido($contenido);
+            if ($r = $this->bloquearSiOffline($reproductores, $request, 'spui_cms_cronograma_builder', ['id' => $id])) {
+                return $r;
+            }
+
             $bits = $form->get('diasSemana')->getData() ?? [];
             $mask = 0;
             foreach ($bits as $bit) {
@@ -168,6 +186,7 @@ class CronogramaCmsController extends AbstractController
             $item->setDiasSemana($mask ?: 127);
 
             $this->em()->flush();
+            $this->comandoPublisher->pedirSyncAhora($reproductores, 'cronograma');
 
             $builderUrl = $this->generateUrl('spui_cms_cronograma_builder', ['id' => $id]);
             if ($request->isXmlHttpRequest()) {
@@ -202,9 +221,15 @@ class CronogramaCmsController extends AbstractController
         }
         if ($r = $this->denegarSiCsrfInvalido($request)) { return $r; }
 
+        $reproductores = $this->alcance->deContenido($contenido);
+        if ($r = $this->bloquearSiOffline($reproductores, $request, 'spui_cms_cronograma_builder', ['id' => $id])) {
+            return $r;
+        }
+
         $nombre = $item->getNombre();
         $this->em()->remove($item);
         $this->em()->flush();
+        $this->comandoPublisher->pedirSyncAhora($reproductores, 'cronograma');
 
         $builderUrl = $this->generateUrl('spui_cms_cronograma_builder', ['id' => $id]);
         if ($request->isXmlHttpRequest()) {

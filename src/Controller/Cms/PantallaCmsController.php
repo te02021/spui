@@ -184,6 +184,14 @@ class PantallaCmsController extends AbstractController
         }
         if ($r = $this->denegarSiCsrfInvalido($request)) { return $r; }
 
+        // Antes que la validación de reproductor asignado: si el equipo está
+        // caído, el operador tiene que ver el mismo motivo que en el resto de
+        // las acciones de esa pantalla, y no un mensaje distinto que lo mande
+        // a desasignar algo que tampoco va a poder tocar hasta que vuelva.
+        if ($r = $this->bloquearSiOffline($this->alcance->dePantalla($pantalla), $request, 'spui_cms_pantallas_index')) {
+            return $r;
+        }
+
         if ($pantalla->getReproductor() !== null) {
             $msg = 'No se puede eliminar: tiene un reproductor asociado ("' . $pantalla->getReproductor()->getHostname() . '"). Desasignálo primero desde la edición de la pantalla.';
             if ($request->isXmlHttpRequest()) {

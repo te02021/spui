@@ -90,10 +90,10 @@
                                 <img src="{{ asset('unraf-ui/icons/eye.svg') }}" class="spui-action-icon" alt=""> Ver
                             </button>
 
-                            <button type="button" class="unraf-btn spui-btn-editar unraf-btn-sm"
+                            <button type="button" class="unraf-btn spui-btn-editar unraf-btn-sm {{ bloqueo.clase(motivo) }}"
                                     data-spui-form="{{ path('spui_cms_contenidos_editar', {id: c.id}) }}"
                                     data-spui-title="Editar: {{ c.titulo }}"
-                                    title="Editar">
+                                    {% if motivo %}{{ bloqueo.attrs(motivo) }}{% else %}title="Editar"{% endif %}>
                                 <img src="{{ asset('unraf-ui/icons/pencil.svg') }}" class="spui-action-icon" alt=""> Editar
                             </button>
 
@@ -141,12 +141,12 @@
                                 </button>
                             {% endif %}
 
-                            <button type="button" class="unraf-btn spui-btn-eliminar unraf-btn-sm"
+                            <button type="button" class="unraf-btn spui-btn-eliminar unraf-btn-sm {{ bloqueo.clase(motivo) }}"
                                     data-spui-action="{{ path('spui_cms_contenidos_eliminar', {id: c.id}) }}"
                                     data-spui-title="Eliminar contenido"
                                     data-spui-message="¿Eliminar «{{ c.titulo }}»? Esta acción no se puede deshacer."
                                     data-spui-variant="eliminar"
-                                    title="Eliminar">
+                                    {% if motivo %}{{ bloqueo.attrs(motivo) }}{% else %}title="Eliminar"{% endif %}>
                                 <img src="{{ asset('unraf-ui/icons/trash.svg') }}" class="spui-action-icon" alt=""> Eliminar
                             </button>
 
