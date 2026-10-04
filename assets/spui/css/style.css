@@ -12,6 +12,60 @@
     display: none !important;
 }
 
+/* ----- Errores de campo -----
+   Un error que es de un campo (requerido, formato, horas al revés, archivo
+   muy pesado) va DEBAJO de ese campo, llamativo, y marcando el input — nunca
+   como flash. Los flash quedan para lo de sistema y negocio. Lo usan los
+   errores que manda el servidor al guardar y los que detecta en vivo
+   validacion-vivo.js, con la misma clase para que se vean idénticos. */
+.spui-campo-error {
+    display: flex;
+    align-items: flex-start;
+    gap: .4rem;
+    margin: .4rem 0 0;
+    padding: .4rem .65rem;
+    border-left: 4px solid #d6102b;
+    border-radius: .3rem;
+    background: #fde8eb;
+    color: #b00d23;
+    font-size: .85rem;
+    font-weight: 600;
+    line-height: 1.35;
+    animation: spui-campo-error-aparece .3s ease-out;
+}
+.spui-campo-error::before {
+    content: "!";
+    flex: 0 0 1.15rem;
+    height: 1.15rem;
+    border-radius: 50%;
+    background: #d6102b;
+    color: #fff;
+    font-size: .75rem;
+    font-weight: 700;
+    line-height: 1.15rem;
+    text-align: center;
+}
+/* El input con error: borde rojo y halo, para ver de un vistazo cuál es.
+   is-invalid lo pone solo el tema bootstrap_5 de Symfony en los FormType; en
+   los formularios manuales lo agregan la plantilla o validacion-vivo.js. */
+.is-invalid,
+input.is-invalid,
+select.is-invalid,
+textarea.is-invalid,
+.unraf-form-control.is-invalid {
+    border-color: #d6102b !important;
+    box-shadow: 0 0 0 .2rem rgba(214, 16, 43, .18) !important;
+}
+@keyframes spui-campo-error-aparece {
+    0%   { opacity: 0; transform: translateX(-4px); }
+    40%  { opacity: 1; transform: translateX(3px); }
+    70%  { transform: translateX(-2px); }
+    100% { transform: translateX(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+    .spui-campo-error { animation: none; }
+}
+
 /* ----- Badges tipo de contenido (unraf-ui override: más padding y bordes) ----- */
 [class^="unraf-badge-"], [class*=" unraf-badge-"] {
     padding: .28rem .65rem !important;

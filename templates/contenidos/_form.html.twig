@@ -1,10 +1,9 @@
 {{ form_start(form, {'attr': {'data-spui-ajax': '1', 'novalidate': 'novalidate', 'enctype': 'multipart/form-data'}}) }}
 
 {# Archivo, texto y los datos del código QR no son campos del FormType, así que
-   sus errores llegan por acá y no por form.vars.errors. #}
-{% if error|default(null) %}
-    <div class="alert alert-danger mb-3">{{ error }}</div>
-{% endif %}
+   sus errores llegan en `errores` (name del campo → mensaje) y se muestran
+   debajo de cada uno, no por form.vars.errors. #}
+{% set err = errores|default({}) %}
 
 {# Errores del form raíz (típicamente el CSRF vencido). Sin esto el modal se
    recargaba en blanco de errores y el guardado parecía no responder. #}
@@ -17,14 +16,14 @@
         {{ form_label(form.titulo) }}
         {{ form_widget(form.titulo) }}
         {% for e in form.titulo.vars.errors %}
-            <p class="text-danger small mt-1">{{ e.message }}</p>
+            <p class="spui-campo-error">{{ e.message }}</p>
         {% endfor %}
     </div>
     <div class="col-12 col-sm-auto" style="min-width:160px">
         {{ form_label(form.tipo) }}
         {{ form_widget(form.tipo) }}
         {% for e in form.tipo.vars.errors %}
-            <p class="text-danger small mt-1">{{ e.message }}</p>
+            <p class="spui-campo-error">{{ e.message }}</p>
         {% endfor %}
     </div>
 </div>
@@ -33,23 +32,28 @@
     {{ form_label(form.duracionSegundos) }}
     <div class="spui-input-with-addon">
         {{ form_widget(form.duracionSegundos) }}
-        {% for e in form.duracionSegundos.vars.errors %}
-            <p class="text-danger small mt-1">{{ e.message }}</p>
-        {% endfor %}
         <span class="spui-input-addon">seg <small class="text-muted">(vacío = permanente)</small></span>
     </div>
-    <small class="text-muted d-block mt-1">Puede sobreescribirse por ítem en la playlist.</small>
+    {% for e in form.duracionSegundos.vars.errors %}
+        <p class="spui-campo-error">{{ e.message }}</p>
+    {% endfor %}
+    <small class="text-muted d-block mt-1">Dura lo mismo en todas las playlists donde esté.</small>
 </div>
 
-<div id="campoArchivo" class="mb-3" style="display:none">
-    <label class="unraf-form-label">Archivo <span class="text-danger">*</span></label>
-    <input type="file" name="archivo" id="archivoInput" class="form-control" accept="image/*,video/*">
+{# data-spui-campo: los errores del archivo (del servidor y de validacion-vivo.js,
+   que avisa apenas se elige uno demasiado pesado) van al final de este bloque. #}
+<div id="campoArchivo" class="mb-3" style="display:none" data-spui-campo>
+    <label class="unraf-form-label" for="archivoInput">Archivo <span class="text-danger">*</span></label>
+    <input type="file" name="archivo" id="archivoInput" class="form-control{{ err.archivo is defined ? ' is-invalid' }}" accept="image/*,video/*"
+           {% if max_bytes_archivo is defined %}data-spui-max-bytes="{{ max_bytes_archivo }}"{% endif %}>
     <small class="text-muted">Imágenes: JPG, PNG, GIF, WebP. Video: MP4, WebM.</small>
+    {% if err.archivo is defined %}<p class="spui-campo-error">{{ err.archivo }}</p>{% endif %}
 </div>
 
 <div id="campoTexto" class="mb-3" style="display:none">
     <label class="unraf-form-label" id="labelTexto">Texto <span class="text-danger">*</span></label>
-    <textarea name="contenido_texto" id="textareaTexto" class="unraf-form-control" rows="4" placeholder="Ingresá el texto a mostrar…">{{ contenido_texto|default('') }}</textarea>
+    <textarea name="contenido_texto" id="textareaTexto" class="unraf-form-control{{ err.contenido_texto is defined ? ' is-invalid' }}" rows="4" placeholder="Ingresá el texto a mostrar…">{{ contenido_texto|default('') }}</textarea>
+    {% if err.contenido_texto is defined %}<p class="spui-campo-error">{{ err.contenido_texto }}</p>{% endif %}
 </div>
 
 <div id="campoCronograma" class="mb-3" style="display:none">
@@ -64,8 +68,9 @@
 <div id="campoQr" style="display:none">
     <div class="mb-3">
         <label class="unraf-form-label" for="qrUrlDestino">URL destino <span class="text-danger">*</span></label>
-        <input type="url" name="qr_url_destino" id="qrUrlDestino" class="unraf-form-control"
+        <input type="url" name="qr_url_destino" id="qrUrlDestino" class="unraf-form-control{{ err.qr_url_destino is defined ? ' is-invalid' }}"
                maxlength="500" placeholder="https://…" value="{{ qr_url_destino|default('') }}">
+        {% if err.qr_url_destino is defined %}<p class="spui-campo-error">{{ err.qr_url_destino }}</p>{% endif %}
         <small class="text-muted d-block mt-1">
             A dónde llega quien escanea. La imagen del QR se genera sola, y se puede cambiar el
             destino después sin reimprimir nada.
@@ -74,8 +79,9 @@
 
     <div class="mb-3">
         <label class="unraf-form-label" for="qrExpiraEn">Expira el <small class="text-muted">(opcional)</small></label>
-        <input type="datetime-local" name="qr_expira_en" id="qrExpiraEn" class="unraf-form-control"
+        <input type="datetime-local" name="qr_expira_en" id="qrExpiraEn" class="unraf-form-control{{ err.qr_expira_en is defined ? ' is-invalid' }}"
                style="max-width:16rem" value="{{ qr_expira_en|default('') }}">
+        {% if err.qr_expira_en is defined %}<p class="spui-campo-error">{{ err.qr_expira_en }}</p>{% endif %}
         <small class="text-muted d-block mt-1">Pasada esa fecha el código deja de redirigir. Vacío = sin vencimiento.</small>
     </div>
 </div>

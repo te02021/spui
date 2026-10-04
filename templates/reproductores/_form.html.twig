@@ -11,14 +11,14 @@
         {{ form_label(form.hostname) }}
         {{ form_widget(form.hostname) }}
         {% for e in form.hostname.vars.errors %}
-            <p class="text-danger small mt-1">{{ e.message }}</p>
+            <p class="spui-campo-error">{{ e.message }}</p>
         {% endfor %}
     </div>
     <div class="col-12 col-sm">
         {{ form_label(form.versionFirmware) }}
         {{ form_widget(form.versionFirmware) }}
         {% for e in form.versionFirmware.vars.errors %}
-            <p class="text-danger small mt-1">{{ e.message }}</p>
+            <p class="spui-campo-error">{{ e.message }}</p>
         {% endfor %}
     </div>
 </div>

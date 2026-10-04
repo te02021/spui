@@ -291,6 +291,8 @@ El bloqueo lo decide el servidor, no sólo el botón: si el equipo se cae entre 
 
 **Requiere JavaScript.** El CMS es una aplicación de panel, no un sitio de contenido; sin JS los formularios no se abren.
 
+**Los errores de un dato aparecen debajo de ese campo**, en rojo y con el campo marcado: un nombre que falta, una URL mal escrita, una hora de apagado anterior a la de encendido, un archivo con formato no admitido. Algunos se avisan **mientras escribís**, antes de guardar: las horas al revés (energía y cronograma) y un archivo más pesado que el máximo, apenas lo elegís (ese ni siquiera se envía). Al empezar a corregir un campo marcado, el aviso se va. Los mensajes flotantes de arriba quedan para lo que no es de un campo: un reproductor desconectado, algo que no se puede eliminar porque está en uso, la sesión vencida.
+
 ---
 
 ## 7. Problemas frecuentes

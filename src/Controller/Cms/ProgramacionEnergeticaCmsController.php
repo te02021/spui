@@ -14,6 +14,7 @@ use SPUI\Repository\ProgramacionEnergeticaRepository;
 use SPUI\Service\AlcanceReproductorService;
 use SPUI\Service\ComandoPublisherService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\Form\FormError;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
@@ -31,6 +32,9 @@ class ProgramacionEnergeticaCmsController extends AbstractController
 {
     use BloqueoOfflineTrait;
     use CsrfProtegidoTrait;
+
+    /** Lo dicen el servidor al guardar y validacion-vivo.js mientras se escribe (_form.html.twig). */
+    public const MSG_APAGADO_POSTERIOR = 'La hora de apagado tiene que ser posterior a la de encendido.';
 
     /** Nombres de los días indexados por su valor ISO (1=Lunes … 7=Domingo). */
     public const DIAS = [
@@ -130,16 +134,15 @@ class ProgramacionEnergeticaCmsController extends AbstractController
 
         $volverUrl = $this->generateUrl('spui_cms_pantallas_index');
 
-        if ($form->isSubmitted() && $form->isValid()) {
-            if ($regla->getHoraApagado() <= $regla->getHoraEncendido()) {
-                $msg = 'La hora de apagado tiene que ser posterior a la de encendido.';
-                if ($request->isXmlHttpRequest()) {
-                    return $this->json(['success' => false, 'message' => $msg, 'type' => 'warning'], 422);
-                }
-                $this->addFlash('warning', $msg);
-                return $this->redirect($volverUrl);
-            }
+        // Error de campo, no flash: va debajo de "Apagado" (ver
+        // feedback de Mateo: los errores de valores van en el campo). El mismo
+        // mensaje lo adelanta validacion-vivo.js mientras se escribe.
+        if ($form->isSubmitted() && $form->isValid()
+            && $regla->getHoraApagado() <= $regla->getHoraEncendido()) {
+            $form->get('horaApagado')->addError(new FormError(self::MSG_APAGADO_POSTERIOR));
+        }
 
+        if ($form->isSubmitted() && $form->isValid()) {
             $reproductores = $this->alcance->dePantalla($pantalla);
             if ($r = $this->bloquearSiOffline($reproductores, $request, 'spui_cms_pantallas_index')) {
                 return $r;

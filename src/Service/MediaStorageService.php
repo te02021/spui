@@ -60,7 +60,7 @@ final class MediaStorageService
     ];
 
     /** Tamaño máximo por archivo (bytes). Los videos institucionales entran holgados. */
-    private const TAMANIO_MAXIMO = 200 * 1024 * 1024;   // 200 MB
+    public const TAMANIO_MAXIMO = 200 * 1024 * 1024;   // 200 MB
 
     public function __construct(
         private readonly S3StorageService $s3,

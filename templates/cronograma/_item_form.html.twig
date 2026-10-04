@@ -13,14 +13,14 @@
         {{ form_label(form.nombre) }}
         {{ form_widget(form.nombre) }}
         {% for e in form.nombre.vars.errors %}
-            <p class="text-danger small mt-1">{{ e.message }}</p>
+            <p class="spui-campo-error">{{ e.message }}</p>
         {% endfor %}
     </div>
     <div class="col-12 col-sm">
         {{ form_label(form.aula) }}
         {{ form_widget(form.aula) }}
         {% for e in form.aula.vars.errors %}
-            <p class="text-danger small mt-1">{{ e.message }}</p>
+            <p class="spui-campo-error">{{ e.message }}</p>
         {% endfor %}
     </div>
 </div>
@@ -30,14 +30,17 @@
         {{ form_label(form.horaInicio) }}
         {{ form_widget(form.horaInicio) }}
         {% for e in form.horaInicio.vars.errors %}
-            <p class="text-danger small mt-1">{{ e.message }}</p>
+            <p class="spui-campo-error">{{ e.message }}</p>
         {% endfor %}
     </div>
     <div class="col-6 spui-hora-field">
         {{ form_label(form.horaFin) }}
-        {{ form_widget(form.horaFin) }}
+        {{ form_widget(form.horaFin, {attr: {
+            'data-spui-validar-posterior': '#' ~ form.horaInicio.vars.id,
+            'data-spui-validar-mensaje': constant('SPUI\\Controller\\Cms\\CronogramaCmsController::MSG_FIN_POSTERIOR'),
+        }}) }}
         {% for e in form.horaFin.vars.errors %}
-            <p class="text-danger small mt-1">{{ e.message }}</p>
+            <p class="spui-campo-error">{{ e.message }}</p>
         {% endfor %}
     </div>
 </div>
@@ -61,7 +64,7 @@
         {{ form_label(form.orden) }}
         {{ form_widget(form.orden) }}
         {% for e in form.orden.vars.errors %}
-            <p class="text-danger small mt-1">{{ e.message }}</p>
+            <p class="spui-campo-error">{{ e.message }}</p>
         {% endfor %}
     </div>
     <div class="col-auto d-flex flex-column pb-1">

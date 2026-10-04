@@ -13,6 +13,7 @@ use SPUI\Service\AlertaPublisherService;
 use SPUI\Service\MediaStorageService;
 use SPUI\Service\UsuarioResolverService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\Form\FormInterface;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -50,6 +51,38 @@ class AlertaCmsController extends AbstractController
     private function em()
     {
         return $this->doctrine->getManager('SPUI');
+    }
+
+    /**
+     * HTML del formulario de alerta (alta si $alerta es null).
+     *
+     * Le pasa siempre el peso máximo real del sonido, para que
+     * validacion-vivo.js avise debajo del campo apenas se elige uno demasiado
+     * pesado, sin mandarlo.
+     */
+    private function vistaFormulario(FormInterface $form, ?AlertaEmergencia $alerta = null, ?string $errorSonido = null): string
+    {
+        $vars = [
+            'form'             => $form,
+            'max_bytes_sonido' => $this->limiteArchivoBytes(self::SONIDO_TAMANIO_MAXIMO),
+            'error_sonido'     => $errorSonido,
+        ];
+        if ($alerta !== null) {
+            $vars += ['alerta' => $alerta, 'modo' => 'edicion'];
+        }
+
+        return $this->renderView('@SPUI/alertas/_form.html.twig', $vars);
+    }
+
+    /** Error del archivo de sonido: el form redibujado con el mensaje debajo del campo. */
+    private function errorSonido(Request $request, FormInterface $form, string $mensaje, ?AlertaEmergencia $alerta = null): Response
+    {
+        if (!$request->isXmlHttpRequest()) {
+            $this->addFlash('error', $mensaje);
+            return $this->redirectToRoute('spui_cms_alertas_index');
+        }
+
+        return $this->json(['success' => false, 'html' => $this->vistaFormulario($form, $alerta, $mensaje)]);
     }
 
     /**
@@ -143,16 +176,11 @@ class AlertaCmsController extends AbstractController
 
         if ($form->isSubmitted() && $form->isValid()) {
             if ($errorSonido = $this->aplicarSonido($alerta, $request)) {
-                // Sin 'html' a propósito: el JS del modal sólo muestra el
-                // flash con 'message' cuando la respuesta NO trae 'html' (si
-                // trae las dos, sólo re-renderiza el form y el mensaje se
-                // pierde en silencio — el archivo es un campo sin mapear al
-                // form, así que no hay dónde mostrar un error inline).
-                if ($request->isXmlHttpRequest()) {
-                    return $this->json(['success' => false, 'message' => $errorSonido, 'type' => 'error'], 422);
-                }
-                $this->addFlash('error', $errorSonido);
-                return $this->redirectToRoute('spui_cms_alertas_index');
+                // Error de campo: se redibuja el form con el mensaje debajo
+                // del sonido (sólo 'html', sin 'message': modal.js ignora el
+                // message cuando hay html). El archivo no es un campo del
+                // FormType, por eso va como variable aparte.
+                return $this->errorSonido($request, $form, $errorSonido);
             }
 
             $alerta->setCreadoPorId((int) $this->getUser()->getId());
@@ -169,7 +197,7 @@ class AlertaCmsController extends AbstractController
         if ($request->isXmlHttpRequest()) {
             return $this->json([
                 'title' => 'Nueva alerta',
-                'html'  => $this->renderView('@SPUI/alertas/_form.html.twig', ['form' => $form]),
+                'html'  => $this->vistaFormulario($form),
             ]);
         }
 
@@ -245,11 +273,7 @@ class AlertaCmsController extends AbstractController
 
         if ($form->isSubmitted() && $form->isValid()) {
             if ($errorSonido = $this->aplicarSonido($alerta, $request)) {
-                if ($request->isXmlHttpRequest()) {
-                    return $this->json(['success' => false, 'message' => $errorSonido, 'type' => 'error'], 422);
-                }
-                $this->addFlash('error', $errorSonido);
-                return $this->redirectToRoute('spui_cms_alertas_index');
+                return $this->errorSonido($request, $form, $errorSonido, $alerta);
             }
 
             $this->em()->flush();
@@ -264,7 +288,7 @@ class AlertaCmsController extends AbstractController
         if ($request->isXmlHttpRequest()) {
             return $this->json([
                 'title' => 'Editar: ' . $alerta->getTitulo(),
-                'html'  => $this->renderView('@SPUI/alertas/_form.html.twig', ['form' => $form, 'alerta' => $alerta, 'modo' => 'edicion']),
+                'html'  => $this->vistaFormulario($form, $alerta),
             ]);
         }
 

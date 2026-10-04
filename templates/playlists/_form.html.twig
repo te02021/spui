@@ -2,6 +2,12 @@
 
     <input type="hidden" name="_token" value="{{ csrf_token('spui_action') }}">
 
+    {# Al redibujarse por un error de campo, v trae lo que se había cargado y
+       err el error de cada campo (se muestra debajo de su input). #}
+    {% set v = values is defined ? values : {} %}
+    {% set err = errores is defined ? errores : {} %}
+    {% set activa = v.activo ?? true %}
+
     {# Switch estándar del sistema. Playlists no usa FormType, así que el id va
        literal y el span _lbl se arma a mano; switch-toggle.js lo engancha por
        data-spui-switch. Arranca en Activa: es lo que hacía el alta antes, que
@@ -9,8 +15,9 @@
     <div class="row g-3 mb-3 align-items-start">
         <div class="col">
             <label class="unraf-form-label" for="pl_nombre">Nombre <span class="text-danger">*</span></label>
-            <input type="text" id="pl_nombre" name="nombre" class="unraf-form-control" maxlength="150"
-                   placeholder="Ej: Cartelera Edificio A" required>
+            <input type="text" id="pl_nombre" name="nombre" class="unraf-form-control{{ err.nombre is defined ? ' is-invalid' }}" maxlength="150"
+                   value="{{ v.nombre ?? '' }}" placeholder="Ej: Cartelera Edificio A" required>
+            {% if err.nombre is defined %}<p class="spui-campo-error">{{ err.nombre }}</p>{% endif %}
         </div>
         <div class="col-12 col-sm-auto d-flex flex-column align-items-center" style="min-width:110px">
             <label class="unraf-form-label mb-2 text-center" for="pl_activo">Estado</label>
@@ -18,9 +25,9 @@
                 <div class="form-switch m-0">
                     <input class="form-check-input spui-switch-input" type="checkbox"
                            name="activo" id="pl_activo" value="1" role="switch"
-                           data-spui-switch="1" data-switch-on="Activa" data-switch-off="Inactiva" checked>
+                           data-spui-switch="1" data-switch-on="Activa" data-switch-off="Inactiva" {{ activa ? 'checked' }}>
                 </div>
-                <span class="spui-switch-status on" id="pl_activo_lbl">Activa</span>
+                <span class="spui-switch-status {{ activa ? 'on' : 'off' }}" id="pl_activo_lbl">{{ activa ? 'Activa' : 'Inactiva' }}</span>
             </div>
         </div>
     </div>
@@ -28,19 +35,20 @@
     <div class="mb-4">
         <label class="unraf-form-label" for="pl_descripcion">Descripción (opcional)</label>
         <textarea id="pl_descripcion" name="descripcion" class="unraf-form-control" rows="3"
-                  placeholder="Descripción breve de la playlist…"></textarea>
+                  placeholder="Descripción breve de la playlist…">{{ v.descripcion ?? '' }}</textarea>
     </div>
 
     {# Los ítems elegidos acá no se persisten hasta el Guardar de este form: un
        PlaylistItem necesita una playlist ya existente. items.js los deja como
        inputs hidden dentro de este mismo <form>, así viajan solos en el submit. #}
+    {{ include('@SPUI/playlists/_items_confirmados.html.twig') }}
     <div class="d-flex justify-content-between align-items-center gap-2 pt-3 border-top flex-wrap">
         <button type="button" class="unraf-btn spui-btn-items unraf-btn-sm"
                 data-spui-form2="{{ path('spui_cms_playlists_items_nueva') }}"
                 data-spui-title="Ítems de la playlist"
                 data-spui-size="modal-lg">
             <img src="{{ asset('unraf-ui/icons/playlist.svg') }}" class="spui-action-icon" alt="">
-            Ver ítems <span class="text-muted ms-1" data-spui-items-resumen>· 0</span>
+            Ver ítems <span class="text-muted ms-1" data-spui-items-resumen>· {{ (items_confirmados ?? [])|length }}</span>
         </button>
         <div class="d-flex gap-2 ms-auto">
             <button type="button" class="unraf-btn spui-btn-back" data-spui-close>Cancelar</button>

@@ -24,6 +24,9 @@ class CronogramaCmsController extends AbstractController
     use BloqueoOfflineTrait;
     use CsrfProtegidoTrait;
 
+    /** Lo dicen el servidor (alta y edición) y validacion-vivo.js mientras se escribe. */
+    public const MSG_FIN_POSTERIOR = 'La hora de fin debe ser posterior a la hora de inicio.';
+
     public function __construct(
         private readonly ContenidoRepository $contenidoRepo,
         private readonly CronogramaItemRepository $itemRepo,
@@ -83,12 +86,13 @@ class CronogramaCmsController extends AbstractController
         $dias       = $request->request->all('dias') ?? [];
         $activo     = (bool) $request->request->get('activo', false);
 
+        // Por campo y no en una lista: cada error se muestra debajo de su input.
         $errors = [];
-        if (!$nombre) { $errors[] = 'El nombre es requerido.'; }
-        if (!$horaInicio) { $errors[] = 'La hora de inicio es requerida.'; }
-        if (!$horaFin) { $errors[] = 'La hora de fin es requerida.'; }
+        if (!$nombre) { $errors['nombre'] = 'El nombre es requerido.'; }
+        if (!$horaInicio) { $errors['hora_inicio'] = 'La hora de inicio es requerida.'; }
+        if (!$horaFin) { $errors['hora_fin'] = 'La hora de fin es requerida.'; }
         if ($horaInicio && $horaFin && $horaFin <= $horaInicio) {
-            $errors[] = 'La hora de fin debe ser posterior a la hora de inicio.';
+            $errors['hora_fin'] = self::MSG_FIN_POSTERIOR;
         }
 
         if ($errors) {
@@ -166,7 +170,7 @@ class CronogramaCmsController extends AbstractController
 
         if ($form->isSubmitted() && $form->isValid()) {
             if ($item->getHoraFin() <= $item->getHoraInicio()) {
-                $form->get('horaFin')->addError(new \Symfony\Component\Form\FormError('La hora de fin debe ser posterior a la hora de inicio.'));
+                $form->get('horaFin')->addError(new \Symfony\Component\Form\FormError(self::MSG_FIN_POSTERIOR));
                 if ($request->isXmlHttpRequest()) {
                     return $this->json(['success' => false, 'html' => $this->renderView('@SPUI/cronograma/_item_form.html.twig', ['form' => $form])]);
                 }

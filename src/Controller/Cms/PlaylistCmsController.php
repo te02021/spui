@@ -60,11 +60,7 @@ class PlaylistCmsController extends AbstractController
 
             $nombre = trim($request->request->get('nombre', ''));
             if (!$nombre) {
-                if ($request->isXmlHttpRequest()) {
-                    return $this->json(['success' => false, 'message' => 'El nombre es requerido.']);
-                }
-                $this->addFlash('error', 'El nombre es requerido.');
-                return $this->redirectToRoute('spui_cms_playlists_nueva');
+                return $this->formularioConErrores($request, null, ['nombre' => 'El nombre es requerido.']);
             }
 
             $playlist = new Playlist();
@@ -123,12 +119,7 @@ class PlaylistCmsController extends AbstractController
 
             $nombre = trim($request->request->get('nombre', ''));
             if (!$nombre) {
-                $error = 'El nombre es requerido.';
-                if ($request->isXmlHttpRequest()) {
-                    return $this->json(['success' => false, 'html' => $this->renderView('@SPUI/playlists/_edit_form.html.twig', ['playlist' => $playlist, 'error' => $error])]);
-                }
-                $this->addFlash('error', $error);
-                return $this->redirectToRoute('spui_cms_playlists_index');
+                return $this->formularioConErrores($request, $playlist, ['nombre' => 'El nombre es requerido.']);
             }
 
             $reproductores = $this->alcance->dePlaylist($playlist);
@@ -160,7 +151,7 @@ class PlaylistCmsController extends AbstractController
         if ($request->isXmlHttpRequest()) {
             return $this->json([
                 'title' => 'Editar: ' . $playlist->getNombre(),
-                'html'  => $this->renderView('@SPUI/playlists/_edit_form.html.twig', ['playlist' => $playlist, 'error' => null]),
+                'html'  => $this->renderView('@SPUI/playlists/_edit_form.html.twig', ['playlist' => $playlist]),
             ]);
         }
         return $this->redirectToRoute('spui_cms_playlists_index');
@@ -403,6 +394,39 @@ class PlaylistCmsController extends AbstractController
 
         // Con repetidos a propósito: un contenido puede ir más de una vez.
         return array_values(array_filter(array_map('intval', $crudos)));
+    }
+
+    /**
+     * Vuelve a dibujar el formulario (alta si $playlist es null, edición si no)
+     * con cada error debajo de su campo, conservando lo que se había cargado —
+     * incluida la lista de ítems confirmada, que si no se perdería.
+     *
+     * Sólo 'html', sin 'message': modal.js ignora el message cuando hay html.
+     *
+     * @param array<string, string> $errores Campo → mensaje.
+     */
+    private function formularioConErrores(Request $request, ?Playlist $playlist, array $errores): Response
+    {
+        if (!$request->isXmlHttpRequest()) {
+            $this->addFlash('error', implode(' ', $errores));
+            return $this->redirectToRoute('spui_cms_playlists_index');
+        }
+
+        $vars = [
+            'errores'           => $errores,
+            'values'            => [
+                'nombre'      => trim((string) $request->request->get('nombre', '')),
+                'descripcion' => trim((string) $request->request->get('descripcion', '')),
+                'activo'      => $request->request->getBoolean('activo'),
+            ],
+            'items_confirmados' => $this->itemsModificados($request) ? $this->idsDeContenidoDelRequest($request) : null,
+        ];
+
+        $html = $playlist === null
+            ? $this->renderView('@SPUI/playlists/_form.html.twig', $vars)
+            : $this->renderView('@SPUI/playlists/_edit_form.html.twig', $vars + ['playlist' => $playlist]);
+
+        return $this->json(['success' => false, 'html' => $html]);
     }
 
     /**

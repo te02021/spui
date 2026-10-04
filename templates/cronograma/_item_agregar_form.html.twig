@@ -5,20 +5,18 @@
 
     <input type="hidden" name="_token" value="{{ csrf_token('spui_action') }}">
 
-    {% if errors is defined and errors %}
-        <div class="alert alert-danger mb-3">
-            {% for e in errors %}<div>{{ e }}</div>{% endfor %}
-        </div>
-    {% endif %}
-
+    {# Errores por campo (nombre / hora_inicio / hora_fin): cada uno se muestra
+       debajo de su input, no en una lista arriba. #}
     {% set v = values is defined ? values : {} %}
+    {% set err = errors is defined ? errors : {} %}
 
     <div class="row g-2 mb-3">
         <div class="col-12 col-sm">
             <label class="unraf-form-label" for="ci_nombre">Nombre <span class="text-danger">*</span></label>
-            <input type="text" id="ci_nombre" name="nombre" class="unraf-form-control"
+            <input type="text" id="ci_nombre" name="nombre" class="unraf-form-control{{ err.nombre is defined ? ' is-invalid' }}"
                    value="{{ v.nombre ?? '' }}" maxlength="200"
                    placeholder="Ej: Análisis Matemático I" required>
+            {% if err.nombre is defined %}<p class="spui-campo-error">{{ err.nombre }}</p>{% endif %}
         </div>
         <div class="col-12 col-sm">
             <label class="unraf-form-label" for="ci_aula">Aula / Espacio <small class="text-muted">(opcional)</small></label>
@@ -31,13 +29,17 @@
     <div class="row g-3 mb-3">
         <div class="col-6 spui-hora-field">
             <label class="unraf-form-label" for="ci_hi">Hora inicio <span class="text-danger">*</span></label>
-            <input type="time" id="ci_hi" name="hora_inicio" class="unraf-form-control"
+            <input type="time" id="ci_hi" name="hora_inicio" class="unraf-form-control{{ err.hora_inicio is defined ? ' is-invalid' }}"
                    value="{{ v.hora_inicio ?? '' }}" required>
+            {% if err.hora_inicio is defined %}<p class="spui-campo-error">{{ err.hora_inicio }}</p>{% endif %}
         </div>
         <div class="col-6 spui-hora-field">
             <label class="unraf-form-label" for="ci_hf">Hora fin <span class="text-danger">*</span></label>
-            <input type="time" id="ci_hf" name="hora_fin" class="unraf-form-control"
-                   value="{{ v.hora_fin ?? '' }}" required>
+            <input type="time" id="ci_hf" name="hora_fin" class="unraf-form-control{{ err.hora_fin is defined ? ' is-invalid' }}"
+                   value="{{ v.hora_fin ?? '' }}" required
+                   data-spui-validar-posterior="#ci_hi"
+                   data-spui-validar-mensaje="{{ constant('SPUI\\Controller\\Cms\\CronogramaCmsController::MSG_FIN_POSTERIOR') }}">
+            {% if err.hora_fin is defined %}<p class="spui-campo-error">{{ err.hora_fin }}</p>{% endif %}
         </div>
     </div>
 
@@ -79,7 +81,7 @@
 
     <div class="d-flex justify-content-end gap-2 pt-3 border-top">
         <button type="button" class="unraf-btn spui-btn-back" data-spui-close>Cancelar</button>
-        <button type="submit" class="unraf-btn spui-btn-crear">+ Agregar ítem</button>
+        <button type="submit" class="unraf-btn spui-btn-crear">Guardar</button>
     </div>
 
 </form>

@@ -11,21 +11,21 @@
         {{ form_label(form.nombre) }}
         {{ form_widget(form.nombre) }}
         {% for e in form.nombre.vars.errors %}
-            <p class="text-danger small mt-1">{{ e.message }}</p>
+            <p class="spui-campo-error">{{ e.message }}</p>
         {% endfor %}
     </div>
     <div class="col-12 col-sm">
         {{ form_label(form.ubicacion) }}
         {{ form_widget(form.ubicacion) }}
         {% for e in form.ubicacion.vars.errors %}
-            <p class="text-danger small mt-1">{{ e.message }}</p>
+            <p class="spui-campo-error">{{ e.message }}</p>
         {% endfor %}
     </div>
     <div class="col-12 col-sm">
         {{ form_label(form.reproductor) }}
         {{ form_widget(form.reproductor) }}
         {% for e in form.reproductor.vars.errors %}
-            <p class="text-danger small mt-1">{{ e.message }}</p>
+            <p class="spui-campo-error">{{ e.message }}</p>
         {% endfor %}
         <small class="text-muted d-block mt-1">Raspberry Pi que controla esta pantalla. Opcional.</small>
     </div>
@@ -36,14 +36,14 @@
         {{ form_label(form.playlistFallback) }}
         {{ form_widget(form.playlistFallback) }}
         {% for e in form.playlistFallback.vars.errors %}
-            <p class="text-danger small mt-1">{{ e.message }}</p>
+            <p class="spui-campo-error">{{ e.message }}</p>
         {% endfor %}
     </div>
     <div class="col-12 col-sm-auto" style="min-width:160px">
         {{ form_label(form.estado) }}
         {{ form_widget(form.estado) }}
         {% for e in form.estado.vars.errors %}
-            <p class="text-danger small mt-1">{{ e.message }}</p>
+            <p class="spui-campo-error">{{ e.message }}</p>
         {% endfor %}
     </div>
 </div>
@@ -53,14 +53,14 @@
         {{ form_label(form.macAddress) }}
         {{ form_widget(form.macAddress) }}
         {% for e in form.macAddress.vars.errors %}
-            <p class="text-danger small mt-1">{{ e.message }}</p>
+            <p class="spui-campo-error">{{ e.message }}</p>
         {% endfor %}
     </div>
     <div class="col">
         {{ form_label(form.ipAddress) }}
         {{ form_widget(form.ipAddress) }}
         {% for e in form.ipAddress.vars.errors %}
-            <p class="text-danger small mt-1">{{ e.message }}</p>
+            <p class="spui-campo-error">{{ e.message }}</p>
         {% endfor %}
     </div>
 </div>
@@ -70,14 +70,14 @@
         {{ form_label(form.resolucionAncho) }}
         {{ form_widget(form.resolucionAncho) }}
         {% for e in form.resolucionAncho.vars.errors %}
-            <p class="text-danger small mt-1">{{ e.message }}</p>
+            <p class="spui-campo-error">{{ e.message }}</p>
         {% endfor %}
     </div>
     <div class="col-auto">
         {{ form_label(form.resolucionAlto) }}
         {{ form_widget(form.resolucionAlto) }}
         {% for e in form.resolucionAlto.vars.errors %}
-            <p class="text-danger small mt-1">{{ e.message }}</p>
+            <p class="spui-campo-error">{{ e.message }}</p>
         {% endfor %}
     </div>
 </div>

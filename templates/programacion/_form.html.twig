@@ -13,7 +13,7 @@
     {{ form_label(form.playlist) }}
     {{ form_widget(form.playlist) }}
     {% for e in form.playlist.vars.errors %}
-        <p class="text-danger small mt-1">{{ e.message }}</p>
+        <p class="spui-campo-error">{{ e.message }}</p>
     {% endfor %}
 </div>
 
@@ -45,14 +45,14 @@
         {{ form_label(form.horaInicio) }}
         {{ form_widget(form.horaInicio) }}
         {% for e in form.horaInicio.vars.errors %}
-            <p class="text-danger small mt-1">{{ e.message }}</p>
+            <p class="spui-campo-error">{{ e.message }}</p>
         {% endfor %}
     </div>
     <div class="col-6 spui-hora-field">
         {{ form_label(form.horaFin) }}
         {{ form_widget(form.horaFin) }}
         {% for e in form.horaFin.vars.errors %}
-            <p class="text-danger small mt-1">{{ e.message }}</p>
+            <p class="spui-campo-error">{{ e.message }}</p>
         {% endfor %}
     </div>
 </div>
@@ -62,14 +62,14 @@
         {{ form_label(form.fechaInicio) }}
         {{ form_widget(form.fechaInicio) }}
         {% for e in form.fechaInicio.vars.errors %}
-            <p class="text-danger small mt-1">{{ e.message }}</p>
+            <p class="spui-campo-error">{{ e.message }}</p>
         {% endfor %}
     </div>
     <div class="col-6 spui-hora-field">
         {{ form_label(form.fechaFin) }}
         {{ form_widget(form.fechaFin) }}
         {% for e in form.fechaFin.vars.errors %}
-            <p class="text-danger small mt-1">{{ e.message }}</p>
+            <p class="spui-campo-error">{{ e.message }}</p>
         {% endfor %}
     </div>
 </div>
@@ -103,7 +103,7 @@
         <label class="unraf-form-label" for="{{ form.prioridad.vars.id }}">Prioridad</label>
         {{ form_widget(form.prioridad) }}
         {% for e in form.prioridad.vars.errors %}
-            <p class="text-danger small mt-1">{{ e.message }}</p>
+            <p class="spui-campo-error">{{ e.message }}</p>
         {% endfor %}
         <small class="text-muted mt-1 d-block text-center">Mayor número = mayor prioridad.</small>
     </div>
