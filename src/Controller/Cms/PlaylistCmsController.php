@@ -81,9 +81,8 @@ class PlaylistCmsController extends AbstractController
             // una playlist ya existente (playlist_id es NOT NULL): recién en
             // este punto hay a qué colgarlos. Si el operador hubiera cerrado
             // el modal sin guardar, no habría quedado nada en la base.
-            $iniciales = $this->idsDeContenidoDelRequest($request);
-            if ($iniciales !== []) {
-                $this->sincronizarItems($playlist, $iniciales);
+            if ($this->itemsModificados($request)) {
+                $this->sincronizarItems($playlist, $this->idsDeContenidoDelRequest($request));
             }
 
             // El destino real después de crear es el listado, no un "builder" a
@@ -141,6 +140,13 @@ class PlaylistCmsController extends AbstractController
             $playlist->setDescripcion(trim($request->request->get('descripcion', '')) ?: null);
             $playlist->setActivo((bool) $request->request->get('activo', false));
             $this->em()->flush();
+
+            // Los ítems viajan con este mismo Guardar (único punto de guardado):
+            // la ventana de ítems sólo los confirma en el navegador. Un solo
+            // aviso a las pantallas por los datos y los ítems juntos.
+            if ($this->itemsModificados($request)) {
+                $this->sincronizarItems($playlist, $this->idsDeContenidoDelRequest($request));
+            }
             $this->comandoPublisher->pedirSyncAhora($reproductores, 'playlist');
 
             $msg = '"' . $playlist->getNombre() . '" actualizada.';
@@ -309,59 +315,20 @@ class PlaylistCmsController extends AbstractController
     }
 
     /**
-     * Guarda de una sola vez la lista de ítems tal como quedó en el modal.
-     *
-     * Reemplaza a los tres endpoints que había antes (agregar / quitar /
-     * reorder), que persistían cada acción en el momento: por eso la lista se
-     * guardaba sola y no había forma de cancelar. Ahora el navegador acumula
-     * los cambios y los manda todos juntos cuando el operador aprieta Guardar.
-     */
-    #[Route('/{id}/items/guardar', name: 'spui_cms_playlists_items_guardar', methods: ['POST'], requirements: ['id' => '\d+'])]
-    public function guardarItems(int $id, Request $request): Response
-    {
-        $playlist = $this->repo->find($id);
-        if (!$playlist) { throw $this->createNotFoundException(); }
-        if ($r = $this->denegarSiCsrfInvalido($request)) { return $r; }
-
-        $reproductores = $this->alcance->dePlaylist($playlist);
-        if ($r = $this->bloquearSiOffline($reproductores, $request, 'spui_cms_playlists_index')) {
-            return $r;
-        }
-
-        $this->sincronizarItems($playlist, $this->idsDeContenidoDelRequest($request));
-        $this->comandoPublisher->pedirSyncAhora($reproductores, 'playlist');
-
-        $total = $playlist->getItems()->count();
-        $msg   = $total === 1 ? '1 ítem guardado.' : $total . ' ítems guardados.';
-
-        if ($request->isXmlHttpRequest()) {
-            return $this->json(['success' => true, 'message' => $msg]);
-        }
-
-        $this->addFlash('success', $msg);
-        return $this->redirectToRoute('spui_cms_playlists_index');
-    }
-
-    private function renumerarItems(Playlist $playlist): void
-    {
-        $em = $this->em();
-        foreach ($playlist->getItems() as $i => $item) {
-            $item->setOrden($i + 1);
-        }
-        $em->flush();
-    }
-
-    /**
      * Deja los ítems de la playlist exactamente como los mandó el navegador.
      *
-     * Un solo endpoint en lugar de los tres que había antes (agregar / quitar /
-     * reorder): esos persistían cada acción por separado en el momento, y por
-     * eso la lista se guardaba sola sin que el operador confirmara nada. Acá el
-     * navegador manda la lista completa y el servidor la reconcilia — alta de
-     * los nuevos, baja de los que ya no están, reasignación del orden — en una
-     * sola transacción y con un solo aviso al reproductor.
+     * Se llama desde el Guardar de la playlist (alta y edición), que es el
+     * único punto de guardado: la ventana de ítems sólo confirma la lista en
+     * el navegador. El servidor la reconcilia — alta de los nuevos, baja de
+     * los que ya no están, reasignación del orden — en una sola transacción.
      *
-     * @param list<int> $contenidoIds Ids de contenido, en el orden final deseado.
+     * Un mismo contenido puede aparecer varias veces (para darle más
+     * frecuencia dentro del loop), así que los ítems se emparejan como
+     * multiconjunto: cada aparición del contenido X en la lista nueva reusa
+     * el siguiente ítem existente de X, en orden, y sólo se crean o borran
+     * las apariciones que sobran o faltan.
+     *
+     * @param list<int> $contenidoIds Ids de contenido, en el orden final deseado (con repetidos).
      */
     private function sincronizarItems(Playlist $playlist, array $contenidoIds): void
     {
@@ -378,24 +345,17 @@ class PlaylistCmsController extends AbstractController
             }
             $em->flush();
 
-            /** @var array<int, \SPUI\Entity\PlaylistItem> $porContenido */
+            /** @var array<int, list<PlaylistItem>> $porContenido Ítems existentes de cada contenido, en su orden actual. */
             $porContenido = [];
             foreach ($playlist->getItems() as $item) {
-                $porContenido[$item->getContenido()->getId()] = $item;
+                $porContenido[$item->getContenido()->getId()][] = $item;
             }
 
-            // Los que el navegador ya no manda se van.
-            foreach ($porContenido as $contenidoId => $item) {
-                if (!in_array($contenidoId, $contenidoIds, true)) {
-                    $playlist->getItems()->removeElement($item);
-                    $em->remove($item);
-                }
-            }
-
-            // Los que siguen se reubican; los nuevos se crean.
+            // Se ubican en el orden nuevo, reusando ítems existentes del mismo
+            // contenido mientras queden; los que falten se crean.
             $orden = 1;
             foreach ($contenidoIds as $contenidoId) {
-                $item = $porContenido[$contenidoId] ?? null;
+                $item = isset($porContenido[$contenidoId]) ? array_shift($porContenido[$contenidoId]) : null;
 
                 if ($item === null) {
                     $contenido = $this->contenidoRepo->find($contenidoId);
@@ -419,6 +379,15 @@ class PlaylistCmsController extends AbstractController
                 $item->setOrden($orden++);
             }
 
+            // Las apariciones existentes que no se reusaron son las que el
+            // navegador ya no manda: se van.
+            foreach ($porContenido as $sobrantes) {
+                foreach ($sobrantes as $item) {
+                    $playlist->removeItem($item);
+                    $em->remove($item);
+                }
+            }
+
             $em->flush();
         });
     }
@@ -432,8 +401,17 @@ class PlaylistCmsController extends AbstractController
     {
         $crudos = $request->request->all('contenido_ids');
 
-        // Sin repetidos: la interfaz no los genera, pero un POST armado a mano
-        // podría, y el mismo contenido dos veces en la lista crearía dos ítems.
-        return array_values(array_unique(array_filter(array_map('intval', $crudos))));
+        // Con repetidos a propósito: un contenido puede ir más de una vez.
+        return array_values(array_filter(array_map('intval', $crudos)));
+    }
+
+    /**
+     * Si el formulario trae una lista de ítems confirmada en la ventana de
+     * ítems. Sin esta marca no se tocan los ítems: editar sólo el nombre de
+     * una playlist (sin abrir la ventana) no puede vaciarla.
+     */
+    private function itemsModificados(Request $request): bool
+    {
+        return $request->request->getBoolean('items_modificados');
     }
 }

@@ -74,7 +74,7 @@ Cadena: `Edificio → Ubicacion → Pantalla → Reproductor`.
 | **CronogramaItem** | Las filas de un contenido tipo cronograma (materia, aula, horario, días) |
 | **CodigoQr** | Un QR dinámico con URL destino, vencimiento y contador de escaneos. Pertenece al `Contenido` de tipo `qr` que lo muestra: se crea, se edita y se borra desde ahí, no desde una sección propia |
 | **Playlist** | Una lista ordenada de contenidos |
-| **PlaylistItem** | Un contenido dentro de una playlist, con su orden. La duración no es del ítem: la define el contenido, igual en todas las playlists |
+| **PlaylistItem** | Una aparición de un contenido dentro de una playlist, con su orden. Un mismo contenido puede tener varias en la misma playlist (más frecuencia en el loop). La duración no es del ítem: la define el contenido, igual en todas las playlists |
 
 Un contenido tiene tres estados: **borrador** (no se puede usar), **publicado** (disponible para playlists), **archivado** (retirado sin borrar).
 
@@ -219,7 +219,7 @@ Contra los 12 casos de uso definidos en `02_casos_de_uso.md`:
 | CU | Estado |
 |---|---|
 | CU-01 Gestionar contenido | ✅ Completo. Se agregó un 6º tipo (`cronograma`) que no estaba en el diseño original |
-| CU-02 Crear playlist | ✅ Completo, con drag & drop. Los ítems se editan en el modal y se guardan juntos al confirmar. La duración la define el contenido, no el ítem |
+| CU-02 Crear playlist | ✅ Completo, con drag & drop. Los ítems se arman en una ventana aparte y se persisten con el Guardar de la playlist (alta y edición igual). Un contenido puede repetirse. La duración la define el contenido, no el ítem |
 | CU-03 Programar reproducción | ✅ Completo, y con un alcance más que lo planeado (por edificio) |
 | CU-04 Alerta de emergencia | ✅ Completo vía MQTT (push a la Pi) + polling (dashboard del CMS, `auto-refresh.js`) — **no** usa Mercure, ver §6 |
 | CU-05 Registrar reproductor | ✅ Completo |

@@ -2,6 +2,16 @@
    SPUI — Estilos específicos del Sistema de Pantallas
    ========================================================= */
 
+/* ----- El atributo hidden manda -----
+   Bootstrap declara .d-flex { display: flex !important }, que le gana a la
+   regla [hidden] { display: none } del navegador: un elemento con las dos
+   cosas se seguía viendo. Pasaba con el Guardar de la ventana de ítems
+   (siempre visible) y con las filas del buscador de listas. Todo el JS del CMS
+   oculta con el atributo hidden, así que tiene que ganar siempre. */
+[hidden] {
+    display: none !important;
+}
+
 /* ----- Badges tipo de contenido (unraf-ui override: más padding y bordes) ----- */
 [class^="unraf-badge-"], [class*=" unraf-badge-"] {
     padding: .28rem .65rem !important;
@@ -708,6 +718,13 @@
 
 .spui-filtro-input {
     max-width: 14rem;
+}
+
+/* "En la lista ×N" en el catálogo: un contenido puede ir más de una vez, así
+   que la fila no se oculta; sólo se marca cuántas veces ya está agregado. */
+.spui-items-en-lista {
+    color: var(--unraf-turquesa, #1CA1A7);
+    font-weight: 600;
 }
 
 /* ----- Botón volver con estilo consistente ----- */

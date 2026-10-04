@@ -675,6 +675,9 @@
             });
         }
         window.spui.bindOpeners2 = bindOpeners2;
+        // Para que un contenido del nivel 2 se cierre solo al terminar (la
+        // ventana de ítems de una playlist, al Guardar o Cancelar).
+        window.spui.closeModal2 = closeModal2;
 
         // Se exponen para el refresco automatico: cuando auto-refresh.js
         // reemplaza el HTML de una zona, los botones nuevos necesitan volver a

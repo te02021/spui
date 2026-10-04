@@ -183,12 +183,12 @@ Si un QR está vencido, quien lo escanee ve un aviso de no disponible y el conta
 
 Listas ordenadas que se reproducen en loop.
 
-- **Crear:** nombre, descripción y, opcionalmente, sus ítems desde el mismo formulario (botón **Ver ítems**). Los ítems elegidos ahí se guardan recién con el **Guardar** de la playlist: si se cancela el alta, no queda nada.
-- **Ítems:** desde **Editar** → **Ver ítems** se abre una segunda ventana, encima del formulario, con dos listas:
-  - arriba, los ítems de la playlist: se **reordenan** arrastrando por el ícono de seis puntos y se **quitan** con su botón;
-  - abajo, los contenidos que se pueden **agregar**: sólo los publicados que todavía no están en la lista.
-- **Nada se guarda al tocar los botones.** Agregar, quitar y reordenar sólo cambian la ventana; el botón **Guardar cambios** aparece cuando la lista difiere de la guardada, y cerrar sin guardar descarta todo. Al guardar, las pantallas que usan esa playlist reciben el cambio en segundos.
-- **La duración la define el contenido**, no la playlist: un mismo contenido dura lo mismo en todas las playlists donde esté.
+- **Crear y editar:** nombre, descripción y sus ítems, todo desde el mismo formulario. El botón **Ver ítems · N** abre una segunda ventana, encima del formulario, con dos listas:
+  - arriba, los ítems de la playlist: se **reordenan** arrastrando por el ícono de seis puntos y se **quitan** con el tacho;
+  - abajo, todos los contenidos publicados, para **agregar**. Un mismo contenido **se puede agregar más de una vez** (por ejemplo, para que un aviso salga más seguido dentro del loop); el catálogo indica "En la lista ×N".
+- **Guardar y Cancelar de la ventana de ítems aparecen sólo cuando cambiaste algo.** **Guardar** confirma la lista y cierra la ventana (al reabrirla, sigue ahí); **Cancelar** vuelve a lo que estaba y cierra.
+- **Lo que se guarda de verdad es la playlist:** los ítems confirmados se persisten recién con el **Guardar** del formulario de la playlist, junto con el nombre y la descripción. Si cancelás la playlist, no queda nada de lo que hiciste en los ítems. Al guardar, las pantallas que usan esa playlist reciben el cambio en segundos.
+- **La duración la define el contenido**, no la playlist: un mismo contenido dura lo mismo en todas las playlists donde esté (y en cada una de sus repeticiones).
 - Desde **Ver** se consulta la lista de ítems en modo sólo lectura.
 - Si alguna pantalla que usa la playlist tiene su reproductor **desconectado**, editarla y eliminarla quedan bloqueados (ver 6).
 

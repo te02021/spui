@@ -1,15 +1,20 @@
 {# Ítems de una playlist, dentro del modal de segundo nivel.
 
    Dos listados en la misma vista: arriba los que están en la playlist (drag &
-   drop + quitar) y abajo los disponibles para agregar.
+   drop + quitar) y abajo el catálogo de publicados para agregar.
 
-   NADA se persiste al tocar los botones. Agregar, quitar y reordenar mutan sólo
-   este DOM; el botón Guardar aparece cuando el estado difiere del persistido y
-   desaparece cuando coincide. Lo maneja playlists/items.js — antes cada acción
-   iba sola al servidor y la lista se guardaba sin que nadie lo confirmara.
+   NADA se persiste acá. Agregar, quitar y reordenar mutan sólo este DOM; el
+   Guardar de esta ventana confirma la lista y la deja en el formulario de la
+   playlist, y es el Guardar de la playlist el que la persiste — igual en el
+   alta y en la edición, un solo punto de guardado. Guardar y Cancelar aparecen
+   sólo cuando la lista difiere de lo confirmado. Lo maneja playlists/items.js.
 
-   En ALTA (playlist === null) no hay nada persistido todavía: el Guardar
-   confirma la selección en memoria y el modal principal la manda al crear.
+   Un mismo contenido puede ir más de una vez (para darle más frecuencia en el
+   loop): el catálogo nunca oculta filas, sólo indica cuántas veces ya está.
+
+   Cada fila de arriba lleva título/tipo/duración en data-*: items.js las
+   rearma desde ahí al restaurar una lista confirmada, incluso si el contenido
+   ya no figura en el catálogo (dejó de estar publicado).
 
    Modo readonly = true (desde "Ver playlist"): sólo el listado de arriba, sin
    controles. #}
@@ -21,7 +26,6 @@
 <div data-spui-confirm-host></div>
 
 <div data-spui-items-root
-     {% if not esAlta %}data-guardar-url="{{ path('spui_cms_playlists_items_guardar', {id: playlist.id}) }}"{% endif %}
      data-alta="{{ esAlta ? '1' : '0' }}"
      data-icono-arrastre="{{ asset('unraf-ui/icons/dots-six-vertical.svg') }}"
      data-icono-quitar="{{ asset('unraf-ui/icons/trash.svg') }}">
@@ -45,7 +49,10 @@
     {% for item in lista %}
         {% set c = item.contenido %}
         <li class="sortable-item d-flex align-items-center gap-2 p-3 border-bottom"
-            data-contenido-id="{{ c.id }}">
+            data-contenido-id="{{ c.id }}"
+            data-titulo="{{ c.titulo }}"
+            data-tipo="{{ c.tipo.etiqueta }}"
+            data-duracion="{{ c.duracionSegundos ? c.duracionSegundos ~ 's' : 'Permanente' }}">
             {% if not ro %}
                 <span class="item-drag-handle">
                     <img src="{{ asset('unraf-ui/icons/dots-six-vertical.svg') }}" class="unraf-icon-svg" alt="">
@@ -70,7 +77,7 @@
     {% endfor %}
     </ul>
 
-    {# ── Contenidos disponibles ──────────────────────────────────────────── #}
+    {# ── Catálogo de contenidos publicados ───────────────────────────────── #}
     {% if not ro %}
         <div class="spui-items-separador">
             <div class="d-flex justify-content-between align-items-center mb-2 gap-2 flex-wrap">
@@ -90,10 +97,6 @@
                     <small>Creá uno desde <strong>Contenidos</strong> y volvé acá.</small>
                 </div>
             {% else %}
-                {# Se listan TODOS los publicados, incluidos los que ya están
-                   arriba: como agregar y quitar ya no recargan desde el
-                   servidor, cada fila se muestra u oculta según dónde esté el
-                   contenido en este momento. #}
                 <ul class="list-unstyled mb-0 spui-disponibles-lista" id="spui-disponibles" data-spui-disponibles>
                 {% for c in disponibles %}
                     <li class="d-flex align-items-center gap-2 p-3 border-bottom"
@@ -105,6 +108,7 @@
                         <div class="flex-grow-1">
                             <strong>{{ c.titulo }}</strong>
                             <small class="text-muted ms-2">{{ c.tipo.etiqueta }}</small>
+                            <small class="spui-items-en-lista ms-2" data-spui-en-lista hidden></small>
                         </div>
                         <span class="duracion-badge text-muted small">
                             {{ c.duracionSegundos ? c.duracionSegundos ~ 's' : 'Permanente' }}
@@ -123,13 +127,11 @@
             {% endif %}
         </div>
 
-        {# Aparece sólo cuando hay diferencias con lo persistido. El spinner va
-           en este botón y no sobre el modal: lo único que tarda es este POST. #}
+        {# Aparecen sólo cuando la lista difiere de lo confirmado. #}
         <div class="d-flex justify-content-end gap-2 pt-3 mt-3 border-top"
              data-spui-items-acciones hidden>
-            <button type="button" class="unraf-btn spui-btn-editar" data-spui-items-guardar>
-                Guardar {{ esAlta ? 'selección' : 'cambios' }}
-            </button>
+            <button type="button" class="unraf-btn spui-btn-back" data-spui-items-cancelar>Cancelar</button>
+            <button type="button" class="unraf-btn spui-btn-editar" data-spui-items-guardar>Guardar</button>
         </div>
     {% endif %}
 </div>
