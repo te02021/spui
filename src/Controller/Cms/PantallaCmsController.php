@@ -6,7 +6,6 @@ namespace SPUI\Controller\Cms;
 
 use Doctrine\Persistence\ManagerRegistry;
 use SPUI\Entity\Pantalla;
-use SPUI\Enum\EstadoPantalla;
 use SPUI\Form\PantallaType;
 use SPUI\Repository\PantallaRepository;
 use SPUI\Service\AlcanceReproductorService;
@@ -158,16 +157,11 @@ class PantallaCmsController extends AbstractController
             return $r;
         }
 
-        $nuevo = match ($pantalla->getEstado()) {
-            EstadoPantalla::Activo        => EstadoPantalla::Inactivo,
-            EstadoPantalla::Inactivo      => EstadoPantalla::Activo,
-            EstadoPantalla::Mantenimiento => EstadoPantalla::Activo,
-        };
-
-        $pantalla->setEstado($nuevo);
+        // Mismo efecto que el switch del formulario: activa ↔ inactiva.
+        $pantalla->setActiva(!$pantalla->isActiva());
         $this->em()->flush();
         $this->comandoPublisher->pedirSyncAhora($reproductores, 'pantalla');
-        $msg = 'Pantalla "' . $pantalla->getNombre() . '" → ' . $nuevo->value . '.';
+        $msg = 'Pantalla "' . $pantalla->getNombre() . '" ' . ($pantalla->isActiva() ? 'activada' : 'desactivada') . '.';
         if ($request->isXmlHttpRequest()) {
             return $this->json(['success' => true, 'message' => $msg]);
         }

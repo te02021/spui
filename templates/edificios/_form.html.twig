@@ -22,7 +22,7 @@
             <div class="form-switch m-0">
                 {{ form_widget(form.activo, {'attr': {'class': 'form-check-input spui-switch-input', 'role': 'switch', 'data-spui-switch': '1', 'data-switch-on': 'Activo', 'data-switch-off': 'Inactivo'}}) }}
             </div>
-            <span class="spui-switch-status off" id="{{ swId }}_lbl">Inactivo</span>
+            <span class="spui-switch-status {{ form.activo.vars.checked ? 'on' : 'off' }}" id="{{ swId }}_lbl">{{ form.activo.vars.checked ? 'Activo' : 'Inactivo' }}</span>
         </div>
     </div>
 </div>

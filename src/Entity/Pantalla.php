@@ -119,6 +119,14 @@ class Pantalla
     public function setResolucionAlto(?int $resolucionAlto): static { if ($resolucionAlto !== null) { $this->resolucionAlto = $resolucionAlto; } return $this; }
 
     public function getEstado(): EstadoPantalla { return $this->estado; }
+
+    /** El switch Activa/Inactiva del formulario (PantallaType) lee y escribe por acá. */
+    public function isActiva(): bool { return $this->estado === EstadoPantalla::Activo; }
+    public function setActiva(?bool $activa): static
+    {
+        $this->estado = $activa ? EstadoPantalla::Activo : EstadoPantalla::Inactivo;
+        return $this;
+    }
     public function setEstado(?EstadoPantalla $estado): static { if ($estado !== null) { $this->estado = $estado; } return $this; }
 
     public function getCreadoEn(): DateTimeImmutable { return $this->creadoEn; }

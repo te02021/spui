@@ -157,6 +157,35 @@ class PlaylistCmsController extends AbstractController
         return $this->redirectToRoute('spui_cms_playlists_index');
     }
 
+    /**
+     * Activar / desactivar desde el listado: el mismo cambio que el switch del
+     * formulario. Una playlist inactiva no se reproduce (ni por programación
+     * ni como respaldo), así que avisa a las pantallas que la usan.
+     */
+    #[Route('/{id}/toggle', name: 'spui_cms_playlists_toggle', methods: ['POST'], requirements: ['id' => '\d+'])]
+    public function toggle(int $id, Request $request): Response
+    {
+        $playlist = $this->repo->find($id);
+        if (!$playlist) { throw $this->createNotFoundException(); }
+        if ($r = $this->denegarSiCsrfInvalido($request)) { return $r; }
+
+        $reproductores = $this->alcance->dePlaylist($playlist);
+        if ($r = $this->bloquearSiOffline($reproductores, $request, 'spui_cms_playlists_index')) {
+            return $r;
+        }
+
+        $playlist->setActivo(!$playlist->isActivo());
+        $this->em()->flush();
+        $this->comandoPublisher->pedirSyncAhora($reproductores, 'playlist');
+
+        $msg = 'Playlist "' . $playlist->getNombre() . '" ' . ($playlist->isActivo() ? 'activada' : 'desactivada') . '.';
+        if ($request->isXmlHttpRequest()) {
+            return $this->json(['success' => true, 'message' => $msg]);
+        }
+        $this->addFlash('success', $msg);
+        return $this->redirectToRoute('spui_cms_playlists_index');
+    }
+
     #[Route('/{id}/eliminar', name: 'spui_cms_playlists_eliminar', methods: ['POST'], requirements: ['id' => '\d+'])]
     public function eliminar(int $id, Request $request): Response
     {

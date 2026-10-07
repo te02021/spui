@@ -47,13 +47,7 @@
                     <td class="p-3" data-label="Dirección IP">{{ p.ipAddress ?? '—' }}</td>
                     <td class="p-3" data-label="Resolución">{{ p.resolucionAncho }}×{{ p.resolucionAlto }}</td>
                     <td class="p-3" data-label="Estado">
-                        {% if p.estado.value == 'activo' %}
-                            <span class="spui-badge-conectado">Activo</span>
-                        {% elseif p.estado.value == 'mantenimiento' %}
-                            <span class="spui-badge-archivado">Mantenimiento</span>
-                        {% else %}
-                            <span class="spui-badge-sin_registrar">Inactivo</span>
-                        {% endif %}
+                        <span class="{{ p.activa ? 'spui-badge-conectado' : 'spui-badge-sin_registrar' }}">{{ p.estado.etiqueta }}</span>
                     </td>
                     <td class="p-3" data-label="Reproductor">
                         {% if p.reproductor %}
@@ -88,16 +82,16 @@
                                 <img src="{{ asset('unraf-ui/icons/plug.svg') }}" class="spui-action-icon" alt=""> Energía
                             </button>
                             <button type="button"
-                                    class="unraf-btn unraf-btn-sm {{ p.estado.value == 'activo' ? 'spui-btn-desactivar' : 'spui-btn-activar' }} {{ bloqueo.clase(motivo) }}"
+                                    class="unraf-btn unraf-btn-sm {{ p.activa ? 'spui-btn-desactivar' : 'spui-btn-activar' }} {{ bloqueo.clase(motivo) }}"
                                     data-spui-action="{{ path('spui_cms_pantallas_toggle_estado', {id: p.id}) }}"
                                     data-spui-title="Cambiar estado"
                                     data-spui-message="Cambiar estado de «{{ p.nombre }}»?"
-                                    data-spui-variant="{{ p.estado.value == 'activo' ? 'desactivar' : 'activar' }}"
+                                    data-spui-variant="{{ p.activa ? 'desactivar' : 'activar' }}"
                                     data-spui-confirm-label="Cambiar estado"
-                                    {% if motivo %}{{ bloqueo.attrs(motivo) }}{% else %}title="{{ p.estado.value == 'activo' ? 'Desactivar' : 'Activar' }}"{% endif %}>
-                                <img src="{{ p.estado.value == 'activo' ? asset('unraf-ui/icons/hand-palm.svg') : asset('unraf-ui/icons/lightning.svg') }}"
+                                    {% if motivo %}{{ bloqueo.attrs(motivo) }}{% else %}title="{{ p.activa ? 'Desactivar' : 'Activar' }}"{% endif %}>
+                                <img src="{{ p.activa ? asset('unraf-ui/icons/hand-palm.svg') : asset('unraf-ui/icons/lightning.svg') }}"
                                      class="spui-action-icon" alt="">
-                                {{ p.estado.value == 'activo' ? 'Desactivar' : 'Activar' }}
+                                {{ p.activa ? 'Desactivar' : 'Activar' }}
                             </button>
                             <button type="button"
                                     class="unraf-btn spui-btn-eliminar unraf-btn-sm {{ bloqueo.clase(motivo) }}"

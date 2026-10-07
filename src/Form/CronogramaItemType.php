@@ -67,10 +67,12 @@ class CronogramaItemType extends AbstractType
             ])
             // label:false — el texto visible lo pone el <span class="spui-switch-status">
             // que actualiza switch-toggle.js. Con un label acá saldría dos veces.
+            // Sin 'data' => true: forzaba el switch encendido siempre, así que
+            // editar un ítem desactivado lo mostraba activo y guardar lo
+            // reactivaba. El valor inicial lo da la entidad (activo = true).
             ->add('activo', CheckboxType::class, [
                 'label'    => false,
                 'required' => false,
-                'data'     => true,
             ]);
     }
 

@@ -39,12 +39,17 @@
             <p class="spui-campo-error">{{ e.message }}</p>
         {% endfor %}
     </div>
-    <div class="col-12 col-sm-auto" style="min-width:160px">
-        {{ form_label(form.estado) }}
-        {{ form_widget(form.estado) }}
-        {% for e in form.estado.vars.errors %}
-            <p class="spui-campo-error">{{ e.message }}</p>
-        {% endfor %}
+    {# Estado con el switch estándar del CMS. Una pantalla inactiva muestra la
+       pantalla de espera (SyncController) — no su programación ni su respaldo. #}
+    {% set swEstadoId = form.activa.vars.id %}
+    <div class="col-12 col-sm-auto d-flex flex-column align-items-center" style="min-width:110px">
+        <label class="unraf-form-label mb-2 text-center" for="{{ swEstadoId }}">Estado</label>
+        <div class="d-flex align-items-center gap-2">
+            <div class="form-switch m-0">
+                {{ form_widget(form.activa, {'attr': {'class': 'form-check-input spui-switch-input', 'role': 'switch', 'data-spui-switch': '1', 'data-switch-on': 'Activa', 'data-switch-off': 'Inactiva'}}) }}
+            </div>
+            <span class="spui-switch-status {{ form.activa.vars.checked ? 'on' : 'off' }}" id="{{ swEstadoId }}_lbl">{{ form.activa.vars.checked ? 'Activa' : 'Inactiva' }}</span>
+        </div>
     </div>
 </div>
 

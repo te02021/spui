@@ -233,6 +233,38 @@ class CronogramaCmsController extends AbstractController
         return $this->redirectToRoute('spui_cms_contenidos_index');
     }
 
+    /**
+     * Activar / desactivar un ítem desde el listado: el mismo cambio que el
+     * switch del formulario. Un ítem inactivo no se manda a la pantalla.
+     */
+    #[Route('/items/{itemId}/toggle', name: 'spui_cms_cronograma_item_toggle', methods: ['POST'], requirements: ['itemId' => '\d+'])]
+    public function toggleItem(int $id, int $itemId, Request $request): Response
+    {
+        $contenido = $this->getContenidoOr404($id);
+        $item      = $this->itemRepo->find($itemId);
+
+        if (!$item || $item->getContenido()->getId() !== $id) {
+            throw $this->createNotFoundException();
+        }
+        if ($r = $this->denegarSiCsrfInvalido($request)) { return $r; }
+
+        $reproductores = $this->alcance->deContenido($contenido);
+        if ($r = $this->bloquearSiOffline($reproductores, $request, 'spui_cms_contenidos_index')) {
+            return $r;
+        }
+
+        $item->setActivo(!$item->isActivo());
+        $this->em()->flush();
+        $this->comandoPublisher->pedirSyncAhora($reproductores, 'cronograma');
+
+        $msg = '"' . $item->getNombre() . '" ' . ($item->isActivo() ? 'activado' : 'desactivado') . '.';
+        if ($request->isXmlHttpRequest()) {
+            return $this->json(['success' => true, 'message' => $msg]);
+        }
+        $this->addFlash('success', $msg);
+        return $this->redirectToRoute('spui_cms_contenidos_index');
+    }
+
     #[Route('/items/{itemId}/eliminar', name: 'spui_cms_cronograma_item_eliminar', methods: ['POST'], requirements: ['itemId' => '\d+'])]
     public function eliminarItem(int $id, int $itemId, Request $request): Response
     {

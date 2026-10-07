@@ -80,6 +80,18 @@
                                     {% if motivo %}{{ bloqueo.attrs(motivo) }}{% else %}title="Editar"{% endif %}>
                                 <img src="{{ asset('unraf-ui/icons/pencil.svg') }}" class="spui-action-icon" alt=""> Editar
                             </button>
+                            {# Atajo del switch "Estado" del formulario: mismo cambio. #}
+                            <button type="button"
+                                    class="unraf-btn unraf-btn-sm {{ item.activo ? 'spui-btn-desactivar' : 'spui-btn-activar' }} {{ bloqueo.clase(motivo) }}"
+                                    data-spui-action2="{{ path('spui_cms_cronograma_item_toggle', {id: contenido.id, itemId: item.id}) }}"
+                                    data-spui-title="{{ item.activo ? 'Desactivar' : 'Activar' }} ítem"
+                                    data-spui-message="{{ item.activo ? '¿Desactivar «' ~ item.nombre ~ '»? Deja de mostrarse en la pantalla.' : '¿Activar «' ~ item.nombre ~ '»? Vuelve a mostrarse en la pantalla.' }}"
+                                    data-spui-variant="{{ item.activo ? 'desactivar' : 'activar' }}"
+                                    data-spui-confirm-label="{{ item.activo ? 'Desactivar' : 'Activar' }}"
+                                    {% if motivo %}{{ bloqueo.attrs(motivo) }}{% else %}title="{{ item.activo ? 'Desactivar' : 'Activar' }}"{% endif %}>
+                                <img src="{{ item.activo ? asset('unraf-ui/icons/hand-palm.svg') : asset('unraf-ui/icons/lightning.svg') }}" class="spui-action-icon" alt="">
+                                {{ item.activo ? 'Desactivar' : 'Activar' }}
+                            </button>
                             <button type="button" class="unraf-btn spui-btn-eliminar unraf-btn-sm {{ bloqueo.clase(motivo) }}"
                                     data-spui-action2="{{ path('spui_cms_cronograma_item_eliminar', {id: contenido.id, itemId: item.id}) }}"
                                     data-spui-title="Eliminar ítem"

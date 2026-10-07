@@ -123,10 +123,14 @@ class ProgramacionType extends AbstractType
                     max: 100,
                 )],
             ])
+            // Sin 'data' => true: esa opción forzaba el switch encendido
+            // SIEMPRE, ignorando lo guardado. En una edición mostraba "activa"
+            // una regla desactivada desde el listado, y guardar la reactivaba
+            // sin querer. El valor inicial del alta ya lo da la entidad
+            // (Programacion::$activo = true).
             ->add('activo', CheckboxType::class, [
                 'label'    => false,
                 'required' => false,
-                'data'     => true,
             ]);
     }
 

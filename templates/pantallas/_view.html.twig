@@ -4,13 +4,7 @@
         <p class="spui-view-title">{{ pantalla.nombre }}</p>
         <p class="spui-view-subtitle">{{ pantalla.ubicacion.edificio.nombre }}{% if pantalla.ubicacion.sector %} · {{ pantalla.ubicacion.sector }}{% endif %}</p>
     </div>
-    {% if pantalla.estado.value == 'activo' %}
-        <span class="spui-badge-conectado flex-shrink-0">{{ pantalla.estado.etiqueta }}</span>
-    {% elseif pantalla.estado.value == 'mantenimiento' %}
-        <span class="spui-badge-archivado flex-shrink-0">{{ pantalla.estado.etiqueta }}</span>
-    {% else %}
-        <span class="spui-badge-sin_registrar flex-shrink-0">{{ pantalla.estado.etiqueta }}</span>
-    {% endif %}
+    <span class="{{ pantalla.activa ? 'spui-badge-conectado' : 'spui-badge-sin_registrar' }} flex-shrink-0">{{ pantalla.estado.etiqueta }}</span>
 </div>
 
 {% if pantalla.macAddress or pantalla.ipAddress %}
