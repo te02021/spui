@@ -196,14 +196,25 @@
         }
     }
 
+    // Último elemento presionado con mouse/dedo: para distinguir "hizo clic en
+    // Cancelar" (se va, no hay nada que reprochar) de "llegó a Cancelar con
+    // Tab" (siguió recorriendo el formulario: el campo que dejó vacío sí se
+    // avisa). Pasaba con el último campo de un formulario, cuyo Tab cae justo
+    // en Cancelar.
+    var presionado = null;
+    document.addEventListener('pointerdown', function (e) { presionado = e.target; }, true);
+
     // Al salir de un campo: si es obligatorio y quedó vacío, se avisa ya. Sólo
     // cuando el foco pasa a OTRO elemento de la página (Tab, clic en otro
-    // campo): si se cambia de ventana, o se va a Cancelar, no se reprocha nada.
+    // campo): si se cambia de ventana, o se hace clic en Cancelar / cerrar, no
+    // se reprocha nada.
     function alSalir(e) {
         var t = e.target;
         if (!(t instanceof Element) || !t.matches('input, select, textarea')) return;
         var destino = e.relatedTarget;
-        if (!destino || (destino.closest && destino.closest('[data-spui-close], .spui-abm-modal-close'))) return;
+        if (!destino) return;
+        var cerrar = destino.closest && destino.closest('[data-spui-close], .spui-abm-modal-close');
+        if (cerrar && presionado && cerrar.contains(presionado)) return;
         revisar(t, true);
     }
 
