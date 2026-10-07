@@ -57,7 +57,10 @@ class CronogramaItemType extends AbstractType
                 'choices'    => ['Lun' => 0, 'Mar' => 1, 'Mié' => 2, 'Jue' => 3, 'Vie' => 4, 'Sáb' => 5, 'Dom' => 6],
                 'data'       => $options['dias_semana_default'],
             ])
+            // Opcional: vacío deja el orden que tenía (0 en un alta). Sin
+            // required=false el navegador lo exigía y el servidor no.
             ->add('orden', IntegerType::class, [
+                'required'   => false,
                 'label'      => 'Orden',
                 'label_attr' => ['class' => 'unraf-form-label'],
                 'attr'       => ['class' => 'unraf-form-control', 'min' => 0, 'style' => 'max-width:8rem'],

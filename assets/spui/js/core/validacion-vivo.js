@@ -1,11 +1,17 @@
 // Validación en vivo de campos, antes de guardar.
 //
 // Muestra el error DEBAJO del campo, con la misma clase que usan los errores
-// que manda el servidor (.spui-campo-error), mientras se escribe o al elegir
-// un archivo. No reemplaza al servidor, que vuelve a validar todo al guardar:
-// sólo adelanta lo que se puede saber sin preguntarle.
+// que manda el servidor (.spui-campo-error), en el momento en que se puede
+// saber: al salir de un campo obligatorio vacío, mientras se escribe, o al
+// elegir un archivo. No reemplaza al servidor, que vuelve a validar todo al
+// guardar: sólo adelanta lo que se puede saber sin preguntarle.
 //
 // Reglas, declaradas en el propio campo:
+//
+//   required                                      obligatorio: se avisa al salir
+//                                                 del campo (Tab o clic en otro)
+//                                                 si quedó vacío, y al guardar
+//   data-spui-requerido-mensaje="..."             (opcional) texto propio
 //
 //   data-spui-validar-posterior="#id-del-otro"   el valor tiene que ser mayor
 //   data-spui-validar-mensaje="..."               que el del otro campo (horas
@@ -13,11 +19,19 @@
 //
 //   data-spui-max-bytes="N"                       el archivo elegido no puede
 //                                                 pesar más de N bytes
+//   data-spui-formatos="jpg,png"                  extensiones admitidas, y cómo
+//   data-spui-formatos-texto="JPG o PNG"          nombrarlas en el mensaje
+//
+// Sólo se validan campos visibles y habilitados: un campo de otro tipo de
+// contenido, oculto, no cuenta.
 //
 // Dónde va el error: al final del contenedor [data-spui-campo] más cercano, o
 // si no hay, justo después del input (o de su .spui-input-with-addon).
 (function () {
     'use strict';
+
+    var MSG_REQUERIDO = 'Este campo es obligatorio.';
+    var MSG_ARCHIVO_REQUERIDO = 'Elegí un archivo.';
 
     function contenedor(campo) {
         return campo.closest('[data-spui-campo]');
@@ -58,74 +72,162 @@
         campo.classList.add('is-invalid');
     }
 
+    /** Visible y habilitado: un campo oculto (de otro tipo de contenido) no se valida. */
+    function activo(campo) {
+        if (campo.disabled) return false;
+        // Un input de archivo suele ir oculto dentro de un <label> que hace de
+        // botón: se mira si se ve su contenedor.
+        var visible = campo.type === 'file' ? (contenedor(campo) || campo.parentElement) : campo;
+        return !!(visible && visible.getClientRects().length);
+    }
+
+    function vacio(campo) {
+        if (campo.type === 'file') return !(campo.files && campo.files.length);
+        return (campo.value || '').trim() === '';
+    }
+
+    // ── Regla: obligatorio ──────────────────────────────────────────────────
+    function esObligatorio(campo) {
+        return campo.required && ['checkbox', 'radio', 'hidden', 'submit', 'button'].indexOf(campo.type) === -1;
+    }
+
+    /** true si está bien. */
+    function validarRequerido(campo) {
+        if (!esObligatorio(campo) || !activo(campo)) return true;
+        if (vacio(campo)) {
+            mostrar(campo, campo.dataset.spuiRequeridoMensaje || (campo.type === 'file' ? MSG_ARCHIVO_REQUERIDO : MSG_REQUERIDO));
+            return false;
+        }
+        return true;
+    }
+
     // ── Regla: posterior a otro campo ───────────────────────────────────────
     function validarPosterior(campo) {
-        var form  = campo.form || document;
-        var otro  = form.querySelector(campo.dataset.spuiValidarPosterior);
+        var form = campo.form || document;
+        var otro = form.querySelector(campo.dataset.spuiValidarPosterior);
         // Sin los dos valores no hay nada que comparar: que falte uno lo dice
-        // el "requerido" del servidor al guardar, no esta regla.
-        if (!otro || !campo.value || !otro.value) { limpiar(campo); return; }
+        // la regla de obligatorio, no ésta.
+        if (!otro || !campo.value || !otro.value) return true;
 
         if (campo.value <= otro.value) {
             mostrar(campo, campo.dataset.spuiValidarMensaje || 'Tiene que ser posterior.');
-        } else {
-            limpiar(campo);
+            return false;
         }
+        return true;
     }
 
-    // ── Regla: tamaño máximo de archivo ─────────────────────────────────────
+    // ── Reglas de archivo: formato y tamaño ─────────────────────────────────
+    /** Tamaño legible, con la unidad que corresponde y coma decimal. */
     function formatear(bytes) {
-        if (bytes >= 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1).replace('.0', '') + ' MB';
-        return Math.max(1, Math.round(bytes / 1024)) + ' KB';
+        var unidades = [['GB', 1024 * 1024 * 1024], ['MB', 1024 * 1024], ['KB', 1024]];
+        for (var i = 0; i < unidades.length; i++) {
+            if (bytes >= unidades[i][1]) {
+                var n = bytes / unidades[i][1];
+                // Un decimal sólo cuando aporta (2,1 GB; 15 MB; no 15,0 MB).
+                var texto = n >= 100 || Number.isInteger(n) ? String(Math.round(n)) : n.toFixed(1).replace('.0', '');
+                return texto.replace('.', ',') + ' ' + unidades[i][0];
+            }
+        }
+        return bytes + ' bytes';
     }
 
-    /** true si el archivo elegido entra. */
-    function validarTamano(campo) {
-        var max = parseInt(campo.dataset.spuiMaxBytes, 10);
+    function extension(nombre) {
+        var i = nombre.lastIndexOf('.');
+        return i === -1 ? '' : nombre.slice(i + 1).toLowerCase();
+    }
+
+    /** true si el archivo elegido (si hay) tiene formato y tamaño admitidos. */
+    function validarArchivo(campo) {
         var archivo = campo.files && campo.files[0];
-        if (!max || !archivo || archivo.size <= max) { limpiar(campo); return true; }
+        if (!archivo) return true;
 
-        mostrar(campo, 'El archivo pesa ' + formatear(archivo.size) + ' y el máximo es ' + formatear(max) + '. Elegí uno más liviano.');
-        return false;
+        var formatos = (campo.dataset.spuiFormatos || '').split(',').map(function (f) { return f.trim(); }).filter(Boolean);
+        if (formatos.length && formatos.indexOf(extension(archivo.name)) === -1) {
+            mostrar(campo, 'Formato no admitido: elegí un archivo ' + (campo.dataset.spuiFormatosTexto || formatos.join(', ').toUpperCase()) + '.');
+            return false;
+        }
+
+        var max = parseInt(campo.dataset.spuiMaxBytes, 10);
+        if (max && archivo.size > max) {
+            mostrar(campo, 'El archivo pesa ' + formatear(archivo.size) + ' y el máximo es ' + formatear(max) + '. Elegí uno más liviano.');
+            return false;
+        }
+        return true;
     }
 
-    function revisar(campo) {
-        var conRegla = false;
-        if (campo.matches('[data-spui-validar-posterior]')) { validarPosterior(campo); conRegla = true; }
-        if (campo.matches('[data-spui-max-bytes]')) { validarTamano(campo); conRegla = true; }
+    // ── Orquestación ────────────────────────────────────────────────────────
+    /**
+     * Todas las reglas de un campo, en orden; la primera que falla es la que
+     * se muestra. Devuelve true si el campo quedó bien.
+     */
+    function revisar(campo, alSalir, conservarAvisos) {
+        var tieneRegla = campo.matches('[data-spui-validar-posterior], input[type="file"]') || esObligatorio(campo);
 
-        // Un campo que el servidor marcó (ej: "El nombre es requerido") y que
-        // no tiene regla acá: apenas se lo empieza a corregir, el aviso viejo
-        // se va. Si sigue mal, el servidor lo vuelve a decir al guardar.
-        if (!conRegla && campo.classList.contains('is-invalid')) limpiar(campo);
+        if (campo.type === 'file') {
+            if (!validarArchivo(campo)) return false;
+            if (alSalir && !validarRequerido(campo)) return false;
+        } else {
+            // Mientras se escribe no se reprocha que esté vacío (recién se
+            // está completando): eso se dice al salir del campo o al guardar.
+            if (alSalir && !validarRequerido(campo)) return false;
+            if (campo.matches('[data-spui-validar-posterior]') && !validarPosterior(campo)) return false;
+        }
+
+        // Llegó hasta acá: está bien. Se va cualquier aviso viejo (del servidor
+        // o de una revisión anterior), incluido el de un campo sin regla propia
+        // que el servidor había marcado y que se empezó a corregir.
+        // Salvo que el campo se acabe de restaurar tras un error del servidor:
+        // ese error lo detectó el servidor (ej: el contenido real del archivo)
+        // y acá no se puede saber si ya no aplica.
+        if (!conservarAvisos && (tieneRegla || campo.classList.contains('is-invalid'))) limpiar(campo);
+        return true;
     }
 
     function alCambiar(e) {
         var t = e.target;
-        if (!(t instanceof Element)) return;
-        revisar(t);
+        if (!(t instanceof Element) || !t.matches('input, select, textarea')) return;
+        // Un select o un archivo "se completa" al elegir: cuenta como salir.
+        revisar(t, e.type === 'change' && (t.tagName === 'SELECT' || t.type === 'file'), e.spuiRestaurado === true);
 
         // Si cambió el campo de referencia (el "inicio"), revisar también a
         // los que dependen de él (el "fin").
         if (t.id && t.form) {
-            t.form.querySelectorAll('[data-spui-validar-posterior="#' + t.id + '"]').forEach(validarPosterior);
+            t.form.querySelectorAll('[data-spui-validar-posterior="#' + t.id + '"]').forEach(function (c) { revisar(c, false); });
         }
+    }
+
+    // Al salir de un campo: si es obligatorio y quedó vacío, se avisa ya. Sólo
+    // cuando el foco pasa a OTRO elemento de la página (Tab, clic en otro
+    // campo): si se cambia de ventana, o se va a Cancelar, no se reprocha nada.
+    function alSalir(e) {
+        var t = e.target;
+        if (!(t instanceof Element) || !t.matches('input, select, textarea')) return;
+        var destino = e.relatedTarget;
+        if (!destino || (destino.closest && destino.closest('[data-spui-close], .spui-abm-modal-close'))) return;
+        revisar(t, true);
     }
 
     document.addEventListener('input', alCambiar);
     document.addEventListener('change', alCambiar);
+    document.addEventListener('focusout', alSalir);
 
-    // Un archivo demasiado pesado no se manda: PHP descartaría el pedido
-    // ENTERO (todos los campos llegan vacíos) y lo único que se podría
-    // contestar es un aviso genérico. En fase de captura para frenarlo antes
-    // que el envío por AJAX de modal.js.
+    // Al guardar: se revisan todos los campos visibles. Si alguno está mal no
+    // se envía (se ahorra la vuelta al servidor y, con un archivo demasiado
+    // pesado, que PHP descarte el pedido ENTERO). En fase de captura para
+    // frenarlo antes que el envío por AJAX de modal.js. El servidor sigue
+    // validando todo igual cuando sí se envía.
     document.addEventListener('submit', function (e) {
-        var excedidos = Array.from(e.target.querySelectorAll('input[type="file"][data-spui-max-bytes]'))
-            .filter(function (campo) { return !validarTamano(campo); });
-        if (excedidos.length) {
+        var campos = Array.from(e.target.querySelectorAll('input, select, textarea'))
+            .filter(function (c) { return activo(c) || c.type === 'file'; });
+        var malos = campos.filter(function (c) { return !revisar(c, true); });
+        if (malos.length) {
             e.preventDefault();
             e.stopImmediatePropagation();
-            excedidos[0].focus();
+            try { malos[0].focus({ preventScroll: false }); } catch (err) { /* no enfocable */ }
+            if (malos[0].scrollIntoView) malos[0].scrollIntoView({ block: 'center', behavior: 'smooth' });
         }
     }, true);
+
+    window.spui = window.spui || {};
+    window.spui.formatearTamano = formatear;
 }());

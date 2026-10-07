@@ -110,6 +110,36 @@
                 });
         }
 
+        // ── Archivos elegidos, a través de un error de validación ──
+        // Cuando el servidor rechaza el formulario devuelve el HTML de nuevo, y
+        // un <input type="file"> no se puede repoblar desde el HTML: el archivo
+        // que el usuario ya había elegido se perdía y tenía que buscarlo otra
+        // vez. Se pasa el FileList del input viejo al nuevo (mismo name) y se
+        // avisa con un 'change', para que las vistas previas y la validación en
+        // vivo lo tomen como recién elegido. Si el error era del archivo mismo,
+        // queda ahí marcado para que lo quiten o lo reemplacen.
+        function archivosElegidos(contenedor) {
+            var porNombre = {};
+            if (!contenedor) return porNombre;
+            contenedor.querySelectorAll('input[type="file"]').forEach(function (input) {
+                if (input.name && input.files && input.files.length) porNombre[input.name] = input.files;
+            });
+            return porNombre;
+        }
+        function restaurarArchivos(contenedor, porNombre) {
+            Object.keys(porNombre).forEach(function (nombre) {
+                var input = contenedor.querySelector('input[type="file"][name="' + nombre + '"]');
+                if (!input) return;
+                try { input.files = porNombre[nombre]; } catch (e) { return; }
+                // spuiRestaurado: el error que acaba de mandar el servidor para
+                // este archivo (ej: no es audio aunque diga .mp3) tiene que
+                // seguir a la vista; validacion-vivo.js no lo limpia por esto.
+                var ev = new Event('change', { bubbles: true });
+                ev.spuiRestaurado = true;
+                input.dispatchEvent(ev);
+            });
+        }
+
         function bindFormInBody() {
             var form = bodyEl && bodyEl.querySelector('form[data-spui-ajax]');
             if (!form) return;
@@ -136,9 +166,11 @@
                         else { refreshTable(); }
                     } else {
                         if (data.html) {
+                            var archivos = archivosElegidos(form);
                             bodyEl.innerHTML = data.html;
                             notifyLoaded();
                             bindFormInBody();
+                            restaurarArchivos(bodyEl, archivos);
                         } else {
                             if (btn) btn.classList.remove('spui-btn-submitting');
                             window.spui.showFlash(data.message || 'Error al guardar. Revisá el formulario.', 'error');
@@ -449,7 +481,9 @@
                         // modales. El contrato del nivel 2 es refrescarse.
                         refreshModal2();
                     } else if (data.html) {
+                        var archivos = archivosElegidos(form);
                         injectLevel2({ html: data.html });
+                        restaurarArchivos(bodyEl2, archivos);
                     } else {
                         if (btn) btn.classList.remove('spui-btn-submitting');
                         window.spui.showFlash(data.message || 'Error al guardar.', 'error');

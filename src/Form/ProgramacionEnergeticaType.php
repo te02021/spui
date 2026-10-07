@@ -54,7 +54,10 @@ class ProgramacionEnergeticaType extends AbstractType
                     'step'            => 5,
                     'data-spui-range' => '1',
                 ],
-                'constraints' => [new Range(notInRangeMessage: 'El brillo debe estar entre {{ min }} y {{ max }}.', min: 0, max: 100)],
+                'constraints' => [
+                    new NotBlank(message: 'El brillo es obligatorio.'),
+                    new Range(notInRangeMessage: 'El brillo debe estar entre {{ min }} y {{ max }}.', min: 0, max: 100),
+                ],
             ]);
     }
 

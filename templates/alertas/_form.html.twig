@@ -63,6 +63,7 @@
         <label class="unraf-btn spui-btn-back unraf-btn-icon spui-file-trigger" title="Elegir archivo de sonido">
             <img src="{{ asset('unraf-ui/icons/upload-simple.svg') }}" class="spui-action-icon" alt="Elegir archivo de sonido">
             <input type="file" name="sonido_archivo" accept="audio/mpeg,audio/wav,.mp3,.wav" data-spui-sonido-input
+                   data-spui-formatos="mp3,wav" data-spui-formatos-texto="MP3 o WAV"
                    {% if max_bytes_sonido is defined %}data-spui-max-bytes="{{ max_bytes_sonido }}"{% endif %}>
         </label>
     </div>

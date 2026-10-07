@@ -62,6 +62,26 @@ final class MediaStorageService
     /** Tamaño máximo por archivo (bytes). Los videos institucionales entran holgados. */
     public const TAMANIO_MAXIMO = 200 * 1024 * 1024;   // 200 MB
 
+    /**
+     * Formatos admitidos por tipo de contenido, tal como los ve el navegador:
+     * extensiones (validacion-vivo.js las chequea apenas se elige un archivo),
+     * cómo nombrarlas en el texto de ayuda y en el error, y el accept del
+     * input. Tienen que corresponder con MIME_PERMITIDOS, que es lo que el
+     * servidor valida de verdad (por contenido, no por extensión).
+     */
+    public const FORMATOS = [
+        'imagen' => [
+            'extensiones' => 'jpg,jpeg,png,gif,webp',
+            'texto'       => 'JPG, PNG, GIF o WebP',
+            'accept'      => 'image/jpeg,image/png,image/gif,image/webp,.jpg,.jpeg,.png,.gif,.webp',
+        ],
+        'video' => [
+            'extensiones' => 'mp4,webm,ogg,ogv,mov',
+            'texto'       => 'MP4, WebM, OGG o MOV',
+            'accept'      => 'video/mp4,video/webm,video/ogg,video/quicktime,.mp4,.webm,.ogg,.ogv,.mov',
+        ],
+    ];
+
     public function __construct(
         private readonly S3StorageService $s3,
         private readonly SluggerInterface $slugger,
@@ -412,11 +432,20 @@ final class MediaStorageService
         return $this->slugger->slug($base) . '-' . uniqid() . '.' . $extension;
     }
 
+    /**
+     * Tamaño legible con la unidad que corresponde (KB, MB o GB) y coma
+     * decimal: "2,1 GB", no "2150.4 MB". Mismo criterio que
+     * validacion-vivo.js, para que el navegador y el servidor digan lo mismo.
+     */
     private function formatearTamanio(int $bytes): string
     {
-        if ($bytes >= 1024 * 1024) {
-            return round($bytes / (1024 * 1024), 1) . ' MB';
+        foreach (['GB' => 1024 ** 3, 'MB' => 1024 ** 2, 'KB' => 1024] as $unidad => $factor) {
+            if ($bytes >= $factor) {
+                $n = $bytes / $factor;
+                $texto = ($n >= 100 || $n == (int) $n) ? (string) round($n) : rtrim(rtrim(number_format($n, 1, ',', ''), '0'), ',');
+                return $texto . ' ' . $unidad;
+            }
         }
-        return round($bytes / 1024) . ' KB';
+        return $bytes . ' bytes';
     }
 }

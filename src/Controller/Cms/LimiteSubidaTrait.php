@@ -83,7 +83,7 @@ trait LimiteSubidaTrait
     private static function formatearBytes(int $bytes): string
     {
         if ($bytes >= 1024 * 1024 * 1024) {
-            return round($bytes / (1024 * 1024 * 1024), 1) . ' GB';
+            return str_replace('.', ',', (string) round($bytes / (1024 * 1024 * 1024), 1)) . ' GB';
         }
 
         return round($bytes / (1024 * 1024)) . ' MB';

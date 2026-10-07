@@ -126,7 +126,9 @@
                        title="{{ contenido.rutaArchivo ? 'Reemplazar archivo' : 'Elegir archivo' }}">
                     <img src="{{ asset('unraf-ui/icons/upload-simple.svg') }}" class="spui-action-icon" alt="Elegir archivo">
                     <input type="file" id="ed_archivo" name="archivo" data-spui-archivo-input
-                           accept="{{ contenido.tipo.value == 'imagen' ? 'image/*' : 'video/*' }}"
+                           {% set fmt = constant('SPUI\\Service\\MediaStorageService::FORMATOS')[contenido.tipo.value] %}
+                           accept="{{ fmt.accept }}"
+                           data-spui-formatos="{{ fmt.extensiones }}" data-spui-formatos-texto="{{ fmt.texto }}"
                            {% if max_bytes_archivo is defined %}data-spui-max-bytes="{{ max_bytes_archivo }}"{% endif %}>
                 </label>
             </div>
@@ -151,7 +153,7 @@
                 </a>
             </div>
 
-            <small class="text-muted d-block">Dejalo vacío para conservar el archivo actual.</small>
+            <small class="text-muted d-block">{{ contenido.tipo.value == 'imagen' ? 'Imágenes' : 'Videos' }}: {{ fmt.texto }}. Dejalo vacío para conservar el archivo actual.</small>
             {% if err.archivo is defined %}<p class="spui-campo-error">{{ err.archivo }}</p>{% endif %}
         </div>
 

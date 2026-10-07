@@ -100,7 +100,9 @@ class AlertaEmergencia
     public function isActiva(): bool { return $this->activa; }
 
     public function getPrioridad(): int { return $this->prioridad; }
-    public function setPrioridad(int $prioridad): static { $this->prioridad = $prioridad; return $this; }
+    // null = el campo llegó vacío del formulario: se ignora y queda el valor
+    // anterior; el NotBlank del FormType es el que avisa "obligatorio".
+    public function setPrioridad(?int $prioridad): static { if ($prioridad !== null) { $this->prioridad = $prioridad; } return $this; }
 
     public function getCreadoPorId(): int { return $this->creadoPorId; }
     public function setCreadoPorId(int $creadoPorId): static { $this->creadoPorId = $creadoPorId; return $this; }

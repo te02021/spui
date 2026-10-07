@@ -76,13 +76,19 @@ class PantallaType extends AbstractType
                 'label'      => 'Ancho (px)',
                 'label_attr' => ['class' => 'unraf-form-label'],
                 'attr'       => ['class' => 'unraf-form-control', 'style' => 'max-width:9rem'],
-                'constraints' => [new Range(notInRangeMessage: 'El ancho debe estar entre {{ min }} y {{ max }} píxeles.', min: 320, max: 7680)],
+                'constraints' => [
+                    new NotBlank(message: 'El ancho es obligatorio.'),
+                    new Range(notInRangeMessage: 'El ancho debe estar entre {{ min }} y {{ max }} píxeles.', min: 320, max: 7680),
+                ],
             ])
             ->add('resolucionAlto', IntegerType::class, [
                 'label'      => 'Alto (px)',
                 'label_attr' => ['class' => 'unraf-form-label'],
                 'attr'       => ['class' => 'unraf-form-control', 'style' => 'max-width:9rem'],
-                'constraints' => [new Range(notInRangeMessage: 'El alto debe estar entre {{ min }} y {{ max }} píxeles.', min: 240, max: 4320)],
+                'constraints' => [
+                    new NotBlank(message: 'El alto es obligatorio.'),
+                    new Range(notInRangeMessage: 'El alto debe estar entre {{ min }} y {{ max }} píxeles.', min: 240, max: 4320),
+                ],
             ])
             ->add('estado', EnumType::class, [
                 'label'        => 'Estado',
@@ -90,6 +96,7 @@ class PantallaType extends AbstractType
                 'class'        => EstadoPantalla::class,
                 'choice_label' => fn(EstadoPantalla $e) => ucfirst($e->value),
                 'attr'         => ['class' => 'unraf-form-select'],
+                'constraints'  => [new NotBlank(message: 'Elegí un estado.')],
             ]);
     }
 

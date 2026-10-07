@@ -35,6 +35,26 @@
         if (textarea)        textarea.required     = esTexto;
         if (qrUrl)           qrUrl.required        = esQr;
 
+        // Formatos del archivo según el tipo: sólo los que corresponden (una
+        // imagen no admite MP4), en el selector de archivos del sistema, en la
+        // validación en vivo y en el texto de ayuda.
+        if (archivoInput && archivoInput.dataset.spuiFormatosPorTipo && esArchivo) {
+            var formatos = {};
+            try { formatos = JSON.parse(archivoInput.dataset.spuiFormatosPorTipo); } catch (e) { /* sin datos: no se restringe */ }
+            var f = formatos[tipo];
+            if (f) {
+                archivoInput.accept = f.accept;
+                archivoInput.dataset.spuiFormatos = f.extensiones;
+                archivoInput.dataset.spuiFormatosTexto = f.texto;
+                var ayuda = document.getElementById('archivoAyuda');
+                if (ayuda) ayuda.textContent = (tipo === 'imagen' ? 'Imágenes' : 'Videos') + ': ' + f.texto + '.';
+                // Si ya había un archivo elegido (de otro tipo), revisarlo de nuevo.
+                if (archivoInput.files && archivoInput.files.length) {
+                    archivoInput.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+            }
+        }
+
         if (labelTexto && labelTexto.childNodes[0]) {
             labelTexto.childNodes[0].textContent =
                 tipo === 'youtube' ? 'URL de YouTube ' : 'Texto a mostrar ';

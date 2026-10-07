@@ -41,7 +41,10 @@ class AlertaType extends AbstractType
                 'label'      => 'Prioridad',
                 'label_attr' => ['class' => 'unraf-form-label'],
                 'attr'       => ['class' => 'unraf-form-control', 'min' => 1, 'max' => 100, 'style' => 'max-width:8rem'],
-                'constraints' => [new Range(notInRangeMessage: 'La prioridad debe estar entre {{ min }} y {{ max }}.', min: 1, max: 100)],
+                'constraints' => [
+                    new NotBlank(message: 'La prioridad es obligatoria.'),
+                    new Range(notInRangeMessage: 'La prioridad debe estar entre {{ min }} y {{ max }}.', min: 1, max: 100),
+                ],
             ])
             ->add('expiraEn', DateTimeType::class, [
                 'label'      => 'Expira en (opcional)',

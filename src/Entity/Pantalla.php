@@ -111,13 +111,15 @@ class Pantalla
     public function setMacAddress(?string $macAddress): static { $this->macAddress = $macAddress; return $this; }
 
     public function getResolucionAncho(): int { return $this->resolucionAncho; }
-    public function setResolucionAncho(int $resolucionAncho): static { $this->resolucionAncho = $resolucionAncho; return $this; }
+    // null = el campo llegó vacío del formulario: se ignora y queda el valor
+    // anterior; el NotBlank del FormType es el que avisa "obligatorio".
+    public function setResolucionAncho(?int $resolucionAncho): static { if ($resolucionAncho !== null) { $this->resolucionAncho = $resolucionAncho; } return $this; }
 
     public function getResolucionAlto(): int { return $this->resolucionAlto; }
-    public function setResolucionAlto(int $resolucionAlto): static { $this->resolucionAlto = $resolucionAlto; return $this; }
+    public function setResolucionAlto(?int $resolucionAlto): static { if ($resolucionAlto !== null) { $this->resolucionAlto = $resolucionAlto; } return $this; }
 
     public function getEstado(): EstadoPantalla { return $this->estado; }
-    public function setEstado(EstadoPantalla $estado): static { $this->estado = $estado; return $this; }
+    public function setEstado(?EstadoPantalla $estado): static { if ($estado !== null) { $this->estado = $estado; } return $this; }
 
     public function getCreadoEn(): DateTimeImmutable { return $this->creadoEn; }
     public function getActualizadoEn(): DateTimeImmutable { return $this->actualizadoEn; }

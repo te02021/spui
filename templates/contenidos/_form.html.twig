@@ -44,9 +44,13 @@
    que avisa apenas se elige uno demasiado pesado) van al final de este bloque. #}
 <div id="campoArchivo" class="mb-3" style="display:none" data-spui-campo>
     <label class="unraf-form-label" for="archivoInput">Archivo <span class="text-danger">*</span></label>
-    <input type="file" name="archivo" id="archivoInput" class="form-control{{ err.archivo is defined ? ' is-invalid' }}" accept="image/*,video/*"
+    {# Formatos según el tipo elegido: content-type-fields.js toma de
+       data-spui-formatos-por-tipo el accept, las extensiones que valida
+       validacion-vivo.js y el texto de ayuda de abajo. #}
+    <input type="file" name="archivo" id="archivoInput" class="form-control{{ err.archivo is defined ? ' is-invalid' }}"
+           data-spui-formatos-por-tipo="{{ constant('SPUI\\Service\\MediaStorageService::FORMATOS')|json_encode }}"
            {% if max_bytes_archivo is defined %}data-spui-max-bytes="{{ max_bytes_archivo }}"{% endif %}>
-    <small class="text-muted">Imágenes: JPG, PNG, GIF, WebP. Video: MP4, WebM.</small>
+    <small class="text-muted" id="archivoAyuda"></small>
     {% if err.archivo is defined %}<p class="spui-campo-error">{{ err.archivo }}</p>{% endif %}
 </div>
 
