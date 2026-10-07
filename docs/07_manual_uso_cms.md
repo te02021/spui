@@ -119,7 +119,7 @@ El repositorio de todo lo que puede aparecer en una pantalla. Seis tipos:
 | **Video** | Archivo MP4 o WebM | Ídem |
 | **YouTube** | La URL del video | Se reproduce a pantalla completa |
 | **QR** | URL destino y vencimiento opcional, en el mismo formulario | El sistema genera la imagen automáticamente (ver §3.3) |
-| **Cronograma** | Nada al crearlo | Al guardar redirige al editor de ítems |
+| **Cronograma** | Nada al crearlo | Al guardar se abre su listado de ítems (ver §3.2) |
 
 Además se define **título** y **duración en segundos** (vacío = permanente).
 
@@ -139,7 +139,10 @@ Borrador ──[Publicar]──► Publicado ──[Archivar]──► Archivado
 
 ### 3.2 Cronogramas
 
-Un contenido tipo cronograma es una tabla de horarios (materias, aulas). Al crearlo, el sistema lleva al **editor de ítems**, donde se agrega cada fila: nombre, aula, hora de inicio y fin, y en qué días aplica.
+Un contenido tipo cronograma es una tabla de horarios (materias, aulas). Sus ítems se administran en una **ventana emergente**, como el resto del panel: se abre con el botón **Ítems** del listado de Contenidos, con **Ver ítems** desde el detalle o la edición del contenido, y sola apenas se crea un cronograma.
+
+- **Agregar ítem**, **Editar** y **Eliminar** se abren encima del listado. Cada ítem pide nombre, aula (opcional), hora de inicio y fin, días y estado, y **se guarda al guardarlo**: al terminar se cierra esa ventana y el listado se actualiza solo. Las pantallas que muestran el cronograma reciben el cambio en segundos.
+- Si alguna pantalla que lo muestra tiene su reproductor desconectado, las tres acciones quedan bloqueadas (ver 6); el listado se puede mirar igual.
 
 La Pi recibe **solo los ítems del día actual**, ya filtrados. Se ordenan por hora de inicio, igual que en el CMS.
 
@@ -270,7 +273,7 @@ Los datos se agrupan por hora: con una lectura por minuto, 7 días serían unos 
 
 **El panel funciona en celular.** Por debajo de 768 px el menú pasa a hamburguesa y las tablas se convierten en tarjetas apiladas.
 
-**Casi todo se hace en ventanas emergentes** sin salir del listado, incluidos los ítems de una playlist y la grilla de energía. Las únicas excepciones son las pantallas que necesitan espacio: el editor de ítems de un cronograma y el histórico de telemetría.
+**Casi todo se hace en ventanas emergentes** sin salir del listado, incluidos los ítems de una playlist, los ítems de un cronograma y la grilla de energía. La única excepción es el histórico de telemetría, que necesita la pantalla entera para los gráficos.
 
 **Los borrados están protegidos.** El sistema no deja eliminar algo que otra cosa esté usando; avisa qué lo está bloqueando.
 

@@ -1,0 +1,99 @@
+{# Ítems de un cronograma, dentro del modal (nivel 1).
+
+   Mismo esquema que la grilla de energía: agregar, editar y eliminar se abren
+   ENCIMA, en el nivel 2 (data-spui-form2 / data-spui-action2 con
+   data-spui-subvista), cada ítem se guarda al guardarlo, y al terminar esa
+   capa se cierra y este listado se refresca solo. Reemplaza a la página
+   aparte del "editor de cronograma".
+
+   Todos los ítems son del mismo contenido, así que el motivo de bloqueo (algún
+   reproductor que lo muestra está desconectado) se resuelve una vez y vale
+   para todas las acciones. El listado se puede mirar siempre. #}
+{% import '@SPUI/_macros/bloqueo.html.twig' as bloqueo %}
+{% set motivo = spui_alcance.motivoParaEntidad(contenido, ids_offline|default({})) %}
+
+{# Zona donde el nivel 2 pinta sus confirmaciones (no puede abrir otro modal). #}
+<div data-spui-confirm-host></div>
+
+<div class="d-flex justify-content-between align-items-center mb-3 gap-2 flex-wrap">
+    <p class="text-muted small mb-0">
+        {{ items|length }} ítem(s), ordenados por hora de inicio. La pantalla muestra sólo los del día.
+    </p>
+    <button type="button" class="unraf-btn spui-btn-crear unraf-btn-sm {{ bloqueo.clase(motivo) }}"
+            data-spui-form2="{{ path('spui_cms_cronograma_item_agregar', {id: contenido.id}) }}"
+            data-spui-subvista
+            data-spui-title="Agregar ítem"
+            {% if motivo %}{{ bloqueo.attrs(motivo) }}{% else %}title="Agregar un ítem al cronograma"{% endif %}>
+        <img src="{{ asset('unraf-ui/icons/plus.svg') }}" class="spui-action-icon" alt=""> Agregar ítem
+    </button>
+</div>
+
+{% if items|length == 0 %}
+    <div class="p-4 text-center text-muted">
+        El cronograma está vacío. Agregá el primer ítem con el botón de arriba.
+    </div>
+{% else %}
+    {% set diasNombres = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'] %}
+    <div class="unraf-table-responsive">
+        <table class="unraf-table unraf-table-striped w-100 spui-tabla-cards">
+            <thead>
+                <tr>
+                    <th class="p-3">Hora</th>
+                    <th class="p-3">Nombre</th>
+                    <th class="p-3">Aula</th>
+                    <th class="p-3">Días</th>
+                    <th class="p-3">Estado</th>
+                    <th class="p-3">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for item in items %}
+                <tr>
+                    <td class="p-3 text-nowrap" data-label="Hora">
+                        <strong>{{ item.horaInicio|date('H:i') }}</strong>
+                        <span class="text-muted"> – {{ item.horaFin|date('H:i') }}</span>
+                    </td>
+                    <td class="p-3" data-label="Nombre"><strong>{{ item.nombre }}</strong></td>
+                    <td class="p-3" data-label="Aula">{{ item.aula ?? '—' }}</td>
+                    <td class="p-3" data-label="Días">
+                        <div class="d-flex gap-1 flex-wrap">
+                            {% for i in 0..6 %}
+                                {% if (item.diasSemana b-and (2 ** i)) != 0 %}
+                                    <span class="spui-dia-badge spui-dia-activo">{{ diasNombres[i] }}</span>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                    </td>
+                    <td class="p-3" data-label="Estado">
+                        {% if item.activo %}
+                            <span class="spui-badge-publicado">Activo</span>
+                        {% else %}
+                            <span class="spui-badge-archivado">Inactivo</span>
+                        {% endif %}
+                    </td>
+                    <td class="p-3" data-label="Acciones">
+                        <div class="spui-acciones">
+                            <button type="button" class="unraf-btn spui-btn-editar unraf-btn-sm {{ bloqueo.clase(motivo) }}"
+                                    data-spui-form2="{{ path('spui_cms_cronograma_item_editar', {id: contenido.id, itemId: item.id}) }}"
+                                    data-spui-subvista
+                                    data-spui-title="Editar: {{ item.nombre }}"
+                                    {% if motivo %}{{ bloqueo.attrs(motivo) }}{% else %}title="Editar"{% endif %}>
+                                <img src="{{ asset('unraf-ui/icons/pencil.svg') }}" class="spui-action-icon" alt=""> Editar
+                            </button>
+                            <button type="button" class="unraf-btn spui-btn-eliminar unraf-btn-sm {{ bloqueo.clase(motivo) }}"
+                                    data-spui-action2="{{ path('spui_cms_cronograma_item_eliminar', {id: contenido.id, itemId: item.id}) }}"
+                                    data-spui-title="Eliminar ítem"
+                                    data-spui-message="¿Eliminar «{{ item.nombre }}»? Esta acción no se puede deshacer."
+                                    data-spui-variant="eliminar"
+                                    data-spui-confirm-label="Eliminar"
+                                    {% if motivo %}{{ bloqueo.attrs(motivo) }}{% else %}title="Eliminar"{% endif %}>
+                                <img src="{{ asset('unraf-ui/icons/trash.svg') }}" class="spui-action-icon" alt=""> Eliminar
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+{% endif %}

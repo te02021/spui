@@ -100,11 +100,16 @@
                             </button>
 
                             {% if c.tipo.value == 'cronograma' %}
-                                <a href="{{ path('spui_cms_cronograma_builder', {id: c.id}) }}"
-                                   class="unraf-btn spui-btn-items unraf-btn-sm"
-                                   title="Editor de ítems del cronograma">
+                                {# Abre el listado de ítems en un modal (agregar/editar/eliminar
+                                   encima). Se puede abrir siempre: lo que se bloquea con un
+                                   reproductor caído son las acciones de adentro. #}
+                                <button type="button" class="unraf-btn spui-btn-items unraf-btn-sm"
+                                        data-spui-form="{{ path('spui_cms_cronograma_items', {id: c.id}) }}"
+                                        data-spui-title="Ítems de «{{ c.titulo }}»"
+                                        data-spui-size="modal-lg"
+                                        title="Ítems del cronograma">
                                     <img src="{{ asset('unraf-ui/icons/calendar-dots.svg') }}" class="spui-action-icon" alt=""> Ítems
-                                </a>
+                                </button>
                             {% endif %}
 
                             {% if c.estado.value != 'publicado' %}

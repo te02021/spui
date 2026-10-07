@@ -390,12 +390,22 @@ class ContenidoCmsController extends AbstractController
             $this->em()->flush();
 
             if ($tipo === TipoContenido::Cronograma) {
-                $builderUrl = $this->generateUrl('spui_cms_cronograma_builder', ['id' => $contenido->getId()]);
+                // Recién creado está vacío: se sigue directo en el listado de
+                // sus ítems, en el mismo modal (modal.js, data.abrir).
+                $msg = 'Cronograma "' . $contenido->getTitulo() . '" creado. Ahora agregá los ítems.';
                 if ($request->isXmlHttpRequest()) {
-                    return $this->json(['success' => true, 'redirect' => $builderUrl]);
+                    return $this->json([
+                        'success' => true,
+                        'message' => $msg,
+                        'abrir'   => [
+                            'url'   => $this->generateUrl('spui_cms_cronograma_items', ['id' => $contenido->getId()]),
+                            'title' => 'Ítems de «' . $contenido->getTitulo() . '»',
+                            'size'  => 'modal-lg',
+                        ],
+                    ]);
                 }
-                $this->addFlash('success', 'Cronograma "' . $contenido->getTitulo() . '" creado. Ahora agregá los ítems.');
-                return $this->redirect($builderUrl);
+                $this->addFlash('success', $msg);
+                return $this->redirectToRoute('spui_cms_contenidos_index');
             }
 
             $msg = 'Contenido "' . $contenido->getTitulo() . '" creado correctamente.';

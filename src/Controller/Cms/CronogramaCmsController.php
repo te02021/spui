@@ -49,14 +49,33 @@ class CronogramaCmsController extends AbstractController
         return $c;
     }
 
-    #[Route('', name: 'spui_cms_cronograma_builder', methods: ['GET'])]
-    public function builder(int $id): Response
+    /**
+     * Listado de ítems del cronograma, en un modal (nivel 1).
+     *
+     * Antes era una página propia ("editor de cronograma"); ahora es un modal
+     * como el resto del CMS, igual que la grilla de energía: agregar, editar y
+     * eliminar se abren encima (nivel 2, como sub-vista), cada ítem se guarda
+     * al guardarlo, y al terminar se cierra esa capa y este listado se
+     * refresca solo (modal.js, closeModal2YRefrescaNivel1).
+     */
+    #[Route('', name: 'spui_cms_cronograma_items', methods: ['GET'])]
+    public function items(int $id, Request $request): Response
     {
         $contenido = $this->getContenidoOr404($id);
 
-        return $this->render('@SPUI/cronograma/builder.html.twig', [
-            'contenido' => $contenido,
-            'items'     => $this->itemRepo->findAllByContenidoOrdenado($contenido),
+        if (!$request->isXmlHttpRequest()) {
+            // Sin XHR no hay modal donde pintarlo: se vuelve al listado de
+            // contenidos, que es desde donde se abre.
+            return $this->redirectToRoute('spui_cms_contenidos_index');
+        }
+
+        return $this->json([
+            'title' => 'Ítems de «' . $contenido->getTitulo() . '»',
+            'html'  => $this->renderView('@SPUI/cronograma/_items.html.twig', [
+                'contenido'   => $contenido,
+                'items'       => $this->itemRepo->findAllByContenidoOrdenado($contenido),
+                'ids_offline' => $this->alcance->idsOfflineDeUnaVez(),
+            ]),
         ]);
     }
 
@@ -65,7 +84,7 @@ class CronogramaCmsController extends AbstractController
     {
         $contenido  = $this->getContenidoOr404($id);
         $actionUrl  = $this->generateUrl('spui_cms_cronograma_item_agregar', ['id' => $id]);
-        $builderUrl = $this->generateUrl('spui_cms_cronograma_builder', ['id' => $id]);
+        $volverUrl  = $this->generateUrl('spui_cms_contenidos_index');
 
         if ($request->isMethod('GET')) {
             if ($request->isXmlHttpRequest()) {
@@ -74,7 +93,7 @@ class CronogramaCmsController extends AbstractController
                     'html'  => $this->renderView('@SPUI/cronograma/_item_agregar_form.html.twig', ['action_url' => $actionUrl]),
                 ]);
             }
-            return $this->redirect($builderUrl);
+            return $this->redirect($volverUrl);
         }
 
         if ($r = $this->denegarSiCsrfInvalido($request)) { return $r; }
@@ -110,11 +129,11 @@ class CronogramaCmsController extends AbstractController
                 ]);
             }
             $this->addFlash('error', implode(' ', $errors));
-            return $this->redirect($builderUrl);
+            return $this->redirect($volverUrl);
         }
 
         $reproductores = $this->alcance->deContenido($contenido);
-        if ($r = $this->bloquearSiOffline($reproductores, $request, 'spui_cms_cronograma_builder', ['id' => $id])) {
+        if ($r = $this->bloquearSiOffline($reproductores, $request, 'spui_cms_contenidos_index')) {
             return $r;
         }
 
@@ -136,12 +155,14 @@ class CronogramaCmsController extends AbstractController
         $this->em()->flush();
         $this->comandoPublisher->pedirSyncAhora($reproductores, 'cronograma');
 
+        // Sin redirect: en el modal, éxito = cerrar esta capa y refrescar el
+        // listado de ítems de abajo.
         $msg = '"' . $nombre . '" agregado al cronograma.';
         if ($request->isXmlHttpRequest()) {
-            return $this->json(['success' => true, 'message' => $msg, 'redirect' => $builderUrl]);
+            return $this->json(['success' => true, 'message' => $msg]);
         }
         $this->addFlash('success', $msg);
-        return $this->redirect($builderUrl);
+        return $this->redirect($volverUrl);
     }
 
     #[Route('/items/{itemId}/editar', name: 'spui_cms_cronograma_item_editar', methods: ['GET', 'POST'], requirements: ['itemId' => '\d+'])]
@@ -174,11 +195,11 @@ class CronogramaCmsController extends AbstractController
                 if ($request->isXmlHttpRequest()) {
                     return $this->json(['success' => false, 'html' => $this->renderView('@SPUI/cronograma/_item_form.html.twig', ['form' => $form])]);
                 }
-                return $this->redirectToRoute('spui_cms_cronograma_builder', ['id' => $id]);
+                return $this->redirectToRoute('spui_cms_contenidos_index');
             }
 
             $reproductores = $this->alcance->deContenido($contenido);
-            if ($r = $this->bloquearSiOffline($reproductores, $request, 'spui_cms_cronograma_builder', ['id' => $id])) {
+            if ($r = $this->bloquearSiOffline($reproductores, $request, 'spui_cms_contenidos_index')) {
                 return $r;
             }
 
@@ -192,16 +213,14 @@ class CronogramaCmsController extends AbstractController
             $this->em()->flush();
             $this->comandoPublisher->pedirSyncAhora($reproductores, 'cronograma');
 
-            $builderUrl = $this->generateUrl('spui_cms_cronograma_builder', ['id' => $id]);
             if ($request->isXmlHttpRequest()) {
                 return $this->json([
-                    'success'  => true,
-                    'message'  => '"' . $item->getNombre() . '" actualizado.',
-                    'redirect' => $builderUrl,
+                    'success' => true,
+                    'message' => '"' . $item->getNombre() . '" actualizado.',
                 ]);
             }
             $this->addFlash('success', '"' . $item->getNombre() . '" actualizado.');
-            return $this->redirect($builderUrl);
+            return $this->redirectToRoute('spui_cms_contenidos_index');
         }
 
         if ($request->isXmlHttpRequest()) {
@@ -211,7 +230,7 @@ class CronogramaCmsController extends AbstractController
             ]);
         }
 
-        return $this->redirectToRoute('spui_cms_cronograma_builder', ['id' => $id]);
+        return $this->redirectToRoute('spui_cms_contenidos_index');
     }
 
     #[Route('/items/{itemId}/eliminar', name: 'spui_cms_cronograma_item_eliminar', methods: ['POST'], requirements: ['itemId' => '\d+'])]
@@ -226,7 +245,7 @@ class CronogramaCmsController extends AbstractController
         if ($r = $this->denegarSiCsrfInvalido($request)) { return $r; }
 
         $reproductores = $this->alcance->deContenido($contenido);
-        if ($r = $this->bloquearSiOffline($reproductores, $request, 'spui_cms_cronograma_builder', ['id' => $id])) {
+        if ($r = $this->bloquearSiOffline($reproductores, $request, 'spui_cms_contenidos_index')) {
             return $r;
         }
 
@@ -235,16 +254,14 @@ class CronogramaCmsController extends AbstractController
         $this->em()->flush();
         $this->comandoPublisher->pedirSyncAhora($reproductores, 'cronograma');
 
-        $builderUrl = $this->generateUrl('spui_cms_cronograma_builder', ['id' => $id]);
         if ($request->isXmlHttpRequest()) {
             return $this->json([
-                'success'  => true,
-                'message'  => '"' . $nombre . '" eliminado.',
-                'redirect' => $builderUrl,
+                'success' => true,
+                'message' => '"' . $nombre . '" eliminado.',
             ]);
         }
         $this->addFlash('success', '"' . $nombre . '" eliminado.');
-        return $this->redirect($builderUrl);
+        return $this->redirectToRoute('spui_cms_contenidos_index');
     }
 
 }

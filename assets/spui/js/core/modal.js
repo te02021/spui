@@ -104,10 +104,27 @@
                     // que hay que bindearlos acá: bindTableButtons() sólo mira
                     // los data-spui-form/action del nivel 1.
                     if (window.spui.bindOpeners2) window.spui.bindOpeners2();
+                    bindAbrirEnNivel1();
                 })
                 .catch(function () {
                     bodyEl.innerHTML = '<div class="alert alert-danger">Error al cargar el formulario. Intentá de nuevo.</div>';
                 });
+        }
+
+        // Botones dentro del modal que REEMPLAZAN su contenido por otra vista,
+        // sin abrir una capa nueva ni navegar: data-spui-abrir="url" (+ title,
+        // size). Ej: "Ver ítems" desde el detalle o la edición de un
+        // cronograma, que pasa al listado de ítems en el mismo modal.
+        function bindAbrirEnNivel1() {
+            bodyEl.querySelectorAll('[data-spui-abrir]').forEach(function (btn) {
+                if (btn._spuiAbrir) return;
+                btn._spuiAbrir = true;
+                btn.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    if (bloqueado(btn)) return;
+                    openFormModal(btn.dataset.spuiAbrir, btn.dataset.spuiTitle, btn.dataset.spuiSize || null);
+                });
+            });
         }
 
         // ── Archivos elegidos, a través de un error de validación ──
@@ -158,7 +175,13 @@
                 })
                 .then(function (r) { return r.json(); })
                 .then(function (data) {
-                    if (data.success) {
+                    if (data.success && data.abrir) {
+                        // Guardado, y el servidor pide seguir en otra vista del
+                        // mismo modal (ej: crear un cronograma → sus ítems).
+                        if (data.message) window.spui.showFlash(data.message, 'success');
+                        refreshTable();
+                        openFormModal(data.abrir.url, data.abrir.title, data.abrir.size || null);
+                    } else if (data.success) {
                         closeModal();
                         if (data.message) window.spui.showFlash(data.message, 'success');
                         if (data.redirect) { window.location.href = data.redirect; }

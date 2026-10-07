@@ -161,12 +161,16 @@
         <div class="mb-3">
             <label class="unraf-form-label">Ítems del cronograma</label>
             <p class="text-muted small mb-2">
-                Las actividades se gestionan en el editor del cronograma, en su propia pantalla.
+                Las actividades se cargan en el listado de ítems del cronograma. Lo que no hayas
+                guardado acá se pierde al pasar a los ítems.
             </p>
-            <a href="{{ path('spui_cms_cronograma_builder', {id: contenido.id}) }}"
-               class="unraf-btn spui-btn-items unraf-btn-sm">
-                <img src="{{ asset('unraf-ui/icons/calendar-dots.svg') }}" class="spui-action-icon" alt=""> Ir al editor de ítems
-            </a>
+            {# data-spui-abrir: reemplaza este modal por el listado de ítems (modal.js). #}
+            <button type="button" class="unraf-btn spui-btn-items unraf-btn-sm"
+                    data-spui-abrir="{{ path('spui_cms_cronograma_items', {id: contenido.id}) }}"
+                    data-spui-title="Ítems de «{{ contenido.titulo }}»"
+                    data-spui-size="modal-lg">
+                <img src="{{ asset('unraf-ui/icons/calendar-dots.svg') }}" class="spui-action-icon" alt=""> Ver ítems
+            </button>
         </div>
     {% endif %}
 

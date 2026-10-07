@@ -154,9 +154,12 @@
 
 {% if contenido.tipo.value == 'cronograma' %}
 <div class="spui-view-section">
-    <a href="{{ path('spui_cms_cronograma_builder', {id: contenido.id}) }}"
-       class="unraf-btn spui-btn-items unraf-btn-sm">
+    {# data-spui-abrir: reemplaza este modal por el listado de ítems (modal.js). #}
+    <button type="button" class="unraf-btn spui-btn-items unraf-btn-sm"
+            data-spui-abrir="{{ path('spui_cms_cronograma_items', {id: contenido.id}) }}"
+            data-spui-title="Ítems de «{{ contenido.titulo }}»"
+            data-spui-size="modal-lg">
         <img src="{{ asset('unraf-ui/icons/calendar-dots.svg') }}" class="spui-action-icon" alt=""> Ver ítems del cronograma
-    </a>
+    </button>
 </div>
 {% endif %}
