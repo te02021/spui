@@ -6,7 +6,9 @@ namespace SPUI\Command;
 
 use DateTimeImmutable;
 use Doctrine\Persistence\ManagerRegistry;
+use PhpMqtt\Client\Exceptions\MqttClientException;
 use PhpMqtt\Client\MqttClient;
+use Psr\Log\LoggerInterface;
 use SPUI\Entity\Telemetria;
 use SPUI\Enum\EstadoConexion;
 use SPUI\Repository\ReproductorRepository;
@@ -84,6 +86,7 @@ class MqttSubscribeCommand extends Command
 
     public function __construct(
         private readonly ManagerRegistry $doctrine,
+        private readonly LoggerInterface $logger,
         private readonly ReproductorRepository $reproductorRepo,
         private readonly MantenimientoService $mantenimiento,
         private readonly TelemetriaRollupService $rollup,
@@ -147,30 +150,73 @@ class MqttSubscribeCommand extends Command
             ->setKeepAliveInterval(60)
             ->setConnectTimeout(5);
 
-        $mqtt = new MqttClient($host, $port, 'spui-cms-' . gethostname());
+        // Bucle de reconexión. Antes, si el broker cortaba el socket (pasaba
+        // casi todos los días: la PC entra en suspensión y al volver la
+        // conexión está muerta), la excepción terminaba el proceso — y con él
+        // la telemetría, el mantenimiento y los avisos de "reproductor caído",
+        // hasta que alguien lo reiniciara. Ahora se espera y se reconecta solo,
+        // con una espera que crece (5, 10, 20… hasta 60 s) para no martillar un
+        // broker caído. Sólo se reintentan errores de MQTT; cualquier otro
+        // sigue cortando el proceso para que se vea.
+        $intento         = 0;
+        $primeraConexion = true;
+        while (true) {
+            $mqtt = new MqttClient($host, $port, 'spui-cms-' . gethostname());
+            try {
+                $mqtt->connect($settings);
+                $intento = 0;
+                $this->escuchar($mqtt, $io, $primeraConexion);
+                return Command::SUCCESS;   // el loop terminó por pedido (Ctrl+C / interrupt)
+            } catch (MqttClientException $e) {
+                try { $mqtt->disconnect(); } catch (\Throwable) { /* ya estaba cerrado */ }
+                $espera = (int) min(60, 5 * (2 ** $intento));
+                $intento++;
 
-        try {
-            $mqtt->connect($settings);
-        } catch (\Throwable $e) {
-            $io->error('No se pudo conectar al broker MQTT: ' . $e->getMessage());
+                $this->logger->warning('SPUI daemon MQTT: se perdió/no se pudo abrir la conexión con el broker ({msg}). Reintento en {seg} s (intento {n}).', [
+                    'msg' => $e->getMessage(), 'seg' => $espera, 'n' => $intento,
+                ]);
+                $io->warning(sprintf('[%s] Conexión con el broker perdida o rechazada: %s — reintento en %d s.', $this->ts(), $e->getMessage(), $espera));
 
-            // El broker rechaza la conexión con el mismo error genérico esté
-            // caído o sean las credenciales las que no sirven, así que conviene
-            // nombrar las dos causas: sin esta pista, un usuario mal
-            // configurado se diagnostica como "Mosquitto no está corriendo".
-            $io->note(sprintf(
-                'Verificá que Mosquitto esté corriendo en %s:%d y que MQTT_USER/MQTT_PASS '
-                . 'coincidan con el cliente creado en el broker (usuario actual: %s). '
-                . 'Ver apps/spui/config/mosquitto/README.md',
-                $host,
-                $port,
-                $this->mqttUser !== '' ? $this->mqttUser : '(vacío)',
-            ));
+                if ($primeraConexion && $intento === 1) {
+                    // El broker rechaza la conexión con el mismo error genérico
+                    // esté caído o sean las credenciales las que no sirven, así
+                    // que conviene nombrar las dos causas: sin esta pista, un
+                    // usuario mal configurado se diagnostica como "Mosquitto no
+                    // está corriendo".
+                    $io->note(sprintf(
+                        'Verificá que Mosquitto esté corriendo en %s:%d y que MQTT_USER/MQTT_PASS '
+                        . 'coincidan con el cliente creado en el broker (usuario actual: %s). '
+                        . 'Ver apps/spui/config/mosquitto/README.md',
+                        $host,
+                        $port,
+                        $this->mqttUser !== '' ? $this->mqttUser : '(vacío)',
+                    ));
+                }
 
-            return Command::FAILURE;
+                sleep($espera);
+
+                // Si la conexión con el broker murió por una suspensión, la de
+                // MySQL probablemente también: se cierra para que la próxima
+                // consulta abra una nueva en vez de fallar con "server has gone
+                // away".
+                $this->doctrine->getConnection('spui')->close();
+            }
         }
+    }
 
-        $io->success('Conectado. Esperando telemetría de reproductores Pi...');
+    /**
+     * Suscribe y queda escuchando hasta que el loop termine o se corte la
+     * conexión (en ese caso la excepción sube a execute(), que reconecta).
+     */
+    private function escuchar(MqttClient $mqtt, SymfonyStyle $io, bool &$primeraConexion): void
+    {
+        $io->success($primeraConexion
+            ? 'Conectado. Esperando telemetría de reproductores Pi...'
+            : sprintf('[%s] Reconectado al broker.', $this->ts()));
+        if (!$primeraConexion) {
+            $this->logger->info('SPUI daemon MQTT: reconectado al broker.');
+        }
+        $primeraConexion = false;
 
         $mqtt->subscribe(
             self::TOPIC_TELEMETRIA,
@@ -188,10 +234,12 @@ class MqttSubscribeCommand extends Command
             1,
         );
 
-        // Corrida inicial al arrancar: si el proceso estuvo caído (o es la
-        // primera vez que se instala), no hay que esperar hasta el próximo
-        // intervalo para que alertas/mantenimiento/rollup se pongan al día.
-        // Mismo espíritu que Persistent=true en un systemd timer.
+        // Corrida inicial al arrancar Y al reconectar: si el proceso estuvo
+        // caído o desconectado, no hay que esperar hasta el próximo intervalo
+        // para que alertas/mantenimiento/rollup se pongan al día. Mismo
+        // espíritu que Persistent=true en un systemd timer. Además, el tiempo
+        // que mide el loop arranca de cero en cada conexión, así que los
+        // próximos turnos se recalculan desde acá.
         $this->tick($io);
         $this->proximaRevisionAlertas = $this->intervaloAlertasSeg;
         $this->proximoMantenimiento   = $this->intervaloMantenimientoSeg;
@@ -211,10 +259,9 @@ class MqttSubscribeCommand extends Command
         );
 
         // Bucle bloqueante — el broker envía pings para mantener la conexión viva.
-        // Interrumpir con Ctrl+C o SIGTERM.
+        // Interrumpir con Ctrl+C o SIGTERM. Si el broker corta el socket, sale
+        // con una MqttClientException que execute() atrapa para reconectar.
         $mqtt->loop(true);
-
-        return Command::SUCCESS;
     }
 
     /**

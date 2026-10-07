@@ -302,6 +302,8 @@ php bin/console spui:mqtt:subscribe --id=spui
 
 En uso real no se lanza a mano: se instala como servicio con `config/servicios/instalar-servicio-telemetria.ps1` (Windows, NSSM) o `config/servicios/instalar-servicio.sh` (Linux, systemd). Ese **único servicio** deja las tres cosas andando; no hace falta —ni conviene— programar aparte `spui:mantenimiento` ni `spui:telemetria:rollup`, que quedan como comandos sueltos para correrlos a mano. Los intervalos se ajustan con `SPUI_INTERVALO_MANTENIMIENTO_SEG` y `SPUI_INTERVALO_ROLLUP_SEG`.
 
+**Si el broker corta la conexión** (por ejemplo, la PC del servidor entra en suspensión), el daemon no termina: espera y se reconecta solo (5, 10, 20… hasta 60 s entre intentos), cierra la conexión a MySQL para que se reabra, y al volver corre de inmediato las tareas que le tocaban. Cada corte y reconexión queda en `var/log/spui/`. Antes de octubre 2026 terminaba con error casi todos los días y dejaba sin telemetría ni avisos de "reproductor caído" hasta reiniciarlo.
+
 ⚠️ **El flag `--id=spui` es obligatorio.** Este monolito aloja varias apps y decide cuál cargar según la URL; por consola no hay URL, así que hay que decírselo. Sin el flag, el comando falla con un error confuso sobre `apps/guess`.
 
 **Variables de entorno relevantes.** En esta instalación el runtime lee `.env.local.php` (el dump de `composer dump-env`), no `.env.local`; los defaults versionados están en `.env` de la raíz del monorepo.

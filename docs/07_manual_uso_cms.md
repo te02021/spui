@@ -294,6 +294,8 @@ El bloqueo lo decide el servidor, no sólo el botón: si el equipo se cae entre 
 
 **Requiere JavaScript.** El CMS es una aplicación de panel, no un sitio de contenido; sin JS los formularios no se abren.
 
+**Las subidas muestran su avance.** Al guardar con un archivo (imagen, video, sonido de alerta) aparece una barra con el porcentaje y los MB enviados ("Subiendo archivo… 25 % · 12,3 MB de 50 MB"). Cuando el archivo terminó de llegar pasa a "Procesando en el servidor…": es el momento en que el servidor lo guarda en el almacenamiento, y puede tardar unos segundos más en archivos grandes.
+
 **Los errores de un dato aparecen debajo de ese campo**, en rojo y con el campo marcado: un nombre que falta, una URL mal escrita, una hora de apagado anterior a la de encendido, un archivo con formato no admitido. Muchos se avisan **antes de guardar**: un campo obligatorio que dejás vacío, al pasar al siguiente (Tab o clic en otro campo); las horas al revés (energía y cronograma), mientras las cambiás; y al elegir un archivo, si el formato no corresponde al tipo (una imagen no admite MP4) o si pesa más que el máximo (con su tamaño real: "pesa 2,1 GB y el máximo es 200 MB"). Al apretar Guardar con algo mal no se envía nada y se marcan todos los campos a corregir. Al empezar a corregir un campo marcado, el aviso se va. Si el servidor rechaza un archivo ya elegido, **el archivo queda cargado** con el aviso debajo, para quitarlo o reemplazarlo sin buscarlo de nuevo. El texto de ayuda del archivo muestra sólo los formatos del tipo elegido. Los mensajes flotantes de arriba quedan para lo que no es de un campo: un reproductor desconectado, algo que no se puede eliminar porque está en uso, la sesión vencida.
 
 ---

@@ -157,6 +157,75 @@
             });
         }
 
+        // ── Envío de formularios, con progreso si lleva archivo ──
+        // fetch() no informa cuánto lleva subido, así que un video de cientos
+        // de MB dejaba el modal "colgado" sin ninguna señal. Si el formulario
+        // trae un archivo elegido se envía con XMLHttpRequest, que sí informa
+        // el avance, y se muestra una barra con el porcentaje y los MB. Al
+        // terminar de llegar el archivo, el servidor todavía lo procesa (lo
+        // sube a S3, calcula el hash): esa parte se muestra como "Procesando…",
+        // sin porcentaje, porque desde acá no se puede medir.
+        function tieneArchivo(form) {
+            return Array.from(form.querySelectorAll('input[type="file"]')).some(function (i) {
+                return i.files && i.files.length;
+            });
+        }
+
+        function barraDeSubida(form) {
+            var cont = document.createElement('div');
+            cont.className = 'spui-subida';
+            cont.setAttribute('role', 'status');
+            cont.innerHTML = '<div class="spui-subida-barra"><span></span></div><small></small>';
+            var acciones = form.querySelector('[type="submit"]');
+            var ancla = acciones ? acciones.closest('.d-flex') || acciones : null;
+            if (ancla && ancla.parentElement) ancla.parentElement.insertBefore(cont, ancla);
+            else form.appendChild(cont);
+            return cont;
+        }
+
+        function tamano(bytes) {
+            return window.spui.formatearTamano ? window.spui.formatearTamano(bytes) : Math.round(bytes / 1048576) + ' MB';
+        }
+
+        /** Envía el form y resuelve con el JSON de respuesta. */
+        function enviarFormulario(form, url) {
+            if (!tieneArchivo(form)) {
+                return fetch(url, {
+                    method: 'POST',
+                    body: new FormData(form),
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                }).then(function (r) { return r.json(); });
+            }
+
+            var barra = barraDeSubida(form);
+            var relleno = barra.querySelector('span');
+            var texto = barra.querySelector('small');
+            texto.textContent = 'Subiendo archivo…';
+
+            return new Promise(function (resolve, reject) {
+                var xhr = new XMLHttpRequest();
+                xhr.open('POST', url);
+                xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+                xhr.upload.onprogress = function (e) {
+                    if (!e.lengthComputable) return;
+                    var pct = Math.min(100, Math.round(e.loaded / e.total * 100));
+                    relleno.style.width = pct + '%';
+                    texto.textContent = 'Subiendo archivo… ' + pct + ' % · ' + tamano(e.loaded) + ' de ' + tamano(e.total);
+                };
+                xhr.upload.onload = function () {
+                    relleno.style.width = '100%';
+                    barra.classList.add('is-procesando');
+                    texto.textContent = 'Archivo recibido. Procesando en el servidor…';
+                };
+                xhr.onload = function () {
+                    barra.remove();
+                    try { resolve(JSON.parse(xhr.responseText)); } catch (e) { reject(e); }
+                };
+                xhr.onerror = xhr.onabort = function () { barra.remove(); reject(new Error('red')); };
+                xhr.send(new FormData(form));
+            });
+        }
+
         function bindFormInBody() {
             var form = bodyEl && bodyEl.querySelector('form[data-spui-ajax]');
             if (!form) return;
@@ -167,13 +236,7 @@
                 e.preventDefault();
                 var btn = form.querySelector('[type=submit]');
                 if (btn) btn.classList.add('spui-btn-submitting');
-                var fd = new FormData(form);
-                fetch(form.getAttribute('action') || location.href, {
-                    method: 'POST',
-                    body: fd,
-                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
-                })
-                .then(function (r) { return r.json(); })
+                enviarFormulario(form, form.getAttribute('action') || location.href)
                 .then(function (data) {
                     if (data.success && data.abrir) {
                         // Guardado, y el servidor pide seguir en otra vista del
@@ -490,12 +553,7 @@
                 e.preventDefault();
                 var btn = form.querySelector('[type=submit]');
                 if (btn) btn.classList.add('spui-btn-submitting');
-                fetch(form.getAttribute('action') || location.href, {
-                    method: 'POST',
-                    body: new FormData(form),
-                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
-                })
-                .then(function (r) { return r.json(); })
+                enviarFormulario(form, form.getAttribute('action') || location.href)
                 .then(function (data) {
                     if (data.success) {
                         if (data.message) window.spui.showFlash(data.message, 'success');

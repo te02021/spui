@@ -1152,6 +1152,43 @@ textarea.is-invalid,
 }
 @keyframes spui-spin { to { transform: rotate(360deg); } }
 
+/* ----- Progreso de una subida (modal.js, enviarFormulario) -----
+   Barra con porcentaje mientras el archivo viaja; al terminar de llegar,
+   "Procesando…" con una franja animada sin porcentaje (el servidor todavía
+   lo sube a S3 y no hay forma de medir esa parte desde el navegador). */
+.spui-subida {
+    margin: .75rem 0 .5rem;
+}
+.spui-subida-barra {
+    height: .5rem;
+    border-radius: 1rem;
+    background: #e9ecef;
+    overflow: hidden;
+}
+.spui-subida-barra span {
+    display: block;
+    height: 100%;
+    width: 0;
+    background: var(--unraf-turquesa, #1CA1A7);
+    transition: width .2s ease;
+}
+.spui-subida small {
+    display: block;
+    margin-top: .3rem;
+    color: #495057;
+    font-variant-numeric: tabular-nums;
+}
+.spui-subida.is-procesando .spui-subida-barra span {
+    background: repeating-linear-gradient(-45deg,
+        var(--unraf-turquesa, #1CA1A7) 0 .6rem, #5cc6cb .6rem 1.2rem);
+    background-size: 200% 100%;
+    animation: spui-subida-procesando 1s linear infinite;
+}
+@keyframes spui-subida-procesando { to { background-position: -1.7rem 0; } }
+@media (prefers-reduced-motion: reduce) {
+    .spui-subida.is-procesando .spui-subida-barra span { animation: none; }
+}
+
 /* Button submit loading state */
 .spui-btn-submitting {
     position: relative;
