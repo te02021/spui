@@ -26,6 +26,15 @@ URL = 'http://cms/api/spui/media/imagenes/foto.jpg'
 
 
 class _Respuesta:
+    """
+    Respuesta HTTP falsa. Entrega el cuerpo en bloques de BLOQUE bytes, más
+    chicos que lo que pide el cliente: si no, un cuerpo de pocos KB llegaba
+    entero en el primer bloque y el corte en `cortar_en` nunca ocurría (el
+    test "pasaba" una descarga completa por cortada).
+    """
+
+    BLOQUE = 512
+
     def __init__(self, cuerpo: bytes, cortar_en: int | None = None):
         self._cuerpo = cuerpo
         self._cortar_en = cortar_en
@@ -35,10 +44,10 @@ class _Respuesta:
 
     def iter_content(self, chunk_size=8192):
         enviados = 0
-        for i in range(0, len(self._cuerpo), chunk_size):
+        for i in range(0, len(self._cuerpo), self.BLOQUE):
             if self._cortar_en is not None and enviados >= self._cortar_en:
                 raise ConnectionError('se cortó la red en plena descarga')
-            trozo = self._cuerpo[i:i + chunk_size]
+            trozo = self._cuerpo[i:i + self.BLOQUE]
             enviados += len(trozo)
             yield trozo
 

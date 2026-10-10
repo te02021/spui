@@ -9,6 +9,8 @@
       2. lint:twig      (templates de SPUI)
       3. smoke.php      todas las rutas GET del CMS por HTTP real + API sin clave → 401
       4. formularios.php cada FormType con un campo vacío por vez: nunca una excepción
+      4b. cliente-pi    sintaxis del cliente Python con 3.10 y sus tests (pi-client/tests) con el
+                        venv de D:\tools\spui-python (py -3.14 -m venv + requests paho-mqtt psutil Pillow)
       5. assets.php     ¿el navegador recibe el JS/CSS actual? Si no, no falla: avisa que hay que
                         correr RebuildAssets.exe y las capturas se sacan con las fuentes (--fuentes)
       6. capturas.mjs   navegador real, escritorio y celular: errores de JS, 4xx/5xx,
@@ -28,6 +30,7 @@
 #>
 param(
     [string]   $PlaywrightDir = $env:SPUI_PLAYWRIGHT_DIR,
+    [string]   $PythonVenv = 'D:\tools\spui-python\Scripts\python.exe',
     [string[]] $Solo,
     [switch]   $SinCapturas,
     [switch]   $Seguir
@@ -44,7 +47,11 @@ $resultados = @()
 function Paso([string] $nombre, [scriptblock] $accion) {
     Write-Host "`n=== $nombre" -ForegroundColor Cyan
     $inicio = Get-Date
-    & $accion
+    # Un programa externo se juzga por su código de salida, no por lo que
+    # escriba en stderr: con 'Stop', PowerShell 5.1 corta ante cualquier línea
+    # de stderr (un aviso de log de un test, por ejemplo).
+    $ErrorActionPreference = 'Continue'
+    & $accion 2>&1 | ForEach-Object { "$_" }
     $ok = ($LASTEXITCODE -eq 0)
     $seg = [math]::Round(((Get-Date) - $inicio).TotalSeconds)
     $script:resultados += [pscustomobject]@{ Paso = $nombre; Resultado = $(if ($ok) { 'OK' } else { 'FALLA' }); Segundos = $seg }
@@ -67,6 +74,20 @@ try {
     Paso 'lint:twig'      { php bin/console lint:twig apps/spui/templates --id=spui }
     Paso 'smoke'          { php (Join-Path $aqui 'smoke.php') }
     Paso 'formularios'    { php (Join-Path $aqui 'formularios.php') }
+
+    # Cliente de la Pi: sintaxis con el Python más viejo disponible (3.10: si
+    # compila ahí vale en el 3.11 de Raspberry Pi OS Bookworm) y tests con el
+    # venv fijo de D:\tools\spui-python. Sin escribir .pyc en pi-client/, que
+    # deploy.ps1 copiaría a la Pi.
+    $env:PYTHONDONTWRITEBYTECODE = '1'
+    $cliente = (Resolve-Path (Join-Path $aqui '..\..\pi-client')).Path
+    Paso 'cliente-pi sintaxis' {
+        py -3.10 -c "import ast, pathlib, sys; [ast.parse(p.read_text(encoding='utf-8'), str(p)) for p in pathlib.Path(sys.argv[1]).rglob('*.py')]; print('sintaxis OK')" $cliente
+    }
+    Paso 'cliente-pi tests' {
+        Push-Location $cliente
+        try { & $PythonVenv -m unittest discover -s tests } finally { Pop-Location }
+    }
     # Un build viejo no es un error del código: el navegador de Mateo va a
     # recibir JS/CSS anteriores hasta que corra RebuildAssets.exe. Se avisa y
     # las capturas se sacan con las fuentes actuales (--fuentes).
