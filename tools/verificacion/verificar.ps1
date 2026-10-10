@@ -13,9 +13,11 @@
       6. capturas.mjs   navegador real, escritorio y celular: errores de JS, 4xx/5xx,
                         [hidden] visibles, Guardar vacío sin errores; deja PNG en capturas\
 
-    Requisitos: WAMP arriba (Apache + MySQL) y, para el paso 6, Playwright:
-        npm i playwright@1 ; npx playwright install chromium-headless-shell
-    en una carpeta cualquiera, apuntada por -PlaywrightDir o $env:SPUI_PLAYWRIGHT_DIR.
+    Requisitos: WAMP arriba (Apache + MySQL) y, para el paso 6, Playwright. En la PC de
+    Mateo está instalado fijo en D:\tools\spui-playwright, que se usa por defecto. Para
+    otra ubicación: -PlaywrightDir o $env:SPUI_PLAYWRIGHT_DIR. Para instalarlo de cero:
+        cd <carpeta> ; npm i playwright@1
+        $env:PLAYWRIGHT_BROWSERS_PATH = "<carpeta>\browsers" ; npx playwright install chromium-headless-shell
     Chromium se busca en $env:PLAYWRIGHT_BROWSERS_PATH (por defecto <PlaywrightDir>\browsers).
 
 .EXAMPLE
@@ -31,6 +33,9 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+if (-not $PlaywrightDir -and (Test-Path 'D:\tools\spui-playwright\node_modules\playwright')) {
+    $PlaywrightDir = 'D:\tools\spui-playwright'
+}
 $aqui     = $PSScriptRoot
 $monorepo = (Resolve-Path (Join-Path $aqui '..\..\..\..')).Path
 $resultados = @()
