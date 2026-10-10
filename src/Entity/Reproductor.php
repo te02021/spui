@@ -46,6 +46,24 @@ class Reproductor
     #[ORM\Column(nullable: true)]
     private ?DateTimeImmutable $ultimoHeartbeat = null;
 
+    /** Cuándo pidió el sync por última vez (lo registra SyncController::sync). */
+    #[ORM\Column(nullable: true)]
+    private ?DateTimeImmutable $ultimoSync = null;
+
+    /**
+     * Cada cuántos minutos sincroniza la Pi por su cuenta. Es el respaldo:
+     * los cambios del CMS le llegan al instante por sync_ahora. Pero también
+     * fija cuánto puede tardar en arrancar una programación, porque la Pi
+     * sólo conoce lo que el CMS le dice que va ahora. Entero, 1 o más, sin
+     * tope (decisión de Mateo, 10/10/2026); el CMS lo manda en el sync.
+     */
+    #[ORM\Column(type: 'integer', options: ['unsigned' => true, 'default' => self::INTERVALO_SYNC_DEFECTO_MIN])]
+    private int $intervaloSyncMin = self::INTERVALO_SYNC_DEFECTO_MIN;
+
+    public const INTERVALO_SYNC_DEFECTO_MIN = 5;
+    /** Tope de la columna (entero sin signo de 32 bits): unos 8000 años. */
+    public const INTERVALO_SYNC_MAXIMO_MIN = 4294967295;
+
     #[ORM\Column(enumType: EstadoConexion::class)]
     private EstadoConexion $estadoConexion = EstadoConexion::SinRegistrar;
 
@@ -113,6 +131,30 @@ class Reproductor
     public function setApiKeyHash(string $hash): static { $this->apiKeyHash = $hash; return $this; }
 
     public function getUltimoHeartbeat(): ?DateTimeImmutable { return $this->ultimoHeartbeat; }
+
+    public function getUltimoSync(): ?DateTimeImmutable { return $this->ultimoSync; }
+    public function registrarSync(DateTimeImmutable $cuando): static { $this->ultimoSync = $cuando; return $this; }
+
+    public function getIntervaloSyncMin(): int { return $this->intervaloSyncMin; }
+    /** Acepta null y lo ignora: el form mapea antes de validar (ver docs/README.md §3.2). */
+    public function setIntervaloSyncMin(?int $minutos): static
+    {
+        if ($minutos !== null) {
+            $this->intervaloSyncMin = max(1, min(self::INTERVALO_SYNC_MAXIMO_MIN, $minutos));
+        }
+        return $this;
+    }
+
+    /** Cuándo debería volver a sincronizar por su cuenta, o null si nunca sincronizó. */
+    public function proximoSyncEstimado(): ?DateTimeImmutable
+    {
+        if ($this->ultimoSync === null) {
+            return null;
+        }
+        // Con intervalos enormes, sumar minutos a la fecha desborda: se acota.
+        $minutos = min($this->intervaloSyncMin, 100 * 365 * 24 * 60);
+        return $this->ultimoSync->modify("+{$minutos} minutes");
+    }
 
     /**
      * Registra prueba de vida del reproductor — llamado tanto por el

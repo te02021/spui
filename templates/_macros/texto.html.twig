@@ -12,3 +12,21 @@
 {% macro plural(cantidad, singular, plural) -%}
     {{ cantidad }} {{ cantidad == 1 ? singular : plural }}
 {%- endmacro %}
+
+{#
+  Una cantidad de minutos dicha como la diría una persona:
+  1 → "1 minuto", 90 → "1 hora y 30 min", 1500 → "1 día y 1 h".
+  Mismo texto que arma assets/spui/js/core/duracion-minutos.js en vivo.
+#}
+{% macro duracion_minutos(minutos) -%}
+    {%- set m = minutos|default(0) -%}
+    {%- if m < 60 -%}
+        {{ m }} {{ m == 1 ? 'minuto' : 'minutos' }}
+    {%- elseif m < 1440 -%}
+        {%- set h = m // 60 %}{% set r = m % 60 -%}
+        {{ h }} {{ h == 1 ? 'hora' : 'horas' }}{% if r %} y {{ r }} min{% endif %}
+    {%- else -%}
+        {%- set d = m // 1440 %}{% set r = (m % 1440) // 60 -%}
+        {{ d }} {{ d == 1 ? 'día' : 'días' }}{% if r %} y {{ r }} h{% endif %}
+    {%- endif -%}
+{%- endmacro %}

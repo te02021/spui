@@ -125,12 +125,19 @@ class SyncController extends AbstractController
             ];
         }
 
+        // Se registra para mostrarlo en el CMS (último y próximo sync).
+        $reproductor->registrarSync($ahora);
+        $this->doctrine->getManager('SPUI')->flush();
+
         return $this->json([
             'reproductor_id'    => $reproductor->getId(),
             'pantallas'         => $pantallasData,
             'alerta_emergencia' => $alerta !== null ? $this->serializeAlerta($alerta, $request) : null,
             'servidor_ts'       => $ahora->format('c'),
-            'proxima_sync_seg'  => 300,
+            // Cada cuánto tiene que volver a sincronizar por su cuenta: lo
+            // configura el operador por reproductor (en minutos) y la Pi lo usa
+            // en vez del SPUI_SYNC_INTERVAL de su spui.env.
+            'proxima_sync_seg'  => $reproductor->getIntervaloSyncMin() * 60,
         ]);
     }
 

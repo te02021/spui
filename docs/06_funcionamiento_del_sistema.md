@@ -124,7 +124,7 @@ El cliente Python corre como servicio (`systemd`) y levanta cuatro hilos:
 
 | Hilo | Cada cuánto | Qué hace |
 |---|---|---|
-| principal | 5 min, o al instante si llega un `sync_ahora` | Pide `/sync`, guarda en caché, descarga archivos, decide qué reproducir |
+| principal | El intervalo del reproductor (5 min por defecto, se configura en el CMS en minutos y llega en el sync como `proxima_sync_seg`), o al instante si llega un `sync_ahora` (al guardar algo en el CMS o con el botón **Sincronizar**) | Pide `/sync`, guarda en caché, descarga archivos, decide qué reproducir. El CMS registra la hora de cada sync (`reproductor.ultimo_sync`) |
 | heartbeat | 60 s | Avisa por HTTP que sigue vivo |
 | telemetría | 60 s | Publica temperatura, RAM y disco por MQTT |
 | MQTT listener | — | Escucha alertas y el comando `sync_ahora`; reacciona al instante. Publica además el estado de conexión (`online` al conectar, `offline` por LWT si se cae) |

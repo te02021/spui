@@ -46,20 +46,25 @@ final class ComandoPublisherService
 
     /**
      * Pide a cada reproductor que sincronice ya mismo, sin esperar su
-     * próximo ciclo de 300s.
+     * próximo ciclo (Reproductor::getIntervaloSyncMin).
      *
      * @param Reproductor[] $reproductores Los que resolvió AlcanceReproductorService.
      * @param string        $motivo        Sólo para el log — qué disparó el aviso
      *                                     ('programacion', 'playlist', 'contenido', 'pantalla',
-     *                                     'cronograma', 'programacion_energetica').
+     *                                     'cronograma', 'programacion_energetica', 'manual'…).
+     * @return int Cuántos avisos llegaron al broker. Quien sólo quiere avisar
+     *             puede ignorarlo; el botón "Sincronizar ahora" lo usa para
+     *             decir la verdad cuando el broker no responde.
      */
-    public function pedirSyncAhora(array $reproductores, string $motivo): void
+    public function pedirSyncAhora(array $reproductores, string $motivo): int
     {
         $payload = ['accion' => 'sync_ahora', 'motivo' => $motivo];
 
+        $enviados = 0;
         foreach ($reproductores as $reproductor) {
-            $this->publicarMqtt(self::MQTT_TOPIC_REPRODUCTOR . $reproductor->getId(), $payload);
+            $enviados += $this->publicarMqtt(self::MQTT_TOPIC_REPRODUCTOR . $reproductor->getId(), $payload) ? 1 : 0;
         }
+        return $enviados;
     }
 
     // -------------------------------------------------------------------------
@@ -72,7 +77,7 @@ final class ComandoPublisherService
             ->setSocketTimeout(3);
     }
 
-    private function publicarMqtt(string $topic, array $payload): void
+    private function publicarMqtt(string $topic, array $payload): bool
     {
         try {
             $client = new MqttClient($this->mqttHost, $this->mqttPort, 'spui-cms-comando-' . bin2hex(random_bytes(4)));
@@ -86,6 +91,7 @@ final class ComandoPublisherService
             $client->disconnect();
 
             $this->logger->info('MQTT comando publicado.', ['topic' => $topic, 'motivo' => $payload['motivo']]);
+            return true;
         } catch (\Throwable $e) {
             // No bloquear la operación del CMS si el broker no está disponible.
             // El reproductor va a recibir el cambio igual en su próximo sync
@@ -96,6 +102,7 @@ final class ComandoPublisherService
                 'msg'   => $e->getMessage(),
                 'topic' => $topic,
             ]);
+            return false;
         }
     }
 }

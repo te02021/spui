@@ -12,6 +12,7 @@ use SPUI\Repository\ReproductorRepository;
 use SPUI\Repository\TelemetriaHoraRepository;
 use SPUI\Repository\TelemetriaRepository;
 use SPUI\Service\AlcanceReproductorService;
+use SPUI\Service\ComandoPublisherService;
 use SPUI\Service\MqttSecurityService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
@@ -34,6 +35,7 @@ class ReproductorCmsController extends AbstractController
         private readonly TelemetriaHoraRepository $rollupRepo,
         private readonly AlcanceReproductorService $alcance,
         private readonly MqttSecurityService $mqttSecurity,
+        private readonly ComandoPublisherService $comandos,
         private readonly ManagerRegistry $doctrine,
         #[Autowire('%env(float:default:spui_temp_alerta_default:SPUI_TEMP_ALERTA_CELSIUS)%')]
         private readonly float $tempAlertaCelsius = 80.0,
@@ -173,6 +175,7 @@ class ReproductorCmsController extends AbstractController
             throw $this->createNotFoundException();
         }
 
+        $intervaloAntes = $reproductor->getIntervaloSyncMin();
         $form = $this->createForm(ReproductorType::class, $reproductor, [
             'action' => $this->generateUrl('spui_cms_reproductores_editar', ['id' => $id]),
         ]);
@@ -184,6 +187,12 @@ class ReproductorCmsController extends AbstractController
             }
 
             $this->em()->flush();
+            // Si cambió el intervalo, la Pi lo toma en su próximo sync: se le
+            // pide ya, porque con el intervalo viejo (que pudo ser de horas)
+            // seguiría esperando sin enterarse.
+            if ($reproductor->getIntervaloSyncMin() !== $intervaloAntes) {
+                $this->comandos->pedirSyncAhora([$reproductor], 'intervalo_sync');
+            }
             $msg = 'Reproductor "' . $reproductor->getHostname() . '" actualizado.';
             if ($request->isXmlHttpRequest()) {
                 return $this->json(['success' => true, 'message' => $msg]);
@@ -199,6 +208,65 @@ class ReproductorCmsController extends AbstractController
             ]);
         }
 
+        return $this->redirectToRoute('spui_cms_reproductores_index');
+    }
+
+    /**
+     * "Sincronizar ahora": le pide al reproductor que consulte al CMS ya mismo,
+     * sin esperar su intervalo. Es el mismo aviso sync_ahora por MQTT que se
+     * manda solo al guardar cualquier cambio que afecte a sus pantallas.
+     */
+    #[Route('/{id}/sincronizar', name: 'spui_cms_reproductores_sincronizar', methods: ['POST'], requirements: ['id' => '\d+'])]
+    public function sincronizar(int $id, Request $request): Response
+    {
+        $reproductor = $this->repo->find($id);
+        if (!$reproductor) {
+            throw $this->createNotFoundException();
+        }
+        if ($r = $this->denegarSiCsrfInvalido($request)) { return $r; }
+        // Apagado o sin red no puede recibir el aviso: igual que cualquier
+        // otra acción sobre un equipo desconectado.
+        if ($r = $this->bloquearSiOffline([$reproductor], $request, 'spui_cms_reproductores_index')) {
+            return $r;
+        }
+
+        $host = $reproductor->getHostname();
+
+        // El CMS acepta hasta 2 syncs por minuto por reproductor: si acaba de
+        // sincronizar, el pedido terminaría rechazado del lado de la Pi.
+        $hace = $reproductor->getUltimoSync() !== null ? time() - $reproductor->getUltimoSync()->getTimestamp() : null;
+        if ($hace !== null && $hace < self::SYNC_MANUAL_ESPERA_SEG) {
+            return $this->respuestaAccion($request, false,
+                '«' . $host . '» se sincronizó hace ' . max(1, $hace) . ' s. Esperá '
+                . (self::SYNC_MANUAL_ESPERA_SEG - $hace) . ' s para volver a pedirlo.', 'warning');
+        }
+
+        if ($this->comandos->pedirSyncAhora([$reproductor], 'manual') === 0) {
+            $proximo = $reproductor->proximoSyncEstimado();
+            return $this->respuestaAccion($request, false,
+                'No se pudo avisar a «' . $host . '» en este momento: el servidor de mensajería (MQTT) no respondió. '
+                . ($proximo !== null ? 'Va a sincronizar solo cerca de las ' . $proximo->format('H:i') . '.' : 'Va a sincronizar solo en su próximo ciclo.'),
+                'warning');
+        }
+
+        return $this->respuestaAccion($request, true,
+            'Pedido enviado. «' . $host . '» se sincroniza en unos segundos; el último sync se actualiza solo en el listado.');
+    }
+
+    /** Un sync manual, como mucho cada 30 s: la mitad del límite de 2 por minuto. */
+    private const SYNC_MANUAL_ESPERA_SEG = 30;
+
+    private function respuestaAccion(Request $request, bool $ok, string $mensaje, ?string $tipo = null): Response
+    {
+        if ($request->isXmlHttpRequest()) {
+            // success:true + type:warning: no es un error del operador, es un aviso.
+            $datos = ['success' => $ok || $tipo === 'warning', 'message' => $mensaje];
+            if ($tipo !== null) {
+                $datos['type'] = $tipo;
+            }
+            return $this->json($datos);
+        }
+        $this->addFlash($tipo ?? ($ok ? 'success' : 'error'), $mensaje);
         return $this->redirectToRoute('spui_cms_reproductores_index');
     }
 

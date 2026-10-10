@@ -82,16 +82,24 @@ La Raspberry Pi. **Acá se genera la clave que necesita el reproductor.**
 
 **Al registrar uno:**
 
-1. Se ingresa el hostname (ej. `spui-pi-01`) y la versión de firmware si se sabe.
+1. Se ingresa el hostname (ej. `spui-pi-01`), la versión de firmware si se sabe, y cada cuántos minutos sincroniza (ver abajo).
 2. Al guardar, el sistema genera una **API key aleatoria de 64 caracteres**.
 3. **La clave se muestra una sola vez**, en un cuadro con botón de copiar.
 4. Hay que copiarla y ponerla en la Pi **antes de cerrar ese cuadro**. No se puede recuperar después: en la base solo queda su hash SHA-256.
 
 Si se pierde, se usa **Regenerar clave** — eso invalida la anterior de inmediato y hay que actualizar la Pi.
 
+**Sincronización.** La Pi le pregunta al CMS qué tiene que mostrar (el *sync*): la playlist que corresponde en ese momento, los archivos, el horario energético y la alerta activa. Lo hace en tres momentos:
+
+- **Al instante**, cada vez que se guarda algo que afecta a sus pantallas (el CMS le avisa). Es lo normal.
+- **Con el botón Sincronizar** del listado, para pedirlo a mano. Queda bloqueado con el reproductor desconectado y, si se aprieta dos veces seguidas, pide esperar unos segundos (el CMS acepta hasta 2 syncs por minuto por reproductor).
+- **Cada cierto intervalo, por su cuenta**: el campo **Sincronizar cada** del formulario, en minutos enteros (1 o más, sin tope; 5 por defecto). Es el respaldo si el aviso instantáneo se pierde, y además fija cuánto puede tardar en arrancar una programación o un horario de energía, porque la Pi sólo sabe lo que va *ahora*. Al cambiarlo, la Pi lo toma en el momento.
+
+En el listado, la columna **Última actividad** muestra el último heartbeat y el último sync (la hora exacta, al pasar el mouse); se marca en rojo si el sync lleva más del doble de su intervalo sin llegar. En **Ver** están el intervalo, el último sync y el próximo estimado.
+
 **Botón Telemetría:** abre el histórico de ese reproductor (ver 5).
 
-**Editar** y **Regenerar clave** quedan bloqueados mientras el reproductor esté desconectado (ver 6). **Eliminar no**, a propósito: dar de baja un equipo es justamente lo que se hace cuando se rompió y no va a volver. Al eliminarlo se revoca también su usuario del broker MQTT.
+**Editar**, **Sincronizar** y **Regenerar clave** quedan bloqueados mientras el reproductor esté desconectado (ver 6). **Eliminar no**, a propósito: dar de baja un equipo es justamente lo que se hace cuando se rompió y no va a volver. Al eliminarlo se revoca también su usuario del broker MQTT.
 
 **Configurar la Pi** — en `/etc/spui/spui.env`:
 
@@ -318,7 +326,7 @@ El bloqueo lo decide el servidor, no sólo el botón: si el equipo se cae entre 
 | Un botón aparece atenuado y no hace nada | Afecta a una pantalla con el reproductor desconectado — el motivo aparece al pasar el mouse (ver 6) |
 | La pantalla no muestra nada | Sin programación vigente y sin playlist de respaldo |
 | Un contenido no aparece al armar la playlist | Está en borrador o archivado: hay que publicarlo |
-| La alerta tarda en llegar | MQTT no disponible; llega igual en el próximo sync (hasta 5 min) |
+| La alerta tarda en llegar | MQTT no disponible; llega igual en el próximo sync (según el intervalo del reproductor, 5 min por defecto) |
 | No hay datos de telemetría | Falta el daemon `spui:mqtt:subscribe --id=spui` |
 | El QR no cuenta escaneos | Se cargó la URL como contenido de tipo texto en vez de crear un contenido de tipo **QR** |
 | Un comando de consola falla con un error sobre `apps/guess` | Falta el flag `--id=spui` |

@@ -80,7 +80,7 @@ Verificados contra código. Si algo "deja de andar", empezar por acá.
 
 3. **`SPUI_API_URL` termina en `/api/spui`**, sin `/reproductores`. El cliente arma el resto (`sync.py` concatena `/reproductores/sync`).
 
-4. **El formulario de Reproductor solo pide hostname y versión de firmware.** La pantalla NO se asigna desde ahí — se asigna desde el formulario de **Pantalla**, campo "Reproductor (Raspberry Pi)". La relación es `Pantalla → Reproductor` (ManyToOne): un reproductor puede tener varias pantallas.
+4. **El formulario de Reproductor pide hostname, versión de firmware y cada cuántos minutos sincroniza** (entero, 1 o más, 5 por defecto; la Pi lo recibe en el sync como `proxima_sync_seg` y `SPUI_SYNC_INTERVAL` de `spui.env` queda sólo como valor de arranque). La pantalla NO se asigna desde ahí — se asigna desde el formulario de **Pantalla**, campo "Reproductor (Raspberry Pi)". La relación es `Pantalla → Reproductor` (ManyToOne): un reproductor puede tener varias pantallas.
 
 5. **La API key se muestra una sola vez**, tanto al registrar el reproductor como al regenerarla, con botón de copiar. No es recuperable: en la base sólo queda su hash. Al regenerarla, la anterior deja de servir en el acto y hay que actualizar `SPUI_API_KEY` en `/etc/spui/spui.env` y reiniciar el servicio. La contraseña MQTT de la Pi se deriva de esa clave, así que se renueva sola con ella.
 

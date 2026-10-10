@@ -12,10 +12,45 @@ import hashlib
 import logging
 import os
 import threading
+from datetime import datetime
 
 import requests
 
 logger = logging.getLogger(__name__)
+
+# El CMS acepta hasta 2 syncs por minuto por reproductor: por debajo de 30 s
+# los pedidos terminarían rechazados (429).
+MINIMO_SYNC_SEG = 30
+
+
+def intervalo_desde_sync(sync_data: dict, actual: int) -> int:
+    """
+    Cada cuántos segundos volver a sincronizar, según lo que manda el CMS en
+    proxima_sync_seg (el operador lo configura por reproductor, en minutos).
+    Si el valor falta o no es válido se sigue con el actual, que de arranque es
+    SPUI_SYNC_INTERVAL de spui.env.
+    """
+    valor = sync_data.get('proxima_sync_seg') if isinstance(sync_data, dict) else None
+    try:
+        segundos = int(valor)
+    except (TypeError, ValueError):
+        return actual
+    if segundos <= 0:
+        return actual
+    nuevo = max(MINIMO_SYNC_SEG, segundos)
+    if nuevo != actual:
+        logger.info('Intervalo de sync: cada %s (lo fija el CMS).', _legible(nuevo))
+    return nuevo
+
+
+def _legible(segundos: int) -> str:
+    minutos = segundos // 60
+    if minutos < 1:
+        return f'{segundos} s'
+    if minutos < 60:
+        return f'{minutos} min'
+    horas, resto = divmod(minutos, 60)
+    return f'{horas} h' + (f' {resto} min' if resto else '')
 
 
 class SyncClient:
@@ -25,6 +60,7 @@ class SyncClient:
         # ruta → (tamaño, mtime_ns, hash) de los archivos ya verificados.
         self._validos: dict[str, tuple[int, int, str]] = {}
         self._lock_validos = threading.Lock()
+        self._ultimo_sync: datetime | None = None
         self._session = requests.Session()
         self._session.headers.update({
             'X-Api-Key': api_key,
@@ -41,8 +77,13 @@ class SyncClient:
         pantallas = data.get('pantallas') or []
         primera   = pantallas[0] if pantallas else {}
         prog      = primera.get('programacion_activa')
+        ahora     = datetime.now()
+        anterior  = ('primero desde que arrancó' if self._ultimo_sync is None else
+                     f'anterior {self._ultimo_sync:%d/%m %H:%M:%S}, hace {_legible(int((ahora - self._ultimo_sync).total_seconds()))}')
+        self._ultimo_sync = ahora
         logger.info(
-            'Sync OK — pantalla=%s programacion=%s alerta=%s',
+            'Sync OK (%s) — pantalla=%s programacion=%s alerta=%s',
+            anterior,
             primera.get('nombre', '?'),
             prog.get('id') if prog else None,
             data.get('alerta_emergencia', {}).get('id') if data.get('alerta_emergencia') else None,

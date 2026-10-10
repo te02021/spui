@@ -46,7 +46,7 @@ from spui.heartbeat import HeartbeatSender
 from spui.mqtt_listener import MqttListener
 from spui.network import NetworkMonitor
 from spui.player import Player
-from spui.sync import SyncClient
+from spui.sync import SyncClient, intervalo_desde_sync
 from spui.telemetria import TelemetriaPublisher
 
 # Cuántos segundos esperar entre reintentos cuando estamos offline
@@ -239,9 +239,13 @@ def main() -> None:
 
     logger.info('SPUI Client iniciado. API: %s', config.API_URL)
 
+    # Cada cuánto sincronizar: arranca con SPUI_SYNC_INTERVAL de spui.env y
+    # después lo fija el CMS en cada sync (se configura por reproductor).
+    intervalo_sync = config.SYNC_INTERVAL
+
     while _corriendo:
         sync_data = None
-        espera    = config.SYNC_INTERVAL  # por defecto: 300s
+        espera    = intervalo_sync
 
         # ── Sync con detección de red (Fase 7) ───────────────────────────
         sync_ok = False   # el CMS respondió en este ciclo (ver energía, más abajo)
@@ -265,6 +269,8 @@ def main() -> None:
 
                 _PROBLEMAS.resolver('sync')
                 sync_ok = True
+                intervalo_sync = intervalo_desde_sync(sync_data, intervalo_sync)
+                espera = intervalo_sync
 
             except Exception as exc:
                 logger.warning('Sync falló estando online: %s — usando caché.', exc)

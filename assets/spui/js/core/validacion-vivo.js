@@ -22,6 +22,12 @@
 //   data-spui-formatos="jpg,png"                  extensiones admitidas, y cómo
 //   data-spui-formatos-texto="JPG o PNG"          nombrarlas en el mensaje
 //
+//   data-spui-entero (+ min="N")                  sólo números enteros: no deja
+//   data-spui-minimo-mensaje="..."                 (opcional) texto si queda bajo min
+//                                                 tipear ni pegar decimales,
+//                                                 signos ni la "e"; avisa si queda
+//                                                 por debajo de min
+//
 //   data-spui-requiere-alguno="..."               en el CONTENEDOR de un grupo de
 //                                                 casillas (ej. días de la semana):
 //                                                 al menos una tiene que quedar
@@ -122,6 +128,36 @@
         return true;
     }
 
+    // ── Regla: número entero ────────────────────────────────────────────────
+    // Un <input type="number"> acepta "1.5", "-3" o "1e3" aunque tenga step=1:
+    // eso se frena al tipear (y al pegar), y lo que quede por debajo del mínimo
+    // se avisa debajo del campo como cualquier otro error.
+    function validarEntero(campo) {
+        var v = (campo.value || '').trim();
+        if (v === '') return true;   // vacío lo dice la regla de obligatorio
+        if (!/^[0-9]+$/.test(v)) {
+            mostrar(campo, 'Ingresá un número entero, sin decimales.');
+            return false;
+        }
+        var min = campo.getAttribute('min');
+        if (min !== null && Number(v) < Number(min)) {
+            mostrar(campo, campo.dataset.spuiMinimoMensaje || ('El mínimo es ' + min + '.'));
+            return false;
+        }
+        return true;
+    }
+
+    document.addEventListener('keydown', function (e) {
+        var t = e.target;
+        if (t && t.matches && t.matches('input[data-spui-entero]') && /^[.,eE+\-]$/.test(e.key)) e.preventDefault();
+    });
+    document.addEventListener('paste', function (e) {
+        var t = e.target;
+        if (!(t && t.matches && t.matches('input[data-spui-entero]'))) return;
+        var pegado = (e.clipboardData || window.clipboardData).getData('text').trim();
+        if (!/^[0-9]+$/.test(pegado)) e.preventDefault();
+    });
+
     // ── Regla: al menos una casilla marcada en el grupo ─────────────────────
     // El error va donde van todos (al final del [data-spui-campo] del grupo) y
     // se marca el contenedor del grupo, no una casilla suelta.
@@ -183,7 +219,7 @@
      * se muestra. Devuelve true si el campo quedó bien.
      */
     function revisar(campo, alSalir, conservarAvisos) {
-        var tieneRegla = campo.matches('[data-spui-validar-posterior], input[type="file"]') || esObligatorio(campo);
+        var tieneRegla = campo.matches('[data-spui-validar-posterior], [data-spui-entero], input[type="file"]') || esObligatorio(campo);
 
         if (campo.type === 'file') {
             if (!validarArchivo(campo)) return false;
@@ -192,6 +228,7 @@
             // Mientras se escribe no se reprocha que esté vacío (recién se
             // está completando): eso se dice al salir del campo o al guardar.
             if (alSalir && !validarRequerido(campo)) return false;
+            if (campo.matches('[data-spui-entero]') && !validarEntero(campo)) return false;
             if (campo.matches('[data-spui-validar-posterior]') && !validarPosterior(campo)) return false;
         }
 

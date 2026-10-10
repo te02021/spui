@@ -860,6 +860,7 @@ textarea.is-invalid,
 .spui-btn-desarchivar,
 .spui-btn-clave,
 .spui-btn-telemetria,
+.spui-btn-sincronizar,
 .spui-btn-energia,
 .spui-btn-items,
 .spui-btn-copiar {
@@ -873,6 +874,7 @@ textarea.is-invalid,
 .spui-btn-desarchivar:hover,
 .spui-btn-clave:hover,
 .spui-btn-telemetria:hover,
+.spui-btn-sincronizar:hover,
 .spui-btn-energia:hover,
 .spui-btn-items:hover,
 .spui-btn-copiar:hover {
@@ -902,6 +904,9 @@ textarea.is-invalid,
 
 .spui-btn-telemetria   { color: #0E7490; border: 1px solid #0E7490; }
 .spui-btn-telemetria:hover   { background-color: #0E7490; border-color: #0E7490; }
+
+.spui-btn-sincronizar   { color: #2E7D32; border: 1px solid #2E7D32; }
+.spui-btn-sincronizar:hover   { background-color: #2E7D32; border-color: #2E7D32; }
 
 .spui-btn-energia      { color: #D9601A; border: 1px solid #D9601A; }
 .spui-btn-energia:hover      { background-color: #D9601A; border-color: #D9601A; }
@@ -946,6 +951,7 @@ textarea.is-invalid,
 .spui-btn-desarchivar:hover .spui-action-icon,
 .spui-btn-clave:hover .spui-action-icon,
 .spui-btn-telemetria:hover .spui-action-icon,
+.spui-btn-sincronizar:hover .spui-action-icon,
 .spui-btn-energia:hover .spui-action-icon,
 .spui-btn-items:hover .spui-action-icon,
 .spui-btn-copiar:hover .spui-action-icon {
@@ -1866,4 +1872,25 @@ textarea.is-invalid,
     font-size: .875rem;
     white-space: nowrap;
     flex-shrink: 0;
+}
+/* Unidad pegada al número ("5 min"), no alineada a la derecha como el valor de un slider. */
+.spui-input-with-addon .spui-input-addon.spui-input-unidad {
+    min-width: 0;
+    text-align: left;
+}
+
+/* Columna "Última actividad" de Reproductores: un dato por línea con su rótulo. */
+.spui-actividad {
+    display: flex;
+    align-items: baseline;
+    gap: .4rem;
+    white-space: nowrap;
+}
+.spui-actividad-label {
+    font-size: .7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .03em;
+    color: #6c757d;
+    min-width: 4.6rem;
 }
