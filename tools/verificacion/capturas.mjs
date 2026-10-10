@@ -19,13 +19,15 @@
 //
 // Uso:
 //   node tools/verificacion/capturas.mjs [--base=http://intranet] [--solo=pantallas,alertas]
-//                                        [--sesion=<PHPSESSID>] [--sin-modales]
+//                                        [--sesion=<PHPSESSID>] [--sin-modales] [--fuentes]
+// --fuentes sirve los assets de SPUI desde las fuentes y no desde el build
+// compilado (para verificar antes de RebuildAssets.exe).
 // Playwright se resuelve desde SPUI_PLAYWRIGHT_DIR (carpeta con node_modules/playwright)
 // y Chromium desde PLAYWRIGHT_BROWSERS_PATH; verificar.ps1 setea las dos.
 
 import { createRequire } from 'node:module';
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -181,6 +183,7 @@ async function guardarVacio(page, vista, nombre) {
         f.querySelectorAll('input[type=text],input[type=number],input[type=time],input[type=date],input[type=datetime-local],input[type=url],input:not([type]),textarea')
             .forEach((i) => { i.value = ''; });
         f.querySelectorAll('select').forEach((s) => { if ([...s.options].some((o) => o.value === '')) s.value = ''; });
+        f.querySelectorAll('[data-spui-requiere-alguno] input[type=checkbox]').forEach((c) => { c.checked = false; });
     });
 
     let creado = null;
@@ -220,6 +223,20 @@ for (const v of VISTAS) {
     });
     const page = await ctx.newPage();
     const origen = new URL(BASE).origin;
+
+    // --fuentes: servir los JS/CSS/imágenes de SPUI desde apps/spui/assets en
+    // vez del build compilado de public/assets, para verificar un cambio antes
+    // de que se regenere el build (RebuildAssets.exe). Se le saca al nombre el
+    // hash que agrega AssetMapper ("modal-FgeUoqN.js" → "modal.js").
+    if (args.fuentes) {
+        await page.route(/\/assets\/spui\//, async (route) => {
+            const ruta = new URL(route.request().url()).pathname.replace(/^\/assets\//, '');
+            const fuente = path.join(AQUI, '..', '..', 'assets', ruta.replace(/-[A-Za-z0-9_-]{7}(\.\w+)$/, '$1'));
+            if (!existsSync(fuente)) return route.continue();
+            const tipos = { js: 'application/javascript', css: 'text/css', svg: 'image/svg+xml', png: 'image/png', jpg: 'image/jpeg', woff2: 'font/woff2' };
+            await route.fulfill({ path: fuente, contentType: tipos[path.extname(fuente).slice(1)] || 'application/octet-stream' });
+        });
+    }
 
     page.on('pageerror', (e) => falla(`excepción de JavaScript: ${e.message}`));
     page.on('console', (m) => {
