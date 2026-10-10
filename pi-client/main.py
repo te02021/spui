@@ -145,6 +145,7 @@ def main() -> None:
 
     cache   = Cache(config.DB_PATH)
     sync    = SyncClient(config.API_URL, config.API_KEY, config.MEDIA_DIR)
+    sync.limpiar_parciales()  # descargas a medias de una ejecución anterior
     player  = Player(config.MEDIA_DIR, sync_client=sync)
     network = NetworkMonitor(config.API_URL)
     energia = GestorEnergia()

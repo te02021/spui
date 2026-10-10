@@ -651,6 +651,16 @@ Adaptado de `08_pendientes_vm.md` §6 — con hardware real, ahora **sí** aplic
 
 La prueba 9 valida el requisito de resiliencia offline exigido por el jurado.
 
+### Pruebas automáticas del cliente
+
+No necesitan red ni pantalla, y no tocan el caché real (trabajan en una carpeta temporal). Correrlas después de instalar o de actualizar el cliente:
+
+```bash
+cd /opt/spui && /opt/spui/venv/bin/python3 -m unittest discover -s tests -v
+```
+
+Tiene que terminar en `OK`. Hoy cubren el caché de media: una descarga cortada, un archivo con hash distinto o uno alterado en disco nunca se reproducen.
+
 ### Reinicio final
 
 ```bash

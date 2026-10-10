@@ -135,7 +135,7 @@ El usuario MQTT de cada Pi es `spui-repro-{id}` (el id llega en el primer sync) 
 
 1. **¿Hay red?** Se chequea con una conexión TCP rápida al host del CMS (más barato que un HTTP con timeout).
 2. **Si hay red:** `POST /api/spui/reproductores/sync` con la API key en el header `X-Api-Key`. La respuesta trae la playlist, la alerta activa si la hay, y el horario energético.
-3. **Se guarda todo en SQLite local** y se descargan los archivos que falten. Cada archivo se verifica por SHA-256: si el hash no coincide, se descarta.
+3. **Se guarda todo en SQLite local** y se descargan los archivos que falten. Cada archivo se baja a un temporal (`.part`) y sólo pasa al caché, con un reemplazo atómico, cuando llegó completo y su SHA-256 coincide con el que informa el CMS: una descarga cortada o un archivo distinto nunca quedan con el nombre que usa el player. Además, antes de reproducir un archivo del caché se vuelve a comprobar su hash (memorizado por tamaño y fecha, para no recalcularlo en cada vuelta): uno alterado o dañado en disco sale del caché y ese ítem se saltea hasta que haya red para bajarlo de nuevo. Las descargas a medias de una ejecución anterior se borran al arrancar.
 4. **Si no hay red:** se usa lo último guardado y se reintenta a los 30 segundos en vez de esperar 5 minutos.
 5. **Se aplica el horario energético:** si está fuera de hora, se apaga la pantalla y no se reproduce nada.
 6. **Se decide qué mostrar** según la prioridad de la sección 4.

@@ -463,15 +463,14 @@ class Player:
         if tipo not in ('imagen', 'video') or not url:
             return None, None
 
-        nombre = url.rstrip('/').split('/')[-1]
-        local  = os.path.join(self._media_dir, nombre)
-        if os.path.exists(local):
-            return local, tipo
-
         if self._sync_client is None:
+            local = os.path.join(self._media_dir, url.rstrip('/').split('/')[-1])
+            if os.path.exists(local):
+                return local, tipo
             logger.warning('Contenido de alerta no cacheado y sin cliente de sync — se muestra solo el texto.')
             return None, None
 
+        # Verifica el caché (hash incluido) antes de bajar nada: ver _resolver_local.
         try:
             return self._sync_client.descargar_media(url, alerta.get('contenido_hash')), tipo
         except Exception as exc:
@@ -930,16 +929,20 @@ class Player:
         if not url_descarga:
             return None
         nombre = url_descarga.rstrip('/').split('/')[-1]
-        local  = os.path.join(self._media_dir, nombre)
-        if os.path.exists(local):
-            return local
         if sync_client is None:
+            # Sin cliente (uso directo del Player, pruebas): sólo el caché.
+            local = os.path.join(self._media_dir, nombre)
+            if os.path.exists(local):
+                return local
             logger.warning('Archivo no cacheado y sin red: %s', nombre)
             return None
+        # descargar_media primero verifica el caché (hash incluido) y sólo baja
+        # el archivo si falta o no coincide: así un archivo alterado o a medias
+        # nunca se reproduce, haya red o no.
         try:
             return sync_client.descargar_media(url_descarga, contenido.get('hash_archivo'))
         except Exception as exc:
-            logger.error('Error descargando %s: %s', nombre, exc)
+            logger.error('No hay una copia válida de %s (%s): se saltea.', nombre, exc)
             return None
 
     # ── VLC wrappers ──────────────────────────────────────────────────────
