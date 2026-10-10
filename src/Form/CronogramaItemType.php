@@ -13,6 +13,7 @@ use Symfony\Component\Form\Extension\Core\Type\TextType;
 use Symfony\Component\Form\Extension\Core\Type\TimeType;
 use Symfony\Component\Form\FormBuilderInterface;
 use Symfony\Component\OptionsResolver\OptionsResolver;
+use Symfony\Component\Validator\Constraints\Count;
 use Symfony\Component\Validator\Constraints\NotBlank;
 
 class CronogramaItemType extends AbstractType
@@ -56,6 +57,9 @@ class CronogramaItemType extends AbstractType
                 'expanded'   => true,
                 'choices'    => ['Lun' => 0, 'Mar' => 1, 'Mié' => 2, 'Jue' => 3, 'Vie' => 4, 'Sáb' => 5, 'Dom' => 6],
                 'data'       => $options['dias_semana_default'],
+                // Sin ningún día la regla se guardaba como "todos los días" sin
+                // avisar. Ahora se exige al menos uno (decisión de Mateo, 10/10/2026).
+                'constraints' => [new Count(min: 1, minMessage: ProgramacionType::MSG_DIAS_REQUERIDOS)],
             ])
             // Opcional: vacío deja el orden que tenía (0 en un alta). Sin
             // required=false el navegador lo exigía y el servidor no.

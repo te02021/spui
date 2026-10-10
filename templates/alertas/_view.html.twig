@@ -1,3 +1,4 @@
+{% import '@SPUI/_macros/texto.html.twig' as texto %}
 {# Detalle de una alerta.
    A diferencia del listado, acá el mensaje se muestra completo. #}
 <div class="spui-view-header">
@@ -34,7 +35,7 @@
     <div class="spui-view-row">
         <span class="spui-view-row-label">Alcance</span>
         <span class="spui-view-row-value">
-            {%- if alerta.esGlobal %}Todas las pantallas{% else %}{{ alerta.pantallas|length }} pantalla(s) seleccionada(s){% endif -%}
+            {%- if alerta.esGlobal %}Todas las pantallas{% else %}{{ texto.plural(alerta.pantallas|length, 'pantalla seleccionada', 'pantallas seleccionadas') }}{% endif -%}
         </span>
     </div>
     <div class="spui-view-row">

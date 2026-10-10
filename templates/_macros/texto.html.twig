@@ -1,0 +1,14 @@
+{#
+  Textos con cantidad: "1 sector" / "3 sectores", en vez de "3 sector(es)".
+
+  Uso:
+    {% import '@SPUI/_macros/texto.html.twig' as texto %}
+    {{ texto.plural(e.ubicaciones|length, 'sector', 'sectores') }}
+
+  Si el número lo actualiza JavaScript después (ej. la lista de ítems de una
+  playlist), el elemento lleva data-singular / data-plural con las mismas
+  palabras y el JS arma el texto igual.
+#}
+{% macro plural(cantidad, singular, plural) -%}
+    {{ cantidad }} {{ cantidad == 1 ? singular : plural }}
+{%- endmacro %}

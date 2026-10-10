@@ -103,7 +103,11 @@
             this.lista.hidden = ids.length === 0;
         }
         if (this.vacio) this.vacio.hidden = ids.length > 0;
-        if (this.total) this.total.textContent = ids.length;
+        // "1 ítem" / "3 ítems": mismas palabras que la macro texto.plural del template.
+        if (this.total) {
+            var palabra = ids.length === 1 ? this.total.dataset.singular : this.total.dataset.plural;
+            this.total.textContent = palabra ? ids.length + ' ' + palabra : ids.length;
+        }
 
         // El catálogo no oculta nada (se puede repetir): sólo dice cuántas
         // veces está cada contenido en la lista.

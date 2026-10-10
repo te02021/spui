@@ -1,3 +1,4 @@
+{% import '@SPUI/_macros/texto.html.twig' as texto %}
 {# Ítems de una playlist, dentro del modal de segundo nivel.
 
    Dos listados en la misma vista: arriba los que están en la playlist (drag &
@@ -34,7 +35,7 @@
     <div class="d-flex justify-content-between align-items-center mb-2 gap-2 flex-wrap">
         <strong class="spui-view-section-title mb-0">En la playlist</strong>
         <span class="text-muted small">
-            <span data-spui-items-total>{{ lista|length }}</span> ítem(s){% if not ro %} · Arrastrá para reordenar{% endif %}
+            <span data-spui-items-total data-singular="ítem" data-plural="ítems">{{ texto.plural(lista|length, 'ítem', 'ítems') }}</span>{% if not ro %} · Arrastrá para reordenar{% endif %}
         </span>
     </div>
 

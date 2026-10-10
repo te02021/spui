@@ -1736,6 +1736,27 @@ textarea.is-invalid,
 .spui-hora-field .unraf-form-control {
     text-align: center;
 }
+/* align-items:center achica cada hijo a su contenido: sin esto el error salía
+   angosto y centrado, distinto del de los campos de ancho completo. */
+.spui-hora-field .spui-campo-error {
+    align-self: stretch;
+}
+/* Hora y fecha ya traen su propio ícono (reloj / calendario): el "!" de
+   Bootstrap para inválido les comía el ancho y en celular cortaba la fecha
+   ("dd/mm/yyy"). El borde rojo y el mensaje de abajo ya marcan el error. */
+.spui-hora-field input[type="time"].is-invalid,
+.spui-hora-field input[type="date"].is-invalid {
+    background-image: none;
+    padding-right: .75rem;
+}
+
+/* Grupo de días sin ninguno marcado: se marca cada día, no un halo alrededor. */
+.spui-dias-switches.is-invalid {
+    box-shadow: none !important;
+}
+.spui-dias-switches.is-invalid .spui-dia-switch {
+    border-color: #d6102b;
+}
 
 /* ---- Vista de detalle (modales "Ver") ---- */
 .spui-view-header {

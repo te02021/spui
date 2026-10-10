@@ -74,9 +74,10 @@
     </div>
 </div>
 
-<div class="mb-3">
+<div class="mb-3" data-spui-campo>
     {{ form_label(form.diasSemana) }}
-    <div class="spui-dias-switches mt-2">
+    <div class="spui-dias-switches mt-2{{ form.diasSemana.vars.errors|length ? ' is-invalid' }}"
+         data-spui-requiere-alguno="{{ constant('SPUI\\Form\\ProgramacionType::MSG_DIAS_REQUERIDOS') }}">
         {% for child in form.diasSemana %}
             <div class="spui-dia-switch">
                 {{ form_label(child, null, {'label_attr': {'class': 'spui-dia-label'}}) }}
@@ -86,6 +87,9 @@
             </div>
         {% endfor %}
     </div>
+    {% for e in form.diasSemana.vars.errors %}
+        <p class="spui-campo-error">{{ e.message }}</p>
+    {% endfor %}
 </div>
 
 <div class="mb-4 d-flex flex-column" style="max-width:fit-content">

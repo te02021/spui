@@ -1,3 +1,4 @@
+{% import '@SPUI/_macros/texto.html.twig' as texto %}
 {# Contenido dinámico del dashboard.
    Se renderiza dentro de #dashboard-zona y el refresco automático lo reemplaza
    entero, así que TODO lo que cambie con el tiempo tiene que estar acá dentro:
@@ -43,7 +44,7 @@
             <img src="{{ asset('unraf-ui/icons/warning.svg') }}" style="width:1.2rem;height:1.2rem;flex-shrink:0;margin-top:.15rem" alt="">
             <div>
                 <strong>
-                    {{ sobrecalentados|length }} reproductor(es) por encima de {{ temp_umbral|number_format(0) }}°C
+                    {{ texto.plural(sobrecalentados|length, 'reproductor', 'reproductores') }} por encima de {{ temp_umbral|number_format(0) }}°C
                 </strong>
                 <div class="small mt-1">
                     {% for r in reproductores|filter(r => sobrecalentados[r.id] is defined) %}
@@ -68,7 +69,7 @@
             <img src="{{ asset('unraf-ui/icons/warning.svg') }}" style="width:1.2rem;height:1.2rem;flex-shrink:0;margin-top:.15rem" alt="">
             <div>
                 <strong>
-                    {{ con_problemas|length }} reproductor(es) con problemas informados
+                    {{ texto.plural(con_problemas|length, 'reproductor', 'reproductores') }} con problemas informados
                 </strong>
                 <div class="small mt-1">
                     {% for r in con_problemas %}
@@ -96,7 +97,7 @@
             <img src="{{ asset('unraf-ui/icons/warning.svg') }}" style="width:1.2rem;height:1.2rem;flex-shrink:0;margin-top:.15rem" alt="">
             <div>
                 <strong>
-                    {{ intentos_fallidos|length }} intento(s) con API key inválida en la última hora
+                    {{ texto.plural(intentos_fallidos|length, 'intento', 'intentos') }} con API key inválida en la última hora
                 </strong>
                 {% if hostnames_clave_vieja|length > 0 %}
                     <div class="small mt-1">
@@ -174,7 +175,7 @@
     <div id="dashboard-table" class="unraf-card">
         <div class="p-3 d-flex justify-content-between align-items-center border-bottom">
             <strong>Estado de reproductores</strong>
-            <small class="text-muted">{{ reproductores|length }} reproductor(es) registrado(s)</small>
+            <small class="text-muted">{{ texto.plural(reproductores|length, 'reproductor registrado', 'reproductores registrados') }}</small>
         </div>
         <div class="unraf-table-responsive">
             <table class="unraf-table unraf-table-striped w-100 text-nowrap spui-tabla-cards">

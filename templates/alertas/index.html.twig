@@ -1,5 +1,6 @@
 {% extends '@SPUI/base.html.twig' %}
 {% import '@SPUI/_macros/bloqueo.html.twig' as bloqueo %}
+{% import '@SPUI/_macros/texto.html.twig' as texto %}
 {% block title %}Alertas — SPUI{% endblock %}
 
 {% block body %}
@@ -96,7 +97,7 @@
                                 <button type="button" class="unraf-btn spui-btn-activar unraf-btn-sm {{ bloqueo.clase(motivo) }}"
                                         data-spui-action="{{ path('spui_cms_alertas_activar', {id: alerta.id}) }}"
                                         data-spui-title="Activar alerta"
-                                        data-spui-message="¿Activar «{{ alerta.titulo }}»? Se publicará {% if alerta.esGlobal %}a TODAS las pantallas{% else %}a {{ alerta.pantallas|length }} pantalla(s){% endif %} inmediatamente."
+                                        data-spui-message="¿Activar «{{ alerta.titulo }}»? Se publicará {% if alerta.esGlobal %}a TODAS las pantallas{% else %}a {{ texto.plural(alerta.pantallas|length, 'pantalla', 'pantallas') }}{% endif %} inmediatamente."
                                         data-spui-variant="activar"
                                         data-spui-confirm-label="Activar"
                                         {% if motivo %}{{ bloqueo.attrs(motivo) }}{% else %}title="Activar"{% endif %}>

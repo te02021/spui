@@ -22,6 +22,12 @@
 //   data-spui-formatos="jpg,png"                  extensiones admitidas, y cómo
 //   data-spui-formatos-texto="JPG o PNG"          nombrarlas en el mensaje
 //
+//   data-spui-requiere-alguno="..."               en el CONTENEDOR de un grupo de
+//                                                 casillas (ej. días de la semana):
+//                                                 al menos una tiene que quedar
+//                                                 marcada. Se avisa al desmarcar la
+//                                                 última y al guardar
+//
 // Sólo se validan campos visibles y habilitados: un campo de otro tipo de
 // contenido, oculto, no cuenta.
 //
@@ -116,6 +122,22 @@
         return true;
     }
 
+    // ── Regla: al menos una casilla marcada en el grupo ─────────────────────
+    // El error va donde van todos (al final del [data-spui-campo] del grupo) y
+    // se marca el contenedor del grupo, no una casilla suelta.
+    function validarGrupo(grupo) {
+        var cajas = grupo.querySelectorAll('input[type="checkbox"]');
+        if (!cajas.length || !grupo.getClientRects().length) return true;
+        var cont = contenedor(grupo);
+        if (cont) cont.querySelectorAll('.spui-campo-error').forEach(function (e) { e.remove(); });
+        grupo.classList.remove('is-invalid');
+
+        var alguna = Array.prototype.some.call(cajas, function (c) { return c.checked; });
+        if (alguna) return true;
+        mostrar(grupo, grupo.dataset.spuiRequiereAlguno || 'Elegí al menos una opción.');
+        return false;
+    }
+
     // ── Reglas de archivo: formato y tamaño ─────────────────────────────────
     /** Tamaño legible, con la unidad que corresponde y coma decimal. */
     function formatear(bytes) {
@@ -186,6 +208,8 @@
     function alCambiar(e) {
         var t = e.target;
         if (!(t instanceof Element) || !t.matches('input, select, textarea')) return;
+        var grupo = t.type === 'checkbox' && t.closest('[data-spui-requiere-alguno]');
+        if (grupo) { validarGrupo(grupo); return; }
         // Un select o un archivo "se completa" al elegir: cuenta como salir.
         revisar(t, e.type === 'change' && (t.tagName === 'SELECT' || t.type === 'file'), e.spuiRestaurado === true);
 
@@ -231,6 +255,9 @@
         var campos = Array.from(e.target.querySelectorAll('input, select, textarea'))
             .filter(function (c) { return activo(c) || c.type === 'file'; });
         var malos = campos.filter(function (c) { return !revisar(c, true); });
+        Array.from(e.target.querySelectorAll('[data-spui-requiere-alguno]')).forEach(function (g) {
+            if (!validarGrupo(g)) malos.push(g.querySelector('input[type="checkbox"]'));
+        });
         if (malos.length) {
             e.preventDefault();
             e.stopImmediatePropagation();

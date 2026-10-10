@@ -43,9 +43,10 @@
         </div>
     </div>
 
-    <div class="mb-3">
+    <div class="mb-3" data-spui-campo>
         <label class="unraf-form-label">Días de la semana</label>
-        <div class="spui-dias-switches mt-2">
+        <div class="spui-dias-switches mt-2{{ err.dias is defined ? ' is-invalid' }}"
+             data-spui-requiere-alguno="{{ constant('SPUI\\Form\\ProgramacionType::MSG_DIAS_REQUERIDOS') }}">
             {% set diasOpciones = {'Lun': 0, 'Mar': 1, 'Mié': 2, 'Jue': 3, 'Vie': 4, 'Sáb': 5, 'Dom': 6} %}
             {% set diasActivos = v.dias is defined ? v.dias : [0, 1, 2, 3, 4] %}
             {% for label, bit in diasOpciones %}
@@ -59,7 +60,7 @@
                 </div>
             {% endfor %}
         </div>
-        <small class="text-muted mt-1 d-block">Sin selección = todos los días.</small>
+        {% if err.dias is defined %}<p class="spui-campo-error">{{ err.dias }}</p>{% endif %}
     </div>
 
     {# Switch de estado. Este form no usa FormType, así que el id va literal

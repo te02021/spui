@@ -9,6 +9,7 @@ use Doctrine\Persistence\ManagerRegistry;
 use SPUI\Entity\CronogramaItem;
 use SPUI\Enum\TipoContenido;
 use SPUI\Form\CronogramaItemType;
+use SPUI\Form\ProgramacionType;
 use SPUI\Repository\ContenidoRepository;
 use SPUI\Repository\CronogramaItemRepository;
 use SPUI\Service\AlcanceReproductorService;
@@ -113,6 +114,7 @@ class CronogramaCmsController extends AbstractController
         if ($horaInicio && $horaFin && $horaFin <= $horaInicio) {
             $errors['hora_fin'] = self::MSG_FIN_POSTERIOR;
         }
+        if (!$dias) { $errors['dias'] = ProgramacionType::MSG_DIAS_REQUERIDOS; }
 
         if ($errors) {
             if ($request->isXmlHttpRequest()) {
@@ -139,7 +141,6 @@ class CronogramaCmsController extends AbstractController
 
         $mask = 0;
         foreach ($dias as $bit) { $mask |= (1 << (int) $bit); }
-        if ($mask === 0) { $mask = 127; }
 
         $item = new CronogramaItem();
         $item->setContenido($contenido);
@@ -208,7 +209,7 @@ class CronogramaCmsController extends AbstractController
             foreach ($bits as $bit) {
                 $mask |= (1 << (int) $bit);
             }
-            $item->setDiasSemana($mask ?: 127);
+            $item->setDiasSemana($mask);
 
             $this->em()->flush();
             $this->comandoPublisher->pedirSyncAhora($reproductores, 'cronograma');

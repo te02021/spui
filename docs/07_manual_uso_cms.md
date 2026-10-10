@@ -141,7 +141,7 @@ Borrador ──[Publicar]──► Publicado ──[Archivar]──► Archivado
 
 Un contenido tipo cronograma es una tabla de horarios (materias, aulas). Sus ítems se administran en una **ventana emergente**, como el resto del panel: se abre con el botón **Ítems** del listado de Contenidos, con **Ver ítems** desde el detalle o la edición del contenido, y sola apenas se crea un cronograma.
 
-- **Agregar ítem**, **Editar** y **Eliminar** se abren encima del listado. Cada ítem pide nombre, aula (opcional), hora de inicio y fin, días y estado, y **se guarda al guardarlo**: al terminar se cierra esa ventana y el listado se actualiza solo. Las pantallas que muestran el cronograma reciben el cambio en segundos.
+- **Agregar ítem**, **Editar** y **Eliminar** se abren encima del listado. Cada ítem pide nombre, aula (opcional), hora de inicio y fin, días (al menos uno) y estado, y **se guarda al guardarlo**: al terminar se cierra esa ventana y el listado se actualiza solo. Las pantallas que muestran el cronograma reciben el cambio en segundos.
 - Si alguna pantalla que lo muestra tiene su reproductor desconectado, las tres acciones quedan bloqueadas (ver 6); el listado se puede mirar igual.
 
 La Pi recibe **solo los ítems del día actual**, ya filtrados. Se ordenan por hora de inicio, igual que en el CMS.
@@ -213,7 +213,7 @@ Al crear una regla:
   - *Global:* si no se elige ninguno, aplica a todas
 - **Horario:** hora de inicio y fin.
 - **Fechas:** desde (obligatoria) y hasta (opcional; vacío = sin vencimiento).
-- **Días:** los siete, con checkboxes.
+- **Días:** los siete, con checkboxes. Hay que marcar **al menos uno**: si se desmarcan todos, el formulario lo avisa debajo y no guarda (antes se guardaba en silencio como "todos los días"). Para todos los días, marcar los siete.
 - **Prioridad:** un número. Si dos reglas aplican al mismo tiempo en la misma pantalla, **gana la de mayor prioridad**.
 
 Las reglas se pueden desactivar sin borrarlas, para pausarlas temporalmente.

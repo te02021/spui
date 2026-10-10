@@ -366,6 +366,21 @@ Verificado sin tocar datos reales (todo dentro de una transacción revertida): c
 
 ---
 
+## 3.5. Suite de verificación y sus primeros hallazgos (octubre 2026)
+
+Desde el 10/10/2026 ningún cambio del CMS se da por terminado sin `tools/verificacion/verificar.ps1` en verde y sin revisar sus capturas (definición completa en `../CLAUDE.md`, "Definición de terminado"). La suite pide todas las rutas del panel por HTTP real, envía cada formulario con un campo vacío por vez, avisa si el build de assets está viejo y recorre el panel con un navegador real en escritorio y celular. Se verificó que detecta errores inyectados a propósito: variable de Twig inexistente, excepción de JavaScript, elemento `[hidden]` visible y asset sin recompilar.
+
+| Síntoma | Causa real | Dónde se arregló |
+|---|---|---|
+| Desmarcar todos los días de una regla de **Programación** o de un **ítem de cronograma** guardaba la regla como "todos los días" sin avisar (sólo el alta de ítem decía "Sin selección = todos los días"; Programación y la edición del ítem, no) | `$bitmask ?: 127` en los controllers | Decisión de Mateo: se exige al menos un día. `Count(min: 1)` en `ProgramacionType` y `CronogramaItemType`, error por campo en el alta manual del cronograma, y regla en vivo nueva en `validacion-vivo.js` (`data-spui-requiere-alguno`, sobre el contenedor de un grupo de casillas). Se quitaron los `?: 127` |
+| En el modal de Programación, los errores de horas, fecha y prioridad salían **angostos y centrados**, distintos del de Playlist | `.spui-hora-field { align-items: center }` achica cada hijo a su contenido | `.spui-hora-field .spui-campo-error { align-self: stretch }` |
+| En celular, el campo "Desde" con error **cortaba la fecha** ("dd/mm/yyy") | El ícono "!" de Bootstrap para inválido se sumaba al del calendario y le comía el ancho | Sin ese ícono en campos de hora y fecha (`style.css`): el borde rojo y el mensaje de abajo ya marcan el error |
+| Textos como "1 sector(es)" o "1 reproductor(es) registrado(s)" en 11 lugares del panel | Plural armado con paréntesis | Macro `templates/_macros/texto.html.twig` (`texto.plural(n, 'sector', 'sectores')`); el contador de ítems de playlist, que lo actualiza `items.js`, usa las mismas palabras por `data-singular`/`data-plural`. Los mensajes de consola y de log quedan como estaban |
+
+**Pendiente detectado, sin corregir:** en el alta de un ítem de cronograma el foco arranca en "Nombre". Si se hace clic directo en un día con el nombre vacío, el aviso "Este campo es obligatorio" aparece en ese momento, empuja el formulario hacia abajo y el clic termina en otro lugar. Pasa en cualquier formulario cuyo primer campo sea obligatorio.
+
+---
+
 ## 4. Convención de placeholders — no escribir IPs concretas
 
 Las direcciones IP de este sistema **no son estables**: host del CMS y reproductores toman IP por DHCP, y cambian según la red (desarrollo local, campus, producción). Documentar una IP concreta genera instrucciones que quedan mal a los pocos días.
