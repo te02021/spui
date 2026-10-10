@@ -279,9 +279,12 @@ class Reproductor
     /**
      * Usuario con el que este reproductor se conecta al broker.
      *
-     * También es el identificador que usan las ACLs: los permisos se escriben
-     * como patrones sobre %u (spui/telemetria/%u), así que cada equipo sólo
-     * puede publicar en sus propios topics.
+     * Los permisos del broker son por ROL (spui-reproductor), no por equipo:
+     * las ACL no usan el patrón %u porque se expande a este usuario
+     * ("spui-repro-17") y el topic lleva sólo el id ("spui/telemetria/17"),
+     * así que nunca coincidirían. Consecuencia: un reproductor podría publicar
+     * telemetría en el topic de otro (no alertas). Ver
+     * config/mosquitto/README.md, "Roles y permisos".
      */
     public function mqttUsuario(): string
     {

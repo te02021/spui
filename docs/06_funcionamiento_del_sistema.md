@@ -263,9 +263,9 @@ Cosas identificadas y decididas conscientemente, no olvidos:
 | **Puerto MQTT 1883 sin TLS** | El broker ya exige credenciales y sirve TLS en 8883, pero 1883 sigue abierto a propósito hasta que 8883 lleve un tiempo probado en uso real (tarea 1.0.f, ver `08_pendientes_vm.md` §8). El cliente Pi usa 1883 salvo que se configure `MQTT_TLS=true` |
 | **HTTP en vez de HTTPS** | Esperable en local. Producción necesita TLS |
 | **Bundle `Shared` del monolito** | Las otras apps cargan 1642 imports (jQuery duplicado, DataTables duplicado, CSS legacy). SPUI ya no depende de eso, pero el problema sigue a nivel monolito. No se toca porque afecta a las demás apps |
+| **Imagen de fallback** | `pi-client/assets/logo_fallback.png` está en `.gitignore` (no se versiona el binario). Si no existe, el player muestra un texto institucional en su lugar — nunca deja la pantalla en negro |
 
 Resueltos desde la primera versión de esta tabla: el **CSRF en acciones directas** (token propio, ver §7), el **MQTT sin autenticación** (§7) y la **retención de telemetría**, que ya no depende de programar nada — la purga corre dentro del servicio `spui:mqtt:subscribe` (§11).
-| **Imagen de fallback** | `pi-client/assets/logo_fallback.png` está en `.gitignore` (no se versiona el binario). Si no existe, el player muestra un texto institucional en su lugar — nunca deja la pantalla en negro |
 
 ---
 
