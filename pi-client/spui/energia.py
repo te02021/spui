@@ -144,8 +144,7 @@ class GestorEnergia:
                  entorno: Callable[[], Optional[dict]] = entorno_x,
                  firma_pantalla: Callable[[], str] = _firma_pantalla_por_defecto,
                  ruta_estado_brillo: str = '/var/cache/spui/brillo.json',
-                 brillo_software: Optional[Callable[[float], Optional[str]]] = None,
-                 temporizador=None) -> None:
+                 brillo_software: Optional[Callable[[float], Optional[str]]] = None) -> None:
         self._ejecutar = ejecutar
         self._entorno = entorno
         self._hay = hay
@@ -159,8 +158,7 @@ class GestorEnergia:
         # cuando vuelve a salir bien.
         self._fallas: dict[str, str] = {}
 
-        self.brillo = ControlBrillo(ejecutar, hay, ruta_backlight, ruta_estado_brillo,
-                                    software=brillo_software, temporizador=temporizador)
+        self.brillo = ControlBrillo(ejecutar, hay, ruta_backlight, ruta_estado_brillo, software=brillo_software)
         self.capacidades = Capacidades()
         self._detectado_en: Optional[float] = None
         self._firma: Optional[str] = None
@@ -203,8 +201,6 @@ class GestorEnergia:
         self._asegurar_encendida(debe_estar_encendida)
         if debe_estar_encendida:
             self.brillo.aplicar(_nivel(regla))
-        else:
-            self.brillo.pausar()
 
     def esta_apagada(self) -> bool:
         """True si el horario mandó apagar: el player no debería reproducir."""

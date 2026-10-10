@@ -11,15 +11,17 @@ Mateo, 10/10/2026):
 xrandr --brightness NO se usa: con el driver KMS de la Pi 4 responde bien e
 informa el valor nuevo, pero la imagen no cambia (probado en hardware real).
 
-Con un control real (1 y 2) el brillo que dejó quien instaló la pantalla es la
-REFERENCIA (decisiones de Mateo):
-  - El % del CMS es relativo a esa referencia: con el monitor en 50, una regla
-    de 80 % lo deja en 40. Sin regla, el monitor queda en la referencia.
-  - Un cambio hecho a mano en el monitor se detecta (ver revisar_cambio_manual):
-      · fuera de una regla, pasa a ser la nueva referencia y se guarda en disco;
-      · durante una regla, se deja y se avisa, pero la regla del CMS manda: a
-        los 30 s se vuelve al brillo de la regla.
-  - Para una alerta se usa el máximo del monitor: una emergencia tiene que verse.
+Con un control real (1 y 2), decisiones de Mateo:
+  - Sin regla, la pantalla queda con su brillo real: el que dejó quien la
+    instaló o el último que alguien puso a mano. Ese es la REFERENCIA, y se
+    guarda en disco por pantalla.
+  - El % del CMS es relativo a la referencia: con el monitor en 50, una regla
+    de 80 % lo deja en 40.
+  - NO se consulta la pantalla periódicamente. Se la consulta sólo en los
+    momentos clave: al arrancar y cuando cambia lo que hay que aplicar
+    (empieza, cambia o termina una regla o una alerta). Ahí se ve si alguien
+    cambió el brillo a mano desde la última vez (_tomar_cambio_manual).
+  - Para una alerta se usa el máximo de la pantalla: una emergencia tiene que verse.
 """
 
 import json
@@ -32,8 +34,6 @@ from typing import Callable, Optional
 from spui import ddc
 
 logger = logging.getLogger(__name__)
-
-VOLVER_A_LA_REGLA_SEG = 30
 
 
 @dataclass
@@ -50,14 +50,12 @@ class _Control:
 class ControlBrillo:
     def __init__(self, ejecutar, hay: Callable[[str], bool], ruta_backlight: Optional[str],
                  ruta_estado: str,
-                 software: Optional[Callable[[float], Optional[str]]] = None,
-                 temporizador: Callable[[float, Callable[[], None]], object] = None) -> None:
+                 software: Optional[Callable[[float], Optional[str]]] = None) -> None:
         self._ejecutar = ejecutar
         self._hay = hay
         self._ruta_backlight = ruta_backlight
         self._ruta_estado = ruta_estado
         self._software = software
-        self._temporizador = temporizador or _temporizador_real
         self._lock = threading.RLock()
 
         self.metodo = 'ninguno'
@@ -67,10 +65,8 @@ class ControlBrillo:
         self._referencia: Optional[int] = None
         self._ultimo_escrito: Optional[int] = None
         self._objetivo: Optional[int] = None
-        self._en_regla = False
-        self._revertir_pendiente = None
+        self._ultimo_pedido: Optional[tuple] = None    # qué se aplicó la última vez
         self._fallas: dict[str, str] = {}
-        self._aviso_manual: Optional[str] = None
         self._nivel_software = 100   # la imagen arranca sin oscurecer
 
     # ── Detección ─────────────────────────────────────────────────────────
@@ -141,49 +137,51 @@ class ControlBrillo:
     def aplicar(self, nivel: Optional[int], alerta: bool = False) -> None:
         """
         nivel: % del CMS (0-100) si hay una regla vigente; None si no hay regla
-        (la pantalla queda en su referencia). alerta=True: máximo brillo.
+        (la pantalla queda en su brillo real). alerta=True: máximo brillo.
+
+        Sólo consulta la pantalla cuando cambia lo que hay que aplicar (empieza,
+        cambia o termina una regla; empieza o termina una alerta), o para
+        reintentar un brillo que no se pudo aplicar. Llamarla en cada ciclo con
+        lo mismo no genera ninguna consulta (pedido de Mateo: nada de consultas
+        periódicas).
         """
         with self._lock:
-            en_regla = nivel is not None and not alerta
+            pedido = ('alerta',) if alerta else ('regla', nivel) if nivel is not None else ('sin_regla',)
+            reintento = 'escribir' in self._fallas or 'leer' in self._fallas
+            if pedido == self._ultimo_pedido and not reintento:
+                return
+            hacia_regla = pedido[0] == 'regla'
+
             if self._control is None:
-                self._aplicar_software(100 if (alerta or nivel is None) else nivel)
-                self._en_regla = en_regla
+                self._aplicar_software(nivel if hacia_regla else 100)
+                self._ultimo_pedido = pedido
                 return
 
-            # Momento clave: antes de escribir se mira si alguien lo cambió a mano.
-            self.revisar_cambio_manual(_ya_tengo_lock=True)
-            if self._revertir_pendiente is not None and en_regla == self._en_regla:
-                return   # cambio manual en una regla: se respeta hasta que venza el plazo
-            self._cancelar_vuelta()
+            # Momento clave: antes de aplicar se mira si alguien cambió el brillo
+            # a mano desde la última vez.
+            self._tomar_cambio_manual(hacia_regla=hacia_regla)
 
             if alerta:
                 objetivo = self._maximo
-            elif nivel is None:
-                objetivo = self._referencia
-            else:
+            elif hacia_regla:
                 objetivo = round(self._referencia * max(0, min(100, nivel)) / 100)
-            self._en_regla = en_regla
+            else:
+                objetivo = self._referencia
+            self._ultimo_pedido = pedido
             self._escribir(objetivo)
 
-    def pausar(self) -> None:
-        """La pantalla se apaga por horario: no tiene sentido volver a la regla en un monitor en reposo."""
-        with self._lock:
-            self._cancelar_vuelta()
-
-    def revisar_cambio_manual(self, _ya_tengo_lock: bool = False) -> None:
+    def _tomar_cambio_manual(self, hacia_regla: bool) -> None:
         """
-        Compara el brillo real del monitor con el último que puso el sistema. Si
-        difiere, alguien lo cambió a mano.
-
-        Si el monitor implementa el aviso VCP 0x02 se lee primero ese byte y el
-        brillo sólo si está levantado. Se llama en los momentos clave (antes de
-        cada cambio de brillo, que es cada vez que llega el horario o se edita en
-        el CMS) y la puede llamar quien quiera vigilar más seguido.
+        Compara el brillo real con el último que puso el sistema; si difiere,
+        alguien lo cambió a mano con los botones de la pantalla:
+          - fuera de una regla, o al terminar una: ese es el brillo real que
+            quiere quien está en el lugar → pasa a ser la referencia;
+          - si se pasa de una regla a otra (o el CMS cambió el nivel): manda el
+            CMS; la referencia no cambia y se aplica la regla.
+        Si el monitor implementa el aviso VCP 0x02, se lee primero ese byte y el
+        brillo sólo cuando está levantado.
         """
-        if not _ya_tengo_lock:
-            with self._lock:
-                return self.revisar_cambio_manual(_ya_tengo_lock=True)
-        if self._control is None or self._ultimo_escrito is None:
+        if self._ultimo_escrito is None:
             return
         aviso = self._control.hubo_cambio()
         if aviso is False:
@@ -192,46 +190,23 @@ class ControlBrillo:
         if aviso:
             self._control.bajar_aviso()
         if lectura is None:
-            self._fallas['leer'] = error
+            self._fallas['leer'] = f'No se pudo leer el brillo de la pantalla: {error}.'
             return
         self._fallas.pop('leer', None)
         actual = lectura[0]
         if actual == self._ultimo_escrito:
             return
 
-        if not self._en_regla:
-            logger.info('Brillo cambiado a mano en el monitor: %s → %s. Pasa a ser la referencia.',
+        venia_de_regla = bool(self._ultimo_pedido) and self._ultimo_pedido[0] == 'regla'
+        if not venia_de_regla or not hacia_regla:
+            logger.info('Brillo cambiado a mano en la pantalla: %s → %s. Pasa a ser la referencia.',
                         self._ultimo_escrito, actual)
             self._referencia = actual
-            self._ultimo_escrito = actual
-            self._guardar_estado()
-            return
-
-        logger.info('Brillo cambiado a mano en el monitor (%s) durante una regla: en %d s se vuelve a %s.',
-                    actual, VOLVER_A_LA_REGLA_SEG, self._objetivo)
-        self._aviso_manual = (
-            f'Se cambió a mano el brillo del monitor ({actual} de {self._maximo}). '
-            f'Hay una regla del horario energético: en {VOLVER_A_LA_REGLA_SEG} s vuelve a {self._objetivo}.'
-        )
+        else:
+            logger.info('Brillo cambiado a mano en la pantalla (%s) durante una regla: se aplica la regla del CMS.',
+                        actual)
         self._ultimo_escrito = actual
-        if self._revertir_pendiente is None:
-            self._revertir_pendiente = self._temporizador(VOLVER_A_LA_REGLA_SEG, self._volver_a_la_regla)
-
-    def _volver_a_la_regla(self) -> None:
-        with self._lock:
-            self._revertir_pendiente = None
-            self._aviso_manual = None
-            if self._en_regla and self._objetivo is not None:
-                logger.info('Se restablece el brillo de la regla (%s).', self._objetivo)
-                self._escribir(self._objetivo)
-
-    def _cancelar_vuelta(self) -> None:
-        if self._revertir_pendiente is not None:
-            cancelar = getattr(self._revertir_pendiente, 'cancel', None)
-            if cancelar:
-                cancelar()
-            self._revertir_pendiente = None
-            self._aviso_manual = None
+        self._guardar_estado()
 
     def _escribir(self, objetivo: int) -> None:
         self._objetivo = objetivo
@@ -270,8 +245,6 @@ class ControlBrillo:
     def diagnostico(self, hay_reglas_atenuadas: bool) -> list[str]:
         with self._lock:
             problemas = list(self._fallas.values())
-            if self._aviso_manual:
-                problemas.append(self._aviso_manual)
             if hay_reglas_atenuadas and self._control is None:
                 motivo = self.motivo_sin_control or 'la pantalla no permite controlar su brillo'
                 if self.metodo == 'software':
@@ -327,9 +300,3 @@ class ControlBrillo:
         except OSError as exc:
             logger.warning('No se pudo guardar el brillo de referencia: %s', exc)
 
-
-def _temporizador_real(segundos: float, funcion: Callable[[], None]):
-    t = threading.Timer(segundos, funcion)
-    t.daemon = True
-    t.start()
-    return t

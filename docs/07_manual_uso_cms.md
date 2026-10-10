@@ -239,7 +239,7 @@ Cada cambio le llega a la Pi en segundos (el CMS le avisa que sincronice), y la 
 - **Brillo:** el porcentaje es **relativo al brillo que tiene configurado la pantalla** (el que dejó quien la instaló): con el monitor en 50, una regla de 80 % lo deja en 40, y sin regla vuelve a 50.
   - Si la pantalla permite controlar su brillo por el cable (DDC/CI, lo tienen la mayoría de los monitores), se cambia el brillo real y baja el consumo.
   - Si no (la mayoría de los TV), se oscurece la imagen que manda la Pi: se ve igual de tenue, pero no ahorra energía. El reproductor lo avisa.
-  - Si alguien cambia el brillo con los botones del monitor fuera de un horario, ese pasa a ser el brillo de referencia. Si lo cambia durante un horario con regla, se respeta 30 segundos y después vuelve el de la regla: el CMS manda.
+  - Si alguien cambia el brillo con los botones del monitor, el reproductor lo toma en cuanto hace falta, sin estar consultando la pantalla: cuando empieza una regla, la aplica sobre ese brillo nuevo; si el cambio se hizo durante una regla, al terminar la regla queda el brillo que puso la persona. Si durante una regla se edita el nivel en el CMS, se aplica en el momento (el CMS manda).
   - Durante una alerta la pantalla va al máximo brillo.
 
 Si la pantalla tiene horario energético y algo no se puede hacer del todo (no responde a CEC, no hay forma de cortar la señal, un apagado que falló), el reproductor lo informa: aparece como aviso en el listado de Reproductores, en su detalle y en el Dashboard. Sin horario energético no se avisa nada.
