@@ -232,7 +232,13 @@ Para cada día se configura:
 
 El botón **Copiar a L-V** replica el horario de ese día al resto de los días hábiles, que es el caso más común: mismo horario de lunes a viernes y algo distinto el fin de semana.
 
-Cada cambio le llega a la Pi en segundos (el CMS le avisa que sincronice), y la Pi actúa sola: apaga por HDMI-CEC (apaga el televisor de verdad) o cortando la salida de video, y ajusta el brillo donde el panel lo permita.
+Cada cambio le llega a la Pi en segundos (el CMS le avisa que sincronice), y la Pi actúa sola. Qué puede hacer depende de la pantalla, y la Pi lo **detecta** sola al arrancar (y cada media hora):
+
+- **TV que responde a HDMI-CEC:** se apaga y se enciende de verdad.
+- **Pantalla sin CEC** (un monitor de PC, o un TV sin CEC o con CEC desactivado): se corta la señal HDMI. Un monitor entra solo en reposo; un TV queda encendido mostrando "sin señal".
+- **Brillo:** se oscurece la imagen que manda la Pi, con cualquier pantalla. No baja el consumo del panel: para eso, el apagado.
+
+Si la pantalla tiene horario energético y algo no se puede hacer del todo (no responde a CEC, no hay forma de cortar la señal, un apagado que falló), el reproductor lo informa: aparece como aviso en el listado de Reproductores, en su detalle y en el Dashboard. Sin horario energético no se avisa nada.
 
 ### 4.3 Alertas — `/spui/alertas`
 

@@ -41,73 +41,10 @@ except ImportError:
     _VLC_IMPORTABLE = False
 
 
-def _buscar_display() -> Optional[str]:
-    """
-    Devuelve el DISPLAY a usar, o None si no hay servidor X corriendo.
-
-    Que python-vlc se pueda importar NO significa que haya una pantalla donde
-    dibujar. Corriendo como servicio de systemd no hay sesión gráfica, y VLC
-    aborta el proceso a nivel nativo ("Error opening terminal") — no es una
-    excepción de Python, así que no se puede atrapar con try/except: hay que
-    comprobarlo ANTES de inicializar VLC.
-
-    Los sockets de X viven en /tmp/.X11-unix/X<n>; su presencia indica que hay
-    un servidor escuchando en ese display.
-    """
-    display = os.environ.get('DISPLAY')
-    if display:
-        return display
-
-    try:
-        sockets = sorted(os.listdir('/tmp/.X11-unix'))
-    except OSError:
-        return None
-
-    for nombre in sockets:
-        if nombre.startswith('X') and nombre[1:].isdigit():
-            return ':' + nombre[1:]
-
-    return None
-
-
-def _buscar_xauthority() -> Optional[str]:
-    """
-    Archivo de autorización de X (cookie), o None si no hace falta buscarlo.
-
-    En Raspberry Pi OS, startx arranca Xorg con '-auth /tmp/serverauth.XXXXXX',
-    con un nombre distinto en cada arranque. Sin esa cookie, un proceso de otra
-    sesión —como el servicio systemd— se conecta al display y recibe
-    "No protocol specified". Por eso se busca en tiempo de ejecución en vez de
-    fijarla en el archivo del servicio.
-    """
-    if os.environ.get('XAUTHORITY'):
-        return os.environ['XAUTHORITY']
-
-    candidatos = []
-
-    # El que esté usando el Xorg en curso (lo más confiable).
-    try:
-        for pid in os.listdir('/proc'):
-            if not pid.isdigit():
-                continue
-            try:
-                with open(f'/proc/{pid}/cmdline', 'rb') as fh:
-                    args = fh.read().decode('utf-8', 'replace').split('\x00')
-            except OSError:
-                continue
-            if args and args[0].endswith('Xorg') and '-auth' in args:
-                candidatos.append(args[args.index('-auth') + 1])
-    except OSError:
-        pass
-
-    # Ubicaciones habituales como respaldo.
-    candidatos.append(os.path.expanduser('~/.Xauthority'))
-
-    for ruta in candidatos:
-        if ruta and os.path.exists(ruta):
-            return ruta
-
-    return None
+# Ubicar el servidor X (DISPLAY y cookie) vive en spui/x11.py: lo usa también
+# la gestión energética para xrandr.
+from spui.x11 import buscar_display as _buscar_display  # noqa: E402
+from spui.x11 import buscar_xauthority as _buscar_xauthority  # noqa: E402
 
 
 def _detectar_video() -> tuple[bool, Optional[str], Optional[str]]:
@@ -817,6 +754,16 @@ class Player:
     def esta_mostrando_alerta(self) -> bool:
         with self._lock:
             return self._alerta is not None
+
+    def forzar_recarga(self) -> None:
+        """
+        Hace que el próximo ciclo vuelva a cargar el contenido aunque no haya
+        cambiado. Se usa al restablecer la señal HDMI tras un apagado por
+        horario (xrandr --auto): la salida se recrea y no hay garantía de que
+        la ventana de VLC siga a pantalla completa.
+        """
+        self._firma_actual = None
+        self._mostrando_fallback = False
 
     def detener(self) -> None:
         self._stop.set()

@@ -48,9 +48,14 @@ sudo apt-get update -qq
 # sin ningún error que lo explique.
 #
 # x11-utils trae xdpyinfo, que usa diagnostico.py para comprobar el display.
+# x11-xserver-utils trae xrandr: brillo y corte de señal del horario energético.
+# cec-utils trae cec-client: apagar y encender un TV por HDMI-CEC. Si la
+# pantalla no tiene CEC (un monitor de PC) el cliente lo detecta solo y usa
+# la señal; sin el paquete ni siquiera se puede probar si la pantalla responde.
 sudo apt-get install -y \
     vlc vlc-plugin-base \
-    x11-utils \
+    x11-utils x11-xserver-utils \
+    cec-utils \
     python3 python3-pip python3-venv
 
 # Módulos de salida para X11 (xcb_x11/xcb_xv). Sin ellos quedan sólo salidas

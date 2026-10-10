@@ -168,11 +168,9 @@ def main() -> None:
         if player.problema_pantalla:
             problemas.append(player.problema_pantalla)
 
-        if energia.en_simulacion():
-            problemas.append(
-                'Sin control de encendido/apagado de la pantalla: faltan cec-client y vcgencmd. '
-                'El horario energético se registra pero no se aplica.'
-            )
+        # Qué no se puede controlar de la pantalla (CEC, señal, brillo) y
+        # cualquier encendido/apagado o brillo que haya fallado.
+        problemas.extend(energia.diagnostico())
 
         problemas.extend(_PROBLEMAS.consultar())
 
@@ -327,7 +325,10 @@ def main() -> None:
             player.reintentar_pantalla()
 
             energia.actualizar_reglas(pantalla_data.get('energia'))
+            estaba_apagada = energia.esta_apagada()
             energia.aplicar(hay_alerta=bool(alerta))
+            if estaba_apagada and not energia.esta_apagada():
+                player.forzar_recarga()
 
             # El sync es la fuente de verdad sobre si hay alerta vigente: si no
             # trae ninguna y el player todavía cree que sí, hay que apagarla.

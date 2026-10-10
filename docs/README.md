@@ -377,6 +377,16 @@ Desde el 10/10/2026 ningún cambio del CMS se da por terminado sin `tools/verifi
 | En celular, el campo "Desde" con error **cortaba la fecha** ("dd/mm/yyy") | El ícono "!" de Bootstrap para inválido se sumaba al del calendario y le comía el ancho | Sin ese ícono en campos de hora y fecha (`style.css`): el borde rojo y el mensaje de abajo ya marcan el error |
 | Textos como "1 sector(es)" o "1 reproductor(es) registrado(s)" en 11 lugares del panel | Plural armado con paréntesis | Macro `templates/_macros/texto.html.twig` (`texto.plural(n, 'sector', 'sectores')`); el contador de ítems de playlist, que lo actualiza `items.js`, usa las mismas palabras por `data-singular`/`data-plural`. Los mensajes de consola y de log quedan como estaban |
 
+### Cliente Pi en la misma tanda
+
+| Síntoma | Causa real | Dónde se arregló |
+|---|---|---|
+| Una descarga cortada a mitad de camino quedaba en el caché, y el player la reproducía; lo mismo con un archivo alterado en disco (CP07) | `descargar_media()` escribía directo sobre el nombre final, y el player sólo comprobaba que el archivo existiera | `sync.py`: descarga a `.part`, verificación SHA-256 y `os.replace` atómico; `archivo_valido()` verifica el hash antes de reproducir (memorizado por tamaño y fecha); al arrancar se borran las descargas a medias. Ver `06` §5 |
+| El horario energético **no apagaba** un monitor sin HDMI-CEC, y no lo avisaba | Sin CEC se usaba `vcgencmd display_power`, que con el driver KMS de Raspberry Pi OS Bookworm (el de fábrica) se ignora sin dar error; además, que `cec-client` estuviera instalado se tomaba como "hay CEC", aunque la pantalla no respondiera | `energia.py` detecta qué permite la pantalla (si el TV **responde** a una consulta CEC, qué salida conectada ve `xrandr`) y usa, en orden, CEC → corte de señal con `xrandr` (decisión de Mateo) → `vcgencmd` (con aviso). Verifica el resultado de cada comando, y si la pantalla tiene horario energético, cualquier limitación o fallo llega al diagnóstico del CMS. Al reencender, el player recarga el contenido |
+| El brillo programado **no tenía efecto** en un TV por HDMI | Sólo se escribía `/sys/class/backlight`, que existe en el display oficial de la Pi y no en un TV | `xrandr --brightness` cuando no hay backlight. Oscurece la imagen, pero no baja el consumo del panel. Un 0 % cargado en el CMS se respeta (antes, `or 100` lo convertía en 100) |
+
+Los tests del cliente (`pi-client/tests`, 24 casos de caché y energía) corren en la PC dentro de `verificar.ps1`, con el venv fijo `D:\tools\spui-python`, y en la Pi con `/opt/spui/venv/bin/python3 -m unittest discover -s tests`. El comportamiento real con hardware (si el monitor entra en reposo y VLC vuelve a pantalla completa tras `xrandr --auto`) hay que confirmarlo en la Pi.
+
 **Pendiente detectado, sin corregir:** en el alta de un ítem de cronograma el foco arranca en "Nombre". Si se hace clic directo en un día con el nombre vacío, el aviso "Este campo es obligatorio" aparece en ese momento, empuja el formulario hacia abajo y el clic termina en otro lugar. Pasa en cualquier formulario cuyo primer campo sea obligatorio.
 
 ---
