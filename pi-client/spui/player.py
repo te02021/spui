@@ -117,6 +117,8 @@ class Player:
         self._mostrando_fallback = False
         # Qué playlist está puesta ahora, para no recargarla si no cambió.
         self._firma_actual: Optional[str] = None
+        # Brillo por software (filtro adjust de VLC), 1.0 = sin oscurecer.
+        self._brillo_sw = 1.0
 
         # La detección va acá y no en el import: durante el import todavía no
         # hay logging configurado y estos mensajes se perdían, dejando la
@@ -755,6 +757,21 @@ class Player:
         with self._lock:
             return self._alerta is not None
 
+    def ajustar_brillo(self, fraccion: float) -> Optional[str]:
+        """
+        Oscurece la imagen (1.0 = normal, 0.0 = negro). Es el último recurso del
+        horario energético cuando la pantalla no deja controlar su brillo
+        (spui/brillo.py): no baja el consumo, pero anda con cualquier pantalla.
+        Lo que está en pantalla se vuelve a cargar para que tome el brillo nuevo.
+        """
+        nuevo = max(0.0, min(1.0, float(fraccion)))
+        if abs(nuevo - self._brillo_sw) < 0.005:
+            return None
+        logger.info('Brillo por software (VLC): %d%%.', round(nuevo * 100))
+        self._brillo_sw = nuevo
+        self.forzar_recarga()
+        return None
+
     def forzar_recarga(self) -> None:
         """
         Hace que el próximo ciclo vuelva a cargar el contenido aunque no haya
@@ -908,6 +925,14 @@ class Player:
         imagen es normal y el fotograma queda visible; en un vídeo significa
         que se cortó. Ver el detalle en la comprobación de estado, más abajo.
         """
+        # Brillo por software (pantallas sin DDC/CI ni backlight, ver
+        # spui/brillo.py): el filtro adjust va en el medio, ANTES de reproducir.
+        # Una imagen fija se decodifica una sola vez; cambiar el filtro con el
+        # fotograma ya en pantalla no la oscurecería.
+        if self._brillo_sw < 0.995:
+            media.add_option(':video-filter=adjust')
+            media.add_option(f':brightness={self._brillo_sw:.2f}')
+
         self._media_player.set_media(media)
 
         # play() devuelve -1 si no pudo arrancar. Ignorar ese valor era la razón

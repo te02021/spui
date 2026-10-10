@@ -236,7 +236,11 @@ Cada cambio le llega a la Pi en segundos (el CMS le avisa que sincronice), y la 
 
 - **TV que responde a HDMI-CEC:** se apaga y se enciende de verdad.
 - **Pantalla sin CEC** (un monitor de PC, o un TV sin CEC o con CEC desactivado): se corta la señal HDMI. Un monitor entra solo en reposo; un TV queda encendido mostrando "sin señal".
-- **Brillo:** se oscurece la imagen que manda la Pi, con cualquier pantalla. No baja el consumo del panel: para eso, el apagado.
+- **Brillo:** el porcentaje es **relativo al brillo que tiene configurado la pantalla** (el que dejó quien la instaló): con el monitor en 50, una regla de 80 % lo deja en 40, y sin regla vuelve a 50.
+  - Si la pantalla permite controlar su brillo por el cable (DDC/CI, lo tienen la mayoría de los monitores), se cambia el brillo real y baja el consumo.
+  - Si no (la mayoría de los TV), se oscurece la imagen que manda la Pi: se ve igual de tenue, pero no ahorra energía. El reproductor lo avisa.
+  - Si alguien cambia el brillo con los botones del monitor fuera de un horario, ese pasa a ser el brillo de referencia. Si lo cambia durante un horario con regla, se respeta 30 segundos y después vuelve el de la regla: el CMS manda.
+  - Durante una alerta la pantalla va al máximo brillo.
 
 Si la pantalla tiene horario energético y algo no se puede hacer del todo (no responde a CEC, no hay forma de cortar la señal, un apagado que falló), el reproductor lo informa: aparece como aviso en el listado de Reproductores, en su detalle y en el Dashboard. Sin horario energético no se avisa nada.
 

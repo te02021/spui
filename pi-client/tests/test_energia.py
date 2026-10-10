@@ -13,6 +13,7 @@ Correr desde la carpeta del cliente:
 
 import os
 import sys
+import tempfile
 import unittest
 from datetime import datetime
 
@@ -85,8 +86,12 @@ class _Reloj:
         return self.t
 
 
-def gestor(p: _Pantalla, reloj=None) -> GestorEnergia:
-    return GestorEnergia(ejecutar=p.ejecutar, hay=p.hay, existe_backlight=lambda: False,
+def gestor(p: _Pantalla, reloj=None, carpeta=None, software=None) -> GestorEnergia:
+    carpeta = carpeta or tempfile.mkdtemp(prefix='spui-test-')
+    return GestorEnergia(ejecutar=p.ejecutar, hay=p.hay, ruta_backlight=None,
+                         firma_pantalla=lambda: 'una-pantalla',
+                         ruta_estado_brillo=os.path.join(carpeta, 'brillo.json'),
+                         brillo_software=software,
                          reloj=reloj or _Reloj(), entorno=p.entorno)
 
 
@@ -96,7 +101,8 @@ class MonitorSinCecTest(unittest.TestCase):
         self.assertFalse(g.capacidades.cec_responde)
         self.assertEqual(g.capacidades.salida_hdmi, 'HDMI-1')
         self.assertEqual(g.capacidades.metodo_apagado, 'senal')
-        self.assertEqual(g.capacidades.metodo_brillo, 'xrandr')
+        # xrandr ya no maneja el brillo: en la Pi 4 (KMS) no tiene efecto.
+        self.assertNotEqual(g.brillo.metodo, 'xrandr')
 
     def test_fuera_de_horario_corta_la_senal(self):
         p = _Pantalla(cec=False)
@@ -106,7 +112,7 @@ class MonitorSinCecTest(unittest.TestCase):
         self.assertTrue(g.esta_apagada())
         self.assertIn(['--output', 'HDMI-1', '--off'], p.xrandr_args())
 
-    def test_al_reencender_restablece_senal_y_vuelve_a_aplicar_el_brillo(self):
+    def test_al_reencender_restablece_la_senal_y_xrandr_no_toca_el_brillo(self):
         p = _Pantalla(cec=False)
         g = gestor(p)
         g.actualizar_reglas(regla(brillo=60))
@@ -114,8 +120,7 @@ class MonitorSinCecTest(unittest.TestCase):
         g.aplicar(ahora=FUERA)
         p.llamadas.clear()
         g.aplicar(ahora=DENTRO)
-        self.assertEqual(p.xrandr_args(), [['--output', 'HDMI-1', '--auto'],
-                                           ['--output', 'HDMI-1', '--brightness', '0.60']])
+        self.assertEqual(p.xrandr_args(), [['--output', 'HDMI-1', '--auto']])
 
     def test_avisa_la_limitacion_solo_si_hay_horario(self):
         g = gestor(_Pantalla(cec=False))
@@ -124,13 +129,6 @@ class MonitorSinCecTest(unittest.TestCase):
         aviso = ' '.join(g.diagnostico())
         self.assertIn('no responde a HDMI-CEC', aviso)
         self.assertIn('sin señal', aviso)
-
-    def test_brillo_cero_se_respeta(self):
-        p = _Pantalla(cec=False)
-        g = gestor(p)
-        g.actualizar_reglas(regla(brillo=0))
-        g.aplicar(ahora=DENTRO)
-        self.assertIn(['--output', 'HDMI-1', '--brightness', '0.00'], p.xrandr_args())
 
     def test_si_xrandr_falla_no_queda_en_silencio(self):
         p = _Pantalla(cec=False, falla_xrandr=True)
@@ -151,14 +149,16 @@ class MonitorSinCecTest(unittest.TestCase):
 
     def test_una_alerta_enciende_aunque_sea_horario_de_apagado(self):
         p = _Pantalla(cec=False)
-        g = gestor(p)
+        niveles = []
+        g = gestor(p, software=lambda f: niveles.append(f))
         g.actualizar_reglas(regla(brillo=50))
-        g.aplicar(ahora=FUERA)
+        g.aplicar(ahora=DENTRO)              # se oscurece al 50 %
+        g.aplicar(ahora=FUERA)               # se apaga
         p.llamadas.clear()
         g.aplicar(ahora=FUERA, hay_alerta=True)
         self.assertFalse(g.esta_apagada())
-        self.assertEqual(p.xrandr_args(), [['--output', 'HDMI-1', '--auto'],
-                                           ['--output', 'HDMI-1', '--brightness', '1.00']])
+        self.assertEqual(p.xrandr_args(), [['--output', 'HDMI-1', '--auto']])
+        self.assertEqual(niveles[-1:], [1.0], 'la alerta se ve con el brillo completo')
 
 
 class TvConCecTest(unittest.TestCase):

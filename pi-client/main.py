@@ -148,7 +148,13 @@ def main() -> None:
     sync.limpiar_parciales()  # descargas a medias de una ejecución anterior
     player  = Player(config.MEDIA_DIR, sync_client=sync)
     network = NetworkMonitor(config.API_URL)
-    energia = GestorEnergia()
+    # El brillo de referencia de cada pantalla se guarda en el caché para
+    # sobrevivir a reinicios; si la pantalla no deja controlar su brillo, el
+    # player oscurece la imagen (spui/brillo.py).
+    energia = GestorEnergia(
+        ruta_estado_brillo=os.path.join(config.CACHE_DIR, 'brillo.json'),
+        brillo_software=player.ajustar_brillo,
+    )
 
     def recolectar_diagnostico() -> list[str]:
         """
