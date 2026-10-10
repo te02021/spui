@@ -176,6 +176,47 @@ class MonitorConDdcTest(BaseTest):
         self.assertEqual(m.brillo, 30, '60 % de la referencia, que no cambió')
         self.assertEqual(self.referencia(), 50)
 
+    # ── Verificación en cada sync exitoso (sólo durante una regla) ──────────
+
+    def test_en_el_sync_un_cambio_manual_durante_la_regla_vuelve_a_la_regla(self):
+        m = _Monitor(brillo=50)
+        c = self.control(m)
+        c.aplicar(80)                        # regla: 40
+        m.tocar_botones(70)
+        c.aplicar(80, verificar=True)        # llegó un sync
+        self.assertEqual(m.brillo, 40, 'manda la regla del CMS')
+        self.assertTrue(any('a mano' in p for p in c.diagnostico(True)), 'y se avisa en el panel')
+        self.assertEqual(self.referencia(), 50, 'la referencia no cambia')
+
+    def test_en_el_sync_sin_cambios_solo_se_lee_el_aviso_de_un_byte(self):
+        m = _Monitor(brillo=50, aviso_02=True)
+        c = self.control(m)
+        c.aplicar(80)
+        m.llamadas = m.lecturas_brillo = 0
+        c.aplicar(80, verificar=True)
+        self.assertEqual(m.llamadas, 1, 'sólo getvcp 02')
+        self.assertEqual(m.lecturas_brillo, 0)
+
+    def test_en_el_sync_sin_regla_no_se_consulta_nada(self):
+        m = _Monitor(brillo=50)
+        c = self.control(m)
+        c.aplicar(None)
+        m.llamadas = 0
+        c.aplicar(None, verificar=True)
+        self.assertEqual(m.llamadas, 0)
+
+    def test_el_aviso_del_cambio_manual_se_va_solo(self):
+        m = _Monitor(brillo=50)
+        reloj = [1000.0]
+        c = ControlBrillo(m.ejecutar, m.hay, None, self.estado, reloj=lambda: reloj[0])
+        c.detectar()
+        c.aplicar(80)
+        m.tocar_botones(70)
+        c.aplicar(80, verificar=True)
+        self.assertTrue(any('a mano' in p for p in c.diagnostico(True)))
+        reloj[0] += 31 * 60
+        self.assertFalse(any('a mano' in p for p in c.diagnostico(True)))
+
     def test_con_aviso_0x02_no_se_lee_el_brillo_si_nadie_toco_nada(self):
         m = _Monitor(brillo=50, aviso_02=True)
         c = self.control(m)

@@ -244,6 +244,7 @@ def main() -> None:
         espera    = config.SYNC_INTERVAL  # por defecto: 300s
 
         # ── Sync con detección de red (Fase 7) ───────────────────────────
+        sync_ok = False   # el CMS respondió en este ciclo (ver energía, más abajo)
         if network.is_online():
             try:
                 sync_data = sync.sincronizar()
@@ -263,6 +264,7 @@ def main() -> None:
                 sync.prefetch_media(sync_data)
 
                 _PROBLEMAS.resolver('sync')
+                sync_ok = True
 
             except Exception as exc:
                 logger.warning('Sync falló estando online: %s — usando caché.', exc)
@@ -332,7 +334,9 @@ def main() -> None:
 
             energia.actualizar_reglas(pantalla_data.get('energia'))
             estaba_apagada = energia.esta_apagada()
-            energia.aplicar(hay_alerta=bool(alerta))
+            # Con el sync recién hecho, el cliente tiene la verdad del CMS: es el
+            # momento de comparar el brillo de la pantalla con el de la regla.
+            energia.aplicar(hay_alerta=bool(alerta), verificar_brillo=sync_ok)
             if estaba_apagada and not energia.esta_apagada():
                 player.forzar_recarga()
 

@@ -147,6 +147,16 @@ class MonitorSinCecTest(unittest.TestCase):
         g.aplicar(ahora=DENTRO)
         self.assertFalse(any('No se pudo' in m for m in g.diagnostico()))
 
+    def test_tras_un_sync_se_pide_verificar_el_brillo_de_la_regla(self):
+        p = _Pantalla(cec=False)
+        g = gestor(p)
+        pedidos = []
+        g.brillo.aplicar = lambda nivel, alerta=False, verificar=False: pedidos.append((nivel, verificar))
+        g.actualizar_reglas(regla(brillo=60))
+        g.aplicar(ahora=DENTRO, verificar_brillo=True)
+        g.aplicar(ahora=DENTRO)
+        self.assertEqual(pedidos, [(60, True), (60, False)])
+
     def test_una_alerta_enciende_aunque_sea_horario_de_apagado(self):
         p = _Pantalla(cec=False)
         niveles = []

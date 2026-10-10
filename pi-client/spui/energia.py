@@ -173,13 +173,18 @@ class GestorEnergia:
             logger.info('Horario energético actualizado: %d día(s) configurado(s).', len(nuevas))
             self._reglas = nuevas
 
-    def aplicar(self, ahora: Optional[datetime] = None, hay_alerta: bool = False) -> None:
+    def aplicar(self, ahora: Optional[datetime] = None, hay_alerta: bool = False,
+                verificar_brillo: bool = False) -> None:
         """
         Evalúa el horario y ajusta la pantalla si hace falta.
 
         hay_alerta fuerza el encendido y el máximo brillo: una emergencia tiene
         que verse aunque el horario mande apagar. Al desactivarse la alerta, el
         siguiente aplicar() vuelve a respetar el horario.
+
+        verificar_brillo: el ciclo acaba de sincronizar con el CMS; si hay una
+        regla de brillo vigente, se compara con el brillo real de la pantalla
+        (ver ControlBrillo.aplicar).
         """
         self._redetectar_si_hace_falta()
         ahora = ahora or datetime.now()
@@ -200,7 +205,7 @@ class GestorEnergia:
         debe_estar_encendida = self._dentro_de_horario(regla, ahora.time())
         self._asegurar_encendida(debe_estar_encendida)
         if debe_estar_encendida:
-            self.brillo.aplicar(_nivel(regla))
+            self.brillo.aplicar(_nivel(regla), verificar=verificar_brillo)
 
     def esta_apagada(self) -> bool:
         """True si el horario mandó apagar: el player no debería reproducir."""
