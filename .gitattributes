@@ -1,0 +1,8 @@
+# Lo que corre en la Raspberry Pi (Linux) va SIEMPRE con finales de línea LF,
+# aunque se haga checkout en Windows con core.autocrlf=true. Con CRLF, bash
+# falla con "$'\r': command not found" y un shebang "#!/usr/bin/env python3\r"
+# no encuentra el intérprete. deploy.ps1 copia la carpeta tal cual a la Pi.
+*.sh            text eol=lf
+*.service       text eol=lf
+pi-client/**/*.py       text eol=lf
+pi-client/requirements.txt text eol=lf
