@@ -95,6 +95,13 @@ async function revisarDom(page, alcance, esCelular) {
         const texto = raiz.innerText || '';
         const basura = ['undefined', 'NaN', '[object Object]', 'This value should', 'This value is not'].filter((t) => texto.includes(t));
 
+        // Una tabla que no entra en su tarjeta esconde columnas detrás de un
+        // scroll horizontal (pasó con "Acciones" en Reproductores). En celular
+        // las tablas pasan a tarjetas, así que sólo se mira en escritorio.
+        const tablasAnchas = alcance ? [] : [...document.querySelectorAll('.unraf-table-responsive')]
+            .filter((e) => visible(e) && e.scrollWidth > e.clientWidth + 1)
+            .map((e) => `${e.scrollWidth}px en ${e.clientWidth}px`);
+
         let desborde = null;
         if (!alcance && document.documentElement.scrollWidth > window.innerWidth + 1) {
             const culpables = [...document.querySelectorAll('body *')]
@@ -103,13 +110,14 @@ async function revisarDom(page, alcance, esCelular) {
                 .slice(0, 3).map(describir);
             desborde = { ancho: document.documentElement.scrollWidth, ventana: window.innerWidth, culpables };
         }
-        return { hiddenVisibles, imgsRotas, basura, desborde };
+        return { hiddenVisibles, imgsRotas, basura, desborde, tablasAnchas };
     }, { alcance });
 
     if (r.sinRaiz) { falla(`no aparece ${alcance}`); return; }
     for (const h of r.hiddenVisibles) falla(`elemento con [hidden] que igual se ve: ${h}`);
     for (const i of r.imgsRotas) falla(`imagen rota: ${i}`);
     for (const b of r.basura) falla(`texto sospechoso en pantalla: "${b}"`);
+    if (!esCelular) for (const t of r.tablasAnchas) falla(`la tabla no entra y esconde columnas detrás de un scroll horizontal (${t})`);
     if (r.desborde && esCelular) aviso(`scroll horizontal: la página mide ${r.desborde.ancho}px en una ventana de ${r.desborde.ventana}px (${r.desborde.culpables.join(', ')})`);
 }
 
@@ -177,7 +185,10 @@ async function botonesDeModal(page) {
 /** Nuevo → Guardar sin completar nada: tienen que verse los errores y no crearse nada. */
 async function guardarVacio(page, vista, nombre) {
     const form = page.locator('#spuiAbmBody form[data-spui-ajax]');
-    if (!await form.count()) return;
+    if (!await form.count()) {
+        falla('el modal de alta no tiene un formulario para probar Guardar vacío (¿cargó a tiempo?)');
+        return;
+    }
     await page.evaluate(() => {
         const f = document.querySelector('#spuiAbmBody form[data-spui-ajax]');
         f.querySelectorAll('input[type=text],input[type=number],input[type=time],input[type=date],input[type=datetime-local],input[type=url],input:not([type]),textarea')
@@ -203,6 +214,14 @@ async function guardarVacio(page, vista, nombre) {
 }
 
 // ── Recorrido ───────────────────────────────────────────────────────────────
+// Cualquier error de fondo (una promesa rechazada fuera de un await) se informa
+// con su stack y la corrida termina en rojo: nunca un corte sin explicación.
+for (const evento of ['unhandledRejection', 'uncaughtException']) {
+    process.on(evento, (e) => {
+        console.error(`\nERROR INTERNO DEL RECORRIDO (${evento}) en [${contexto}]:\n${e && e.stack ? e.stack : e}`);
+        process.exit(3);
+    });
+}
 rmSync(SALIDA, { recursive: true, force: true });
 const id = sesion();
 const navegador = await chromium.launch();
@@ -257,11 +276,18 @@ for (const v of VISTAS) {
         if (SOLO && !SOLO.includes(nombre)) continue;
         contexto = `${v.nombre} ${nombre}`;
         console.log(`\n${contexto}`);
-        const resp = await page.goto(BASE + ruta, { waitUntil: 'load' });
-        if (resp && resp.url().includes('unraf.edu.ar')) { falla('redirigió al login: la sesión de prueba no sirvió'); break; }
-        await page.waitForTimeout(800);
-        await revisarDom(page, null, !!v.isMobile);
-        await capturar(page, v.nombre, nombre);
+        // Un error inesperado en una pantalla queda como falla y el recorrido
+        // sigue con las demás: antes podía cortar todo el script sin decir dónde.
+        try {
+            const resp = await page.goto(BASE + ruta, { waitUntil: 'load' });
+            if (resp && resp.url().includes('unraf.edu.ar')) { falla('redirigió al login: la sesión de prueba no sirvió'); break; }
+            await page.waitForTimeout(800);
+            await revisarDom(page, null, !!v.isMobile);
+            await capturar(page, v.nombre, nombre);
+        } catch (e) {
+            falla(`no se pudo recorrer la pantalla: ${e.message.split('\n')[0]}`);
+            continue;
+        }
 
         if (args['sin-modales']) continue;
         for (const b of await botonesDeModal(page)) {

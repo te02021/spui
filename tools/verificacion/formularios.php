@@ -58,7 +58,7 @@ $tipos = [
     'Programacion'   => [F\ProgramacionType::class, fn() => new E\Programacion(),
         ['playlist' => $id(E\Playlist::class), 'horaInicio' => '08:00', 'horaFin' => '09:00',
          'fechaInicio' => '2026-10-01', 'diasSemana' => ['0'], 'prioridad' => '1']],
-    'Reproductor'    => [F\ReproductorType::class, fn() => new E\Reproductor(), ['hostname' => 'spui-prueba']],
+    'Reproductor'    => [F\ReproductorType::class, fn() => new E\Reproductor(), ['hostname' => 'spui-prueba', 'intervaloSyncMin' => '5']],
     'Ubicacion'      => [F\UbicacionType::class, fn() => new E\Ubicacion(),
         ['edificio' => $id(E\Edificio::class), 'sector' => 'S']],
 ];
