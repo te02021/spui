@@ -24,3 +24,7 @@ tools/verificacion/.sesion
 # Se regeneran localmente con generar-certificados.ps1 y se distribuyen fuera
 # de git (copiar a cada Pi, ver README de config/mosquitto).
 config/mosquitto/certs/*.key
+
+# Documentacion util solamente para desarrollo local
+docs/Evaluacion Final Plan PF IC - Rivero Mateo.pdf
+docs/Plan de Proyecto - Rivero Mateo.docx
