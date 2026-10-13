@@ -121,7 +121,9 @@ class Programacion
     public function setRepetirSemanal(bool $repetirSemanal): static { $this->repetirSemanal = $repetirSemanal; return $this; }
 
     public function getPrioridad(): int { return $this->prioridad; }
-    public function setPrioridad(int $prioridad): static { $this->prioridad = $prioridad; return $this; }
+    // null = el campo llegó vacío del formulario: se ignora y queda el valor
+    // anterior; el NotBlank del FormType es el que avisa "obligatorio".
+    public function setPrioridad(?int $prioridad): static { if ($prioridad !== null) { $this->prioridad = $prioridad; } return $this; }
 
     public function isActivo(): bool { return $this->activo; }
     public function setActivo(bool $activo): static { $this->activo = $activo; return $this; }

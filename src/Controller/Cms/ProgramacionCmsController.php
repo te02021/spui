@@ -78,7 +78,7 @@ class ProgramacionCmsController extends AbstractController
             $diasArray = $form->get('diasSemana')->getData() ?? [];
             $bitmask   = 0;
             foreach ($diasArray as $bit) { $bitmask |= (1 << (int) $bit); }
-            $prog->setDiasSemana($bitmask ?: 127);
+            $prog->setDiasSemana($bitmask);
             $prog->setCreadoPorId((int) $this->getUser()->getId());
 
             // El objeto ya está poblado por el formulario, así que se puede
@@ -130,7 +130,7 @@ class ProgramacionCmsController extends AbstractController
             $diasArray = $form->get('diasSemana')->getData() ?? [];
             $bitmask   = 0;
             foreach ($diasArray as $bit) { $bitmask |= (1 << (int) $bit); }
-            $prog->setDiasSemana($bitmask ?: 127);
+            $prog->setDiasSemana($bitmask);
 
             $reproductores = $this->alcance->deProgramacion($prog);
             if ($r = $this->bloquearSiOffline($reproductores, $request, 'spui_cms_programacion_index')) {

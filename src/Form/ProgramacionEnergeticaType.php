@@ -42,8 +42,9 @@ class ProgramacionEnergeticaType extends AbstractType
                 'constraints' => [new NotBlank(message: 'Indicá la hora de apagado.')],
             ])
             // RangeType renderiza <input type="range">: una barra de volumen en vez
-            // de una caja de números. El rango y el paso son los mismos de antes; el
-            // valor se muestra al costado y lo actualiza range-input.js en vivo.
+            // de una caja de números. Paso 1, cualquier valor de 0 a 100 (pedido de
+            // Mateo, 10/10/2026; antes iba de 5 en 5). El valor se muestra al
+            // costado y lo actualiza range-input.js en vivo.
             ->add('nivelBrillo', RangeType::class, [
                 'label'       => 'Nivel de brillo (%)',
                 'label_attr'  => ['class' => 'unraf-form-label'],
@@ -51,10 +52,13 @@ class ProgramacionEnergeticaType extends AbstractType
                     'class'           => 'spui-range',
                     'min'             => 0,
                     'max'             => 100,
-                    'step'            => 5,
+                    'step'            => 1,
                     'data-spui-range' => '1',
                 ],
-                'constraints' => [new Range(notInRangeMessage: 'El brillo debe estar entre {{ min }} y {{ max }}.', min: 0, max: 100)],
+                'constraints' => [
+                    new NotBlank(message: 'El brillo es obligatorio.'),
+                    new Range(notInRangeMessage: 'El brillo debe estar entre {{ min }} y {{ max }}.', min: 0, max: 100),
+                ],
             ]);
     }
 

@@ -75,7 +75,9 @@ class CronogramaItem
     public function setActivo(bool $activo): static { $this->activo = $activo; return $this; }
 
     public function getOrden(): int { return $this->orden; }
-    public function setOrden(int $orden): static { $this->orden = $orden; return $this; }
+    // null = el campo llegó vacío del formulario: se ignora y queda el valor
+    // anterior; el NotBlank del FormType es el que avisa "obligatorio".
+    public function setOrden(?int $orden): static { if ($orden !== null) { $this->orden = $orden; } return $this; }
 
     public function aplicaHoy(): bool
     {

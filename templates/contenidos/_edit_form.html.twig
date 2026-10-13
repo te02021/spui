@@ -13,15 +13,17 @@
       enctype="multipart/form-data"
       novalidate>
 
-    {% if error %}
-        <div class="alert alert-danger mb-3">{{ error }}</div>
-    {% endif %}
+    <input type="hidden" name="_token" value="{{ csrf_token('spui_action') }}">
+
+    {# Errores por campo (name → mensaje): cada uno va debajo de su input. #}
+    {% set err = errores|default({}) %}
 
     <div class="row g-3 mb-3 align-items-start">
         <div class="col">
             <label class="unraf-form-label" for="ed_titulo">Título <span class="text-danger">*</span></label>
-            <input type="text" id="ed_titulo" name="titulo" class="unraf-form-control"
+            <input type="text" id="ed_titulo" name="titulo" class="unraf-form-control{{ err.titulo is defined ? ' is-invalid' }}"
                    value="{{ contenido.titulo }}" maxlength="200" required>
+            {% if err.titulo is defined %}<p class="spui-campo-error">{{ err.titulo }}</p>{% endif %}
         </div>
         <div class="col-auto d-flex flex-column">
             <label class="unraf-form-label mb-2">Tipo</label>
@@ -46,7 +48,7 @@
             <span class="spui-input-addon">segundos</span>
         </div>
         <small class="text-muted d-block mt-1">
-            Se usa al agregar este contenido a una playlist; cada ítem puede pisarla. Vacío = permanente (sin avance automático).
+            Dura lo mismo en todas las playlists donde esté. Vacío = permanente (sin avance automático).
         </small>
     </div>
 
@@ -60,15 +62,17 @@
             <textarea id="ed_texto" name="contenido_texto" class="unraf-form-control" rows="3"
                       placeholder="{{ contenido.tipo.value == 'youtube' ? 'https://www.youtube.com/watch?v=…' : 'Texto que se muestra en pantalla' }}"
                       required>{{ contenido.contenidoTexto }}</textarea>
+            {% if err.contenido_texto is defined %}<p class="spui-campo-error">{{ err.contenido_texto }}</p>{% endif %}
         </div>
 
     {% elseif contenido.tipo.value == 'qr' %}
         {% set qr = contenido.codigoQr %}
         <div class="mb-3">
             <label class="unraf-form-label" for="ed_qr_url">URL destino <span class="text-danger">*</span></label>
-            <input type="url" id="ed_qr_url" name="qr_url_destino" class="unraf-form-control"
+            <input type="url" id="ed_qr_url" name="qr_url_destino" class="unraf-form-control{{ err.qr_url_destino is defined ? ' is-invalid' }}"
                    maxlength="500" placeholder="https://…"
                    value="{{ qr ? qr.urlDestino : '' }}" required>
+            {% if err.qr_url_destino is defined %}<p class="spui-campo-error">{{ err.qr_url_destino }}</p>{% endif %}
             <small class="text-muted d-block mt-1">
                 Cambiarla <strong>no invalida</strong> los códigos ya impresos ni el que está en pantalla.
             </small>
@@ -79,6 +83,7 @@
             <input type="datetime-local" id="ed_qr_expira" name="qr_expira_en" class="unraf-form-control"
                    style="max-width:16rem"
                    value="{{ qr and qr.expiraEn ? qr.expiraEn|date('Y-m-d\\TH:i') : '' }}">
+            {% if err.qr_expira_en is defined %}<p class="spui-campo-error">{{ err.qr_expira_en }}</p>{% endif %}
             <small class="text-muted d-block mt-1">Pasada esa fecha deja de redirigir. Vacío = sin vencimiento.</small>
         </div>
 
@@ -110,7 +115,9 @@
         {% endif %}
 
     {% elseif contenido.tipo.value in ['imagen', 'video'] %}
-        <div class="mb-3" data-spui-archivo-field>
+        {# data-spui-campo: los errores del archivo (del servidor y de
+           validacion-vivo.js, apenas se elige uno demasiado pesado) van al final. #}
+        <div class="mb-3" data-spui-archivo-field data-spui-campo>
             {# Título y botón de subida en la misma línea, botón a la derecha
                de todo — mismo layout que ya usa el campo de sonido de alerta. #}
             <div class="spui-sonido-field-header">
@@ -119,7 +126,10 @@
                        title="{{ contenido.rutaArchivo ? 'Reemplazar archivo' : 'Elegir archivo' }}">
                     <img src="{{ asset('unraf-ui/icons/upload-simple.svg') }}" class="spui-action-icon" alt="Elegir archivo">
                     <input type="file" id="ed_archivo" name="archivo" data-spui-archivo-input
-                           accept="{{ contenido.tipo.value == 'imagen' ? 'image/*' : 'video/*' }}">
+                           {% set fmt = constant('SPUI\\Service\\MediaStorageService::FORMATOS')[contenido.tipo.value] %}
+                           accept="{{ fmt.accept }}"
+                           data-spui-formatos="{{ fmt.extensiones }}" data-spui-formatos-texto="{{ fmt.texto }}"
+                           {% if max_bytes_archivo is defined %}data-spui-max-bytes="{{ max_bytes_archivo }}"{% endif %}>
                 </label>
             </div>
 
@@ -143,19 +153,24 @@
                 </a>
             </div>
 
-            <small class="text-muted d-block">Dejalo vacío para conservar el archivo actual.</small>
+            <small class="text-muted d-block">{{ contenido.tipo.value == 'imagen' ? 'Imágenes' : 'Videos' }}: {{ fmt.texto }}. Dejalo vacío para conservar el archivo actual.</small>
+            {% if err.archivo is defined %}<p class="spui-campo-error">{{ err.archivo }}</p>{% endif %}
         </div>
 
     {% elseif contenido.tipo.value == 'cronograma' %}
         <div class="mb-3">
             <label class="unraf-form-label">Ítems del cronograma</label>
             <p class="text-muted small mb-2">
-                Las actividades se gestionan en el editor del cronograma, en su propia pantalla.
+                Las actividades se cargan en el listado de ítems del cronograma. Lo que no hayas
+                guardado acá se pierde al pasar a los ítems.
             </p>
-            <a href="{{ path('spui_cms_cronograma_builder', {id: contenido.id}) }}"
-               class="unraf-btn spui-btn-items unraf-btn-sm">
-                <img src="{{ asset('unraf-ui/icons/calendar-dots.svg') }}" class="spui-action-icon" alt=""> Ir al editor de ítems
-            </a>
+            {# data-spui-abrir: reemplaza este modal por el listado de ítems (modal.js). #}
+            <button type="button" class="unraf-btn spui-btn-items unraf-btn-sm"
+                    data-spui-abrir="{{ path('spui_cms_cronograma_items', {id: contenido.id}) }}"
+                    data-spui-title="Ítems de «{{ contenido.titulo }}»"
+                    data-spui-size="modal-lg">
+                <img src="{{ asset('unraf-ui/icons/calendar-dots.svg') }}" class="spui-action-icon" alt=""> Ver ítems
+            </button>
         </div>
     {% endif %}
 

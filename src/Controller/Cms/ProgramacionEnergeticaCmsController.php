@@ -11,7 +11,10 @@ use SPUI\Entity\ProgramacionEnergetica;
 use SPUI\Form\ProgramacionEnergeticaType;
 use SPUI\Repository\PantallaRepository;
 use SPUI\Repository\ProgramacionEnergeticaRepository;
+use SPUI\Service\AlcanceReproductorService;
+use SPUI\Service\ComandoPublisherService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\Form\FormError;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
@@ -27,7 +30,11 @@ use Symfony\Component\Routing\Attribute\Route;
 #[Route('/spui/pantallas/{id}/energia', requirements: ['id' => '\d+'])]
 class ProgramacionEnergeticaCmsController extends AbstractController
 {
+    use BloqueoOfflineTrait;
     use CsrfProtegidoTrait;
+
+    /** Lo dicen el servidor al guardar y validacion-vivo.js mientras se escribe (_form.html.twig). */
+    public const MSG_APAGADO_POSTERIOR = 'La hora de apagado tiene que ser posterior a la de encendido.';
 
     /** Nombres de los días indexados por su valor ISO (1=Lunes … 7=Domingo). */
     public const DIAS = [
@@ -44,6 +51,8 @@ class ProgramacionEnergeticaCmsController extends AbstractController
         private readonly PantallaRepository $pantallaRepo,
         private readonly ProgramacionEnergeticaRepository $repo,
         private readonly ManagerRegistry $doctrine,
+        private readonly AlcanceReproductorService $alcance,
+        private readonly ComandoPublisherService $comandoPublisher,
     ) {}
 
     private function em()
@@ -61,17 +70,39 @@ class ProgramacionEnergeticaCmsController extends AbstractController
         return $pantalla;
     }
 
-    /** Grilla semanal: los 7 días, con o sin regla cargada. */
+    /**
+     * Grilla semanal: los 7 días, con o sin regla cargada.
+     *
+     * Se sirve como modal y no como pantalla propia: todo el CMS se maneja por
+     * modales, y una ruta navegable aparte tenía además un problema real de
+     * seguridad de uso — el botón que llevaba acá era un <a href>, así que
+     * quedaba atenuado cuando el reproductor estaba caído pero el clic navegaba
+     * igual, dejando entrar a una pantalla donde nada se podía guardar. Como
+     * modal, el mismo interceptor que ya frena al resto de las acciones lo
+     * cubre sin ningún caso especial.
+     */
     #[Route('', name: 'spui_cms_energia_grilla', methods: ['GET'])]
-    public function grilla(int $id): Response
+    public function grilla(int $id, Request $request): Response
     {
         $pantalla = $this->getPantallaOr404($id);
 
-        return $this->render('@SPUI/energia/grilla.html.twig', [
-            'pantalla' => $pantalla,
-            'reglas'   => $this->repo->findByPantallaIndexadoPorDia($pantalla),
-            'dias'     => self::DIAS,
+        $html = $this->renderView('@SPUI/energia/_grilla.html.twig', [
+            'pantalla'    => $pantalla,
+            'reglas'      => $this->repo->findByPantallaIndexadoPorDia($pantalla),
+            'dias'        => self::DIAS,
+            'ids_offline' => $this->alcance->idsOfflineDeUnaVez(),
         ]);
+
+        if ($request->isXmlHttpRequest()) {
+            return $this->json([
+                'title' => 'Energía — ' . $pantalla->getNombre(),
+                'html'  => $html,
+            ]);
+        }
+
+        // Sin XHR no hay modal donde pintarlo: se vuelve al listado, que es
+        // desde donde se abre.
+        return $this->redirectToRoute('spui_cms_pantallas_index');
     }
 
     /**
@@ -101,29 +132,34 @@ class ProgramacionEnergeticaCmsController extends AbstractController
         ]);
         $form->handleRequest($request);
 
-        $grillaUrl = $this->generateUrl('spui_cms_energia_grilla', ['id' => $id]);
+        $volverUrl = $this->generateUrl('spui_cms_pantallas_index');
+
+        // Error de campo, no flash: va debajo de "Apagado" (ver
+        // feedback de Mateo: los errores de valores van en el campo). El mismo
+        // mensaje lo adelanta validacion-vivo.js mientras se escribe.
+        if ($form->isSubmitted() && $form->isValid()
+            && $regla->getHoraApagado() <= $regla->getHoraEncendido()) {
+            $form->get('horaApagado')->addError(new FormError(self::MSG_APAGADO_POSTERIOR));
+        }
 
         if ($form->isSubmitted() && $form->isValid()) {
-            if ($regla->getHoraApagado() <= $regla->getHoraEncendido()) {
-                $msg = 'La hora de apagado tiene que ser posterior a la de encendido.';
-                if ($request->isXmlHttpRequest()) {
-                    return $this->json(['success' => false, 'message' => $msg, 'type' => 'warning'], 422);
-                }
-                $this->addFlash('warning', $msg);
-                return $this->redirect($grillaUrl);
+            $reproductores = $this->alcance->dePantalla($pantalla);
+            if ($r = $this->bloquearSiOffline($reproductores, $request, 'spui_cms_pantallas_index')) {
+                return $r;
             }
 
             if ($esNueva) {
                 $this->em()->persist($regla);
             }
             $this->em()->flush();
+            $this->comandoPublisher->pedirSyncAhora($reproductores, 'programacion_energetica');
 
             $msg = 'Horario de ' . self::DIAS[$dia] . ' guardado.';
             if ($request->isXmlHttpRequest()) {
-                return $this->json(['success' => true, 'message' => $msg, 'redirect' => $grillaUrl]);
+                return $this->json(['success' => true, 'message' => $msg]);
             }
             $this->addFlash('success', $msg);
-            return $this->redirect($grillaUrl);
+            return $this->redirect($volverUrl);
         }
 
         if ($request->isXmlHttpRequest()) {
@@ -138,7 +174,7 @@ class ProgramacionEnergeticaCmsController extends AbstractController
             ]);
         }
 
-        return $this->redirect($grillaUrl);
+        return $this->redirect($volverUrl);
     }
 
     /** Quita la regla de un día: la pantalla queda sin gestión energética ese día. */
@@ -149,7 +185,7 @@ class ProgramacionEnergeticaCmsController extends AbstractController
         if ($r = $this->denegarSiCsrfInvalido($request)) { return $r; }
         $regla    = $this->repo->findOneBy(['pantalla' => $pantalla, 'diaSemana' => $dia]);
 
-        $grillaUrl = $this->generateUrl('spui_cms_energia_grilla', ['id' => $id]);
+        $volverUrl = $this->generateUrl('spui_cms_pantallas_index');
 
         if (!$regla) {
             $msg = 'Ese día no tiene horario configurado.';
@@ -157,18 +193,24 @@ class ProgramacionEnergeticaCmsController extends AbstractController
                 return $this->json(['success' => false, 'message' => $msg, 'type' => 'warning'], 404);
             }
             $this->addFlash('warning', $msg);
-            return $this->redirect($grillaUrl);
+            return $this->redirect($volverUrl);
+        }
+
+        $reproductores = $this->alcance->dePantalla($pantalla);
+        if ($r = $this->bloquearSiOffline($reproductores, $request, 'spui_cms_pantallas_index')) {
+            return $r;
         }
 
         $this->em()->remove($regla);
         $this->em()->flush();
+        $this->comandoPublisher->pedirSyncAhora($reproductores, 'programacion_energetica');
 
         $msg = 'Horario de ' . self::DIAS[$dia] . ' eliminado.';
         if ($request->isXmlHttpRequest()) {
-            return $this->json(['success' => true, 'message' => $msg, 'redirect' => $grillaUrl]);
+            return $this->json(['success' => true, 'message' => $msg]);
         }
         $this->addFlash('success', $msg);
-        return $this->redirect($grillaUrl);
+        return $this->redirect($volverUrl);
     }
 
     /**
@@ -183,7 +225,7 @@ class ProgramacionEnergeticaCmsController extends AbstractController
         if ($r = $this->denegarSiCsrfInvalido($request)) { return $r; }
         $origen   = $this->repo->findOneBy(['pantalla' => $pantalla, 'diaSemana' => $dia]);
 
-        $grillaUrl = $this->generateUrl('spui_cms_energia_grilla', ['id' => $id]);
+        $volverUrl = $this->generateUrl('spui_cms_pantallas_index');
 
         if (!$origen) {
             $msg = 'Configurá primero el horario de ese día.';
@@ -191,7 +233,12 @@ class ProgramacionEnergeticaCmsController extends AbstractController
                 return $this->json(['success' => false, 'message' => $msg, 'type' => 'warning'], 404);
             }
             $this->addFlash('warning', $msg);
-            return $this->redirect($grillaUrl);
+            return $this->redirect($volverUrl);
+        }
+
+        $reproductores = $this->alcance->dePantalla($pantalla);
+        if ($r = $this->bloquearSiOffline($reproductores, $request, 'spui_cms_pantallas_index')) {
+            return $r;
         }
 
         $existentes = $this->repo->findByPantallaIndexadoPorDia($pantalla);
@@ -217,12 +264,13 @@ class ProgramacionEnergeticaCmsController extends AbstractController
         }
 
         $this->em()->flush();
+        $this->comandoPublisher->pedirSyncAhora($reproductores, 'programacion_energetica');
 
         $msg = 'Horario de ' . self::DIAS[$dia] . ' copiado a ' . $copiados . ' día(s) hábil(es).';
         if ($request->isXmlHttpRequest()) {
-            return $this->json(['success' => true, 'message' => $msg, 'redirect' => $grillaUrl]);
+            return $this->json(['success' => true, 'message' => $msg]);
         }
         $this->addFlash('success', $msg);
-        return $this->redirect($grillaUrl);
+        return $this->redirect($volverUrl);
     }
 }

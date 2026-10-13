@@ -70,10 +70,12 @@
             var segundos = Math.floor((ahora - ts) / 1000);
             el.textContent = formatear(segundos);
 
-            // Marca para que el CSS pueda resaltar equipos sin reportar. El
-            // umbral coincide con el que usa spui:mantenimiento para dar por
-            // caido un reproductor.
-            el.classList.toggle('is-stale', segundos > 300);
+            // Marca para que el CSS pueda resaltar equipos sin reportar. Por
+            // defecto el umbral coincide con el que usa spui:mantenimiento para
+            // dar por caido un reproductor (heartbeat); data-spui-atrasado-seg
+            // lo cambia por elemento (el ultimo sync: el doble de su intervalo).
+            var umbral = parseInt(el.getAttribute('data-spui-atrasado-seg'), 10) || 300;
+            el.classList.toggle('is-stale', segundos > umbral);
         });
     }
 

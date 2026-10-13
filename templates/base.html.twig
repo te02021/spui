@@ -151,10 +151,12 @@
 <script src="{{ asset('spui/js/core/sidebar.js') }}"></script>
 <script src="{{ asset('spui/js/core/switch-toggle.js') }}"></script>
 <script src="{{ asset('spui/js/core/range-input.js') }}"></script>
+<script src="{{ asset('spui/js/core/duracion-minutos.js') }}"></script>
 <script src="{{ asset('spui/js/core/list-filter.js') }}"></script>
 <script src="{{ asset('spui/js/core/content-type-fields.js') }}"></script>
 <script src="{{ asset('spui/js/core/alerta-sonido-field.js') }}"></script>
 <script src="{{ asset('spui/js/core/contenido-archivo-field.js') }}"></script>
+<script src="{{ asset('spui/js/core/validacion-vivo.js') }}"></script>
 {# AssetMapper versiona los .svg con un hash: media-viewer.js no puede
    armar esas URLs por su cuenta, así que se las pasamos acá. #}
 <script>
@@ -175,11 +177,13 @@
 <script src="{{ asset('spui/js/core/tiempo-relativo.js') }}"></script>
 <script src="{{ asset('spui/js/core/auto-refresh.js') }}"></script>
 
-{# SortableJS + el reorder de ítems de playlist. Van acá y no en la página del
-   listado porque el drag & drop vive dentro de un modal, que se abre desde
-   cualquier lado; antes se cargaban en la página builder, que ya no existe. #}
+{# SortableJS + la lista de ítems de playlist. Van acá y no en la página del
+   listado porque la lista vive dentro de un modal, que se abre desde cualquier
+   lado; antes se cargaban en la página builder, que ya no existe.
+   items.js reemplazó a builder.js: aquel mandaba cada reordenamiento al
+   servidor apenas se soltaba el ítem, y ahora nada se persiste hasta Guardar. #}
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
-<script src="{{ asset('spui/js/playlists/builder.js') }}"></script>
+<script src="{{ asset('spui/js/playlists/items.js') }}"></script>
 
 {% block javascripts %}{% endblock %}
 

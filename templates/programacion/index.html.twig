@@ -18,7 +18,9 @@
 
 <div id="spui-table-body">
 <div class="unraf-card mt-4">
-    <div class="unraf-table-responsive">
+    {# Se vuelve a pedir cuando llega un aviso de conexión por MQTT (conexion-vivo.js),
+       no por intervalo: destraba o traba los botones si un reproductor vuelve o se cae. #}
+    <div class="unraf-table-responsive" id="spui-tabla-conexion" data-spui-refresh="push">
         <table class="unraf-table unraf-table-striped w-100 spui-tabla-cards">
             <thead>
                 <tr>
@@ -118,4 +120,9 @@
     </div>
 </div>
 </div>
+{% endblock %}
+
+{# Destraba/traba los botones cuando un reproductor vuelve o se cae, sin recargar. #}
+{% block javascripts %}
+    {{ include('@SPUI/_partials/conexion_vivo.html.twig') }}
 {% endblock %}

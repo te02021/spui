@@ -1,3 +1,4 @@
+{% import '@SPUI/_macros/texto.html.twig' as texto %}
 {# Detalle de un edificio. Las filas opcionales se omiten si no hay dato. #}
 <div class="spui-view-header">
     <div>
@@ -41,7 +42,7 @@
             <div class="spui-view-list-item">
                 <span class="spui-view-list-bullet"></span>
                 <span>{{ u.sector ?: 'Sector sin nombre' }}</span>
-                <span class="spui-view-list-meta">{{ u.pantallas|length }} pantalla(s)</span>
+                <span class="spui-view-list-meta">{{ texto.plural(u.pantallas|length, 'pantalla', 'pantallas') }}</span>
             </div>
         {% endfor %}
         </div>

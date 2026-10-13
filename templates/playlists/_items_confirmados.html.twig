@@ -1,0 +1,13 @@
+{# Lista de ítems confirmada en la ventana de ítems, como inputs hidden dentro
+   del formulario de la playlist (los mismos que arma items.js). El servidor
+   los vuelve a escribir cuando redibuja el formulario por un error de campo:
+   sin esto, corregir el nombre perdía la lista que ya se había armado.
+
+   items_confirmados: list<int> (puede ser vacía = "se vació la playlist") o
+   null si todavía no se confirmó ninguna. #}
+{% if items_confirmados is defined and items_confirmados is not null %}
+    <input type="hidden" name="items_modificados" value="1" data-spui-items-hidden>
+    {% for id in items_confirmados %}
+        <input type="hidden" name="contenido_ids[]" value="{{ id }}" data-spui-items-hidden>
+    {% endfor %}
+{% endif %}

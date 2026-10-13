@@ -48,10 +48,24 @@ sudo apt-get update -qq
 # sin ningún error que lo explique.
 #
 # x11-utils trae xdpyinfo, que usa diagnostico.py para comprobar el display.
+# x11-xserver-utils trae xrandr: brillo y corte de señal del horario energético.
+# cec-utils trae cec-client: apagar y encender un TV por HDMI-CEC. Si la
+# pantalla no tiene CEC (un monitor de PC) el cliente lo detecta solo y usa
+# la señal; sin el paquete ni siquiera se puede probar si la pantalla responde.
+# ddcutil: brillo real del monitor por DDC/CI (como el brillo de Windows para
+# un monitor externo). Si la pantalla no lo soporta, el cliente oscurece la
+# imagen en su lugar.
 sudo apt-get install -y \
     vlc vlc-plugin-base \
-    x11-utils \
+    x11-utils x11-xserver-utils \
+    cec-utils ddcutil \
     python3 python3-pip python3-venv
+
+# DDC/CI viaja por el bus I2C del HDMI: hace falta el módulo i2c-dev cargado en
+# cada arranque y que el usuario del servicio pueda abrir /dev/i2c-*.
+echo i2c-dev | sudo tee /etc/modules-load.d/spui-i2c.conf > /dev/null
+sudo modprobe i2c-dev || true
+sudo usermod -aG i2c "$(whoami)"
 
 # Módulos de salida para X11 (xcb_x11/xcb_xv). Sin ellos quedan sólo salidas
 # para Wayland o consola (drm_vout, egl_wl…) y la pantalla queda en negro

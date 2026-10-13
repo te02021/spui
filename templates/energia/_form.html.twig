@@ -15,14 +15,17 @@
         {{ form_label(form.horaEncendido) }}
         {{ form_widget(form.horaEncendido) }}
         {% for e in form.horaEncendido.vars.errors %}
-            <p class="text-danger small mt-1">{{ e.message }}</p>
+            <p class="spui-campo-error">{{ e.message }}</p>
         {% endfor %}
     </div>
     <div class="col-12 col-sm-6">
         {{ form_label(form.horaApagado) }}
-        {{ form_widget(form.horaApagado) }}
+        {{ form_widget(form.horaApagado, {attr: {
+            'data-spui-validar-posterior': '#' ~ form.horaEncendido.vars.id,
+            'data-spui-validar-mensaje': constant('SPUI\\Controller\\Cms\\ProgramacionEnergeticaCmsController::MSG_APAGADO_POSTERIOR'),
+        }}) }}
         {% for e in form.horaApagado.vars.errors %}
-            <p class="text-danger small mt-1">{{ e.message }}</p>
+            <p class="spui-campo-error">{{ e.message }}</p>
         {% endfor %}
     </div>
 </div>
@@ -36,10 +39,11 @@
         <span class="spui-input-addon" id="{{ form.nivelBrillo.vars.id }}_val">{{ form.nivelBrillo.vars.value }}%</span>
     </div>
     {% for e in form.nivelBrillo.vars.errors %}
-        <p class="text-danger small mt-1">{{ e.message }}</p>
+        <p class="spui-campo-error">{{ e.message }}</p>
     {% endfor %}
     <small class="text-muted d-block mt-1">
-        Bajar el brillo de noche reduce el consumo y alarga la vida del panel.
+        Relativo al brillo que tiene configurado la pantalla (100 % = sin cambios). Si la pantalla
+        lo permite, baja su brillo real y el consumo; si no, se oscurece la imagen.
     </small>
 </div>
 

@@ -35,6 +35,11 @@
             overlay.classList.remove('is-open');
             overlay.setAttribute('aria-hidden', 'true');
             document.body.style.overflow = '';
+            nivel1Url = null;
+            // Para quien haya postergado algo mientras el modal estaba abierto
+            // (conexion-vivo.js no refresca la tabla de atrás con un modal
+            // encima, y la refresca al cerrarlo).
+            document.dispatchEvent(new CustomEvent('spui:modal:cerrado'));
             closeTimer = setTimeout(function () {
                 closeTimer = null;
                 bodyEl.innerHTML = '';
@@ -74,8 +79,14 @@
                 .finally(function () { tableEl.classList.remove('is-refreshing'); });
         }
 
+        // URL que cargó el modal de nivel 1. La necesita el nivel 2 para poder
+        // refrescar la capa de abajo después de guardar (ver
+        // closeModal2YRefrescaNivel1).
+        var nivel1Url = null;
+
         // ── Abrir formulario en modal ──
         function openFormModal(url, title, size) {
+            nivel1Url = url;
             showSpinner(title);
             if (size) modal.classList.add(size);
             openModal();
@@ -93,10 +104,126 @@
                     // que hay que bindearlos acá: bindTableButtons() sólo mira
                     // los data-spui-form/action del nivel 1.
                     if (window.spui.bindOpeners2) window.spui.bindOpeners2();
+                    bindAbrirEnNivel1();
                 })
                 .catch(function () {
                     bodyEl.innerHTML = '<div class="alert alert-danger">Error al cargar el formulario. Intentá de nuevo.</div>';
                 });
+        }
+
+        // Botones dentro del modal que REEMPLAZAN su contenido por otra vista,
+        // sin abrir una capa nueva ni navegar: data-spui-abrir="url" (+ title,
+        // size). Ej: "Ver ítems" desde el detalle o la edición de un
+        // cronograma, que pasa al listado de ítems en el mismo modal.
+        function bindAbrirEnNivel1() {
+            bodyEl.querySelectorAll('[data-spui-abrir]').forEach(function (btn) {
+                if (btn._spuiAbrir) return;
+                btn._spuiAbrir = true;
+                btn.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    if (bloqueado(btn)) return;
+                    openFormModal(btn.dataset.spuiAbrir, btn.dataset.spuiTitle, btn.dataset.spuiSize || null);
+                });
+            });
+        }
+
+        // ── Archivos elegidos, a través de un error de validación ──
+        // Cuando el servidor rechaza el formulario devuelve el HTML de nuevo, y
+        // un <input type="file"> no se puede repoblar desde el HTML: el archivo
+        // que el usuario ya había elegido se perdía y tenía que buscarlo otra
+        // vez. Se pasa el FileList del input viejo al nuevo (mismo name) y se
+        // avisa con un 'change', para que las vistas previas y la validación en
+        // vivo lo tomen como recién elegido. Si el error era del archivo mismo,
+        // queda ahí marcado para que lo quiten o lo reemplacen.
+        function archivosElegidos(contenedor) {
+            var porNombre = {};
+            if (!contenedor) return porNombre;
+            contenedor.querySelectorAll('input[type="file"]').forEach(function (input) {
+                if (input.name && input.files && input.files.length) porNombre[input.name] = input.files;
+            });
+            return porNombre;
+        }
+        function restaurarArchivos(contenedor, porNombre) {
+            Object.keys(porNombre).forEach(function (nombre) {
+                var input = contenedor.querySelector('input[type="file"][name="' + nombre + '"]');
+                if (!input) return;
+                try { input.files = porNombre[nombre]; } catch (e) { return; }
+                // spuiRestaurado: el error que acaba de mandar el servidor para
+                // este archivo (ej: no es audio aunque diga .mp3) tiene que
+                // seguir a la vista; validacion-vivo.js no lo limpia por esto.
+                var ev = new Event('change', { bubbles: true });
+                ev.spuiRestaurado = true;
+                input.dispatchEvent(ev);
+            });
+        }
+
+        // ── Envío de formularios, con progreso si lleva archivo ──
+        // fetch() no informa cuánto lleva subido, así que un video de cientos
+        // de MB dejaba el modal "colgado" sin ninguna señal. Si el formulario
+        // trae un archivo elegido se envía con XMLHttpRequest, que sí informa
+        // el avance, y se muestra una barra con el porcentaje y los MB. Al
+        // terminar de llegar el archivo, el servidor todavía lo procesa (lo
+        // sube a S3, calcula el hash): esa parte se muestra como "Procesando…",
+        // sin porcentaje, porque desde acá no se puede medir.
+        function tieneArchivo(form) {
+            return Array.from(form.querySelectorAll('input[type="file"]')).some(function (i) {
+                return i.files && i.files.length;
+            });
+        }
+
+        function barraDeSubida(form) {
+            var cont = document.createElement('div');
+            cont.className = 'spui-subida';
+            cont.setAttribute('role', 'status');
+            cont.innerHTML = '<div class="spui-subida-barra"><span></span></div><small></small>';
+            var acciones = form.querySelector('[type="submit"]');
+            var ancla = acciones ? acciones.closest('.d-flex') || acciones : null;
+            if (ancla && ancla.parentElement) ancla.parentElement.insertBefore(cont, ancla);
+            else form.appendChild(cont);
+            return cont;
+        }
+
+        function tamano(bytes) {
+            return window.spui.formatearTamano ? window.spui.formatearTamano(bytes) : Math.round(bytes / 1048576) + ' MB';
+        }
+
+        /** Envía el form y resuelve con el JSON de respuesta. */
+        function enviarFormulario(form, url) {
+            if (!tieneArchivo(form)) {
+                return fetch(url, {
+                    method: 'POST',
+                    body: new FormData(form),
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                }).then(function (r) { return r.json(); });
+            }
+
+            var barra = barraDeSubida(form);
+            var relleno = barra.querySelector('span');
+            var texto = barra.querySelector('small');
+            texto.textContent = 'Subiendo archivo…';
+
+            return new Promise(function (resolve, reject) {
+                var xhr = new XMLHttpRequest();
+                xhr.open('POST', url);
+                xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+                xhr.upload.onprogress = function (e) {
+                    if (!e.lengthComputable) return;
+                    var pct = Math.min(100, Math.round(e.loaded / e.total * 100));
+                    relleno.style.width = pct + '%';
+                    texto.textContent = 'Subiendo archivo… ' + pct + ' % · ' + tamano(e.loaded) + ' de ' + tamano(e.total);
+                };
+                xhr.upload.onload = function () {
+                    relleno.style.width = '100%';
+                    barra.classList.add('is-procesando');
+                    texto.textContent = 'Archivo recibido. Procesando en el servidor…';
+                };
+                xhr.onload = function () {
+                    barra.remove();
+                    try { resolve(JSON.parse(xhr.responseText)); } catch (e) { reject(e); }
+                };
+                xhr.onerror = xhr.onabort = function () { barra.remove(); reject(new Error('red')); };
+                xhr.send(new FormData(form));
+            });
         }
 
         function bindFormInBody() {
@@ -109,15 +236,15 @@
                 e.preventDefault();
                 var btn = form.querySelector('[type=submit]');
                 if (btn) btn.classList.add('spui-btn-submitting');
-                var fd = new FormData(form);
-                fetch(form.getAttribute('action') || location.href, {
-                    method: 'POST',
-                    body: fd,
-                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
-                })
-                .then(function (r) { return r.json(); })
+                enviarFormulario(form, form.getAttribute('action') || location.href)
                 .then(function (data) {
-                    if (data.success) {
+                    if (data.success && data.abrir) {
+                        // Guardado, y el servidor pide seguir en otra vista del
+                        // mismo modal (ej: crear un cronograma → sus ítems).
+                        if (data.message) window.spui.showFlash(data.message, 'success');
+                        refreshTable();
+                        openFormModal(data.abrir.url, data.abrir.title, data.abrir.size || null);
+                    } else if (data.success) {
                         closeModal();
                         if (data.message) window.spui.showFlash(data.message, 'success');
                         if (data.redirect) { window.location.href = data.redirect; }
@@ -125,9 +252,11 @@
                         else { refreshTable(); }
                     } else {
                         if (data.html) {
+                            var archivos = archivosElegidos(form);
                             bodyEl.innerHTML = data.html;
                             notifyLoaded();
                             bindFormInBody();
+                            restaurarArchivos(bodyEl, archivos);
                         } else {
                             if (btn) btn.classList.remove('spui-btn-submitting');
                             window.spui.showFlash(data.message || 'Error al guardar. Revisá el formulario.', 'error');
@@ -379,11 +508,35 @@
 
         // Vuelve a la vista de fondo. La usan las acciones de adentro
         // (agregar/quitar) para reflejar el cambio sin cerrar nada.
+        //
+        // Si el nivel 2 NO tiene vista de fondo propia (baseUrl2 === null) es
+        // porque se abrió como sub-vista de un modal de nivel 1 —el caso de la
+        // grilla de energía, que vive abajo y abre el form de cada día acá
+        // arriba—. Ahí "volver" significa cerrar esta capa y refrescar la de
+        // abajo, que es la que quedó desactualizada.
         function refreshModal2() {
-            if (!baseUrl2) return;
+            if (!baseUrl2) { closeModal2YRefrescaNivel1(); return; }
             titleEl2.textContent = baseTitle2 || '';
             modal2.className = 'spui-abm-modal' + (baseSize2 ? ' ' + baseSize2 : '');
             cargarEnNivel2(baseUrl2);
+        }
+
+        // Cierra el nivel 2 y recarga el contenido del nivel 1 desde el
+        // servidor, para que refleje lo que se acaba de guardar arriba.
+        function closeModal2YRefrescaNivel1() {
+            closeModal2();
+            if (nivel1Url) {
+                fetch(nivel1Url, { headers: { 'X-Requested-With': 'XMLHttpRequest' }, cache: 'no-store' })
+                    .then(function (r) { return r.json(); })
+                    .then(function (data) {
+                        if (data.title) setTitle(data.title);
+                        bodyEl.innerHTML = data.html || '';
+                        notifyLoaded();
+                        bindFormInBody();
+                        bindOpeners2();
+                    })
+                    .catch(function () { /* el modal de abajo queda como estaba */ });
+            }
         }
 
         function bindFormInBody2() {
@@ -400,12 +553,7 @@
                 e.preventDefault();
                 var btn = form.querySelector('[type=submit]');
                 if (btn) btn.classList.add('spui-btn-submitting');
-                fetch(form.getAttribute('action') || location.href, {
-                    method: 'POST',
-                    body: new FormData(form),
-                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
-                })
-                .then(function (r) { return r.json(); })
+                enviarFormulario(form, form.getAttribute('action') || location.href)
                 .then(function (data) {
                     if (data.success) {
                         if (data.message) window.spui.showFlash(data.message, 'success');
@@ -414,7 +562,9 @@
                         // modales. El contrato del nivel 2 es refrescarse.
                         refreshModal2();
                     } else if (data.html) {
+                        var archivos = archivosElegidos(form);
                         injectLevel2({ html: data.html });
+                        restaurarArchivos(bodyEl2, archivos);
                     } else {
                         if (btn) btn.classList.remove('spui-btn-submitting');
                         window.spui.showFlash(data.message || 'Error al guardar.', 'error');
@@ -537,19 +687,112 @@
             });
         }
 
-        // Botones del NIVEL 1 que abren el nivel 2 (ej: "Ver ítems" dentro del
-        // modal de edición). Idempotente, igual que bindTableButtons.
+        // Botones del NIVEL 1 que operan sobre el nivel 2 (ej: "Ver ítems"
+        // dentro del modal de edición de una playlist, o cada día dentro del
+        // modal de energía). Idempotente, igual que bindTableButtons.
         function bindOpeners2() {
             if (!overlay2) return;
+
+            // Abre una vista en el nivel 2. Con data-spui-subvista la capa de
+            // arriba NO se queda como vista de fondo propia: al guardar se
+            // cierra y se refresca la de abajo. Es lo que corresponde cuando el
+            // nivel 1 ya es la lista (energía) y no un formulario de edición
+            // como en playlists, donde el nivel 2 sí tiene su propia lista.
             document.querySelectorAll('[data-spui-form2]').forEach(function (btn) {
                 if (btn._spuiBound2) return;
                 btn._spuiBound2 = true;
                 btn.addEventListener('click', function () {
+                    if (bloqueado(btn)) return;
+                    if (btn.dataset.spuiSubvista !== undefined) {
+                        baseUrl2 = baseTitle2 = baseSize2 = null;
+                        titleEl2.textContent = btn.dataset.spuiTitle || '';
+                        modal2.className = 'spui-abm-modal' + (btn.dataset.spuiSize ? ' ' + btn.dataset.spuiSize : '');
+                        openModal2();
+                        cargarEnNivel2(btn.dataset.spuiForm2);
+                        return;
+                    }
                     openFormModal2(btn.dataset.spuiForm2, btn.dataset.spuiTitle, btn.dataset.spuiSize || null);
+                });
+            });
+
+            // Acciones con confirmación que se ejecutan contra el servidor y
+            // refrescan la capa de abajo. Antes sólo existían dentro del nivel
+            // 2; la grilla de energía las necesita desde el nivel 1.
+            document.querySelectorAll('[data-spui-action2]').forEach(function (btn) {
+                if (btn._spuiBound2) return;
+                btn._spuiBound2 = true;
+                btn.addEventListener('click', function () {
+                    if (bloqueado(btn)) return;
+                    abrirConfirmacionNivel2(
+                        btn.dataset.spuiAction2,
+                        btn.dataset.spuiTitle,
+                        btn.dataset.spuiMessage || '¿Confirmar esta acción?',
+                        btn.dataset.spuiVariant,
+                        btn.dataset.spuiConfirmLabel
+                    );
+                });
+            });
+        }
+
+        /**
+         * Confirmación en el nivel 2 para una acción disparada desde el nivel 1.
+         *
+         * Se dibuja como una capa propia encima (no una franja dentro del modal
+         * de abajo) para respetar el patrón del CMS: lo que pide confirmación
+         * aparece por encima de lo que se está mirando. Al aceptar, ejecuta y
+         * refresca la capa de abajo con el resultado.
+         */
+        function abrirConfirmacionNivel2(url, title, message, variant, confirmLabel) {
+            baseUrl2 = baseTitle2 = baseSize2 = null;
+            titleEl2.textContent = title || 'Confirmar';
+            modal2.className = 'spui-abm-modal';
+            openModal2();
+
+            var btnCls = variant ? 'spui-btn-' + variant : 'spui-btn-eliminar';
+            bodyEl2.innerHTML =
+                '<p class="mb-0 text-secondary" style="font-size:.95rem">' + window.spui.escHtml(message) + '</p>' +
+                '<div class="d-flex justify-content-end gap-2 pt-3 mt-3 border-top">' +
+                '<button type="button" class="unraf-btn spui-btn-back" data-confirm-no>Cancelar</button>' +
+                '<button type="button" class="unraf-btn ' + btnCls + '" data-confirm-si>' +
+                window.spui.escHtml(confirmLabel || 'Confirmar') + '</button>' +
+                '</div>';
+
+            bodyEl2.querySelector('[data-confirm-no]').addEventListener('click', closeModal2);
+
+            var btnSi = bodyEl2.querySelector('[data-confirm-si]');
+            btnSi.addEventListener('click', function () {
+                btnSi.disabled = true;
+                btnSi.classList.add('spui-btn-submitting');
+                var fd = new FormData();
+                fd.append('_token', csrfToken);
+                fetch(url, {
+                    method: 'POST',
+                    body: fd,
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                })
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (data.message) {
+                        window.spui.showFlash(data.message, data.success !== false ? 'success' : (data.type || 'error'));
+                    }
+                    if (data.success !== false) {
+                        closeModal2YRefrescaNivel1();
+                    } else {
+                        btnSi.disabled = false;
+                        btnSi.classList.remove('spui-btn-submitting');
+                    }
+                })
+                .catch(function () {
+                    btnSi.disabled = false;
+                    btnSi.classList.remove('spui-btn-submitting');
+                    window.spui.showFlash('Error de red. Intentá de nuevo.', 'error');
                 });
             });
         }
         window.spui.bindOpeners2 = bindOpeners2;
+        // Para que un contenido del nivel 2 se cierre solo al terminar (la
+        // ventana de ítems de una playlist, al Guardar o Cancelar).
+        window.spui.closeModal2 = closeModal2;
 
         // Se exponen para el refresco automatico: cuando auto-refresh.js
         // reemplaza el HTML de una zona, los botones nuevos necesitan volver a

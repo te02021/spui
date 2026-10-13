@@ -1,4 +1,5 @@
 {% extends '@SPUI/base.html.twig' %}
+{% import '@SPUI/_macros/texto.html.twig' as texto %}
 {% block title %}Edificios — SPUI{% endblock %}
 
 {% block body %}
@@ -34,7 +35,7 @@
                     <td class="p-3" data-label="Descripción"><small class="text-muted">{{ e.descripcion ?? '—' }}</small></td>
                     <td class="p-3" data-label="Sectores">
                         {% if e.ubicaciones|length > 0 %}
-                            <span class="spui-badge-borrador">{{ e.ubicaciones|length }} sector(es)</span>
+                            <span class="spui-badge-borrador">{{ texto.plural(e.ubicaciones|length, 'sector', 'sectores') }}</span>
                         {% else %}
                             <span class="text-muted small">Sin sectores</span>
                         {% endif %}

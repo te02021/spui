@@ -1,3 +1,4 @@
+{% import '@SPUI/_macros/texto.html.twig' as texto %}
 {# Detalle de un reproductor (Raspberry Pi).
    La clave API nunca se muestra: en la base sólo queda su hash SHA-256. #}
 <div class="spui-view-header">
@@ -5,8 +6,11 @@
         <p class="spui-view-title">{{ reproductor.hostname }}</p>
         <p class="spui-view-subtitle">Reproductor · Raspberry Pi</p>
     </div>
-    <span class="spui-badge-{{ reproductor.estadoConexion.value }} flex-shrink-0">
-        {{ reproductor.estadoConexion.etiqueta }}
+    {# Estado CALCULADO por heartbeat, igual que el listado: la columna guardada
+       podía decir otra cosa en el mismo momento. #}
+    {% set est = reproductor.estadoCalculado(spui_umbral_conexion) %}
+    <span class="spui-badge-{{ est.value }} flex-shrink-0">
+        {{ est.etiqueta }}
     </span>
 </div>
 
@@ -32,7 +36,7 @@
     <p class="spui-view-section-title">Dispositivo</p>
     <div class="spui-view-row">
         <span class="spui-view-row-label">Estado</span>
-        <span class="spui-view-row-value">{{ reproductor.estadoConexion.etiqueta }}</span>
+        <span class="spui-view-row-value">{{ est.etiqueta }}</span>
     </div>
     {% if reproductor.versionFirmware %}
     <div class="spui-view-row">
@@ -46,8 +50,8 @@
             {% if reproductor.ultimoHeartbeat %}
                 {{ reproductor.ultimoHeartbeat|date('d/m/Y H:i:s') }}
                 {% set diff = "now"|date("U") - reproductor.ultimoHeartbeat|date("U") %}
-                {% if diff > 300 %}
-                    <br><small class="text-danger fw-semibold">Hace más de 5 min</small>
+                {% if diff > spui_umbral_conexion %}
+                    <br><small class="text-danger fw-semibold">Hace más de {{ texto.duracion_minutos((spui_umbral_conexion / 60)|round(0, 'ceil')) }}</small>
                 {% endif %}
             {% else %}
                 <span class="text-muted">Nunca</span>
@@ -58,6 +62,46 @@
         <span class="spui-view-row-label">Lecturas de telemetría</span>
         <span class="spui-view-row-value">{{ reproductor.telemetrias|length }}</span>
     </div>
+</div>
+
+<div class="spui-view-section">
+    <p class="spui-view-section-title">Sincronización con el CMS</p>
+    <div class="spui-view-row">
+        <span class="spui-view-row-label">Intervalo</span>
+        <span class="spui-view-row-value">Cada {{ texto.duracion_minutos(reproductor.intervaloSyncMin) }}</span>
+    </div>
+    <div class="spui-view-row">
+        <span class="spui-view-row-label">Último sync</span>
+        <span class="spui-view-row-value">
+            {% if reproductor.ultimoSync %}
+                {{ reproductor.ultimoSync|date('d/m/Y H:i:s') }}
+                <br><small class="text-muted" data-spui-desde="{{ reproductor.ultimoSync|date('c') }}"
+                           data-spui-atrasado-seg="{{ reproductor.intervaloSyncMin * 120 }}">
+                    {%- set segS = "now"|date("U") - reproductor.ultimoSync|date("U") -%}
+                    {%- if segS < 90 -%}hace instantes
+                    {%- elseif segS < 3600 -%}hace {{ (segS / 60)|round }} min
+                    {%- elseif segS < 86400 -%}hace {{ (segS / 3600)|round }} h
+                    {%- else -%}hace {{ (segS / 86400)|round }} días
+                    {%- endif -%}
+                </small>
+            {% else %}
+                <span class="text-muted">Nunca</span>
+            {% endif %}
+        </span>
+    </div>
+    {% if reproductor.proximoSyncEstimado %}
+    <div class="spui-view-row">
+        <span class="spui-view-row-label">Próximo sync (estimado)</span>
+        <span class="spui-view-row-value">
+            {% if reproductor.proximoSyncEstimado|date('U') < "now"|date('U') %}
+                <span class="text-danger fw-semibold">Atrasado: debía sincronizar a las {{ reproductor.proximoSyncEstimado|date('d/m/Y H:i') }}</span>
+            {% else %}
+                {{ reproductor.proximoSyncEstimado|date('d/m/Y H:i:s') }}
+            {% endif %}
+            <br><small class="text-muted">Además sincroniza al instante cada vez que se guarda algo que afecta a sus pantallas.</small>
+        </span>
+    </div>
+    {% endif %}
 </div>
 
 <div class="spui-view-section">

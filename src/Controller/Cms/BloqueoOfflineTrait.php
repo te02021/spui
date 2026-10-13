@@ -33,13 +33,15 @@ trait BloqueoOfflineTrait
      *         return $r;
      *     }
      *
-     * @param Reproductor[] $reproductores A quiénes llega la acción.
-     * @param string        $rutaRedirect  Adónde volver en navegación normal.
+     * @param Reproductor[]        $reproductores    A quiénes llega la acción.
+     * @param string               $rutaRedirect     Adónde volver en navegación normal.
+     * @param array<string, mixed> $parametrosRedirect Parámetros de esa ruta (p. ej. {id}), si los necesita.
      */
     private function bloquearSiOffline(
         array $reproductores,
         Request $request,
         string $rutaRedirect,
+        array $parametrosRedirect = [],
     ): ?Response {
         $motivo = $this->alcance->bloqueoPara($reproductores);
 
@@ -56,6 +58,6 @@ trait BloqueoOfflineTrait
 
         $this->addFlash('warning', $motivo);
 
-        return $this->redirectToRoute($rutaRedirect);
+        return $this->redirectToRoute($rutaRedirect, $parametrosRedirect);
     }
 }

@@ -57,5 +57,7 @@ class ProgramacionEnergetica
     public function setHoraApagado(?DateTimeImmutable $horaApagado): static { $this->horaApagado = $horaApagado; return $this; }
 
     public function getNivelBrillo(): int { return $this->nivelBrillo; }
-    public function setNivelBrillo(int $nivelBrillo): static { $this->nivelBrillo = max(0, min(100, $nivelBrillo)); return $this; }
+    // null = el campo llegó vacío del formulario: se ignora y queda el valor
+    // anterior; el NotBlank del FormType es el que avisa "obligatorio".
+    public function setNivelBrillo(?int $nivelBrillo): static { if ($nivelBrillo !== null) { $this->nivelBrillo = max(0, min(100, $nivelBrillo)); } return $this; }
 }

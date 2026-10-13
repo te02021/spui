@@ -46,7 +46,7 @@ from spui.heartbeat import HeartbeatSender
 from spui.mqtt_listener import MqttListener
 from spui.network import NetworkMonitor
 from spui.player import Player
-from spui.sync import SyncClient
+from spui.sync import SyncClient, intervalo_desde_sync
 from spui.telemetria import TelemetriaPublisher
 
 # Cuántos segundos esperar entre reintentos cuando estamos offline
@@ -145,9 +145,16 @@ def main() -> None:
 
     cache   = Cache(config.DB_PATH)
     sync    = SyncClient(config.API_URL, config.API_KEY, config.MEDIA_DIR)
+    sync.limpiar_parciales()  # descargas a medias de una ejecución anterior
     player  = Player(config.MEDIA_DIR, sync_client=sync)
     network = NetworkMonitor(config.API_URL)
-    energia = GestorEnergia()
+    # El brillo de referencia de cada pantalla se guarda en el caché para
+    # sobrevivir a reinicios; si la pantalla no deja controlar su brillo, el
+    # player oscurece la imagen (spui/brillo.py).
+    energia = GestorEnergia(
+        ruta_estado_brillo=os.path.join(config.CACHE_DIR, 'brillo.json'),
+        brillo_software=player.ajustar_brillo,
+    )
 
     def recolectar_diagnostico() -> list[str]:
         """
@@ -167,11 +174,9 @@ def main() -> None:
         if player.problema_pantalla:
             problemas.append(player.problema_pantalla)
 
-        if energia.en_simulacion():
-            problemas.append(
-                'Sin control de encendido/apagado de la pantalla: faltan cec-client y vcgencmd. '
-                'El horario energético se registra pero no se aplica.'
-            )
+        # Qué no se puede controlar de la pantalla (CEC, señal, brillo) y
+        # cualquier encendido/apagado o brillo que haya fallado.
+        problemas.extend(energia.diagnostico())
 
         problemas.extend(_PROBLEMAS.consultar())
 
@@ -234,11 +239,16 @@ def main() -> None:
 
     logger.info('SPUI Client iniciado. API: %s', config.API_URL)
 
+    # Cada cuánto sincronizar: arranca con SPUI_SYNC_INTERVAL de spui.env y
+    # después lo fija el CMS en cada sync (se configura por reproductor).
+    intervalo_sync = config.SYNC_INTERVAL
+
     while _corriendo:
         sync_data = None
-        espera    = config.SYNC_INTERVAL  # por defecto: 300s
+        espera    = intervalo_sync
 
         # ── Sync con detección de red (Fase 7) ───────────────────────────
+        sync_ok = False   # el CMS respondió en este ciclo (ver energía, más abajo)
         if network.is_online():
             try:
                 sync_data = sync.sincronizar()
@@ -258,6 +268,9 @@ def main() -> None:
                 sync.prefetch_media(sync_data)
 
                 _PROBLEMAS.resolver('sync')
+                sync_ok = True
+                intervalo_sync = intervalo_desde_sync(sync_data, intervalo_sync)
+                espera = intervalo_sync
 
             except Exception as exc:
                 logger.warning('Sync falló estando online: %s — usando caché.', exc)
@@ -326,7 +339,12 @@ def main() -> None:
             player.reintentar_pantalla()
 
             energia.actualizar_reglas(pantalla_data.get('energia'))
-            energia.aplicar(hay_alerta=bool(alerta))
+            estaba_apagada = energia.esta_apagada()
+            # Con el sync recién hecho, el cliente tiene la verdad del CMS: es el
+            # momento de comparar el brillo de la pantalla con el de la regla.
+            energia.aplicar(hay_alerta=bool(alerta), verificar_brillo=sync_ok)
+            if estaba_apagada and not energia.esta_apagada():
+                player.forzar_recarga()
 
             # El sync es la fuente de verdad sobre si hay alerta vigente: si no
             # trae ninguna y el player todavía cree que sí, hay que apagarla.

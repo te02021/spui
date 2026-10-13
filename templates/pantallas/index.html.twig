@@ -18,7 +18,9 @@
 
 <div id="spui-table-body">
 <div class="unraf-card">
-    <div class="unraf-table-responsive">
+    {# Se vuelve a pedir cuando llega un aviso de conexión por MQTT (conexion-vivo.js),
+       no por intervalo: destraba o traba los botones si un reproductor vuelve o se cae. #}
+    <div class="unraf-table-responsive" id="spui-tabla-conexion" data-spui-refresh="push">
         <table class="unraf-table unraf-table-striped w-100 text-nowrap spui-tabla-cards">
             <thead>
                 <tr>
@@ -45,13 +47,7 @@
                     <td class="p-3" data-label="Dirección IP">{{ p.ipAddress ?? '—' }}</td>
                     <td class="p-3" data-label="Resolución">{{ p.resolucionAncho }}×{{ p.resolucionAlto }}</td>
                     <td class="p-3" data-label="Estado">
-                        {% if p.estado.value == 'activo' %}
-                            <span class="spui-badge-conectado">Activo</span>
-                        {% elseif p.estado.value == 'mantenimiento' %}
-                            <span class="spui-badge-archivado">Mantenimiento</span>
-                        {% else %}
-                            <span class="spui-badge-sin_registrar">Inactivo</span>
-                        {% endif %}
+                        <span class="{{ p.activa ? 'spui-badge-conectado' : 'spui-badge-sin_registrar' }}">{{ p.estado.etiqueta }}</span>
                     </td>
                     <td class="p-3" data-label="Reproductor">
                         {% if p.reproductor %}
@@ -77,30 +73,33 @@
                                     {% if motivo %}{{ bloqueo.attrs(motivo) }}{% else %}title="Editar"{% endif %}>
                                 <img src="{{ asset('unraf-ui/icons/pencil.svg') }}" class="spui-action-icon" alt=""> Editar
                             </button>
-                            <a href="{{ path('spui_cms_energia_grilla', {id: p.id}) }}"
-                               class="unraf-btn spui-btn-energia unraf-btn-sm"
-                               title="Horarios de encendido, apagado y brillo">
-                                <img src="{{ asset('unraf-ui/icons/plug.svg') }}" class="spui-action-icon" alt=""> Energía
-                            </a>
                             <button type="button"
-                                    class="unraf-btn unraf-btn-sm {{ p.estado.value == 'activo' ? 'spui-btn-desactivar' : 'spui-btn-activar' }} {{ bloqueo.clase(motivo) }}"
+                                    class="unraf-btn spui-btn-energia unraf-btn-sm {{ bloqueo.clase(motivo) }}"
+                                    data-spui-form="{{ path('spui_cms_energia_grilla', {id: p.id}) }}"
+                                    data-spui-title="Energía — {{ p.nombre }}"
+                                    data-spui-size="modal-lg"
+                                    {% if motivo %}{{ bloqueo.attrs(motivo) }}{% else %}title="Horarios de encendido, apagado y brillo"{% endif %}>
+                                <img src="{{ asset('unraf-ui/icons/plug.svg') }}" class="spui-action-icon" alt=""> Energía
+                            </button>
+                            <button type="button"
+                                    class="unraf-btn unraf-btn-sm {{ p.activa ? 'spui-btn-desactivar' : 'spui-btn-activar' }} {{ bloqueo.clase(motivo) }}"
                                     data-spui-action="{{ path('spui_cms_pantallas_toggle_estado', {id: p.id}) }}"
                                     data-spui-title="Cambiar estado"
                                     data-spui-message="Cambiar estado de «{{ p.nombre }}»?"
-                                    data-spui-variant="{{ p.estado.value == 'activo' ? 'desactivar' : 'activar' }}"
+                                    data-spui-variant="{{ p.activa ? 'desactivar' : 'activar' }}"
                                     data-spui-confirm-label="Cambiar estado"
-                                    {% if motivo %}{{ bloqueo.attrs(motivo) }}{% else %}title="{{ p.estado.value == 'activo' ? 'Desactivar' : 'Activar' }}"{% endif %}>
-                                <img src="{{ p.estado.value == 'activo' ? asset('unraf-ui/icons/hand-palm.svg') : asset('unraf-ui/icons/lightning.svg') }}"
+                                    {% if motivo %}{{ bloqueo.attrs(motivo) }}{% else %}title="{{ p.activa ? 'Desactivar' : 'Activar' }}"{% endif %}>
+                                <img src="{{ p.activa ? asset('unraf-ui/icons/hand-palm.svg') : asset('unraf-ui/icons/lightning.svg') }}"
                                      class="spui-action-icon" alt="">
-                                {{ p.estado.value == 'activo' ? 'Desactivar' : 'Activar' }}
+                                {{ p.activa ? 'Desactivar' : 'Activar' }}
                             </button>
                             <button type="button"
-                                    class="unraf-btn spui-btn-eliminar unraf-btn-sm"
+                                    class="unraf-btn spui-btn-eliminar unraf-btn-sm {{ bloqueo.clase(motivo) }}"
                                     data-spui-action="{{ path('spui_cms_pantallas_eliminar', {id: p.id}) }}"
                                     data-spui-title="Eliminar pantalla"
                                     data-spui-message="¿Eliminar «{{ p.nombre }}»? Esta acción no se puede deshacer."
                                     data-spui-variant="eliminar"
-                                    title="Eliminar">
+                                    {% if motivo %}{{ bloqueo.attrs(motivo) }}{% else %}title="Eliminar"{% endif %}>
                                 <img src="{{ asset('unraf-ui/icons/trash.svg') }}" class="spui-action-icon" alt=""> Eliminar
                             </button>
                         </div>
@@ -119,4 +118,9 @@
     </div>
 </div>
 </div>
+{% endblock %}
+
+{# Destraba/traba los botones cuando un reproductor vuelve o se cae, sin recargar. #}
+{% block javascripts %}
+    {{ include('@SPUI/_partials/conexion_vivo.html.twig') }}
 {% endblock %}

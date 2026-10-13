@@ -43,6 +43,25 @@ trait LimiteSubidaTrait
         );
     }
 
+    /**
+     * El tamaño máximo que de verdad puede tener un archivo subido: el menor
+     * entre el máximo de la aplicación y los dos límites de PHP.
+     *
+     * Va al navegador (data-spui-max-bytes, validacion-vivo.js) para avisar
+     * debajo del campo apenas se elige un archivo demasiado pesado, en vez de
+     * mandarlo y que PHP descarte el pedido entero.
+     */
+    private function limiteArchivoBytes(int $maximoAplicacion): int
+    {
+        $limites = array_filter([
+            $maximoAplicacion,
+            self::bytesDesdeIni((string) ini_get('upload_max_filesize')),
+            self::bytesDesdeIni((string) ini_get('post_max_size')),
+        ], fn(int $b) => $b > 0);
+
+        return $limites === [] ? $maximoAplicacion : min($limites);
+    }
+
     private static function bytesDesdeIni(string $valor): int
     {
         $valor = trim($valor);
@@ -64,7 +83,7 @@ trait LimiteSubidaTrait
     private static function formatearBytes(int $bytes): string
     {
         if ($bytes >= 1024 * 1024 * 1024) {
-            return round($bytes / (1024 * 1024 * 1024), 1) . ' GB';
+            return str_replace('.', ',', (string) round($bytes / (1024 * 1024 * 1024), 1)) . ' GB';
         }
 
         return round($bytes / (1024 * 1024)) . ' MB';

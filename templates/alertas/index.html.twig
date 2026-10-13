@@ -1,4 +1,6 @@
 {% extends '@SPUI/base.html.twig' %}
+{% import '@SPUI/_macros/bloqueo.html.twig' as bloqueo %}
+{% import '@SPUI/_macros/texto.html.twig' as texto %}
 {% block title %}Alertas — SPUI{% endblock %}
 
 {% block body %}
@@ -38,6 +40,7 @@
             </thead>
             <tbody>
             {% for alerta in alertas %}
+                {% set motivo = spui_alcance.motivoParaEntidad(alerta, ids_offline|default({})) %}
                 <tr class="{{ alerta.activa ? 'spui-alerta-fila-activa' : (alerta.haExpirado ? 'spui-alerta-fila-expirada' : '') }}">
                     <td class="p-3" data-label="Título"><strong>{{ alerta.titulo }}</strong></td>
                     <td class="p-3 spui-col-mensaje" data-label="Mensaje">
@@ -91,25 +94,25 @@
                             </button>
 
                             {% if not alerta.activa and not alerta.haExpirado %}
-                                <button type="button" class="unraf-btn spui-btn-activar unraf-btn-sm"
+                                <button type="button" class="unraf-btn spui-btn-activar unraf-btn-sm {{ bloqueo.clase(motivo) }}"
                                         data-spui-action="{{ path('spui_cms_alertas_activar', {id: alerta.id}) }}"
                                         data-spui-title="Activar alerta"
-                                        data-spui-message="¿Activar «{{ alerta.titulo }}»? Se publicará {% if alerta.esGlobal %}a TODAS las pantallas{% else %}a {{ alerta.pantallas|length }} pantalla(s){% endif %} inmediatamente."
+                                        data-spui-message="¿Activar «{{ alerta.titulo }}»? Se publicará {% if alerta.esGlobal %}a TODAS las pantallas{% else %}a {{ texto.plural(alerta.pantallas|length, 'pantalla', 'pantallas') }}{% endif %} inmediatamente."
                                         data-spui-variant="activar"
                                         data-spui-confirm-label="Activar"
-                                        title="Activar">
+                                        {% if motivo %}{{ bloqueo.attrs(motivo) }}{% else %}title="Activar"{% endif %}>
                                     <img src="{{ asset('unraf-ui/icons/lightning.svg') }}" class="spui-action-icon" alt=""> Activar
                                 </button>
                             {% endif %}
 
                             {% if alerta.activa %}
-                                <button type="button" class="unraf-btn spui-btn-desactivar unraf-btn-sm"
+                                <button type="button" class="unraf-btn spui-btn-desactivar unraf-btn-sm {{ bloqueo.clase(motivo) }}"
                                         data-spui-action="{{ path('spui_cms_alertas_desactivar', {id: alerta.id}) }}"
                                         data-spui-title="Desactivar alerta"
                                         data-spui-message="¿Desactivar «{{ alerta.titulo }}»? Los reproductores dejarán de mostrarla."
                                         data-spui-variant="desactivar"
                                         data-spui-confirm-label="Desactivar"
-                                        title="Desactivar">
+                                        {% if motivo %}{{ bloqueo.attrs(motivo) }}{% else %}title="Desactivar"{% endif %}>
                                     <img src="{{ asset('unraf-ui/icons/hand-palm.svg') }}" class="spui-action-icon" alt=""> Desactivar
                                 </button>
                             {% endif %}

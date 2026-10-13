@@ -2,6 +2,70 @@
    SPUI — Estilos específicos del Sistema de Pantallas
    ========================================================= */
 
+/* ----- El atributo hidden manda -----
+   Bootstrap declara .d-flex { display: flex !important }, que le gana a la
+   regla [hidden] { display: none } del navegador: un elemento con las dos
+   cosas se seguía viendo. Pasaba con el Guardar de la ventana de ítems
+   (siempre visible) y con las filas del buscador de listas. Todo el JS del CMS
+   oculta con el atributo hidden, así que tiene que ganar siempre. */
+[hidden] {
+    display: none !important;
+}
+
+/* ----- Errores de campo -----
+   Un error que es de un campo (requerido, formato, horas al revés, archivo
+   muy pesado) va DEBAJO de ese campo, llamativo, y marcando el input — nunca
+   como flash. Los flash quedan para lo de sistema y negocio. Lo usan los
+   errores que manda el servidor al guardar y los que detecta en vivo
+   validacion-vivo.js, con la misma clase para que se vean idénticos. */
+.spui-campo-error {
+    display: flex;
+    align-items: flex-start;
+    gap: .4rem;
+    margin: .4rem 0 0;
+    padding: .4rem .65rem;
+    border-left: 4px solid #d6102b;
+    border-radius: .3rem;
+    background: #fde8eb;
+    color: #b00d23;
+    font-size: .85rem;
+    font-weight: 600;
+    line-height: 1.35;
+    animation: spui-campo-error-aparece .3s ease-out;
+}
+.spui-campo-error::before {
+    content: "!";
+    flex: 0 0 1.15rem;
+    height: 1.15rem;
+    border-radius: 50%;
+    background: #d6102b;
+    color: #fff;
+    font-size: .75rem;
+    font-weight: 700;
+    line-height: 1.15rem;
+    text-align: center;
+}
+/* El input con error: borde rojo y halo, para ver de un vistazo cuál es.
+   is-invalid lo pone solo el tema bootstrap_5 de Symfony en los FormType; en
+   los formularios manuales lo agregan la plantilla o validacion-vivo.js. */
+.is-invalid,
+input.is-invalid,
+select.is-invalid,
+textarea.is-invalid,
+.unraf-form-control.is-invalid {
+    border-color: #d6102b !important;
+    box-shadow: 0 0 0 .2rem rgba(214, 16, 43, .18) !important;
+}
+@keyframes spui-campo-error-aparece {
+    0%   { opacity: 0; transform: translateX(-4px); }
+    40%  { opacity: 1; transform: translateX(3px); }
+    70%  { transform: translateX(-2px); }
+    100% { transform: translateX(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+    .spui-campo-error { animation: none; }
+}
+
 /* ----- Badges tipo de contenido (unraf-ui override: más padding y bordes) ----- */
 [class^="unraf-badge-"], [class*=" unraf-badge-"] {
     padding: .28rem .65rem !important;
@@ -91,7 +155,11 @@
     top: 72px;
     left: 50%;
     transform: translateX(-50%);
-    z-index: 9999;
+    /* Por encima de los dos niveles de modal (10000 y 10010): casi todos los
+       mensajes del CMS los dispara una acción hecha DENTRO de un modal, y con
+       un z-index menor quedaban detrás del velo — visibles a medias y sin
+       poder cerrarse. */
+    z-index: 10030;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -706,6 +774,13 @@
     max-width: 14rem;
 }
 
+/* "En la lista ×N" en el catálogo: un contenido puede ir más de una vez, así
+   que la fila no se oculta; sólo se marca cuántas veces ya está agregado. */
+.spui-items-en-lista {
+    color: var(--unraf-turquesa, #1CA1A7);
+    font-weight: 600;
+}
+
 /* ----- Botón volver con estilo consistente ----- */
 .spui-btn-back {
     border: 1px solid var(--unraf-azul, #446687);
@@ -785,6 +860,7 @@
 .spui-btn-desarchivar,
 .spui-btn-clave,
 .spui-btn-telemetria,
+.spui-btn-sincronizar,
 .spui-btn-energia,
 .spui-btn-items,
 .spui-btn-copiar {
@@ -798,6 +874,7 @@
 .spui-btn-desarchivar:hover,
 .spui-btn-clave:hover,
 .spui-btn-telemetria:hover,
+.spui-btn-sincronizar:hover,
 .spui-btn-energia:hover,
 .spui-btn-items:hover,
 .spui-btn-copiar:hover {
@@ -827,6 +904,9 @@
 
 .spui-btn-telemetria   { color: #0E7490; border: 1px solid #0E7490; }
 .spui-btn-telemetria:hover   { background-color: #0E7490; border-color: #0E7490; }
+
+.spui-btn-sincronizar   { color: #2E7D32; border: 1px solid #2E7D32; }
+.spui-btn-sincronizar:hover   { background-color: #2E7D32; border-color: #2E7D32; }
 
 .spui-btn-energia      { color: #D9601A; border: 1px solid #D9601A; }
 .spui-btn-energia:hover      { background-color: #D9601A; border-color: #D9601A; }
@@ -871,6 +951,7 @@
 .spui-btn-desarchivar:hover .spui-action-icon,
 .spui-btn-clave:hover .spui-action-icon,
 .spui-btn-telemetria:hover .spui-action-icon,
+.spui-btn-sincronizar:hover .spui-action-icon,
 .spui-btn-energia:hover .spui-action-icon,
 .spui-btn-items:hover .spui-action-icon,
 .spui-btn-copiar:hover .spui-action-icon {
@@ -1076,6 +1157,43 @@
     vertical-align: middle;
 }
 @keyframes spui-spin { to { transform: rotate(360deg); } }
+
+/* ----- Progreso de una subida (modal.js, enviarFormulario) -----
+   Barra con porcentaje mientras el archivo viaja; al terminar de llegar,
+   "Procesando…" con una franja animada sin porcentaje (el servidor todavía
+   lo sube a S3 y no hay forma de medir esa parte desde el navegador). */
+.spui-subida {
+    margin: .75rem 0 .5rem;
+}
+.spui-subida-barra {
+    height: .5rem;
+    border-radius: 1rem;
+    background: #e9ecef;
+    overflow: hidden;
+}
+.spui-subida-barra span {
+    display: block;
+    height: 100%;
+    width: 0;
+    background: var(--unraf-turquesa, #1CA1A7);
+    transition: width .2s ease;
+}
+.spui-subida small {
+    display: block;
+    margin-top: .3rem;
+    color: #495057;
+    font-variant-numeric: tabular-nums;
+}
+.spui-subida.is-procesando .spui-subida-barra span {
+    background: repeating-linear-gradient(-45deg,
+        var(--unraf-turquesa, #1CA1A7) 0 .6rem, #5cc6cb .6rem 1.2rem);
+    background-size: 200% 100%;
+    animation: spui-subida-procesando 1s linear infinite;
+}
+@keyframes spui-subida-procesando { to { background-position: -1.7rem 0; } }
+@media (prefers-reduced-motion: reduce) {
+    .spui-subida.is-procesando .spui-subida-barra span { animation: none; }
+}
 
 /* Button submit loading state */
 .spui-btn-submitting {
@@ -1624,41 +1742,26 @@
 .spui-hora-field .unraf-form-control {
     text-align: center;
 }
+/* align-items:center achica cada hijo a su contenido: sin esto el error salía
+   angosto y centrado, distinto del de los campos de ancho completo. */
+.spui-hora-field .spui-campo-error {
+    align-self: stretch;
+}
+/* Hora y fecha ya traen su propio ícono (reloj / calendario): el "!" de
+   Bootstrap para inválido les comía el ancho y en celular cortaba la fecha
+   ("dd/mm/yyy"). El borde rojo y el mensaje de abajo ya marcan el error. */
+.spui-hora-field input[type="time"].is-invalid,
+.spui-hora-field input[type="date"].is-invalid {
+    background-image: none;
+    padding-right: .75rem;
+}
 
-/* ---- Dialog de días ocultos (cronograma builder) ---- */
-#spuiDiasDialog {
-    border: none;
-    border-radius: .75rem;
-    padding: 0;
-    box-shadow: 0 .5rem 2rem rgba(0, 0, 0, .2);
-    min-width: 13rem;
-    max-width: 90vw;
+/* Grupo de días sin ninguno marcado: se marca cada día, no un halo alrededor. */
+.spui-dias-switches.is-invalid {
+    box-shadow: none !important;
 }
-#spuiDiasDialog::backdrop { background: rgba(0, 0, 0, .35); }
-.spui-dias-dialog-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: .6rem 1rem;
-    border-bottom: 1px solid #dee2e6;
-    font-size: .9rem;
-}
-.spui-dias-dialog-header button {
-    background: none;
-    border: none;
-    cursor: pointer;
-    font-size: 1rem;
-    line-height: 1;
-    padding: .1rem .35rem;
-    color: #6c757d;
-    border-radius: .3rem;
-}
-.spui-dias-dialog-header button:hover { background: #f8f9fa; }
-.spui-dias-dialog-body {
-    display: flex;
-    flex-wrap: wrap;
-    gap: .4rem;
-    padding: .75rem 1rem;
+.spui-dias-switches.is-invalid .spui-dia-switch {
+    border-color: #d6102b;
 }
 
 /* ---- Vista de detalle (modales "Ver") ---- */
@@ -1769,4 +1872,25 @@
     font-size: .875rem;
     white-space: nowrap;
     flex-shrink: 0;
+}
+/* Unidad pegada al número ("5 min"), no alineada a la derecha como el valor de un slider. */
+.spui-input-with-addon .spui-input-addon.spui-input-unidad {
+    min-width: 0;
+    text-align: left;
+}
+
+/* Columna "Última actividad" de Reproductores: un dato por línea con su rótulo. */
+.spui-actividad {
+    display: flex;
+    align-items: baseline;
+    gap: .4rem;
+    white-space: nowrap;
+}
+.spui-actividad-label {
+    font-size: .7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .03em;
+    color: #6c757d;
+    min-width: 4.6rem;
 }

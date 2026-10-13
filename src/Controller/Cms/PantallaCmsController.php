@@ -6,7 +6,6 @@ namespace SPUI\Controller\Cms;
 
 use Doctrine\Persistence\ManagerRegistry;
 use SPUI\Entity\Pantalla;
-use SPUI\Enum\EstadoPantalla;
 use SPUI\Form\PantallaType;
 use SPUI\Repository\PantallaRepository;
 use SPUI\Service\AlcanceReproductorService;
@@ -158,16 +157,11 @@ class PantallaCmsController extends AbstractController
             return $r;
         }
 
-        $nuevo = match ($pantalla->getEstado()) {
-            EstadoPantalla::Activo        => EstadoPantalla::Inactivo,
-            EstadoPantalla::Inactivo      => EstadoPantalla::Activo,
-            EstadoPantalla::Mantenimiento => EstadoPantalla::Activo,
-        };
-
-        $pantalla->setEstado($nuevo);
+        // Mismo efecto que el switch del formulario: activa ↔ inactiva.
+        $pantalla->setActiva(!$pantalla->isActiva());
         $this->em()->flush();
         $this->comandoPublisher->pedirSyncAhora($reproductores, 'pantalla');
-        $msg = 'Pantalla "' . $pantalla->getNombre() . '" → ' . $nuevo->value . '.';
+        $msg = 'Pantalla "' . $pantalla->getNombre() . '" ' . ($pantalla->isActiva() ? 'activada' : 'desactivada') . '.';
         if ($request->isXmlHttpRequest()) {
             return $this->json(['success' => true, 'message' => $msg]);
         }
@@ -183,6 +177,14 @@ class PantallaCmsController extends AbstractController
             throw $this->createNotFoundException();
         }
         if ($r = $this->denegarSiCsrfInvalido($request)) { return $r; }
+
+        // Antes que la validación de reproductor asignado: si el equipo está
+        // caído, el operador tiene que ver el mismo motivo que en el resto de
+        // las acciones de esa pantalla, y no un mensaje distinto que lo mande
+        // a desasignar algo que tampoco va a poder tocar hasta que vuelva.
+        if ($r = $this->bloquearSiOffline($this->alcance->dePantalla($pantalla), $request, 'spui_cms_pantallas_index')) {
+            return $r;
+        }
 
         if ($pantalla->getReproductor() !== null) {
             $msg = 'No se puede eliminar: tiene un reproductor asociado ("' . $pantalla->getReproductor()->getHostname() . '"). Desasignálo primero desde la edición de la pantalla.';

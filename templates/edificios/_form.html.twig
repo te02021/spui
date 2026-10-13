@@ -13,7 +13,7 @@
         {{ form_label(form.nombre) }}
         {{ form_widget(form.nombre) }}
         {% for e in form.nombre.vars.errors %}
-            <p class="text-danger small mt-1">{{ e.message }}</p>
+            <p class="spui-campo-error">{{ e.message }}</p>
         {% endfor %}
     </div>
     <div class="col-auto d-flex flex-column align-items-center" style="min-width:110px">
@@ -22,7 +22,7 @@
             <div class="form-switch m-0">
                 {{ form_widget(form.activo, {'attr': {'class': 'form-check-input spui-switch-input', 'role': 'switch', 'data-spui-switch': '1', 'data-switch-on': 'Activo', 'data-switch-off': 'Inactivo'}}) }}
             </div>
-            <span class="spui-switch-status off" id="{{ swId }}_lbl">Inactivo</span>
+            <span class="spui-switch-status {{ form.activo.vars.checked ? 'on' : 'off' }}" id="{{ swId }}_lbl">{{ form.activo.vars.checked ? 'Activo' : 'Inactivo' }}</span>
         </div>
     </div>
 </div>

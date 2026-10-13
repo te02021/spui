@@ -14,8 +14,17 @@
 !pi-client/README.md
 !.github/PULL_REQUEST_TEMPLATE.md
 
+# Suite de verificación: las capturas se regeneran en cada corrida y la
+# sesión de prueba es local (tools/verificacion/sesion.php).
+tools/verificacion/capturas/
+tools/verificacion/.sesion
+
 # TLS del broker (tarea 1.0.c-f): las claves privadas nunca se versionan,
 # aunque el resto (CA pública, cert público, el script que las genera) sí.
 # Se regeneran localmente con generar-certificados.ps1 y se distribuyen fuera
 # de git (copiar a cada Pi, ver README de config/mosquitto).
 config/mosquitto/certs/*.key
+
+# Documentacion util solamente para desarrollo local
+docs/Evaluacion Final Plan PF IC - Rivero Mateo.pdf
+docs/Plan de Proyecto - Rivero Mateo.docx

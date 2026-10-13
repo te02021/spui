@@ -10,7 +10,7 @@
     {{ form_label(form.titulo) }}
     {{ form_widget(form.titulo) }}
     {% for e in form.titulo.vars.errors %}
-        <p class="text-danger small mt-1">{{ e.message }}</p>
+        <p class="spui-campo-error">{{ e.message }}</p>
     {% endfor %}
 </div>
 
@@ -18,7 +18,7 @@
     {{ form_label(form.mensaje) }}
     {{ form_widget(form.mensaje) }}
     {% for e in form.mensaje.vars.errors %}
-        <p class="text-danger small mt-1">{{ e.message }}</p>
+        <p class="spui-campo-error">{{ e.message }}</p>
     {% endfor %}
 </div>
 
@@ -27,7 +27,7 @@
         {{ form_label(form.prioridad) }}
         {{ form_widget(form.prioridad) }}
         {% for e in form.prioridad.vars.errors %}
-            <p class="text-danger small mt-1">{{ e.message }}</p>
+            <p class="spui-campo-error">{{ e.message }}</p>
         {% endfor %}
         <small class="text-muted mt-1 d-block text-center">Mayor número = mayor prioridad.</small>
     </div>
@@ -35,7 +35,7 @@
         {{ form_label(form.expiraEn) }}
         {{ form_widget(form.expiraEn) }}
         {% for e in form.expiraEn.vars.errors %}
-            <p class="text-danger small mt-1">{{ e.message }}</p>
+            <p class="spui-campo-error">{{ e.message }}</p>
         {% endfor %}
     </div>
 </div>
@@ -44,7 +44,7 @@
     {{ form_label(form.contenido) }}
     {{ form_widget(form.contenido) }}
     {% for e in form.contenido.vars.errors %}
-        <p class="text-danger small mt-1">{{ e.message }}</p>
+        <p class="spui-campo-error">{{ e.message }}</p>
     {% endfor %}
     <small class="text-muted d-block mt-1">Si se selecciona, los reproductores mostrarán esta imagen/video junto al mensaje.</small>
 </div>
@@ -55,12 +55,16 @@
    maneja el botón de quitar — ver ese archivo para el detalle de por qué el
    flag 'sonido_quitar' queda prendido en vez de usarse un checkbox aparte. #}
 {% set tieneSonido = alerta is defined and alerta.sonidoArchivo %}
-<div class="mb-4 spui-sonido-field" data-spui-sonido-field>
+{# data-spui-campo: los errores del sonido (del servidor y de validacion-vivo.js)
+   van al final de este bloque, debajo del archivo elegido. #}
+<div class="mb-4 spui-sonido-field" data-spui-sonido-field data-spui-campo>
     <div class="spui-sonido-field-header">
         <label class="unraf-form-label">Sonido de alerta (opcional)</label>
         <label class="unraf-btn spui-btn-back unraf-btn-icon spui-file-trigger" title="Elegir archivo de sonido">
             <img src="{{ asset('unraf-ui/icons/upload-simple.svg') }}" class="spui-action-icon" alt="Elegir archivo de sonido">
-            <input type="file" name="sonido_archivo" accept="audio/mpeg,audio/wav,.mp3,.wav" data-spui-sonido-input>
+            <input type="file" name="sonido_archivo" accept="audio/mpeg,audio/wav,.mp3,.wav" data-spui-sonido-input
+                   data-spui-formatos="mp3,wav" data-spui-formatos-texto="MP3 o WAV"
+                   {% if max_bytes_sonido is defined %}data-spui-max-bytes="{{ max_bytes_sonido }}"{% endif %}>
         </label>
     </div>
 
@@ -77,6 +81,7 @@
     <small class="text-muted d-block mt-1">
         MP3 o WAV, hasta 5 MB. Si no se sube ninguno, el reproductor emite un tono generado automáticamente.
     </small>
+    {% if error_sonido is defined and error_sonido %}<p class="spui-campo-error">{{ error_sonido }}</p>{% endif %}
 </div>
 
 <div class="mb-4">
@@ -100,7 +105,7 @@
         <p class="spui-view-empty mb-0">No hay pantallas cargadas todavía.</p>
     {% endif %}
     {% for e in form.pantallas.vars.errors %}
-        <p class="text-danger small mt-1">{{ e.message }}</p>
+        <p class="spui-campo-error">{{ e.message }}</p>
     {% endfor %}
 </div>
 

@@ -48,7 +48,7 @@ Salida típica: `eth0: dc:a6:32:...`, `wlan0: dc:a6:32:...`, `lo: 00:00:00:00:00
 | microSD | 16 GB mínimo, clase 10 / A1 o A2 | 32 GB recomendado por la caché de media |
 | Fuente | 5V / 3A USB-C | Fuentes flojas causan reinicios y corrupción de SD |
 | Cable video | Micro-HDMI a HDMI | La Pi 4 tiene dos micro-HDMI; usar **HDMI0** (el más cercano al USB-C). **El conector micro-HDMI es físicamente frágil** — un cable/conversor que queda flojo o se mueve puede generar desconexiones intermitentes de milisegundos que el driver de video no siempre recupera solo (pantalla se queda en negro/sin señal hasta reiniciar) — ver §14.2. Asegurar el conector (cinta, soporte, sin tensión del cable) y evitar mover el equipo con todo conectado |
-| Pantalla | Monitor o TV con HDMI | 1920×1080 recomendado |
+| Pantalla | Monitor o TV con HDMI | 1920×1080 recomendado. Para que el horario energético apague el TV de verdad, tiene que tener **HDMI-CEC** habilitado (suele llamarse Anynet+, Bravia Sync, SimpLink, etc. en el menú del TV). Sin CEC se corta la señal: un monitor entra en reposo y un TV muestra "sin señal". Comprobarlo con `echo 'pow 0' \| cec-client -s -d 1`: si responde `power status: on`, hay CEC; si dice `unknown`, no. **No hace falta ninguna pantalla en particular:** el brillo usa DDC/CI si la pantalla lo tiene (la mayoría de los monitores; se comprueba con `sudo ddcutil detect`) y si no, se oscurece la imagen |
 | Red | Ethernet (preferido) o WiFi | Ethernet evita caídas y reautenticación |
 | Disipación | Case con ventilador o disipadores | Umbral de alerta del sistema: 80 °C |
 
@@ -203,6 +203,8 @@ Reiniciar Apache: ícono de WAMP → *Restart All Services*.
 netsh advfirewall firewall add rule name="SPUI - Apache desde Pi" dir=in action=allow protocol=TCP localport=80 remoteip=<ip_de_la_pi>
 netsh advfirewall firewall add rule name="SPUI - Mosquitto desde Pi" dir=in action=allow protocol=TCP localport=1883 remoteip=<ip_de_la_pi>
 ```
+
+Si la Pi va a conectarse al broker por TLS (`MQTT_TLS=true`, paso 11.2), la regla de Mosquitto va con `localport=8883`.
 
 **d) Verificá desde la Pi** (por SSH):
 ```bash
@@ -578,11 +580,16 @@ SPUI_API_URL=http://intranet/api/spui
 SPUI_API_KEY=<la API key copiada en el paso 9>
 MQTT_HOST=<ip_del_host>
 MQTT_PORT=1883
+SPUI_MQTT_SALT=<el mismo SPUI_MQTT_SALT que tiene el CMS>
 ```
 
 > ⚠️ **`SPUI_API_URL` termina en `/api/spui`, sin `/reproductores`** — el cliente concatena el resto solo (`sync.py`).
 >
 > ⚠️ **`MQTT_HOST` es la IP del servidor donde corre Mosquitto**, no `127.0.0.1`. El default `127.0.0.1` apuntaría a la propia Pi, donde no hay broker.
+>
+> ⚠️ **`SPUI_MQTT_SALT` tiene que ser idéntico al del CMS.** El broker no acepta conexiones anónimas: el usuario de la Pi es `spui-repro-<id>` y su contraseña se calcula sola a partir de la API key y este salt, así que no hay usuario ni contraseña MQTT para cargar a mano. Con el salt mal copiado, el broker la rechaza y la Pi sigue sincronizando por HTTP, pero **sin alertas instantáneas ni telemetría**. El valor lo tiene quien administra el CMS (está en su `.env.local.php`).
+>
+> 🔒 **Para conectarse por TLS** (puerto 8883): `MQTT_TLS=true`, `MQTT_PORT=8883` y `MQTT_CA_CERT` apuntando al `ca.crt` del broker copiado a la Pi (`config/mosquitto/certs/ca.crt` en el repo — ver `config/mosquitto/README.md`). Sin estas tres, la Pi usa 1883 sin cifrar.
 >
 > 🔊 **Para que se escuchen las alertas sonoras** hace falta agregar acá `SPUI_AOUT_DEVICE` — ver §8.6, es un paso aparte porque necesita el TV ya conectado para identificar el dispositivo correcto.
 
@@ -598,16 +605,16 @@ sudo cat /etc/spui/spui.env
 
 ## 12. Levantar el consumidor de telemetría (en el servidor)
 
-**En la PC del CMS**, en una consola aparte:
+**En la PC del CMS.** Si ya está instalado como servicio (`config/servicios/instalar-servicio-telemetria.ps1`, ver `08_pendientes_vm.md` paso 7), no hay nada que hacer. Si no, para probar alcanza con una consola aparte:
 
 ```
 cd c:\wamp64\www\intranet
 php bin/console spui:mqtt:subscribe --id=spui
 ```
 
-⚠️ **Sin este proceso corriendo, la telemetría no llega a la base de datos** aunque la Pi la publique correctamente. El flag `--id=spui` es obligatorio (el monolito no sabe qué app cargar por consola).
+⚠️ **Sin este proceso corriendo, la telemetría no llega a la base de datos** aunque la Pi la publique correctamente, y el CMS tampoco marca como desconectado a un reproductor que se apaga (ese mantenimiento corre dentro del mismo proceso). El flag `--id=spui` es obligatorio (el monolito no sabe qué app cargar por consola).
 
-Dejá esa consola abierta mientras probás.
+Si lo corrés a mano, dejá esa consola abierta mientras probás.
 
 ---
 
@@ -644,6 +651,16 @@ Adaptado de `08_pendientes_vm.md` §6 — con hardware real, ahora **sí** aplic
 
 La prueba 9 valida el requisito de resiliencia offline exigido por el jurado.
 
+### Pruebas automáticas del cliente
+
+No necesitan red ni pantalla, y no tocan el caché real (trabajan en una carpeta temporal). Correrlas después de instalar o de actualizar el cliente:
+
+```bash
+cd /opt/spui && /opt/spui/venv/bin/python3 -m unittest discover -s tests -v
+```
+
+Tiene que terminar en `OK`. Hoy cubren el caché de media: una descarga cortada, un archivo con hash distinto o uno alterado en disco nunca se reproducen.
+
 ### Reinicio final
 
 ```bash
@@ -667,8 +684,9 @@ Confirmá que todo levanta solo: autologin → X11 → Openbox → servicio spui
 | Sync OK, log dice **`Modo SIMULACIÓN`** | X11 no está corriendo → el cliente ni intenta usar VLC | Paso 8; verificar con `pgrep -a Xorg` |
 | Sync OK, log dice **`VLC listo`** pero la pantalla sigue negra **con el monitor encendido/con señal** | VLC eligió una salida de vídeo que no dibuja | Ver §14.1 |
 | El monitor se queda **sin señal y entra en standby solo** (no es "negra con señal") | El driver de video no reactivó la salida después de una desconexión HDMI momentánea (cable/conversor flojo) | Ver §14.2 |
-| Reproductor **conectado** pero telemetría vacía | `spui:mqtt:subscribe` no está corriendo, o Mosquitto no acepta conexiones externas | Paso 12; revisar `listener 1883 0.0.0.0` y `allow_anonymous true` en `mosquitto.conf` |
-| Alertas no llegan al instante (sí en el próximo sync) | Sin conexión MQTT desde la Pi | Verificar `MQTT_HOST` (no `127.0.0.1`) y la regla de firewall del puerto 1883 |
+| Reproductor **conectado** pero telemetría vacía | `spui:mqtt:subscribe` no está corriendo, o la Pi no logra autenticarse en el broker | Paso 12. Si el log de la Pi dice `Not authorized`: `SPUI_MQTT_SALT` distinto al del CMS (paso 11.2) |
+| Alertas no llegan al instante (sí en el próximo sync) | Sin conexión MQTT desde la Pi | Verificar `MQTT_HOST` (no `127.0.0.1`), `SPUI_MQTT_SALT` (paso 11.2) y la regla de firewall del puerto 1883 (u 8883 con TLS) |
+| `Not authorized` / `Connection refused` en el log de MQTT | El broker rechaza las credenciales: salt distinto, o el usuario `spui-repro-<id>` no existe en el broker | Corregir `SPUI_MQTT_SALT`; si el salt está bien, regenerar la clave del reproductor desde el CMS (recrea su usuario MQTT). Detalle en `config/mosquitto/README.md`, *Diagnóstico* |
 | Dejó de sincronizar sin haber tocado nada | La IP del host cambió (DHCP) | Actualizar la línea de `/etc/hosts` (paso 11.1) y las reglas del paso 7 |
 | Pantalla en negro con servicio `active (running)` | Ahorro de energía HDMI | Verificar que `~/.xinitrc` tenga `xset -dpms` y `xset s off` |
 | `Permission denied` al escribir `~/.bashrc` en la terminal | Se intentó ejecutar un archivo de configuración | No se "corre": se edita con `nano` o se le agrega con `cat >>` (paso 8.3) |
@@ -768,7 +786,7 @@ HDMI en pleno funcionamiento — el patrón de un hotplug intermitente, no un ar
 | Ruta | Contenido |
 |---|---|
 | `/opt/spui` | Código del cliente Python |
-| `/etc/spui/spui.env` | Configuración (API URL, API key, MQTT) |
+| `/etc/spui/spui.env` | Configuración (API URL, API key, MQTT y su salt) |
 | `/var/cache/spui` | Caché de media descargada |
 | `/var/cache/spui/spui.db` | SQLite: último sync (contenido, playlist, programación) |
 | `/var/log/spui-client.log` | Log del cliente |

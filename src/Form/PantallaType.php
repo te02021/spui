@@ -8,10 +8,9 @@ use SPUI\Entity\Pantalla;
 use SPUI\Entity\Playlist;
 use SPUI\Entity\Reproductor;
 use SPUI\Entity\Ubicacion;
-use SPUI\Enum\EstadoPantalla;
 use Symfony\Bridge\Doctrine\Form\Type\EntityType;
 use Symfony\Component\Form\AbstractType;
-use Symfony\Component\Form\Extension\Core\Type\EnumType;
+use Symfony\Component\Form\Extension\Core\Type\CheckboxType;
 use Symfony\Component\Form\Extension\Core\Type\IntegerType;
 use Symfony\Component\Form\Extension\Core\Type\TextType;
 use Symfony\Component\Form\FormBuilderInterface;
@@ -76,20 +75,26 @@ class PantallaType extends AbstractType
                 'label'      => 'Ancho (px)',
                 'label_attr' => ['class' => 'unraf-form-label'],
                 'attr'       => ['class' => 'unraf-form-control', 'style' => 'max-width:9rem'],
-                'constraints' => [new Range(notInRangeMessage: 'El ancho debe estar entre {{ min }} y {{ max }} píxeles.', min: 320, max: 7680)],
+                'constraints' => [
+                    new NotBlank(message: 'El ancho es obligatorio.'),
+                    new Range(notInRangeMessage: 'El ancho debe estar entre {{ min }} y {{ max }} píxeles.', min: 320, max: 7680),
+                ],
             ])
             ->add('resolucionAlto', IntegerType::class, [
                 'label'      => 'Alto (px)',
                 'label_attr' => ['class' => 'unraf-form-label'],
                 'attr'       => ['class' => 'unraf-form-control', 'style' => 'max-width:9rem'],
-                'constraints' => [new Range(notInRangeMessage: 'El alto debe estar entre {{ min }} y {{ max }} píxeles.', min: 240, max: 4320)],
+                'constraints' => [
+                    new NotBlank(message: 'El alto es obligatorio.'),
+                    new Range(notInRangeMessage: 'El alto debe estar entre {{ min }} y {{ max }} píxeles.', min: 240, max: 4320),
+                ],
             ])
-            ->add('estado', EnumType::class, [
-                'label'        => 'Estado',
-                'label_attr'   => ['class' => 'unraf-form-label'],
-                'class'        => EstadoPantalla::class,
-                'choice_label' => fn(EstadoPantalla $e) => ucfirst($e->value),
-                'attr'         => ['class' => 'unraf-form-select'],
+            // Switch Activa/Inactiva, como el resto del CMS (antes, un selector
+            // con un tercer valor "mantenimiento" que no hacía nada distinto).
+            // Lee y escribe por Pantalla::isActiva()/setActiva().
+            ->add('activa', CheckboxType::class, [
+                'label'    => false,
+                'required' => false,
             ]);
     }
 

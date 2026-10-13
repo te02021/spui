@@ -14,3 +14,7 @@ twig:
         # dirigidas a equipos desconectados. Va como global para no tener que
         # inyectarlo y pasarlo desde cada uno de los seis controladores.
         spui_alcance: '@SPUI\Service\AlcanceReproductorService'
+
+        # Credenciales de sólo lectura para que el navegador escuche el broker
+        # (avisos de conexión de los listados). Ver _partials/conexion_vivo.html.twig.
+        spui_mqtt_web: '@SPUI\Service\MqttSecurityService'

@@ -14,14 +14,17 @@ use SPUI\Entity\PlaylistItem;
 use SPUI\Entity\Playlist;
 use SPUI\Entity\Programacion;
 use SPUI\Entity\ProgramacionEnergetica;
+use SPUI\Enum\EstadoConexion;
 use SPUI\Enum\TipoContenido;
 use SPUI\Repository\AlertaEmergenciaRepository;
 use SPUI\Repository\CronogramaItemRepository;
 use SPUI\Repository\ProgramacionEnergeticaRepository;
 use SPUI\Repository\ProgramacionRepository;
+use SPUI\Service\ConexionPublisherService;
 use SPUI\Service\MediaStorageService;
 use SPUI\Service\ReproductorAuthService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -46,6 +49,9 @@ class SyncController extends AbstractController
         private readonly RateLimiterFactory $spuiReproductorSyncLimiter,
         private readonly RateLimiterFactory $spuiReproductorHeartbeatLimiter,
         private readonly LoggerInterface $logger,
+        private readonly ConexionPublisherService $conexionPublisher,
+        #[Autowire('%env(int:default:spui_umbral_conexion_default:SPUI_UMBRAL_CONEXION_SEG)%')]
+        private readonly int $umbralConexionSeg,
     ) {}
 
     /**
@@ -119,12 +125,19 @@ class SyncController extends AbstractController
             ];
         }
 
+        // Se registra para mostrarlo en el CMS (último y próximo sync).
+        $reproductor->registrarSync($ahora);
+        $this->doctrine->getManager('SPUI')->flush();
+
         return $this->json([
             'reproductor_id'    => $reproductor->getId(),
             'pantallas'         => $pantallasData,
             'alerta_emergencia' => $alerta !== null ? $this->serializeAlerta($alerta, $request) : null,
             'servidor_ts'       => $ahora->format('c'),
-            'proxima_sync_seg'  => 300,
+            // Cada cuánto tiene que volver a sincronizar por su cuenta: lo
+            // configura el operador por reproductor (en minutos) y la Pi lo usa
+            // en vez del SPUI_SYNC_INTERVAL de su spui.env.
+            'proxima_sync_seg'  => $reproductor->getIntervaloSyncMin() * 60,
         ]);
     }
 
@@ -148,6 +161,11 @@ class SyncController extends AbstractController
                 ['Retry-After' => $limit->getRetryAfter()->getTimestamp() - time()],
             );
         }
+
+        // Si venía desconectado (o nunca se había reportado), este heartbeat
+        // es la vuelta: hay que avisarle al panel. Se mira ANTES de registrar,
+        // con el mismo cálculo que usa el bloqueo de acciones.
+        $volvio = $reproductor->estadoCalculado($this->umbralConexionSeg) !== EstadoConexion::Conectado;
 
         $reproductor->registrarHeartbeat();
 
@@ -181,6 +199,12 @@ class SyncController extends AbstractController
         }
 
         $this->doctrine->getManager('SPUI')->flush();
+
+        // Después del flush, no antes: el aviso hace que el navegador vuelva a
+        // pedir la tabla, y tiene que encontrar el heartbeat ya grabado.
+        if ($volvio) {
+            $this->conexionPublisher->avisar([$reproductor->getId()], ConexionPublisherService::CONECTADO);
+        }
 
         return $this->json([
             'ok'          => true,

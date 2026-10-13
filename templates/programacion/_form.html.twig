@@ -13,7 +13,7 @@
     {{ form_label(form.playlist) }}
     {{ form_widget(form.playlist) }}
     {% for e in form.playlist.vars.errors %}
-        <p class="text-danger small mt-1">{{ e.message }}</p>
+        <p class="spui-campo-error">{{ e.message }}</p>
     {% endfor %}
 </div>
 
@@ -45,14 +45,14 @@
         {{ form_label(form.horaInicio) }}
         {{ form_widget(form.horaInicio) }}
         {% for e in form.horaInicio.vars.errors %}
-            <p class="text-danger small mt-1">{{ e.message }}</p>
+            <p class="spui-campo-error">{{ e.message }}</p>
         {% endfor %}
     </div>
     <div class="col-6 spui-hora-field">
         {{ form_label(form.horaFin) }}
         {{ form_widget(form.horaFin) }}
         {% for e in form.horaFin.vars.errors %}
-            <p class="text-danger small mt-1">{{ e.message }}</p>
+            <p class="spui-campo-error">{{ e.message }}</p>
         {% endfor %}
     </div>
 </div>
@@ -62,21 +62,22 @@
         {{ form_label(form.fechaInicio) }}
         {{ form_widget(form.fechaInicio) }}
         {% for e in form.fechaInicio.vars.errors %}
-            <p class="text-danger small mt-1">{{ e.message }}</p>
+            <p class="spui-campo-error">{{ e.message }}</p>
         {% endfor %}
     </div>
     <div class="col-6 spui-hora-field">
         {{ form_label(form.fechaFin) }}
         {{ form_widget(form.fechaFin) }}
         {% for e in form.fechaFin.vars.errors %}
-            <p class="text-danger small mt-1">{{ e.message }}</p>
+            <p class="spui-campo-error">{{ e.message }}</p>
         {% endfor %}
     </div>
 </div>
 
-<div class="mb-3">
+<div class="mb-3" data-spui-campo>
     {{ form_label(form.diasSemana) }}
-    <div class="spui-dias-switches mt-2">
+    <div class="spui-dias-switches mt-2{{ form.diasSemana.vars.errors|length ? ' is-invalid' }}"
+         data-spui-requiere-alguno="{{ constant('SPUI\\Form\\ProgramacionType::MSG_DIAS_REQUERIDOS') }}">
         {% for child in form.diasSemana %}
             <div class="spui-dia-switch">
                 {{ form_label(child, null, {'label_attr': {'class': 'spui-dia-label'}}) }}
@@ -86,6 +87,9 @@
             </div>
         {% endfor %}
     </div>
+    {% for e in form.diasSemana.vars.errors %}
+        <p class="spui-campo-error">{{ e.message }}</p>
+    {% endfor %}
 </div>
 
 <div class="mb-4 d-flex flex-column" style="max-width:fit-content">
@@ -103,17 +107,20 @@
         <label class="unraf-form-label" for="{{ form.prioridad.vars.id }}">Prioridad</label>
         {{ form_widget(form.prioridad) }}
         {% for e in form.prioridad.vars.errors %}
-            <p class="text-danger small mt-1">{{ e.message }}</p>
+            <p class="spui-campo-error">{{ e.message }}</p>
         {% endfor %}
         <small class="text-muted mt-1 d-block text-center">Mayor número = mayor prioridad.</small>
     </div>
     <div class="col-auto spui-hora-field">
-        <label class="unraf-form-label" for="{{ swActivoId }}">Activa al crear</label>
+        {# Estado de la regla: mismo switch y mismas palabras que el resto del
+           CMS, en el alta y en la edición (antes decía "Activa al crear", como
+           si no sirviera para editar). #}
+        <label class="unraf-form-label" for="{{ swActivoId }}">Estado</label>
         <div class="d-flex align-items-center gap-2">
             <div class="form-switch m-0">
-                {{ form_widget(form.activo, {'attr': {'class': 'form-check-input spui-switch-input', 'role': 'switch', 'data-spui-switch': '1', 'data-switch-on': 'Sí', 'data-switch-off': 'No'}}) }}
+                {{ form_widget(form.activo, {'attr': {'class': 'form-check-input spui-switch-input', 'role': 'switch', 'data-spui-switch': '1', 'data-switch-on': 'Activa', 'data-switch-off': 'Inactiva'}}) }}
             </div>
-            <span class="spui-switch-status on" id="{{ swActivoId }}_lbl">Sí</span>
+            <span class="spui-switch-status {{ form.activo.vars.checked ? 'on' : 'off' }}" id="{{ swActivoId }}_lbl">{{ form.activo.vars.checked ? 'Activa' : 'Inactiva' }}</span>
         </div>
     </div>
 </div>

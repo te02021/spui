@@ -11,16 +11,39 @@
         {{ form_label(form.hostname) }}
         {{ form_widget(form.hostname) }}
         {% for e in form.hostname.vars.errors %}
-            <p class="text-danger small mt-1">{{ e.message }}</p>
+            <p class="spui-campo-error">{{ e.message }}</p>
         {% endfor %}
     </div>
     <div class="col-12 col-sm">
         {{ form_label(form.versionFirmware) }}
         {{ form_widget(form.versionFirmware) }}
         {% for e in form.versionFirmware.vars.errors %}
-            <p class="text-danger small mt-1">{{ e.message }}</p>
+            <p class="spui-campo-error">{{ e.message }}</p>
         {% endfor %}
     </div>
+</div>
+
+{# Intervalo de sync. La unidad va pegada al número ("min") y la equivalencia
+   legible se actualiza mientras se escribe (duracion-minutos.js). #}
+<div class="mb-4">
+<div data-spui-campo>
+    {{ form_label(form.intervaloSyncMin) }}
+    <div class="spui-input-with-addon" style="max-width:10rem">
+        {{ form_widget(form.intervaloSyncMin) }}
+        <span class="spui-input-addon spui-input-unidad">min</span>
+    </div>
+    {% for e in form.intervaloSyncMin.vars.errors %}
+        <p class="spui-campo-error">{{ e.message }}</p>
+    {% endfor %}
+</div>
+    {# Fuera de [data-spui-campo]: así el error en vivo queda pegado al campo, como el del servidor. #}
+    <small class="d-block mt-1 fw-semibold" id="{{ form.intervaloSyncMin.vars.id }}_texto"></small>
+    <small class="text-muted d-block mt-1">
+        Minutos enteros, 1 o más. Cada cuánto el reproductor consulta al CMS por su cuenta. Lo que se guarda
+        en el CMS le llega al instante igual; este intervalo es el respaldo, y además es lo que puede demorar
+        en arrancar una programación o un horario de energía. Para sincronizar en el momento, usá
+        <strong>Sincronizar</strong> en el listado.
+    </small>
 </div>
 
 {% if reproductor is not defined or not reproductor.id %}

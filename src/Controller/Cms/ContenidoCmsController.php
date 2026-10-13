@@ -22,6 +22,7 @@ use SPUI\Service\QrEscaneoPublisherService;
 use SPUI\Service\QrGeneratorService;
 use SPUI\Service\UsuarioResolverService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\Form\FormInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
@@ -73,9 +74,11 @@ class ContenidoCmsController extends AbstractController
      * contenido, y el código queda siempre redirigiendo: para cortarlo está el
      * vencimiento, o eliminar el contenido.
      *
-     * @return string|null Mensaje de error en español, o null si salió bien.
+     * @return array{0:string,1:string}|null [campo, mensaje en español] del error, o null si salió bien.
+     *         El campo es el name del input (qr_url_destino / qr_expira_en): el
+     *         mensaje se muestra debajo de él.
      */
-    private function aplicarDatosQr(Contenido $contenido, Request $request): ?string
+    private function aplicarDatosQr(Contenido $contenido, Request $request): ?array
     {
         // InputBag::get() lanza BadRequestException (500) si el valor no es
         // escalar — un qr_url_destino[]=a&qr_url_destino[]=b manual lo
@@ -84,11 +87,11 @@ class ContenidoCmsController extends AbstractController
         // proyecto de no mostrar nada de eso al frontend.
         $urlCruda = $request->request->all()['qr_url_destino'] ?? '';
         if (!is_string($urlCruda)) {
-            return 'La URL de destino no tiene el formato esperado.';
+            return ['qr_url_destino', 'La URL de destino no tiene el formato esperado.'];
         }
         $url = trim($urlCruda);
         if ($url === '') {
-            return 'La URL de destino es requerida: es a dónde llega quien escanea el código.';
+            return ['qr_url_destino', 'La URL de destino es requerida: es a dónde llega quien escanea el código.'];
         }
 
         // Sin esquema se asume https, en vez de rechazar algo que el usuario
@@ -98,10 +101,10 @@ class ContenidoCmsController extends AbstractController
             $url = 'https://' . $url;
         }
         if (mb_strlen($url) > self::QR_URL_MAX) {
-            return 'La URL de destino no puede superar los ' . self::QR_URL_MAX . ' caracteres.';
+            return ['qr_url_destino', 'La URL de destino no puede superar los ' . self::QR_URL_MAX . ' caracteres.'];
         }
         if (!filter_var($url, FILTER_VALIDATE_URL) || !preg_match('#^https?://#i', $url)) {
-            return 'Ingresá una URL válida, que empiece con http:// o https://.';
+            return ['qr_url_destino', 'Ingresá una URL válida, que empiece con http:// o https://.'];
         }
         // FILTER_VALIDATE_URL es laxo con estos caracteres: los deja pasar
         // dentro del path/query aunque no tengan nada que hacer ahí en una
@@ -111,7 +114,7 @@ class ContenidoCmsController extends AbstractController
         // que ningún sitio real tendría — y deja la higiene de la entrada
         // apoyada enteramente en que ninguna vista futura use |raw acá.
         if (preg_match('/[<>"\'\x00-\x1f]/', $url)) {
-            return 'La URL de destino tiene caracteres que no puede llevar (<, >, comillas).';
+            return ['qr_url_destino', 'La URL de destino tiene caracteres que no puede llevar (<, >, comillas).'];
         }
 
         // El <input type="datetime-local"> manda 'Y-m-dTH:i' (algunos
@@ -120,7 +123,7 @@ class ContenidoCmsController extends AbstractController
         // hora actual y el vencimiento salía con segundos al azar.
         $expiraCruda = $request->request->all()['qr_expira_en'] ?? '';
         if (!is_string($expiraCruda)) {
-            return 'La fecha de vencimiento no tiene el formato esperado.';
+            return ['qr_expira_en', 'La fecha de vencimiento no tiene el formato esperado.'];
         }
         $expiraStr = trim($expiraCruda);
         $expira    = null;
@@ -128,7 +131,7 @@ class ContenidoCmsController extends AbstractController
             $expira = DateTimeImmutable::createFromFormat('!Y-m-d\TH:i', $expiraStr)
                    ?: DateTimeImmutable::createFromFormat('!Y-m-d\TH:i:s', $expiraStr);
             if ($expira === false) {
-                return 'La fecha de vencimiento no es válida.';
+                return ['qr_expira_en', 'La fecha de vencimiento no es válida.'];
             }
             // Sin este chequeo se aceptaba en silencio una fecha ya pasada: el
             // código quedaba creado pero CodigoQr::estaVigente() lo daba por
@@ -136,7 +139,7 @@ class ContenidoCmsController extends AbstractController
             // impreso se encontraba con la pantalla de "código no disponible"
             // sin que el operador entendiera por qué "no funciona".
             if ($expira <= new DateTimeImmutable()) {
-                return 'La fecha de vencimiento tiene que ser posterior a ahora.';
+                return ['qr_expira_en', 'La fecha de vencimiento tiene que ser posterior a ahora.'];
             }
         }
 
@@ -172,14 +175,13 @@ class ContenidoCmsController extends AbstractController
      * repo: un alta fuera del modal terminaba en un 500 en vez de en el
      * mensaje de error.
      */
-    private function errorAlta(Request $request, string $mensaje): Response
+    private function errorAlta(Request $request, FormInterface $form, string $campo, string $mensaje): Response
     {
         if ($request->isXmlHttpRequest()) {
-            // Sin 'html' a propósito: si viniera junto con 'html', el JS del
-            // modal (modal.js) sólo reemplaza el cuerpo y nunca muestra
-            // 'message' — quedaría en silencio. Ver el mismo comentario en
-            // AlertaCmsController::aplicarSonido().
-            return $this->json(['success' => false, 'message' => $mensaje, 'type' => 'error']);
+            // Error de campo: el formulario redibujado con el mensaje debajo
+            // del campo. Sólo 'html', sin 'message' (modal.js ignora el
+            // message cuando hay html).
+            return $this->json(['success' => false, 'html' => $this->vistaAlta($form, $request, [$campo => $mensaje])]);
         }
 
         $this->addFlash('error', $mensaje);
@@ -187,25 +189,51 @@ class ContenidoCmsController extends AbstractController
         return $this->redirectToRoute('spui_cms_contenidos_index');
     }
 
-    /** HTML del formulario de edición, con el aviso de error arriba si lo hay. */
-    private function vistaEdicion(Contenido $c, ?string $error): string
+    /**
+     * HTML del formulario de alta.
+     *
+     * @param array<string, string> $errores name del campo → mensaje, para los
+     *        campos que no son del FormType (archivo, texto, datos del QR).
+     */
+    private function vistaAlta(FormInterface $form, Request $request, array $errores = []): string
     {
-        return $this->renderView('@SPUI/contenidos/_edit_form.html.twig', [
-            'contenido' => $c,
-            'error'     => $error,
+        return $this->renderView('@SPUI/contenidos/_form.html.twig', [
+            'form'              => $form,
+            'errores'           => $errores,
+            'max_bytes_archivo' => $this->limiteArchivoBytes(MediaStorageService::TAMANIO_MAXIMO),
+            // Para que al re-renderizar por un error de validación los
+            // campos del QR conserven lo que el usuario había cargado
+            // (no son campos del FormType, así que no vuelven solos).
+            'qr_url_destino'    => $request->request->get('qr_url_destino'),
+            'qr_expira_en'      => $request->request->get('qr_expira_en'),
+            'contenido_texto'   => $request->request->get('contenido_texto'),
         ]);
     }
 
     /**
-     * Respuesta de error de la edición.
+     * HTML del formulario de edición.
      *
-     * Manda 'html' sin 'message': el formulario re-renderizado ya trae el aviso
-     * inline y modal.js ignora 'message' cuando viene 'html'.
+     * @param array<string, string> $errores name del campo → mensaje; cada uno
+     *        se muestra debajo de su input.
      */
-    private function errorEdicion(Request $request, Contenido $c, string $mensaje): Response
+    private function vistaEdicion(Contenido $c, array $errores = []): string
+    {
+        return $this->renderView('@SPUI/contenidos/_edit_form.html.twig', [
+            'contenido'         => $c,
+            'errores'           => $errores,
+            'max_bytes_archivo' => $this->limiteArchivoBytes(MediaStorageService::TAMANIO_MAXIMO),
+        ]);
+    }
+
+    /**
+     * Respuesta de error de la edición: el form redibujado con el mensaje
+     * debajo del campo. Sólo 'html', sin 'message' (modal.js ignora el
+     * message cuando viene html).
+     */
+    private function errorEdicion(Request $request, Contenido $c, string $campo, string $mensaje): Response
     {
         if ($request->isXmlHttpRequest()) {
-            return $this->json(['success' => false, 'html' => $this->vistaEdicion($c, $mensaje)]);
+            return $this->json(['success' => false, 'html' => $this->vistaEdicion($c, [$campo => $mensaje])]);
         }
 
         $this->addFlash('error', $mensaje);
@@ -329,10 +357,10 @@ class ContenidoCmsController extends AbstractController
             if (in_array($tipo->value, self::TIPOS_ARCHIVO, true)) {
                 $archivo = $request->files->get('archivo');
                 if (!$archivo) {
-                    return $this->errorAlta($request, 'El archivo es requerido para el tipo "' . $tipo->value . '".');
+                    return $this->errorAlta($request, $form, 'archivo', 'El archivo es requerido para el tipo "' . $tipo->etiqueta() . '".');
                 }
                 if ($errValidacion = $this->media->validar($archivo)) {
-                    return $this->errorAlta($request, $errValidacion);
+                    return $this->errorAlta($request, $form, 'archivo', $errValidacion);
                 }
                 $hash = $this->media->hashArchivoSubido($archivo);
                 $ruta = $this->media->guardar($archivo, self::categoriaDeTipo($tipo->value));
@@ -348,12 +376,12 @@ class ContenidoCmsController extends AbstractController
                 // muestra — crear un contenido QR fallaba siempre, con un
                 // mensaje que no tenía nada que ver con la causa.
                 if ($errQr = $this->aplicarDatosQr($contenido, $request)) {
-                    return $this->errorAlta($request, $errQr);
+                    return $this->errorAlta($request, $form, $errQr[0], $errQr[1]);
                 }
             } else {
                 $texto = trim($request->request->get('contenido_texto', ''));
                 if (!$texto) {
-                    return $this->errorAlta($request, 'El campo de texto/URL es requerido para este tipo.');
+                    return $this->errorAlta($request, $form, 'contenido_texto', 'El campo de texto/URL es requerido para este tipo.');
                 }
                 $contenido->setContenidoTexto($texto);
             }
@@ -362,12 +390,22 @@ class ContenidoCmsController extends AbstractController
             $this->em()->flush();
 
             if ($tipo === TipoContenido::Cronograma) {
-                $builderUrl = $this->generateUrl('spui_cms_cronograma_builder', ['id' => $contenido->getId()]);
+                // Recién creado está vacío: se sigue directo en el listado de
+                // sus ítems, en el mismo modal (modal.js, data.abrir).
+                $msg = 'Cronograma "' . $contenido->getTitulo() . '" creado. Ahora agregá los ítems.';
                 if ($request->isXmlHttpRequest()) {
-                    return $this->json(['success' => true, 'redirect' => $builderUrl]);
+                    return $this->json([
+                        'success' => true,
+                        'message' => $msg,
+                        'abrir'   => [
+                            'url'   => $this->generateUrl('spui_cms_cronograma_items', ['id' => $contenido->getId()]),
+                            'title' => 'Ítems de «' . $contenido->getTitulo() . '»',
+                            'size'  => 'modal-lg',
+                        ],
+                    ]);
                 }
-                $this->addFlash('success', 'Cronograma "' . $contenido->getTitulo() . '" creado. Ahora agregá los ítems.');
-                return $this->redirect($builderUrl);
+                $this->addFlash('success', $msg);
+                return $this->redirectToRoute('spui_cms_contenidos_index');
             }
 
             $msg = 'Contenido "' . $contenido->getTitulo() . '" creado correctamente.';
@@ -381,14 +419,7 @@ class ContenidoCmsController extends AbstractController
         if ($request->isXmlHttpRequest()) {
             return $this->json([
                 'title' => 'Nuevo contenido',
-                'html'  => $this->renderView('@SPUI/contenidos/_form.html.twig', [
-                    'form' => $form,
-                    // Para que al re-renderizar por un error de validación los
-                    // campos del QR conserven lo que el usuario había cargado
-                    // (no son campos del FormType, así que no vuelven solos).
-                    'qr_url_destino' => $request->request->get('qr_url_destino'),
-                    'qr_expira_en'   => $request->request->get('qr_expira_en'),
-                ]),
+                'html'  => $this->vistaAlta($form, $request),
             ]);
         }
 
@@ -402,17 +433,24 @@ class ContenidoCmsController extends AbstractController
         if (!$c) { throw $this->createNotFoundException(); }
 
         if ($request->isMethod('POST')) {
+            if ($r = $this->denegarSiCsrfInvalido($request)) { return $r; }
+
+            $reproductores = $this->alcance->deContenido($c);
+            if ($r = $this->bloquearSiOffline($reproductores, $request, 'spui_cms_contenidos_index')) {
+                return $r;
+            }
+
             // ANTES que cualquier campo: si el body se descartó por tamaño,
             // 'titulo' llega vacío igual que si no se hubiera tipeado nada —
             // sin este chequeo el error decía "El título es requerido" con
             // el título bien escrito. Ver LimiteSubidaTrait.
             if ($errLimite = $this->excedioLimiteSubida($request)) {
-                return $this->errorEdicion($request, $c, $errLimite);
+                return $this->errorEdicion($request, $c, 'archivo', $errLimite);
             }
 
             $titulo = trim($request->request->get('titulo', ''));
             if (!$titulo) {
-                return $this->errorEdicion($request, $c, 'El título es requerido.');
+                return $this->errorEdicion($request, $c, 'titulo', 'El título es requerido.');
             }
 
             $c->setTitulo($titulo);
@@ -433,7 +471,7 @@ class ContenidoCmsController extends AbstractController
             // 'contenido_texto'.
             if ($c->getTipo() === TipoContenido::Qr) {
                 if ($errQr = $this->aplicarDatosQr($c, $request)) {
-                    return $this->errorEdicion($request, $c, $errQr);
+                    return $this->errorEdicion($request, $c, $errQr[0], $errQr[1]);
                 }
             }
 
@@ -441,7 +479,7 @@ class ContenidoCmsController extends AbstractController
                 $archivo = $request->files->get('archivo');
                 if ($archivo) {
                     if ($errValidacion = $this->media->validar($archivo)) {
-                        return $this->errorEdicion($request, $c, $errValidacion);
+                        return $this->errorEdicion($request, $c, 'archivo', $errValidacion);
                     }
                     // Se borra el viejo DESPUÉS de guardar el nuevo, no antes: si
                     // guardar() falla (S3 caído, disco lleno), el contenido no se
@@ -456,7 +494,7 @@ class ContenidoCmsController extends AbstractController
             }
 
             $this->em()->flush();
-            $this->comandoPublisher->pedirSyncAhora($this->alcance->deContenido($c), 'contenido');
+            $this->comandoPublisher->pedirSyncAhora($reproductores, 'contenido');
             $msg = '"' . $c->getTitulo() . '" actualizado.';
             if ($request->isXmlHttpRequest()) {
                 return $this->json(['success' => true, 'message' => $msg]);
@@ -468,7 +506,7 @@ class ContenidoCmsController extends AbstractController
         if ($request->isXmlHttpRequest()) {
             return $this->json([
                 'title' => 'Editar: ' . $c->getTitulo(),
-                'html'  => $this->vistaEdicion($c, null),
+                'html'  => $this->vistaEdicion($c),
             ]);
         }
 
@@ -493,16 +531,11 @@ class ContenidoCmsController extends AbstractController
     private function mqttWebParaQr(Contenido $contenido, Request $request): ?array
     {
         $qr = $contenido->getCodigoQr();
-        if ($qr === null || !$this->mqttSeguridad->asegurarClienteWeb()) {
+        if ($qr === null) {
             return null;
         }
 
-        return [
-            'url'      => $this->mqttSeguridad->urlWebsocket($request),
-            'usuario'  => MqttSecurityService::USUARIO_WEB,
-            'password' => $this->mqttSeguridad->passwordWeb(),
-            'topic'    => QrEscaneoPublisherService::topicPara($qr->getId()),
-        ];
+        return $this->mqttSeguridad->paraNavegador($request, QrEscaneoPublisherService::topicPara($qr->getId()));
     }
 
     #[Route('/{id}/ver', name: 'spui_cms_contenidos_ver', methods: ['GET'], requirements: ['id' => '\d+'])]
@@ -674,6 +707,15 @@ class ContenidoCmsController extends AbstractController
             if ($request->isXmlHttpRequest()) { return $this->json(['success' => false, 'message' => $msg], 422); }
             $this->addFlash('error', $msg);
             return $this->redirectToRoute('spui_cms_contenidos_index');
+        }
+
+        // En la práctica un contenido que llega hasta acá no está en ninguna
+        // playlist (el chequeo de arriba ya lo rechazó), así que esto no
+        // debería bloquear nunca hoy. Se deja explícito igual, no implícito en
+        // la lógica de arriba: si el día de mañana cambia qué impide borrar,
+        // este chequeo sigue protegiendo sin que nadie tenga que acordarse de él.
+        if ($r = $this->bloquearSiOffline($this->alcance->deContenido($c), $request, 'spui_cms_contenidos_index')) {
+            return $r;
         }
 
         $titulo = $c->getTitulo();

@@ -17,7 +17,9 @@
 
 <div id="spui-table-body">
 <div class="unraf-card">
-    <div class="unraf-table-responsive">
+    {# Se vuelve a pedir cuando llega un aviso de conexión por MQTT (conexion-vivo.js),
+       no por intervalo: destraba o traba los botones si un reproductor vuelve o se cae. #}
+    <div class="unraf-table-responsive" id="spui-tabla-conexion" data-spui-refresh="push">
         <table class="unraf-table unraf-table-striped w-100 spui-tabla-cards">
             <thead>
                 <tr>
@@ -64,6 +66,21 @@
                                 <img src="{{ asset('unraf-ui/icons/pencil.svg') }}" class="spui-action-icon" alt=""> Editar
                             </button>
 
+                            {# Atajo del switch "Estado" del formulario: mismo cambio. #}
+                            <button type="button"
+                                    class="unraf-btn unraf-btn-sm {{ pl.activo ? 'spui-btn-desactivar' : 'spui-btn-activar' }} {{ bloqueo.clase(motivo) }}"
+                                    data-spui-action="{{ path('spui_cms_playlists_toggle', {id: pl.id}) }}"
+                                    data-spui-title="{{ pl.activo ? 'Desactivar' : 'Activar' }} playlist"
+                                    data-spui-message="{{ pl.activo
+                                        ? '¿Desactivar «' ~ pl.nombre ~ '»? Las pantallas que la usan (por programación o como respaldo) dejan de reproducirla.'
+                                        : '¿Activar «' ~ pl.nombre ~ '»? Vuelve a reproducirse en las pantallas que la usan.' }}"
+                                    data-spui-variant="{{ pl.activo ? 'desactivar' : 'activar' }}"
+                                    data-spui-confirm-label="{{ pl.activo ? 'Desactivar' : 'Activar' }}"
+                                    {% if motivo %}{{ bloqueo.attrs(motivo) }}{% else %}title="{{ pl.activo ? 'Desactivar' : 'Activar' }}"{% endif %}>
+                                <img src="{{ pl.activo ? asset('unraf-ui/icons/hand-palm.svg') : asset('unraf-ui/icons/lightning.svg') }}" class="spui-action-icon" alt="">
+                                {{ pl.activo ? 'Desactivar' : 'Activar' }}
+                            </button>
+
                             <button type="button" class="unraf-btn spui-btn-eliminar unraf-btn-sm {{ bloqueo.clase(motivo) }}"
                                     data-spui-action="{{ path('spui_cms_playlists_eliminar', {id: pl.id}) }}"
                                     data-spui-title="Eliminar playlist"
@@ -84,4 +101,9 @@
     </div>
 </div>
 </div>
+{% endblock %}
+
+{# Destraba/traba los botones cuando un reproductor vuelve o se cae, sin recargar. #}
+{% block javascripts %}
+    {{ include('@SPUI/_partials/conexion_vivo.html.twig') }}
 {% endblock %}

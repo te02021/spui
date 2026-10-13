@@ -4,22 +4,63 @@ Cliente REST para comunicación con el CMS SPUI.
 Responsabilidades:
   - POST /reproductores/sync      → obtiene programación activa + alerta
   - POST /reproductores/heartbeat → confirma que el reproductor está vivo
-  - GET  /media/{file}            → descarga archivos multimedia al caché local
+  - GET  /media/{file}            → descarga archivos multimedia al caché local,
+                                    verificados por SHA-256 antes de entrar
 """
 
 import hashlib
 import logging
 import os
+import threading
+from datetime import datetime
 
 import requests
 
 logger = logging.getLogger(__name__)
+
+# El CMS acepta hasta 2 syncs por minuto por reproductor: por debajo de 30 s
+# los pedidos terminarían rechazados (429).
+MINIMO_SYNC_SEG = 30
+
+
+def intervalo_desde_sync(sync_data: dict, actual: int) -> int:
+    """
+    Cada cuántos segundos volver a sincronizar, según lo que manda el CMS en
+    proxima_sync_seg (el operador lo configura por reproductor, en minutos).
+    Si el valor falta o no es válido se sigue con el actual, que de arranque es
+    SPUI_SYNC_INTERVAL de spui.env.
+    """
+    valor = sync_data.get('proxima_sync_seg') if isinstance(sync_data, dict) else None
+    try:
+        segundos = int(valor)
+    except (TypeError, ValueError):
+        return actual
+    if segundos <= 0:
+        return actual
+    nuevo = max(MINIMO_SYNC_SEG, segundos)
+    if nuevo != actual:
+        logger.info('Intervalo de sync: cada %s (lo fija el CMS).', _legible(nuevo))
+    return nuevo
+
+
+def _legible(segundos: int) -> str:
+    minutos = segundos // 60
+    if minutos < 1:
+        return f'{segundos} s'
+    if minutos < 60:
+        return f'{minutos} min'
+    horas, resto = divmod(minutos, 60)
+    return f'{horas} h' + (f' {resto} min' if resto else '')
 
 
 class SyncClient:
     def __init__(self, api_url: str, api_key: str, media_dir: str):
         self._base = api_url.rstrip('/')
         self._media_dir = media_dir
+        # ruta → (tamaño, mtime_ns, hash) de los archivos ya verificados.
+        self._validos: dict[str, tuple[int, int, str]] = {}
+        self._lock_validos = threading.Lock()
+        self._ultimo_sync: datetime | None = None
         self._session = requests.Session()
         self._session.headers.update({
             'X-Api-Key': api_key,
@@ -36,8 +77,13 @@ class SyncClient:
         pantallas = data.get('pantallas') or []
         primera   = pantallas[0] if pantallas else {}
         prog      = primera.get('programacion_activa')
+        ahora     = datetime.now()
+        anterior  = ('primero desde que arrancó' if self._ultimo_sync is None else
+                     f'anterior {self._ultimo_sync:%d/%m %H:%M:%S}, hace {_legible(int((ahora - self._ultimo_sync).total_seconds()))}')
+        self._ultimo_sync = ahora
         logger.info(
-            'Sync OK — pantalla=%s programacion=%s alerta=%s',
+            'Sync OK (%s) — pantalla=%s programacion=%s alerta=%s',
+            anterior,
             primera.get('nombre', '?'),
             prog.get('id') if prog else None,
             data.get('alerta_emergencia', {}).get('id') if data.get('alerta_emergencia') else None,
@@ -99,34 +145,136 @@ class SyncClient:
             logger.warning('Telemetría por HTTP falló: %s', exc)
             return False
 
+    def ruta_local(self, url_descarga: str) -> str:
+        """Dónde queda en el caché el archivo de esta url_descarga."""
+        return os.path.join(self._media_dir, url_descarga.rstrip('/').split('/')[-1])
+
     def descargar_media(self, url_descarga: str, hash_esperado: str | None = None) -> str:
         """
-        Descarga un archivo de media desde su url_descarga (devuelta por el sync)
-        y lo guarda en MEDIA_DIR. Si ya existe con el hash correcto, no lo descarga.
-        Retorna la ruta local del archivo.
-        """
-        filename = url_descarga.rstrip('/').split('/')[-1]
-        local    = os.path.join(self._media_dir, filename)
+        Devuelve la ruta local de un archivo de media, descargándolo si hace falta.
 
-        if os.path.exists(local) and hash_esperado and self._hash_ok(local, hash_esperado):
-            logger.debug('Media ya cacheada: %s', filename)
+        Si ya está en el caché y es válido (archivo_valido), no se descarga.
+        Si no, se baja a un temporal `.part` y sólo se mueve al nombre final
+        cuando llegó completo y su SHA-256 coincide: una descarga cortada a mitad
+        de camino (corte de red, de luz) o un archivo distinto del esperado NUNCA
+        quedan en el caché con el nombre que usa el player (CP07). El reemplazo es
+        atómico (os.replace), así que el player nunca ve un archivo a medio escribir.
+
+        Lanza excepción si no se pudo obtener un archivo válido.
+        """
+        local = self.ruta_local(url_descarga)
+        nombre = os.path.basename(local)
+
+        if self.archivo_valido(local, hash_esperado):
+            logger.debug('Media ya cacheada: %s', nombre)
             return local
 
-        logger.info('Descargando media: %s', filename)
-
-        resp = self._session.get(url_descarga, timeout=60, stream=True)
-        resp.raise_for_status()
-
+        logger.info('Descargando media: %s', nombre)
         os.makedirs(self._media_dir, exist_ok=True)
-        with open(local, 'wb') as fh:
-            for chunk in resp.iter_content(chunk_size=8192):
-                fh.write(chunk)
+        # Nombre único por hilo: la alerta se resuelve en el hilo MQTT mientras
+        # el principal puede estar haciendo el prefetch del mismo archivo.
+        parcial = f'{local}.{os.getpid()}-{threading.get_ident()}{self.SUFIJO_PARCIAL}'
+        try:
+            # (conexión, lectura): sin CMS, el player no se traba 60 s por archivo.
+            resp = self._session.get(url_descarga, timeout=(5, 60), stream=True)
+            resp.raise_for_status()
+            with open(parcial, 'wb') as fh:
+                for chunk in resp.iter_content(chunk_size=8192):
+                    fh.write(chunk)
+                fh.flush()
+                os.fsync(fh.fileno())  # que un corte de luz no deje el archivo vacío tras el replace
 
-        if hash_esperado and not self._hash_ok(local, hash_esperado):
-            os.remove(local)
-            raise ValueError(f'Hash SHA-256 incorrecto para {filename}')
+            if hash_esperado and not self._hash_ok(parcial, hash_esperado):
+                raise ValueError(f'Hash SHA-256 incorrecto para {nombre}: se descarta la descarga')
+            if os.path.getsize(parcial) == 0:
+                raise ValueError(f'{nombre} llegó vacío: se descarta la descarga')
 
+            os.replace(parcial, local)
+        finally:
+            if os.path.exists(parcial):
+                os.remove(parcial)
+
+        self._recordar_valido(local, hash_esperado)
         return local
+
+    # ── Validación del caché ───────────────────────────────────────────── #
+
+    SUFIJO_PARCIAL = '.part'
+
+    def archivo_valido(self, ruta: str, hash_esperado: str | None) -> bool:
+        """
+        True si el archivo está en el caché y se puede reproducir.
+
+        Con hash: su SHA-256 tiene que coincidir. Así un archivo alterado o
+        dañado en disco (tarjeta SD, corte de luz) no se reproduce aunque no
+        haya red para reemplazarlo. Si no coincide se borra del caché, para que
+        el próximo sync lo vuelva a bajar.
+        Sin hash (el CMS no lo informó): no hay contra qué comparar, se acepta
+        si existe y no está vacío.
+
+        El resultado se memoriza por (tamaño, fecha de modificación): verificar
+        un video de cientos de MB en cada vuelta de la playlist no tiene sentido
+        si el archivo no cambió.
+        """
+        try:
+            st = os.stat(ruta)
+        except OSError:
+            return False
+        if st.st_size == 0:
+            return False
+        if not hash_esperado:
+            return True
+
+        firma = (st.st_size, st.st_mtime_ns, hash_esperado)
+        with self._lock_validos:
+            if self._validos.get(ruta) == firma:
+                return True
+
+        if self._hash_ok(ruta, hash_esperado):
+            with self._lock_validos:
+                self._validos[ruta] = firma
+            return True
+
+        logger.warning('Archivo del caché alterado o incompleto (hash distinto): %s — se descarta.', os.path.basename(ruta))
+        with self._lock_validos:
+            self._validos.pop(ruta, None)
+        try:
+            os.remove(ruta)
+        except OSError:
+            pass
+        return False
+
+    def _recordar_valido(self, ruta: str, hash_esperado: str | None) -> None:
+        if not hash_esperado:
+            return
+        try:
+            st = os.stat(ruta)
+        except OSError:
+            return
+        with self._lock_validos:
+            self._validos[ruta] = (st.st_size, st.st_mtime_ns, hash_esperado)
+
+    def limpiar_parciales(self) -> int:
+        """
+        Borra las descargas a medias que quedaron de una ejecución anterior
+        (el proceso murió o se cortó la luz en plena descarga). Se llama al
+        arrancar, antes de que haya descargas en curso. Devuelve cuántas borró.
+        """
+        borrados = 0
+        try:
+            nombres = os.listdir(self._media_dir)
+        except OSError:
+            return 0
+        for nombre in nombres:
+            if nombre.endswith(self.SUFIJO_PARCIAL):
+                try:
+                    os.remove(os.path.join(self._media_dir, nombre))
+                    borrados += 1
+                except OSError as exc:
+                    logger.warning('No se pudo borrar la descarga a medias %s: %s', nombre, exc)
+        if borrados:
+            logger.info('Se borraron %d descarga(s) a medias de una ejecución anterior.', borrados)
+        return borrados
 
     def prefetch_media(self, sync_data: dict) -> None:
         """

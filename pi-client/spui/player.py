@@ -41,73 +41,10 @@ except ImportError:
     _VLC_IMPORTABLE = False
 
 
-def _buscar_display() -> Optional[str]:
-    """
-    Devuelve el DISPLAY a usar, o None si no hay servidor X corriendo.
-
-    Que python-vlc se pueda importar NO significa que haya una pantalla donde
-    dibujar. Corriendo como servicio de systemd no hay sesión gráfica, y VLC
-    aborta el proceso a nivel nativo ("Error opening terminal") — no es una
-    excepción de Python, así que no se puede atrapar con try/except: hay que
-    comprobarlo ANTES de inicializar VLC.
-
-    Los sockets de X viven en /tmp/.X11-unix/X<n>; su presencia indica que hay
-    un servidor escuchando en ese display.
-    """
-    display = os.environ.get('DISPLAY')
-    if display:
-        return display
-
-    try:
-        sockets = sorted(os.listdir('/tmp/.X11-unix'))
-    except OSError:
-        return None
-
-    for nombre in sockets:
-        if nombre.startswith('X') and nombre[1:].isdigit():
-            return ':' + nombre[1:]
-
-    return None
-
-
-def _buscar_xauthority() -> Optional[str]:
-    """
-    Archivo de autorización de X (cookie), o None si no hace falta buscarlo.
-
-    En Raspberry Pi OS, startx arranca Xorg con '-auth /tmp/serverauth.XXXXXX',
-    con un nombre distinto en cada arranque. Sin esa cookie, un proceso de otra
-    sesión —como el servicio systemd— se conecta al display y recibe
-    "No protocol specified". Por eso se busca en tiempo de ejecución en vez de
-    fijarla en el archivo del servicio.
-    """
-    if os.environ.get('XAUTHORITY'):
-        return os.environ['XAUTHORITY']
-
-    candidatos = []
-
-    # El que esté usando el Xorg en curso (lo más confiable).
-    try:
-        for pid in os.listdir('/proc'):
-            if not pid.isdigit():
-                continue
-            try:
-                with open(f'/proc/{pid}/cmdline', 'rb') as fh:
-                    args = fh.read().decode('utf-8', 'replace').split('\x00')
-            except OSError:
-                continue
-            if args and args[0].endswith('Xorg') and '-auth' in args:
-                candidatos.append(args[args.index('-auth') + 1])
-    except OSError:
-        pass
-
-    # Ubicaciones habituales como respaldo.
-    candidatos.append(os.path.expanduser('~/.Xauthority'))
-
-    for ruta in candidatos:
-        if ruta and os.path.exists(ruta):
-            return ruta
-
-    return None
+# Ubicar el servidor X (DISPLAY y cookie) vive en spui/x11.py: lo usa también
+# la gestión energética para xrandr.
+from spui.x11 import buscar_display as _buscar_display  # noqa: E402
+from spui.x11 import buscar_xauthority as _buscar_xauthority  # noqa: E402
 
 
 def _detectar_video() -> tuple[bool, Optional[str], Optional[str]]:
@@ -180,6 +117,8 @@ class Player:
         self._mostrando_fallback = False
         # Qué playlist está puesta ahora, para no recargarla si no cambió.
         self._firma_actual: Optional[str] = None
+        # Brillo por software (filtro adjust de VLC), 1.0 = sin oscurecer.
+        self._brillo_sw = 1.0
 
         # La detección va acá y no en el import: durante el import todavía no
         # hay logging configurado y estos mensajes se perdían, dejando la
@@ -463,15 +402,14 @@ class Player:
         if tipo not in ('imagen', 'video') or not url:
             return None, None
 
-        nombre = url.rstrip('/').split('/')[-1]
-        local  = os.path.join(self._media_dir, nombre)
-        if os.path.exists(local):
-            return local, tipo
-
         if self._sync_client is None:
+            local = os.path.join(self._media_dir, url.rstrip('/').split('/')[-1])
+            if os.path.exists(local):
+                return local, tipo
             logger.warning('Contenido de alerta no cacheado y sin cliente de sync — se muestra solo el texto.')
             return None, None
 
+        # Verifica el caché (hash incluido) antes de bajar nada: ver _resolver_local.
         try:
             return self._sync_client.descargar_media(url, alerta.get('contenido_hash')), tipo
         except Exception as exc:
@@ -819,6 +757,31 @@ class Player:
         with self._lock:
             return self._alerta is not None
 
+    def ajustar_brillo(self, fraccion: float) -> Optional[str]:
+        """
+        Oscurece la imagen (1.0 = normal, 0.0 = negro). Es el último recurso del
+        horario energético cuando la pantalla no deja controlar su brillo
+        (spui/brillo.py): no baja el consumo, pero anda con cualquier pantalla.
+        Lo que está en pantalla se vuelve a cargar para que tome el brillo nuevo.
+        """
+        nuevo = max(0.0, min(1.0, float(fraccion)))
+        if abs(nuevo - self._brillo_sw) < 0.005:
+            return None
+        logger.info('Brillo por software (VLC): %d%%.', round(nuevo * 100))
+        self._brillo_sw = nuevo
+        self.forzar_recarga()
+        return None
+
+    def forzar_recarga(self) -> None:
+        """
+        Hace que el próximo ciclo vuelva a cargar el contenido aunque no haya
+        cambiado. Se usa al restablecer la señal HDMI tras un apagado por
+        horario (xrandr --auto): la salida se recrea y no hay garantía de que
+        la ventana de VLC siga a pantalla completa.
+        """
+        self._firma_actual = None
+        self._mostrando_fallback = False
+
     def detener(self) -> None:
         self._stop.set()
         self._parar_vlc()
@@ -930,16 +893,20 @@ class Player:
         if not url_descarga:
             return None
         nombre = url_descarga.rstrip('/').split('/')[-1]
-        local  = os.path.join(self._media_dir, nombre)
-        if os.path.exists(local):
-            return local
         if sync_client is None:
+            # Sin cliente (uso directo del Player, pruebas): sólo el caché.
+            local = os.path.join(self._media_dir, nombre)
+            if os.path.exists(local):
+                return local
             logger.warning('Archivo no cacheado y sin red: %s', nombre)
             return None
+        # descargar_media primero verifica el caché (hash incluido) y sólo baja
+        # el archivo si falta o no coincide: así un archivo alterado o a medias
+        # nunca se reproduce, haya red o no.
         try:
             return sync_client.descargar_media(url_descarga, contenido.get('hash_archivo'))
         except Exception as exc:
-            logger.error('Error descargando %s: %s', nombre, exc)
+            logger.error('No hay una copia válida de %s (%s): se saltea.', nombre, exc)
             return None
 
     # ── VLC wrappers ──────────────────────────────────────────────────────
@@ -958,6 +925,14 @@ class Player:
         imagen es normal y el fotograma queda visible; en un vídeo significa
         que se cortó. Ver el detalle en la comprobación de estado, más abajo.
         """
+        # Brillo por software (pantallas sin DDC/CI ni backlight, ver
+        # spui/brillo.py): el filtro adjust va en el medio, ANTES de reproducir.
+        # Una imagen fija se decodifica una sola vez; cambiar el filtro con el
+        # fotograma ya en pantalla no la oscurecería.
+        if self._brillo_sw < 0.995:
+            media.add_option(':video-filter=adjust')
+            media.add_option(f':brightness={self._brillo_sw:.2f}')
+
         self._media_player.set_media(media)
 
         # play() devuelve -1 si no pudo arrancar. Ignorar ese valor era la razón

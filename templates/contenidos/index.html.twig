@@ -38,7 +38,9 @@
 
 <div id="spui-table-body">
 <div class="unraf-card">
-    <div class="unraf-table-responsive">
+    {# Se vuelve a pedir cuando llega un aviso de conexión por MQTT (conexion-vivo.js),
+       no por intervalo: destraba o traba los botones si un reproductor vuelve o se cae. #}
+    <div class="unraf-table-responsive" id="spui-tabla-conexion" data-spui-refresh="push">
         <table class="unraf-table unraf-table-striped w-100 spui-tabla-cards">
             <thead>
                 <tr>
@@ -90,19 +92,24 @@
                                 <img src="{{ asset('unraf-ui/icons/eye.svg') }}" class="spui-action-icon" alt=""> Ver
                             </button>
 
-                            <button type="button" class="unraf-btn spui-btn-editar unraf-btn-sm"
+                            <button type="button" class="unraf-btn spui-btn-editar unraf-btn-sm {{ bloqueo.clase(motivo) }}"
                                     data-spui-form="{{ path('spui_cms_contenidos_editar', {id: c.id}) }}"
                                     data-spui-title="Editar: {{ c.titulo }}"
-                                    title="Editar">
+                                    {% if motivo %}{{ bloqueo.attrs(motivo) }}{% else %}title="Editar"{% endif %}>
                                 <img src="{{ asset('unraf-ui/icons/pencil.svg') }}" class="spui-action-icon" alt=""> Editar
                             </button>
 
                             {% if c.tipo.value == 'cronograma' %}
-                                <a href="{{ path('spui_cms_cronograma_builder', {id: c.id}) }}"
-                                   class="unraf-btn spui-btn-items unraf-btn-sm"
-                                   title="Editor de ítems del cronograma">
+                                {# Abre el listado de ítems en un modal (agregar/editar/eliminar
+                                   encima). Se puede abrir siempre: lo que se bloquea con un
+                                   reproductor caído son las acciones de adentro. #}
+                                <button type="button" class="unraf-btn spui-btn-items unraf-btn-sm"
+                                        data-spui-form="{{ path('spui_cms_cronograma_items', {id: c.id}) }}"
+                                        data-spui-title="Ítems de «{{ c.titulo }}»"
+                                        data-spui-size="modal-lg"
+                                        title="Ítems del cronograma">
                                     <img src="{{ asset('unraf-ui/icons/calendar-dots.svg') }}" class="spui-action-icon" alt=""> Ítems
-                                </a>
+                                </button>
                             {% endif %}
 
                             {% if c.estado.value != 'publicado' %}
@@ -141,12 +148,12 @@
                                 </button>
                             {% endif %}
 
-                            <button type="button" class="unraf-btn spui-btn-eliminar unraf-btn-sm"
+                            <button type="button" class="unraf-btn spui-btn-eliminar unraf-btn-sm {{ bloqueo.clase(motivo) }}"
                                     data-spui-action="{{ path('spui_cms_contenidos_eliminar', {id: c.id}) }}"
                                     data-spui-title="Eliminar contenido"
                                     data-spui-message="¿Eliminar «{{ c.titulo }}»? Esta acción no se puede deshacer."
                                     data-spui-variant="eliminar"
-                                    title="Eliminar">
+                                    {% if motivo %}{{ bloqueo.attrs(motivo) }}{% else %}title="Eliminar"{% endif %}>
                                 <img src="{{ asset('unraf-ui/icons/trash.svg') }}" class="spui-action-icon" alt=""> Eliminar
                             </button>
 
@@ -163,13 +170,14 @@
 </div>
 {% endblock %}
 
-{# Contador de escaneos de un QR en vivo. Sólo en esta página: es la única con
-   el modal Ver de un contenido QR, así que el resto del CMS no carga mqtt.js.
+{# Contador de escaneos de un QR en vivo (el modal Ver de un contenido QR) y
+   avisos de conexión de reproductores para destrabar los botones del listado.
 
    Por CDN igual que Bootstrap y SortableJS en base.html.twig. Es el bundle de
-   navegador de mqtt.js (UMD): define el global `mqtt` que usa el script de
-   abajo, y por eso va primero. #}
+   navegador de mqtt.js (UMD): define el global `mqtt` que usan los scripts de
+   abajo, y por eso va primero — y una sola vez, de ahí incluir_mqtt: false. #}
 {% block javascripts %}
     <script src="https://cdn.jsdelivr.net/npm/mqtt@5.10.1/dist/mqtt.min.js"></script>
     <script src="{{ asset('spui/js/core/qr-escaneos-vivo.js') }}"></script>
+    {{ include('@SPUI/_partials/conexion_vivo.html.twig', {incluir_mqtt: false}) }}
 {% endblock %}

@@ -4,7 +4,7 @@
 
 > ## ⚠️ Estado de este documento
 >
-> Se escribió cuando **no había hardware** y el plan era emular el nodo en una máquina virtual x86. **Ahora hay una Raspberry Pi real**, así que:
+> Se escribió cuando **no había hardware** y el plan era emular el reproductor en una máquina virtual x86. **Ahora hay una Raspberry Pi real**, así que:
 >
 > - **§2 y §5 pasos 1-3 (VirtualBox, imagen x86, crear la VM) ya no aplican.** Para instalar la Pi real, seguir **`09_instalacion_raspberry.md`**.
 > - **Lo que sigue plenamente vigente:** §3 (estado del servidor), §4 (la IP del host cambia), §5 pasos 4, 5 y 7 (firewall, datos del CMS, daemon de telemetría), §6 (cómo verificar) y §8 (antes de la defensa).
@@ -28,7 +28,7 @@ El CMS y la API están terminados y probados. **Lo que falta es poner el reprodu
 | Cliente Python (`pi-client/`) | ✅ Escrito, auditado y corregido (ver `06_funcionamiento_del_sistema.md` §10.1) |
 | Raspberry Pi física | ✅ Disponible — instalar con `09_instalacion_raspberry.md` |
 | ~~VirtualBox~~ | Ya no se necesita: hay hardware real |
-| Prueba end-to-end | ❌ Pendiente |
+| Prueba end-to-end | ✅ Hecha con la Pi real (agosto 2026) — hallazgos en `README.md` §3.2 |
 
 ---
 
@@ -51,14 +51,18 @@ Apache (wampapache64)   RUNNING, escuchando en 0.0.0.0:80
 Mosquitto               RUNNING, escuchando en 0.0.0.0:1883
 ```
 
-Mosquitto tiene la configuración necesaria para aceptar conexiones externas, en `D:\Program Files\Mosquitto\mosquitto.conf`:
+La configuración del broker está versionada en `config/mosquitto/mosquitto.conf` y se copia al directorio de instalación de Mosquitto. Hoy (tareas 1.0.a-e, ver §8):
 
 ```
-listener 1883 0.0.0.0
-allow_anonymous true
+listener 1883 0.0.0.0       ← sin TLS, abierto hasta cerrar la tarea 1.0.f
+listener 8883 0.0.0.0       ← TLS
+listener 9001 0.0.0.0       ← WebSocket, para el contador de escaneos de QR del navegador
+allow_anonymous false       ← usuarios y ACL con el plugin Dynamic Security
 ```
 
-> ⚠️ **Esta configuración se pierde al reinstalar Mosquitto.** Ya pasó dos veces. Si las alertas o la telemetría dejan de funcionar después de reinstalar algo, revisar esto primero.
+> **Historia:** cuando se escribió este documento el broker aceptaba conexiones anónimas (`allow_anonymous true`). Ya no.
+>
+> ⚠️ **La copia del directorio de instalación se pierde al reinstalar Mosquitto.** Ya pasó dos veces. Si las alertas o la telemetría dejan de funcionar después de reinstalar algo, revisar esto primero — procedimiento en `config/mosquitto/README.md`, *Recuperación ante reinstalación de Mosquitto*.
 
 ### ⚠️ Configurado pero apuntando a la subred equivocada
 
@@ -84,7 +88,7 @@ Con Bridged, la VM recibe una IP de la red WiFi (`10.0.x.x`), que **no coincide 
 
 El host toma su IP por DHCP de la red WiFi, y **ya cambió**: era `10.0.12.82` cuando se planificó esto, hoy es `10.0.24.103`. La subred es `10.0.0.0/19` (una red institucional grande, con unos 8000 hosts posibles).
 
-Esto importa porque el nodo apunta al CMS por `SPUI_API_URL`. Si ahí va una IP y el host cambia de dirección, **el nodo deja de sincronizar sin ningún aviso claro**.
+Esto importa porque el reproductor apunta al CMS por `SPUI_API_URL`. Si ahí va una IP y el host cambia de dirección, **el reproductor deja de sincronizar sin ningún aviso claro**.
 
 Tres formas de resolverlo, de menos a más definitiva:
 
@@ -141,6 +145,10 @@ netsh advfirewall firewall add rule name="SPUI - Apache desde Pi" dir=in action=
 netsh advfirewall firewall add rule name="SPUI - Mosquitto desde Pi" dir=in action=allow protocol=TCP localport=1883 remoteip=<ip_de_la_pi>
 ```
 
+Si la Pi se conecta al broker por TLS (`MQTT_TLS=true`), la regla de Mosquitto va con `localport=8883` en lugar de (o además de) `1883`.
+
+> `config/servicios/abrir-firewall-desarrollo.ps1` es otra cosa: abre el puerto 80 a **toda la subred** para probar el escaneo de QR desde un celular. No reemplaza estas reglas por IP y conviene quitarlo (`-Quitar`) al terminar de probar.
+
 **c) Comprobar** desde el reproductor:
 
 ```bash
@@ -182,10 +190,12 @@ SPUI_API_URL=http://intranet/api/spui
 SPUI_API_KEY=<la clave copiada en el paso 5>
 MQTT_HOST=<ip_del_host>
 MQTT_PORT=1883
+SPUI_MQTT_SALT=<el mismo SPUI_MQTT_SALT que tiene el CMS>
 ```
 
 ⚠️ `SPUI_API_URL` termina en `/api/spui`, **sin** `/reproductores`.
 ⚠️ `MQTT_HOST` es la IP del servidor donde corre Mosquitto, **no** `127.0.0.1` (eso apuntaría a la propia Pi).
+⚠️ Sin `SPUI_MQTT_SALT` idéntico al del CMS, el broker rechaza a la Pi: sincroniza por HTTP pero no recibe alertas al instante ni publica telemetría (ver `README.md` §3, punto 16).
 
 Arrancar y mirar:
 
@@ -196,14 +206,21 @@ journalctl -u spui -f
 
 ### Paso 7 — Levantar el consumidor de telemetría
 
-En el host, en una consola aparte:
+En el host, instalarlo como servicio de Windows (PowerShell **como administrador**, requiere NSSM):
+
+```powershell
+cd c:\wamp64\www\intranet\apps\spui\config\servicios
+.\instalar-servicio-telemetria.ps1
+```
+
+Para una prueba rápida sin instalar nada, también se puede correr en una consola aparte:
 
 ```bash
 cd c:\wamp64\www\intranet
 php bin/console spui:mqtt:subscribe --id=spui
 ```
 
-**Sin este proceso la telemetría no llega a la base**, aunque la Pi la esté publicando. El flag `--id=spui` es obligatorio.
+**Sin este proceso la telemetría no llega a la base**, aunque la Pi la esté publicando, y tampoco corren el mantenimiento (marcar reproductores caídos, desactivar alertas vencidas) ni el rollup horario, que viven dentro del mismo proceso. El flag `--id=spui` es obligatorio.
 
 ---
 

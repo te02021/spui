@@ -13,14 +13,14 @@
         {{ form_label(form.nombre) }}
         {{ form_widget(form.nombre) }}
         {% for e in form.nombre.vars.errors %}
-            <p class="text-danger small mt-1">{{ e.message }}</p>
+            <p class="spui-campo-error">{{ e.message }}</p>
         {% endfor %}
     </div>
     <div class="col-12 col-sm">
         {{ form_label(form.aula) }}
         {{ form_widget(form.aula) }}
         {% for e in form.aula.vars.errors %}
-            <p class="text-danger small mt-1">{{ e.message }}</p>
+            <p class="spui-campo-error">{{ e.message }}</p>
         {% endfor %}
     </div>
 </div>
@@ -30,21 +30,25 @@
         {{ form_label(form.horaInicio) }}
         {{ form_widget(form.horaInicio) }}
         {% for e in form.horaInicio.vars.errors %}
-            <p class="text-danger small mt-1">{{ e.message }}</p>
+            <p class="spui-campo-error">{{ e.message }}</p>
         {% endfor %}
     </div>
     <div class="col-6 spui-hora-field">
         {{ form_label(form.horaFin) }}
-        {{ form_widget(form.horaFin) }}
+        {{ form_widget(form.horaFin, {attr: {
+            'data-spui-validar-posterior': '#' ~ form.horaInicio.vars.id,
+            'data-spui-validar-mensaje': constant('SPUI\\Controller\\Cms\\CronogramaCmsController::MSG_FIN_POSTERIOR'),
+        }}) }}
         {% for e in form.horaFin.vars.errors %}
-            <p class="text-danger small mt-1">{{ e.message }}</p>
+            <p class="spui-campo-error">{{ e.message }}</p>
         {% endfor %}
     </div>
 </div>
 
-<div class="mb-3">
+<div class="mb-3" data-spui-campo>
     {{ form_label(form.diasSemana) }}
-    <div class="spui-dias-switches mt-2">
+    <div class="spui-dias-switches mt-2{{ form.diasSemana.vars.errors|length ? ' is-invalid' }}"
+         data-spui-requiere-alguno="{{ constant('SPUI\\Form\\ProgramacionType::MSG_DIAS_REQUERIDOS') }}">
         {% for child in form.diasSemana %}
             <div class="spui-dia-switch">
                 {{ form_label(child, null, {'label_attr': {'class': 'spui-dia-label'}}) }}
@@ -54,6 +58,9 @@
             </div>
         {% endfor %}
     </div>
+    {% for e in form.diasSemana.vars.errors %}
+        <p class="spui-campo-error">{{ e.message }}</p>
+    {% endfor %}
 </div>
 
 <div class="row g-3 mb-4 align-items-end">
@@ -61,7 +68,7 @@
         {{ form_label(form.orden) }}
         {{ form_widget(form.orden) }}
         {% for e in form.orden.vars.errors %}
-            <p class="text-danger small mt-1">{{ e.message }}</p>
+            <p class="spui-campo-error">{{ e.message }}</p>
         {% endfor %}
     </div>
     <div class="col-auto d-flex flex-column pb-1">
@@ -70,7 +77,7 @@
             <div class="form-switch m-0">
                 {{ form_widget(form.activo, {'attr': {'class': 'form-check-input spui-switch-input', 'role': 'switch', 'data-spui-switch': '1', 'data-switch-on': 'Activo', 'data-switch-off': 'Inactivo'}}) }}
             </div>
-            <span class="spui-switch-status on" id="{{ swActivoId }}_lbl">Activo</span>
+            <span class="spui-switch-status {{ form.activo.vars.checked ? 'on' : 'off' }}" id="{{ swActivoId }}_lbl">{{ form.activo.vars.checked ? 'Activo' : 'Inactivo' }}</span>
         </div>
     </div>
 </div>
