@@ -13,11 +13,15 @@
 !CONTRIBUTING.md
 !pi-client/README.md
 !.github/PULL_REQUEST_TEMPLATE.md
+# Informes de las pruebas de carga (tools/simulador): evidencia para el Informe.
+!docs/pruebas/*.md
 
 # Suite de verificación: las capturas se regeneran en cada corrida y la
 # sesión de prueba es local (tools/verificacion/sesion.php).
 tools/verificacion/capturas/
 tools/verificacion/.sesion
+# Estado de una corrida del simulador: tiene las API keys de los reproductores [SIM].
+tools/simulador/.sim/
 
 # TLS del broker (tarea 1.0.c-f): las claves privadas nunca se versionan,
 # aunque el resto (CA pública, cert público, el script que las genera) sí.

@@ -1,0 +1,2636 @@
+{
+ "escenario": "rafaga",
+ "inicio": "2026-10-13T09:57:11.577720",
+ "fin": "2026-10-13T09:59:50.703579",
+ "commit": "cd009cd",
+ "n": 50,
+ "parametros": {
+  "escenario": "todo",
+  "n": null,
+  "minutos": 10,
+  "intervalo_sync": 60,
+  "repeticiones": 5,
+  "timeout_alerta": 30,
+  "api": "http://intranet/api/spui",
+  "mqtt_host": "127.0.0.1",
+  "mqtt_port": 1883,
+  "conservar": false
+ },
+ "preparacion": {
+  "creados": 50,
+  "credenciales_mqtt_fallidas": 0,
+  "playlist": {
+   "id": 6,
+   "nombre": "Playlist prueba",
+   "items": 1
+  },
+  "estado": "C:\\wamp64\\www\\intranet\\apps\\spui\\tools\\simulador\\.sim\\estado.json"
+ },
+ "resultado": {
+  "rondas": [
+   {
+    "ronda": 1,
+    "hasta_el_ultimo_ms": 3790.1157999876887,
+    "ok": 50,
+    "fallidos": 0,
+    "p50_ms": 2533.991699980106,
+    "p95_ms": 3694.302260054974,
+    "max_ms": 3773.3634000178427
+   },
+   {
+    "ronda": 2,
+    "hasta_el_ultimo_ms": 2456.1776000773534,
+    "ok": 50,
+    "fallidos": 0,
+    "p50_ms": 1906.9683499983512,
+    "p95_ms": 2416.057349985931,
+    "max_ms": 2422.5215000333264
+   },
+   {
+    "ronda": 3,
+    "hasta_el_ultimo_ms": 2050.465799984522,
+    "ok": 50,
+    "fallidos": 0,
+    "p50_ms": 994.257599930279,
+    "p95_ms": 2012.0619099820033,
+    "max_ms": 2026.7916999291629
+   },
+   {
+    "ronda": 4,
+    "hasta_el_ultimo_ms": 2085.777100059204,
+    "ok": 50,
+    "fallidos": 0,
+    "p50_ms": 1003.8168499595486,
+    "p95_ms": 2004.1746849718038,
+    "max_ms": 2064.993300009519
+   },
+   {
+    "ronda": 5,
+    "hasta_el_ultimo_ms": 2016.449199989438,
+    "ok": 50,
+    "fallidos": 0,
+    "p50_ms": 982.3046500096098,
+    "p95_ms": 1957.5015450478531,
+    "max_ms": 1985.8437000075355
+   }
+  ]
+ },
+ "http_por_endpoint": [
+  {
+   "endpoint": "/reproductores/sync",
+   "pedidos": 250,
+   "errores": 0,
+   "error_pct": 0.0,
+   "http_429": 0,
+   "p50_ms": 1790.5886500375345,
+   "p95_ms": 3530.9520450653513,
+   "p99_ms": 3693.5269970144145,
+   "max_ms": 3773.289799923077,
+   "bytes_resp_prom": 692.68,
+   "estados": {
+    "200": 250
+   }
+  }
+ ],
+ "servidor": {
+  "muestras": 28,
+  "cpu_total_prom": 10.110714285714286,
+  "cpu_total_max": 42.9,
+  "ram_total_max_pct": 74.0,
+  "procesos": {
+   "Apache": {
+    "cpu_prom": 0.18928571428571428,
+    "cpu_max": 2.1,
+    "ram_max_mb": 78.1484375
+   },
+   "Mosquitto": {
+    "cpu_prom": 0.04285714285714286,
+    "cpu_max": 0.3,
+    "ram_max_mb": 11.94140625
+   },
+   "MySQL": {
+    "cpu_prom": 1.05,
+    "cpu_max": 6.2,
+    "ram_max_mb": 220.203125
+   },
+   "PHP": {
+    "cpu_prom": 19.94642857142857,
+    "cpu_max": 198.99999999999997,
+    "ram_max_mb": 1591.91796875
+   }
+  }
+ },
+ "integridad": {
+  "reproductores": 50,
+  "telemetria_por_reproductor": [],
+  "reproductores_sin_sync_en_la_corrida": 0,
+  "reproductores_sin_heartbeat_en_la_corrida": 50,
+  "telemetria_huerfana_en_toda_la_base": 0,
+  "telemetria_con_valores_fuera_de_rango": 0,
+  "reproductores_con_diagnostico": 0,
+  "errores_del_cms_en_el_log": []
+ },
+ "veredictos": [],
+ "pedidos": [
+  {
+   "t": 1791896233.357557,
+   "rep": 127,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 374.5597000233829,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896233.3572354,
+   "rep": 125,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 376.6353001119569,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896233.3579373,
+   "rep": 133,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 377.7514999965206,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896233.3602245,
+   "rep": 147,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 439.39379998482764,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896233.3596344,
+   "rep": 141,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 1483.5207998985425,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896233.3577857,
+   "rep": 117,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 1499.716299935244,
+   "bytes_resp": 691,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896233.3578622,
+   "rep": 116,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 1555.2930999547243,
+   "bytes_resp": 691,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896233.3623831,
+   "rep": 161,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 1583.5107000311837,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896233.3595228,
+   "rep": 140,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 1612.4618999892846,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896233.3604698,
+   "rep": 150,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 1618.6893000267446,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896233.3576372,
+   "rep": 130,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 1643.0969000793993,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896233.359281,
+   "rep": 122,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 1648.3745999867097,
+   "bytes_resp": 691,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896233.3607054,
+   "rep": 146,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 1664.533199975267,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896233.36177,
+   "rep": 163,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 1670.1784000033513,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896233.3615158,
+   "rep": 157,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 1677.6018999516964,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896233.3612833,
+   "rep": 151,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 1689.4877000013366,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896233.357048,
+   "rep": 118,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 1696.246700012125,
+   "bytes_resp": 691,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896233.3610542,
+   "rep": 155,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 1723.099699942395,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896233.3583133,
+   "rep": 132,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 2421.517499955371,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896233.3577068,
+   "rep": 128,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 2435.782999964431,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896233.3586884,
+   "rep": 136,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 2437.41570005659,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896233.359886,
+   "rep": 143,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 2452.4940999690443,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896233.361402,
+   "rep": 154,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 2473.4490000410005,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896233.3585644,
+   "rep": 135,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 2512.5365999992937,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896233.3590539,
+   "rep": 121,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 2522.174699930474,
+   "bytes_resp": 691,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896233.357315,
+   "rep": 126,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 2545.6292000599205,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896233.3574002,
+   "rep": 129,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 2546.4549999451265,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896233.3568754,
+   "rep": 165,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 2631.6179999848828,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896233.3588235,
+   "rep": 138,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 2678.630999987945,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896233.3597655,
+   "rep": 142,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 2679.05699997209,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896233.3611698,
+   "rep": 156,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 2682.9617000184953,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896233.360821,
+   "rep": 149,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 2709.7631000215188,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896233.3580108,
+   "rep": 134,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 2713.5901999427006,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896233.3594012,
+   "rep": 139,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 2727.2546000313014,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896233.358435,
+   "rep": 137,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 2753.6167999496683,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896233.3616378,
+   "rep": 158,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 3446.1649999720976,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896233.361887,
+   "rep": 164,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 3502.288300078362,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896233.358145,
+   "rep": 131,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 3554.404200054705,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896233.3621385,
+   "rep": 159,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 3605.003700009547,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896233.3609393,
+   "rep": 153,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 3623.6641000723466,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896233.3574739,
+   "rep": 124,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 3628.1747999601066,
+   "bytes_resp": 692,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896233.3601086,
+   "rep": 145,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 3642.502099974081,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896233.3591685,
+   "rep": 120,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 3647.1691000042483,
+   "bytes_resp": 691,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896233.3603363,
+   "rep": 148,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 3662.3194999992847,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896233.3589368,
+   "rep": 123,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 3664.6820000605658,
+   "bytes_resp": 692,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896233.3571434,
+   "rep": 119,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 3679.5574999414384,
+   "bytes_resp": 691,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896233.3599975,
+   "rep": 144,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 3684.4822999555618,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896233.3605852,
+   "rep": 152,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 3702.2170000709593,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896233.3620176,
+   "rep": 160,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 3722.150499932468,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896233.3622625,
+   "rep": 162,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 3773.289799923077,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896272.1488264,
+   "rep": 164,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 527.2657000459731,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896272.1725264,
+   "rep": 149,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 523.4159999527037,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896272.163157,
+   "rep": 138,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 551.808699965477,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896272.1432161,
+   "rep": 165,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 580.9785999590531,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896272.1528387,
+   "rep": 146,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 573.1223999755457,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896272.1525617,
+   "rep": 141,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 578.6975999362767,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896272.1483471,
+   "rep": 161,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 587.7442000200972,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896272.152946,
+   "rep": 154,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 596.4672999689355,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896272.1446545,
+   "rep": 130,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 617.5064999843016,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896272.1524823,
+   "rep": 126,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 610.3919999441132,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896272.1540816,
+   "rep": 121,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 612.1039000572637,
+   "bytes_resp": 691,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896272.155611,
+   "rep": 152,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 625.8355000754818,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896272.1528902,
+   "rep": 122,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 629.3508000671864,
+   "bytes_resp": 691,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896272.1447291,
+   "rep": 135,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 638.0162000423297,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896272.144797,
+   "rep": 133,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 638.4604999329895,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896272.1462498,
+   "rep": 148,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 637.4746999936178,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896272.1450016,
+   "rep": 140,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 675.8923000888899,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896272.1461232,
+   "rep": 147,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 1616.7957000434399,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896272.1474838,
+   "rep": 159,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 1688.2309999782592,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896272.1541939,
+   "rep": 156,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 1754.7178999520838,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896272.1542559,
+   "rep": 150,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 1797.6654999656603,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896272.1604354,
+   "rep": 136,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 1793.3014000300318,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896272.1540205,
+   "rep": 132,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 1831.1962999869138,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896272.1555161,
+   "rep": 151,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 1860.208399943076,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896272.1559093,
+   "rep": 160,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 1881.4291999442503,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896272.1473072,
+   "rep": 153,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 1932.270499994047,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896272.1458461,
+   "rep": 131,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 1943.528400035575,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896272.1442697,
+   "rep": 127,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 1996.679799980484,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896272.1496103,
+   "rep": 124,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 2027.3270999314263,
+   "bytes_resp": 692,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896272.144875,
+   "rep": 134,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 2032.8349999617785,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896272.144934,
+   "rep": 139,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 2038.9127999078482,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896272.1497455,
+   "rep": 162,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 2040.5987000558525,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896272.1529968,
+   "rep": 158,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 2066.3988000014797,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896272.1482277,
+   "rep": 123,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 2076.287499978207,
+   "bytes_resp": 692,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896272.1485882,
+   "rep": 118,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 2077.3767000064254,
+   "bytes_resp": 691,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896272.145979,
+   "rep": 125,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 2099.5732001028955,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896272.1656973,
+   "rep": 128,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 2095.37829994224,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896272.15374,
+   "rep": 157,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 2108.362299972214,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896272.1557105,
+   "rep": 129,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 2116.060300031677,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896272.14558,
+   "rep": 143,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 2129.1626000311226,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896272.1541386,
+   "rep": 163,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 2125.470499973744,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896272.1680565,
+   "rep": 144,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 2117.7090000128374,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896272.1632943,
+   "rep": 155,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 2147.1551000140607,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896272.1433487,
+   "rep": 116,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 2170.732200029306,
+   "bytes_resp": 691,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896272.149415,
+   "rep": 120,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 2407.0120999822393,
+   "bytes_resp": 691,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896272.1491783,
+   "rep": 117,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 2414.475500001572,
+   "bytes_resp": 691,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896272.1457205,
+   "rep": 142,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 2422.403500066139,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896272.156016,
+   "rep": 137,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 2417.099399957806,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896272.1532667,
+   "rep": 119,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 2421.608099946752,
+   "bytes_resp": 691,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896272.1947126,
+   "rep": 145,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 2397.665899945423,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896309.6344788,
+   "rep": 148,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 651.0950999800116,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896309.631632,
+   "rep": 130,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 735.1827999809757,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896309.6351821,
+   "rep": 152,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 740.5769999604672,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896309.6311517,
+   "rep": 122,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 812.7269999822602,
+   "bytes_resp": 691,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896309.6368682,
+   "rep": 162,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 815.8376000355929,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896309.6286051,
+   "rep": 165,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 833.5269999224693,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896309.6340954,
+   "rep": 145,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 841.804499970749,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896309.6334257,
+   "rep": 143,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 851.9449000013992,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896309.630504,
+   "rep": 119,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 887.3100999044254,
+   "bytes_resp": 691,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896309.6329348,
+   "rep": 139,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 894.3238999927416,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896309.6322868,
+   "rep": 136,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 897.8796999435872,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896309.632768,
+   "rep": 140,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 899.1898000240326,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896309.6321163,
+   "rep": 135,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 921.2244000518695,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896309.6350012,
+   "rep": 151,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 925.5358000518754,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896309.6313188,
+   "rep": 124,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 937.0907000266016,
+   "bytes_resp": 692,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896309.629522,
+   "rep": 127,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 946.3279999326915,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896309.6293612,
+   "rep": 123,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 951.1523999972269,
+   "bytes_resp": 692,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896309.6301699,
+   "rep": 120,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 951.0105000808835,
+   "bytes_resp": 691,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896309.6363628,
+   "rep": 159,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 949.5385000482202,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896309.6358516,
+   "rep": 156,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 960.7855000067502,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896309.6343002,
+   "rep": 147,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 963.1141000427306,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896309.6309814,
+   "rep": 132,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 970.2270000707358,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896309.631785,
+   "rep": 133,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 970.2067000325769,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896309.6360126,
+   "rep": 157,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 966.6947000660002,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896309.6356823,
+   "rep": 155,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 992.7111000288278,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896309.6296778,
+   "rep": 128,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 999.2130999453366,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896309.6336079,
+   "rep": 144,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 995.6531999632716,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896309.635346,
+   "rep": 153,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 1786.8344000307843,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896309.6361825,
+   "rep": 158,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 1835.5640000663698,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896309.6346567,
+   "rep": 149,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 1863.4128000121564,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896309.6324484,
+   "rep": 137,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 1877.5834999978542,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896309.6314678,
+   "rep": 129,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 1901.140599977225,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896309.630817,
+   "rep": 121,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 1920.7975000608712,
+   "bytes_resp": 691,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896309.6289618,
+   "rep": 116,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 1925.6271999329329,
+   "bytes_resp": 691,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896309.631951,
+   "rep": 134,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 1932.9516999423504,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896309.62917,
+   "rep": 117,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 1937.3058000346646,
+   "bytes_resp": 691,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896309.6306531,
+   "rep": 126,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 1953.7661999929696,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896309.636685,
+   "rep": 161,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 1957.1557000745088,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896309.6365223,
+   "rep": 160,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 1961.2791000399739,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896309.6332686,
+   "rep": 142,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 1971.4384999824688,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896309.6303294,
+   "rep": 118,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 1980.232400004752,
+   "bytes_resp": 691,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896309.630015,
+   "rep": 131,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 1993.9447999931872,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896309.6326084,
+   "rep": 138,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 1998.5365000320598,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896309.6331067,
+   "rep": 141,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 1998.7578000873327,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896309.6337583,
+   "rep": 146,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 1999.8178000096232,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896309.637023,
+   "rep": 164,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 1998.612800030969,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896309.6371784,
+   "rep": 163,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 2000.8173000533134,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896309.6348279,
+   "rep": 150,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 2021.0598999401554,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896309.6298404,
+   "rep": 125,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 2026.709400000982,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896309.635524,
+   "rep": 154,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 2026.081999996677,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896346.682876,
+   "rep": 139,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 646.3849999709055,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896346.6834686,
+   "rep": 142,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 843.6717999866232,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896346.6822143,
+   "rep": 136,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 858.253600075841,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896346.686172,
+   "rep": 161,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 855.0553000532091,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896346.6812425,
+   "rep": 121,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 873.9471000153571,
+   "bytes_resp": 691,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896346.68466,
+   "rep": 152,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 871.3389000622556,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896346.6815734,
+   "rep": 122,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 875.0808000331745,
+   "bytes_resp": 691,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896346.6797776,
+   "rep": 129,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 881.4522000029683,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896346.68391,
+   "rep": 148,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 896.6645000036806,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896346.6827202,
+   "rep": 138,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 904.025400057435,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896346.6836047,
+   "rep": 146,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 918.0056999903172,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896346.6801064,
+   "rep": 119,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 931.1409000074491,
+   "bytes_resp": 691,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896346.6833212,
+   "rep": 141,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 931.6996999550611,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896346.6852574,
+   "rep": 154,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 935.2694000117481,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896346.68028,
+   "rep": 117,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 941.0799000179395,
+   "bytes_resp": 691,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896346.6858647,
+   "rep": 158,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 943.3487999485806,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896346.6855605,
+   "rep": 157,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 960.4771001031622,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896346.6849554,
+   "rep": 153,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 965.1413999963552,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896346.6860158,
+   "rep": 160,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 964.8324999725446,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896346.6842184,
+   "rep": 145,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 967.2361999982968,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896346.6823826,
+   "rep": 137,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 972.0287000527605,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896346.679618,
+   "rep": 126,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 975.5096000153571,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896346.6799502,
+   "rep": 130,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 979.7486000461504,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896346.6794572,
+   "rep": 125,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 982.0403999183327,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896346.6843772,
+   "rep": 149,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 991.3000999949872,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896346.678763,
+   "rep": 165,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 1016.5599000174552,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896346.6804407,
+   "rep": 118,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 1016.0456000594422,
+   "bytes_resp": 691,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896346.6854074,
+   "rep": 156,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 1657.6297000283375,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896346.6825516,
+   "rep": 132,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 1792.7779000019655,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896346.684809,
+   "rep": 151,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 1806.2248999485746,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896346.6840625,
+   "rep": 147,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 1808.4431000752375,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896346.6837487,
+   "rep": 144,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 1810.758400009945,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896346.6809106,
+   "rep": 133,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 1825.070699909702,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896346.6810744,
+   "rep": 128,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 1825.7068999810144,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896346.6792874,
+   "rep": 120,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 1828.7111999234185,
+   "bytes_resp": 691,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896346.684517,
+   "rep": 150,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 1827.4243000196293,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896346.6817253,
+   "rep": 131,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 1867.410400067456,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896346.8705125,
+   "rep": 163,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 1699.4853999931365,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896346.6820574,
+   "rep": 134,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 1926.7875999212265,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896346.6790988,
+   "rep": 116,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 1930.3878999780864,
+   "bytes_resp": 691,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896346.6806011,
+   "rep": 127,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 1929.5032999943942,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896346.6863241,
+   "rep": 162,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 1987.8214999334887,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896346.685105,
+   "rep": 155,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 1989.8009999888018,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896346.6866016,
+   "rep": 164,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 1989.6563000511378,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896346.6830237,
+   "rep": 140,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 1994.625800056383,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896346.681887,
+   "rep": 135,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 1996.9125000061467,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896346.6807625,
+   "rep": 123,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 2003.9088000776246,
+   "bytes_resp": 692,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896346.685712,
+   "rep": 159,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 2004.111299989745,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896346.6813977,
+   "rep": 124,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 2032.4955999385566,
+   "bytes_resp": 692,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896346.6831636,
+   "rep": 143,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 2064.917100011371,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896383.7792575,
+   "rep": 160,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 631.3288999954239,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896383.7800043,
+   "rep": 146,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 734.3897999962792,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896383.766213,
+   "rep": 116,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 750.0791000202298,
+   "bytes_resp": 691,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896383.7675338,
+   "rep": 118,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 755.9622999979183,
+   "bytes_resp": 691,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896383.7694767,
+   "rep": 137,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 788.3420999860391,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896383.7699668,
+   "rep": 139,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 824.3605999741703,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896383.7693038,
+   "rep": 135,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 825.8293999824673,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896383.7801511,
+   "rep": 156,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 815.6579000642523,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896383.779404,
+   "rep": 163,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 825.2775000873953,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896383.7706337,
+   "rep": 143,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 840.7878000289202,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896383.7807522,
+   "rep": 147,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 866.3649000227451,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896383.767834,
+   "rep": 134,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 884.712400031276,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896383.7806048,
+   "rep": 151,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 875.3777999663725,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896383.7683387,
+   "rep": 127,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 910.3719999548048,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896383.7787852,
+   "rep": 164,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 910.2200999623165,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896383.7670758,
+   "rep": 129,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 939.925599959679,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896383.7804568,
+   "rep": 152,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 930.6945001007989,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896383.7696295,
+   "rep": 136,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 943.042799946852,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896383.780309,
+   "rep": 155,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 933.0670000053942,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896383.7669046,
+   "rep": 124,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 947.0927999354899,
+   "bytes_resp": 692,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896383.7664149,
+   "rep": 119,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 952.32209993992,
+   "bytes_resp": 691,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896383.7686584,
+   "rep": 123,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 954.1468999814242,
+   "bytes_resp": 692,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896383.7779129,
+   "rep": 161,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 951.0697999503464,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896383.781701,
+   "rep": 148,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 958.9225000236183,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896383.7707822,
+   "rep": 145,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 977.8228000504896,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896383.7680037,
+   "rep": 120,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 986.5318000083789,
+   "bytes_resp": 691,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896383.7798538,
+   "rep": 159,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 1002.4265999672934,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896383.768984,
+   "rep": 128,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 1743.6114000156522,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896383.7658663,
+   "rep": 165,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 1778.6114999325946,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896383.7710857,
+   "rep": 150,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 1788.3994000731036,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896383.7704608,
+   "rep": 141,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 1801.6141999978572,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896383.7667487,
+   "rep": 126,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 1819.479100056924,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896383.7795532,
+   "rep": 154,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 1835.7204999774694,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896383.7673807,
+   "rep": 117,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 1880.3282999433577,
+   "bytes_resp": 691,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896383.769155,
+   "rep": 131,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 1882.8724999912083,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896383.7703016,
+   "rep": 142,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 1890.320000005886,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896383.7789497,
+   "rep": 158,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 1885.0493000354618,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896383.771345,
+   "rep": 149,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 1897.1017999574542,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896383.7688248,
+   "rep": 132,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 1902.142700040713,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896383.7697954,
+   "rep": 138,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 1916.2089999299496,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896383.7665963,
+   "rep": 125,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 1920.2340999618173,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896383.7791078,
+   "rep": 157,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 1912.7346000168473,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896383.7676878,
+   "rep": 133,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 1926.3133999193087,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896383.7709346,
+   "rep": 144,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 1936.8961000582203,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896383.770134,
+   "rep": 140,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 1948.6173000186682,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896383.7681768,
+   "rep": 122,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 1954.1185999987647,
+   "bytes_resp": 691,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896383.768495,
+   "rep": 121,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 1960.0315999705344,
+   "bytes_resp": 691,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896383.7808948,
+   "rep": 153,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 1948.2309999875724,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896383.767221,
+   "rep": 130,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 1969.5597999962047,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1791896383.779704,
+   "rep": 162,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 1985.7208000030369,
+   "bytes_resp": 693,
+   "bytes_env": 0,
+   "error": null
+  }
+ ]
+}

@@ -74,9 +74,11 @@ def nuevo_cliente_mqtt(
     documentada por paho.
 
     Si se pasa reproductor_id, se configuran las credenciales: el broker ya no
-    acepta conexiones anónimas. El usuario depende del id porque las ACLs se
-    escriben como patrones sobre %u, de modo que cada equipo sólo pueda publicar
-    en sus propios topics.
+    acepta conexiones anónimas. El usuario es spui-repro-<id>. Los permisos del
+    broker son por rol, no por equipo: las ACL no usan %u (se expandiría al
+    usuario y el topic lleva sólo el id), así que un reproductor podría publicar
+    telemetría en el topic de otro, aunque nunca alertas. Ver
+    config/mosquitto/README.md, "Roles y permisos".
     """
     try:
         from paho.mqtt.enums import CallbackAPIVersion   # sólo existe en 2.x

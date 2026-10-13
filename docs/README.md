@@ -19,6 +19,7 @@
 | `08_pendientes_vm.md` | **Configuración del servidor y red para el reproductor** | ✅ Autoridad para §3-§8. Sus §2 y §5 pasos 1-3 (VirtualBox) quedaron obsoletos al haber hardware real |
 | `09_instalacion_raspberry.md` | Instalación de la Pi desde cero (SO, red, cliente) | ✅ Guía operativa, alineada a 06/07/08 |
 | `tips_conectividad_acceso.md` | Tips sueltos de red y acceso SSH | Referencia puntual, no secuencial |
+| `pruebas/` | Informes de las pruebas de carga y concurrencia (`tools/simulador/`): uno por corrida (Markdown + JSON crudo) y un análisis por tanda | Evidencia medida para el Informe (CP11, CP12, concurrencia) |
 
 ---
 
@@ -388,6 +389,16 @@ Desde el 10/10/2026 ningún cambio del CMS se da por terminado sin `tools/verifi
 Los tests del cliente (`pi-client/tests`, 42 casos de caché, energía y brillo) corren en la PC dentro de `verificar.ps1`, con el venv fijo `D:\tools\spui-python`, y en la Pi con `/opt/spui/venv/bin/python3 -m unittest discover -s tests`. El comportamiento real con hardware (reposo con `xrandr --off` confirmado por Mateo con el monitor de banco; falta el brillo por DDC/CI y que VLC vuelva a pantalla completa tras `xrandr --auto`) hay que confirmarlo en la Pi.
 
 **Pendiente detectado, sin corregir:** en el alta de un ítem de cronograma el foco arranca en "Nombre". Si se hace clic directo en un día con el nombre vacío, el aviso "Este campo es obligatorio" aparece en ese momento, empuja el formulario hacia abajo y el clic termina en otro lugar. Pasa en cualquier formulario cuyo primer campo sea obligatorio.
+
+---
+
+## 3.6. Simulador de reproductores y pruebas de carga (octubre 2026)
+
+`tools/simulador/simulador.py` (Python, venv `D:	ools\spui-python`) simula N reproductores con el **mismo código HTTP de la Pi** (`pi-client/spui/sync.py`) y su propia conexión MQTT con los topics y credenciales reales, sin VLC. Escenarios: `carga` (CP11), `rafaga` (todos sincronizan a la vez) y `alerta` (CP12, activada con el mismo POST del botón Activar). `tools/simulador/sim.php` crea antes de cada corrida una estructura `[SIM]` propia (edificio, pantallas, reproductores `sim-NNN` y sus credenciales MQTT) y la borra al final aunque la corrida falle; las alertas van dirigidas sólo a esas pantallas, así que los reproductores reales no se enteran. Cada corrida deja un informe en `docs/pruebas/`.
+
+Primera tanda, 13/10/2026: **cumplen CP11 y CP12** y no hubo errores en la ráfaga. Hallazgos con causa medida: una conexión TLS nueva por cada pantalla destinataria de una alerta (~30 ms cada una; la entrega crece con la cantidad de pantallas) y la publicación a Mercure, que suma 2 s fijos a cada Activar/Desactivar. Análisis y recomendaciones en `pruebas/2026-10-13_analisis.md`.
+
+**Trampa vista al armarlo:** el CMS toma de las variables de entorno del proceso valores como `MQTT_TLS` antes que los de `.env.local.php`. Un script que las setea y después lanza PHP le cambia la configuración al CMS (pasó: hablaba sin TLS con el 8883 y no podía crear credenciales MQTT).
 
 ---
 
