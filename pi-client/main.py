@@ -51,6 +51,16 @@ from spui.telemetria import TelemetriaPublisher
 
 # Cuántos segundos esperar entre reintentos cuando estamos offline
 _OFFLINE_RETRY_SEG = 30
+# Dispersión al azar del reintento (± segundos). Si se corta la red de todo un
+# edificio, al volver las Pis no tienen que reintentar todas en el mismo
+# instante (efecto manada): la ráfaga de 50 syncs simultáneos fue la prueba que
+# más RAM le pidió al servidor (docs/pruebas/2026-10-13_analisis.md §3.3).
+_OFFLINE_JITTER_SEG = 10
+
+
+def _espera_reintento() -> float:
+    """Segundos hasta el próximo reintento sin red: 30 ± 10, distinto en cada Pi y en cada vez."""
+    return _OFFLINE_RETRY_SEG + random.uniform(-_OFFLINE_JITTER_SEG, _OFFLINE_JITTER_SEG)
 
 
 class _RegistroProblemas:
@@ -282,17 +292,18 @@ def main() -> None:
         else:
             # Offline: usar caché y reintentar pronto
             sync_data = cache.obtener_sync()
-            espera    = _OFFLINE_RETRY_SEG
+            espera    = _espera_reintento()
 
         if sync_data is None:
-            logger.error('Sin datos disponibles (ni red ni caché). Reintentando en 30s.')
+            espera = _espera_reintento()
+            logger.error('Sin datos disponibles (ni red ni caché). Reintentando en %d s.', round(espera))
             _PROBLEMAS.reportar(
                 'sin-datos',
                 'Sin programación disponible: no hay conexión con el CMS y el caché local está vacío. '
                 'Se muestra la pantalla de espera.',
             )
             player.mostrar_fallback()
-            _esperar_interruptible(30)
+            _esperar_interruptible(espera)
             continue
 
         # ── Decidir qué reproducir ────────────────────────────────────────

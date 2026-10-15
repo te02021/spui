@@ -136,7 +136,7 @@ El usuario MQTT de cada Pi es `spui-repro-{id}` (el id llega en el primer sync) 
 1. **¿Hay red?** Se chequea con una conexión TCP rápida al host del CMS (más barato que un HTTP con timeout).
 2. **Si hay red:** `POST /api/spui/reproductores/sync` con la API key en el header `X-Api-Key`. La respuesta trae la playlist, la alerta activa si la hay, y el horario energético.
 3. **Se guarda todo en SQLite local** y se descargan los archivos que falten. Cada archivo se baja a un temporal (`.part`) y sólo pasa al caché, con un reemplazo atómico, cuando llegó completo y su SHA-256 coincide con el que informa el CMS: una descarga cortada o un archivo distinto nunca quedan con el nombre que usa el player. Además, antes de reproducir un archivo del caché se vuelve a comprobar su hash (memorizado por tamaño y fecha, para no recalcularlo en cada vuelta): uno alterado o dañado en disco sale del caché y ese ítem se saltea hasta que haya red para bajarlo de nuevo. Las descargas a medias de una ejecución anterior se borran al arrancar.
-4. **Si no hay red:** se usa lo último guardado y se reintenta a los 30 segundos en vez de esperar 5 minutos.
+4. **Si no hay red:** se usa lo último guardado y se reintenta a los 30 segundos (±10 s al azar) en vez de esperar 5 minutos. El azar es a propósito: si se corta la red del campus, todas las Pi pierden la conexión a la vez y, con un reintento fijo, vuelven a la vez y le caen juntas al CMS (y al límite de 2 syncs por minuto). Con ±10 s llegan repartidas en 20 segundos.
 5. **Se aplica el horario energético:** si está fuera de hora, se apaga la pantalla y no se reproduce nada.
 6. **Se decide qué mostrar** según la prioridad de la sección 4.
 
@@ -165,11 +165,13 @@ Admin presiona "Activar"
 
 Ese es el caso de una alerta **global**. Una alerta puede apuntar a pantallas concretas (tabla `alerta_pantalla`): entonces se publica en `spui/alertas/reproductor/{id}` de cada reproductor afectado, también con `retain`.
 
+Todos esos mensajes salen por **una sola conexión** al broker: el CMS se conecta una vez, publica en cada topic destino y se desconecta (`AlertaPublisherService::publicarTanda()`). Antes abría una conexión TLS nueva por topic (~30 ms cada una), así que una alerta a 100 pantallas tardaba en llegar a la última unos 3 s más que a la primera. Si la conexión se corta a mitad de la tanda, reconecta una vez y sigue con lo que faltaba; si tampoco puede, lo registra en el log y la alerta igual llega por el próximo `/sync`. Activar nunca falla por culpa del broker.
+
 **`retain` es importante:** el broker guarda el último mensaje del topic, así que una Pi que estaba apagada y arranca después recibe la alerta apenas se conecta. Y si MQTT no está disponible, la alerta igual llega en el próximo `/sync` — solo tarda más.
 
 **Sonido de alerta.** Cada alerta puede tener un sonido personalizado (MP3/WAV, hasta 5 MB, subido desde el formulario del CMS). El payload MQTT y el REST de `/sync` llevan `sonido_url`/`sonido_hash` (no el archivo en sí), así que el sonido correcto se conoce desde el primer instante, sin depender de un segundo round-trip. Si no hay sonido personalizado, o no se puede descargar (sin red, archivo corrupto, etc.), el reproductor genera y usa un tono propio (dos frecuencias tipo "beep-beep", vía el módulo estándar `wave` de Python) — la alerta nunca queda muda por falta de configuración o de conectividad. Mientras la alerta siga activa, vuelve a sonar apenas termina — el reproductor consulta el estado real de VLC, no un reloj fijo — con una pausa opcional de `SPUI_ALERTA_SONIDO_INTERVALO_SEG` (0 por defecto), y se corta de inmediato al desactivarse: la repetición vive dentro del mismo bucle que decide si la alerta sigue viva, no en un timer aparte, para que sea imposible que quede sonando después de que la alerta terminó.
 
-**El dashboard del CMS se actualiza solo, pero no por Mercure.** El proyecto integró `symfony/mercure-bundle` en su momento, pero nunca se completó del lado del navegador: no hay ningún consumidor `EventSource` en el frontend, y `MERCURE_URL` sigue apuntando al valor por defecto. Lo que realmente refresca el panel es `auto-refresh.js` (tarea 1.7.b) — polling cada 20s a la misma ruta del dashboard, con pausa si la pestaña está oculta o hay un modal abierto. Alcanza para el caso de uso (el operador ve el estado actualizado sin recargar); Mercure quedó como dependencia sin usar. Ver `docs/README.md` para el resto de las decisiones de la tarea 1.7.
+**El dashboard del CMS se actualiza solo, pero no por Mercure.** El proyecto integró `symfony/mercure-bundle` en su momento, pero nunca se completó del lado del navegador: no hay ningún consumidor `EventSource` en el frontend, y `MERCURE_URL` sigue apuntando al valor por defecto. Lo que realmente refresca el panel es `auto-refresh.js` (tarea 1.7.b) — polling cada 20s a la misma ruta del dashboard, con pausa si la pestaña está oculta o hay un modal abierto — más el push por WebSocket MQTT de §3.4 de `docs/README.md`. Desde el 15/10/2026 SPUI ya no publica nada en Mercure: cada Activar/Desactivar esperaba 2 s el timeout de un hub que no existe (medido en `docs/pruebas/2026-10-13_analisis.md`). El bundle sigue instalado porque es config compartida del monorepo. Ver `docs/README.md` para el resto de las decisiones de la tarea 1.7.
 
 Una alerta activa **enciende la pantalla aunque el horario energético diga que debe estar apagada**: avisar una evacuación pesa más que el ahorro.
 
@@ -221,7 +223,7 @@ Contra los 12 casos de uso definidos en `02_casos_de_uso.md`:
 | CU-01 Gestionar contenido | ✅ Completo. Se agregó un 6º tipo (`cronograma`) que no estaba en el diseño original |
 | CU-02 Crear playlist | ✅ Completo, con drag & drop. Los ítems se arman en una ventana aparte y se persisten con el Guardar de la playlist (alta y edición igual). Un contenido puede repetirse. La duración la define el contenido, no el ítem |
 | CU-03 Programar reproducción | ✅ Completo, y con un alcance más que lo planeado (por edificio) |
-| CU-04 Alerta de emergencia | ✅ Completo vía MQTT (push a la Pi) + polling (dashboard del CMS, `auto-refresh.js`) — **no** usa Mercure, ver §6 |
+| CU-04 Alerta de emergencia | ✅ Completo vía MQTT (push a la Pi) + polling (dashboard del CMS, `auto-refresh.js`) — **no** usa Mercure (se quitó la publicación el 15/10/2026), ver §6 |
 | CU-05 Registrar reproductor | ✅ Completo |
 | CU-06 Sincronizar contenido | ✅ Completo |
 | CU-07 Reproducir contenido | ✅ Completo. Incluye modo simulación para probar sin VLC |
