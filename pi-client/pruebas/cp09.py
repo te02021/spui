@@ -151,11 +151,22 @@ def mqtt_publica_alerta(usuario: str) -> str:
         if marca.encode() in msg.payload:
             recibido.set()
 
+    # Control: si el broker no aceptara la suscripción, "no llegó" pasaría
+    # aunque la publicación sí hubiera entrado. Un SUBACK con 128 es rechazo.
     suscripto = threading.Event()
+    concedido = {'qos': None}
+
+    def on_subscribe(_c, _u, _mid, granted, *_):
+        concedido['qos'] = granted[0] if granted else None
+        suscripto.set()
+
     sub.on_message = on_message
-    sub.on_subscribe = lambda *_: suscripto.set()
+    sub.on_subscribe = on_subscribe
     sub.subscribe(TOPIC_ALERTA, qos=1)
-    suscripto.wait(ESPERA_CONEXION)
+    if not suscripto.wait(ESPERA_CONEXION) or concedido['qos'] in (None, 128):
+        _cerrar(pub)
+        _cerrar(sub)
+        return 'no se pudo probar (suscripción rechazada)'
 
     pub.publish(TOPIC_ALERTA, f'{{"accion":"prueba_cp09","marca":"{marca}"}}', qos=1, retain=False)
     llego = recibido.wait(ESPERA_MENSAJE)

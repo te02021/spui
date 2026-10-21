@@ -18,7 +18,7 @@ Las pruebas de carga (CP11, CP12) las corre el simulador de `tools/simulador/` y
 | CP06 | Resincronización tras el corte, < 60 s | No | Sin ejecutar |
 | CP07 | Descarga interrumpida o archivo alterado no entra a caché | No | Sin ejecutar |
 | CP08 | Desconexión abrupta visible en el panel | No | Sin ejecutar |
-| CP09 | Solicitud o mensaje sin credenciales, rechazado | No | Sin ejecutar |
+| CP09 | Solicitud o mensaje sin credenciales, rechazado | No | ✅ Cumple en banco (21/10/2026); falta desde la Pi |
 | CP10 | Encendido y apagado programado | **Sí** | Sin ejecutar |
 | CP11 | Carga con 50 simulados: error < 1 %, API < 500 ms (p95) | No | ✅ Cumple (13/10/2026, entorno de desarrollo) |
 | CP12 | Alerta simultánea a 100 simulados, < 5 s | No | ✅ Cumple (13/10 y 15/10/2026, entorno de desarrollo) |
@@ -266,6 +266,28 @@ Cuestionario SUS estándar (10 ítems, escala 1–5) a operadores del CMS despu�
 ## 4. Registro de corridas
 
 Las planillas completas de cada corrida se agregan debajo, con la fecha. La más reciente va primero.
+
+### 21/10/2026 — CP09 en banco, con un reproductor simulado desde la PC
+
+**Condiciones:**
+- `pruebas/cp09.py` corrido en la PC del CMS con las credenciales de un reproductor `[SIM]`, creado con `tools/simulador/sim.php preparar 1` y borrado al terminar.
+- Broker real: 8883 con TLS y verificación de hostname contra `spui-broker.unraf.local`. API real: `http://intranet/api/spui`.
+- 3 repeticiones por vector. No reemplaza la corrida desde la Pi: falta la red real entre la Pi y el CMS.
+
+| Vector | Esperado | Rep. 1 | Rep. 2 | Rep. 3 | ¿Cumple? |
+|---|---|---|---|---|---|
+| Control: API con la clave real | 200 | 200 | — | — | ✅ |
+| API sin clave | 401 | 401 | 401 | 401 | ✅ |
+| API con clave inválida | 401 | 401 | 401 | 401 | ✅ |
+| Media sin clave | 401 | 401 | 401 | 401 | ✅ |
+| MQTT anónimo, puerto 8883 | rechazado | rechazado | rechazado | rechazado | ✅ |
+| MQTT anónimo, puerto 1883 sin TLS | rechazado | rechazado | rechazado | rechazado | ✅ |
+| MQTT con clave incorrecta | rechazado | rechazado | rechazado | rechazado | ✅ |
+| Reproductor publica una alerta | no llegó | no llegó | no llegó | no llegó | ✅ |
+
+**Control positivo del último vector** (3 de 3): el CMS, que sí tiene permiso, publicó una marca sin `retain` en `spui/alertas/emergencia`, y el mismo suscriptor del reproductor la recibió las 3 veces. El suscriptor puede leer ese topic, así que "no llegó" en el vector se debe a la ACL de publicación del broker, no a un suscriptor que no recibe nada. Desde esta corrida, el script también comprueba que el broker acepte la suscripción (SUBACK distinto de 128). Si no la acepta, el vector da "no se pudo probar".
+
+**Veredicto en banco:** ✅ cumple. **Pendiente:** la corrida desde la Pi, con 5 repeticiones.
 
 ### 19/10/2026 — preparación, con la Pi por SSH y sin pantalla
 
