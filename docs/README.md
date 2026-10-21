@@ -18,6 +18,7 @@
 | `07_manual_uso_cms.md` | **Uso del panel CMS, pantalla por pantalla** | ✅ **Autoridad. Verificado contra código** |
 | `08_pendientes_vm.md` | **Configuración del servidor y red para el reproductor** | ✅ Autoridad para §3-§8. Sus §2 y §5 pasos 1-3 (VirtualBox) quedaron obsoletos al haber hardware real |
 | `09_instalacion_raspberry.md` | Instalación de la Pi desde cero (SO, red, cliente) | ✅ Guía operativa, alineada a 06/07/08 |
+| `10_pruebas.md` | **Protocolo y registro de los casos de prueba CP01–CP13**: procedimiento, evidencia y planilla de cada uno | ✅ Autoridad sobre cómo se ejecuta cada prueba y su resultado |
 | `tips_conectividad_acceso.md` | Tips sueltos de red y acceso SSH | Referencia puntual, no secuencial |
 | `pruebas/` | Informes de las pruebas de carga y concurrencia (`tools/simulador/`): uno por corrida (Markdown + JSON crudo) y un análisis por tanda | Evidencia medida para el Informe (CP11, CP12, concurrencia) |
 
@@ -108,6 +109,10 @@ Verificados contra código. Si algo "deja de andar", empezar por acá.
 16. **`SPUI_MQTT_SALT` tiene que ser idéntico en el CMS y en cada Pi.** La contraseña MQTT de un reproductor es `sha256(api_key + salt)`; con un salt distinto el broker lo rechaza (`Not authorized`). El síntoma engaña: el sync y el heartbeat van por HTTP y siguen andando, así que la pantalla funciona, pero **las alertas no llegan al instante**, los cambios no llegan en segundos (`sync_ahora`) y la telemetría no se registra. Va en `/etc/spui/spui.env` — ver `09_instalacion_raspberry.md` §11.2.
 
 17. **Con un reproductor desconectado, el CMS no deja cambiar lo que muestra** (botones atenuados + 409 del servidor, ver `06` §6.2). La única acción permitida sobre un equipo caído es darlo de baja. Si un botón "no hace nada", mirar su tooltip antes de buscar un bug. Los botones se destraban solos cuando el equipo vuelve; en Pantallas, Contenidos, Playlists y Programación eso depende del aviso MQTT `spui/cms/conexion/...`: si no se destraban, revisar que el broker y el listener WebSocket 9001 estén arriba — y que el daemon `spui:mqtt:subscribe` esté corriendo, que es quien avisa cuando un equipo se cae.
+
+18. **Si la Pi hace ping al CMS pero no conecta al puerto 80, mirar si hay un antivirus con firewall propio en el host.** Productos como ESET reemplazan al firewall de Windows: las reglas "SPUI – …" de Windows existen y están activas, pero no se aplican, y el antivirus bloquea toda conexión entrante si clasificó la red como no confiable. El síntoma, el 19/10/2026: `Connection to intranet timed out` en el heartbeat y `000` en `curl`, con el ping respondiendo. Para ver quién maneja el firewall: `Get-CimInstance -Namespace root/SecurityCenter2 -ClassName FirewallProduct`. Se resolvió desinstalando ESET (21/10/2026). En el servidor del piloto hay que revisar lo mismo.
+
+19. **Después de un `deploy.ps1`, comprobar que el servicio se reinició de verdad:** `systemctl show spui -p ActiveEnterTimestamp` tiene que dar la hora del deploy. `install.sh` copia el código a `/opt/spui` a mitad de camino: si falla después (por ejemplo en `apt` o `pip` sin internet), el deploy se corta antes del reinicio y queda el código nuevo en disco con el proceso viejo corriendo. Los tests pasan, porque leen el disco, y el reproductor se comporta como antes. Pasó el 19/10/2026: el reintento sin red seguía en 30 s fijos con el código del ±10 s ya instalado.
 
 ---
 
