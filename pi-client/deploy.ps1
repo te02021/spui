@@ -10,7 +10,7 @@
 #
 # Requiere: OpenSSH (viene con Windows 10/11) y acceso SSH a la Pi.
 #
-# NOTA: sin claves SSH configuradas, pide la contrasena 3 veces (scp + 2 ssh).
+# NOTA: sin claves SSH configuradas, pide la contrasena 4 veces (3 ssh + scp).
 # Para evitarlo:  ssh-keygen -t ed25519    y luego copiar la clave publica
 # al archivo ~/.ssh/authorized_keys de la Pi.
 
@@ -69,12 +69,52 @@ if ($LASTEXITCODE -ne 0) {
     throw "Fallo install.sh en la Pi"
 }
 
-# 4. Reiniciar el servicio
+# 4. Reiniciar el servicio y comprobar que de verdad arranco de nuevo.
+#    Antes este paso no se verificaba: si el ssh fallaba (una contrasena mal
+#    escrita alcanza), igual decia "Deploy completo" y quedaba el codigo nuevo
+#    en disco con el proceso viejo corriendo. Paso el 19/10/2026: los tests
+#    pasaban (leen el disco) y el reproductor seguia con el comportamiento
+#    anterior. Se compara el PID de antes y de despues, no la hora de arranque,
+#    porque la Pi no tiene reloj propio y al bootear arranca con una hora vieja.
+#    Va todo en un solo ssh para no pedir la contrasena una vez mas, y en
+#    base64: Windows PowerShell rompe las comillas dobles de un argumento que
+#    le pasa a un .exe, y este script tiene varias.
 Write-Host "[4/4] Reiniciando el servicio spui..." -ForegroundColor Yellow
-ssh $destino "sudo systemctl restart spui"
+
+# Que corre en la Pi: commit y fecha, y si habia cambios sin commitear.
+$version = "sin git"
+try {
+    $commit = git -C $origen log -1 --format="%h %cd" --date=format:"%d/%m/%Y %H:%M"
+    if ($LASTEXITCODE -eq 0 -and $commit) {
+        $version = $commit
+        if (git -C $origen status --porcelain -- .) { $version = "$version + cambios sin commitear" }
+    }
+} catch { }
+
+$script = @(
+    "echo '$version' | sudo tee /opt/spui/VERSION > /dev/null",
+    'antes=$(systemctl show spui -p MainPID --value)',
+    'sudo systemctl restart spui || exit 10',
+    'sleep 3',
+    'despues=$(systemctl show spui -p MainPID --value)',
+    'echo "PID antes=$antes despues=$despues estado=$(systemctl is-active spui)"',
+    '[ "$(systemctl is-active spui)" = active ] || exit 11',
+    '[ "$despues" != "$antes" ] && [ "$despues" != 0 ] || exit 12',
+    'journalctl -u spui -o cat --no-pager -n 50 | grep "SPUI Client iniciado" | tail -1'
+) -join "`n"
+$b64 = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($script))
+
+ssh $destino "echo $b64 | base64 -d | bash"
+switch ($LASTEXITCODE) {
+    0  { }
+    10 { throw "No se pudo reiniciar el servicio. El codigo nuevo quedo copiado, pero sigue corriendo el anterior." }
+    11 { throw "El servicio no quedo activo despues del reinicio. Ver: ssh $destino `"journalctl -u spui -n 50`"" }
+    12 { throw "El servicio no se reinicio (mismo PID): sigue corriendo el codigo anterior." }
+    default { throw "No se pudo conectar por SSH para reiniciar el servicio: sigue corriendo el codigo anterior." }
+}
 
 Write-Host ""
-Write-Host "=== Deploy completo ===" -ForegroundColor Green
+Write-Host "=== Deploy completo: corre la version $version ===" -ForegroundColor Green
 Write-Host ""
 Write-Host "Ver los logs:" -ForegroundColor Cyan
 Write-Host "  ssh $destino `"journalctl -u spui -f`""

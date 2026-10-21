@@ -247,7 +247,7 @@ def main() -> None:
     )
     telemetria.start()
 
-    logger.info('SPUI Client iniciado. API: %s', config.API_URL)
+    logger.info('SPUI Client iniciado (versión %s). API: %s', config.VERSION, config.API_URL)
 
     # Cada cuánto sincronizar: arranca con SPUI_SYNC_INTERVAL de spui.env y
     # después lo fija el CMS en cada sync (se configura por reproductor).

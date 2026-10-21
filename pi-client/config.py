@@ -171,6 +171,18 @@ CACHE_DIR = _texto('SPUI_CACHE_DIR', os.path.join(_BASE, 'cache'))
 MEDIA_DIR = os.path.join(CACHE_DIR, 'media')
 DB_PATH   = os.path.join(CACHE_DIR, 'spui.db')
 
+# Commit desplegado: deploy.ps1 lo escribe en /opt/spui/VERSION y main.py lo
+# muestra al arrancar, para saber qué código corre de verdad (los archivos en
+# disco pueden ser más nuevos que el proceso si el reinicio no se hizo).
+def _version(base: str = _BASE) -> str:
+    try:
+        with open(os.path.join(base, 'VERSION'), encoding='utf-8') as f:
+            return f.read().strip() or 'desconocida'
+    except OSError:
+        return 'desconocida'
+
+VERSION = _version()
+
 # ── Logging ──────────────────────────────────────────────────────────────────
 LOG_LEVEL = _texto('SPUI_LOG_LEVEL', 'INFO')
 # En Pi: /var/log/spui-client.log (requiere permisos).

@@ -33,7 +33,7 @@ Las pruebas de carga (CP11, CP12) las corre el simulador de `tools/simulador/` y
 Cada planilla registra:
 
 - **Fecha y hora.**
-- **Commit:** `git log -1 --oneline` en la PC y, en la Pi, la fecha del último `deploy.ps1`.
+- **Versión en la Pi:** la que muestra el log al arrancar (`SPUI Client iniciado (versión <commit> <fecha>)`). Sale del `/opt/spui/VERSION` que escribe `deploy.ps1`.
 - **Salida de la Pi:** monitor o TV conectado, o **sin pantalla**.
 - **Red:** la misma LAN que el CMS o el campus.
 
@@ -176,18 +176,18 @@ La regla no sobrevive a un reinicio: si algo sale mal, `sudo reboot` la borra.
 
 ### CP07 — Descarga interrumpida o archivo alterado no entra a caché
 
-**Qué prueba.** Un archivo incompleto o modificado nunca se reproduce. El caché vive en `/opt/spui/cache/media/`.
+**Qué prueba.** Un archivo incompleto o modificado nunca se reproduce. El caché vive en `SPUI_CACHE_DIR` de `/etc/spui/spui.env`, que `install.sh` deja en `/var/cache/spui`, así que los archivos están en `/var/cache/spui/media/` (confirmarlo con `sudo grep SPUI_CACHE_DIR /etc/spui/spui.env`).
 
 **A. Archivo alterado** (3 repeticiones):
-1. Elegir un archivo de la playlist actual: `ls -la /opt/spui/cache/media/`.
-2. Alterarlo: `sudo sh -c 'printf x >> /opt/spui/cache/media/<archivo>'`.
+1. Elegir un archivo de la playlist actual: `ls -la /var/cache/spui/media/`.
+2. Alterarlo: `sudo sh -c 'printf x >> /var/cache/spui/media/<archivo>'`.
 3. Cuando le toque reproducirse, en el log: `Archivo del caché alterado o incompleto (hash distinto): <archivo> — se descarta.`, seguido de `Descargando media: <archivo>` (si hay red).
 4. Comprobar que el archivo nuevo coincide con el del CMS: `sha256sum` en la Pi contra el hash de la ficha del contenido.
 
 **B. Descarga interrumpida** (2 repeticiones):
 1. Subir al CMS un video grande (cientos de MB) y agregarlo a la playlist de la Pi.
 2. Cuando aparezca `Descargando media: <archivo>`, cortar la red como en CP05.
-3. Comprobar que el archivo **no** quedó con su nombre final: `ls /opt/spui/cache/media/` sólo muestra, a lo sumo, un `<archivo>.part`.
+3. Comprobar que el archivo **no** quedó con su nombre final: `ls /var/cache/spui/media/` sólo muestra, a lo sumo, un `<archivo>.part`.
 4. En el log, el ítem no se reproduce: `Archivo no cacheado y sin red` o `No hay una copia válida`.
 5. Restaurar la red. La descarga se completa y el video entra a la rotación. Al reiniciar el servicio con un `.part` presente, `Se borraron N descarga(s) a medias de una ejecución anterior.`
 
@@ -291,4 +291,4 @@ Las planillas completas de cada corrida se agregan debajo, con la fecha. La más
 - **Tests del cliente en la Pi:** 54 de 54 OK.
 - **Puerto MQTT de la Pi:** 8883 con TLS (`MQTT_TLS=true`), host `spui-broker.unraf.local`. La parte de la Pi de C2 ya está hecha; falta cerrar el 1883 en el broker.
 - **CP09 (API):** no se pudo ejecutar. Los 15 pedidos dieron `000`, sin conexión. La Pi hacía ping al CMS, pero el puerto 80 no respondía ni pidiendo por IP. La causa estaba en el host: ESET manejaba el firewall e ignoraba las reglas de Windows (`docs/README.md` §3, hecho 18). Se desinstaló ESET el 21/10. **Repetir CP09.**
-- **Observación, no cuenta como corrida de CP05:** con el CMS inaccesible, el reproductor siguió funcionando con la caché del 10/10, sin caerse, y reintentó solo. Los reintentos salieron cada 33,0 s fijos: 30 s más ~3 s del chequeo de red. Es el código anterior al jitter, porque el servicio no se había reiniciado después del deploy (hecho 19). Al repetir CP05 hay que ver intervalos variables entre ~23 y ~43 s.
+- **Observación, no cuenta como corrida de CP05:** con el CMS inaccesible, el reproductor siguió funcionando con la caché del 10/10, sin caerse, y reintentó solo. Los reintentos salieron cada 33,0 s fijos: 30 s más ~3 s del chequeo de red. Es el código anterior al jitter: el servicio seguía con el PID del arranque (773) y no se había reiniciado después del deploy, aunque el código nuevo ya estaba en disco y sus tests pasaban (hecho 19). Desde el 21/10, `deploy.ps1` comprueba el reinicio y falla si no ocurrió, y el log de arranque muestra la versión desplegada. Al repetir CP05 hay que ver intervalos variables entre ~23 y ~43 s.
