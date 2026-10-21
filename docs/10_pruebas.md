@@ -70,6 +70,19 @@ Si alguno no está sincronizado, la latencia medida no vale: se anota y se mide 
 - Casos de sí/no: las repeticiones que indica cada caso. Una sola falla alcanza para que no cumpla.
 - Límite de sync: el CMS acepta **2 syncs por minuto por reproductor** (`config/packages/rate_limiter.yaml`). Las repeticiones que disparan un sync van separadas al menos **35 s**. Si no, la medición choca con un 429 en vez de medir el sistema.
 
+### 2.5. Scripts de la Pi
+
+Las pruebas que se hacen en la Pi tienen un script en `pi-client/pruebas/`. `deploy.ps1` los copia a `/opt/spui/pruebas/`. Imprimen la planilla y el veredicto listos para pegar en §4.
+
+| Caso | Comando, en la Pi |
+|---|---|
+| CP05 y CP06 | `bash /opt/spui/pruebas/cp05_06.sh [segundos]` |
+| CP07 | `bash /opt/spui/pruebas/cp07.sh alterado` · `bash /opt/spui/pruebas/cp07.sh descarga` |
+| CP08 | `bash /opt/spui/pruebas/cp08.sh colgado` · `bash /opt/spui/pruebas/cp08.sh red` |
+| CP09 | `sudo /opt/spui/venv/bin/python3 /opt/spui/pruebas/cp09.py` |
+
+Se corren con `bash` porque `scp` desde Windows no conserva el permiso de ejecución.
+
 ---
 
 ## 3. Casos
@@ -140,120 +153,93 @@ Cada paso es una repetición. Se corre la secuencia completa 2 veces.
 ### CP05 y CP06 — Corte de red sin interrupción y resincronización (< 60 s)
 
 **Qué prueban.**
-- **CP05:** sin red hacia el CMS y el broker, la Pi sigue mostrando lo que tenía en caché, sin errores en pantalla.
+- **CP05:** sin red hacia el CMS y el broker, la Pi sigue mostrando lo que tenía en caché, sin errores.
 - **CP06:** al volver la red, se resincroniza en menos de 60 s.
 
-**Cómo se corta la red sin perder el SSH.** No se apaga la interfaz. En la Pi se bloquean sólo las conexiones salientes hacia el CMS y el broker (puertos 80, 443, 1883, 8883). Las respuestas del SSH salen del puerto 22 y no se tocan.
+**Script:** `bash /opt/spui/pruebas/cp05_06.sh [segundos]` (300 por defecto). Corta, espera, restaura, espera el `Sync OK` y saca la tabla y el veredicto del log.
 
-```bash
-# IP con la que la Pi llega al CMS (el nombre "intranet" de su /etc/hosts)
-CMS=$(getent hosts intranet | awk '{print $1}'); echo "$CMS"
+**Cómo corta la red sin perder el SSH** (`pruebas/red.sh`):
+- No apaga la interfaz. Con `nft`, bloquea sólo las conexiones salientes de la Pi hacia las IPs del CMS y del broker, en los puertos 80, 443, 1883 y 8883. Las respuestas del SSH salen del puerto 22 y no se tocan, aunque vengan de la misma PC que el CMS.
+- Cada corte programa su propia restauración con un temporizador de systemd. Si el script se corta o se cae la sesión, la red vuelve sola. Un reinicio de la Pi también la borra.
+- A mano: `sudo nft delete table inet spui_prueba`.
 
-# Bookworm trae nftables; si 'iptables' no existe: sudo apt install iptables
-# Cortar
-sudo iptables -I OUTPUT -p tcp -d "$CMS" -m multiport --dports 80,443,1883,8883 -j REJECT
-# Restaurar (el mismo comando con -D en lugar de -I)
-sudo iptables -D OUTPUT -p tcp -d "$CMS" -m multiport --dports 80,443,1883,8883 -j REJECT
-# Comprobar que no quedó ninguna regla
-sudo iptables -S OUTPUT
-```
+**Antes de correrlo**, en el CMS:
+- **El intervalo de sync del reproductor en 1 minuto.** El cliente recién nota el corte en su próximo ciclo: con 5 minutos podría no llegar a reintentar.
+- **Una playlist con dos ítems o más con duración** (imagen y video). Un único contenido permanente no vuelve a registrarse en el log, y el script no tendría evidencia de que siguió reproduciendo.
 
-La regla no sobrevive a un reinicio: si algo sale mal, `sudo reboot` la borra.
+**Qué mira el script:**
+- **CP05 cumple** si después del corte el cliente usó la caché (`Usando caché de sync`), registró reproducciones y no hubo errores (`No hay una copia válida`, `Archivo no cacheado y sin red`, `Traceback`, `Error reproduciendo`).
+- **El jitter:** cada intervalo entre reintentos es una vuelta de playlist más 30 ± 10 s más ~3 s del chequeo de red. Como la vuelta dura siempre lo mismo, los intervalos tienen que variar entre sí; si son todos iguales, el cliente corre código anterior al 15/10.
+- **CP06 cumple** con un `Sync OK` en menos de 60 s desde la restauración. Por diseño es como mucho ~43 s: el próximo reintento más el chequeo.
 
-**Procedimiento.**
-1. Con el reproductor sincronizado y mostrando una playlist con imagen y video, cortar. Anotar la hora.
-2. **CP05**, durante 5 minutos:
-   - En el log: `Red PERDIDA — entrando en modo OFFLINE`.
-   - La reproducción sigue (`Reproduciendo …` o `[SIM] …`) sin `No hay una copia válida` ni `Archivo no cacheado y sin red`.
-   - Los reintentos son de 30 ± 10 s y nunca exactamente iguales entre sí.
-3. Restaurar. Anotar la hora.
-4. **CP06:** en el log, `Red RESTAURADA — volviendo al modo online. Re-sincronizando.` y `Sync OK`. Se mide desde que se restauró hasta `Sync OK`.
-5. Repetir 3 veces.
+**Repeticiones:** 3.
 
-| # | Hora corte | `Red PERDIDA` | ¿Siguió reproduciendo? | Reintentos observados (s) | Hora restaurado | `Sync OK` | CP06 latencia |
+| # | Corte | Primer uso de caché | Intervalos (s) | Reproducciones / errores | CP05 | CP06 latencia | CP06 |
 |---|---|---|---|---|---|---|---|
 | 1 | | | | | | | |
 
 ### CP07 — Descarga interrumpida o archivo alterado no entra a caché
 
-**Qué prueba.** Un archivo incompleto o modificado nunca se reproduce. El caché vive en `SPUI_CACHE_DIR` de `/etc/spui/spui.env`, que `install.sh` deja en `/var/cache/spui`, así que los archivos están en `/var/cache/spui/media/` (confirmarlo con `sudo grep SPUI_CACHE_DIR /etc/spui/spui.env`).
+**Qué prueba.** Un archivo incompleto o modificado nunca se reproduce. El caché vive en `SPUI_CACHE_DIR` de `/etc/spui/spui.env`. `install.sh` lo deja en `/var/cache/spui`, así que los archivos están en `/var/cache/spui/media/`.
 
-**A. Archivo alterado** (3 repeticiones):
-1. Elegir un archivo de la playlist actual: `ls -la /var/cache/spui/media/`.
-2. Alterarlo: `sudo sh -c 'printf x >> /var/cache/spui/media/<archivo>'`.
-3. Cuando le toque reproducirse, en el log: `Archivo del caché alterado o incompleto (hash distinto): <archivo> — se descarta.`, seguido de `Descargando media: <archivo>` (si hay red).
-4. Comprobar que el archivo nuevo coincide con el del CMS: `sha256sum` en la Pi contra el hash de la ficha del contenido.
+**A. Archivo alterado:** `bash /opt/spui/pruebas/cp07.sh alterado`, 3 repeticiones.
+1. El script ofrece la lista de archivos del caché. Elegir uno de la playlist que se está mostrando: si no se reproduce, nunca se verifica.
+2. Le agrega un byte y espera (hasta 15 min) la línea `Archivo del caché alterado o incompleto (hash distinto): <archivo> — se descarta.` y la descarga nueva.
+3. Al final compara el SHA-256 del archivo con el que tenía antes de alterarlo: tienen que coincidir.
 
-**B. Descarga interrumpida** (2 repeticiones):
-1. Subir al CMS un video grande (cientos de MB) y agregarlo a la playlist de la Pi.
-2. Cuando aparezca `Descargando media: <archivo>`, cortar la red como en CP05.
-3. Comprobar que el archivo **no** quedó con su nombre final: `ls /var/cache/spui/media/` sólo muestra, a lo sumo, un `<archivo>.part`.
-4. En el log, el ítem no se reproduce: `Archivo no cacheado y sin red` o `No hay una copia válida`.
-5. Restaurar la red. La descarga se completa y el video entra a la rotación. Al reiniciar el servicio con un `.part` presente, `Se borraron N descarga(s) a medias de una ejecución anterior.`
+**B. Descarga interrumpida:** `bash /opt/spui/pruebas/cp07.sh descarga`, 2 repeticiones.
+1. Con el script esperando, subir al CMS un video grande (cientos de MB) y agregarlo a la playlist de la pantalla.
+2. Apenas aparece `Descargando media: <archivo>`, el script corta la red y comprueba que el archivo **no** quedó con su nombre final. A lo sumo queda el `.part`, y si la descarga falló el cliente lo borra.
+3. Después de 60 s restaura y espera hasta 10 min a que la descarga se complete.
+4. Si el archivo terminó de bajar antes del corte, la prueba no vale: el script lo avisa, y hay que repetir con un archivo más grande.
 
 Cubierto además por los tests de `pi-client/tests/`.
 
-| # | Variante | Archivo | Evidencia en el log | ¿Se reprodujo la copia mala? |
-|---|---|---|---|---|
-| 1 | A | | | |
+| # | Variante | Archivo | Evidencia | ¿Se usó la copia mala? | ¿Cumple? |
+|---|---|---|---|---|---|
+| 1 | A | | | | |
 
 ### CP08 — Desconexión abrupta visible en el panel
 
 **Qué prueba.** Si un reproductor cae sin aviso, el panel lo muestra como desconectado.
 
-**Cuánto se espera.** El estado del panel se calcula **sólo por el heartbeat HTTP** (`SPUI_UMBRAL_CONEXION_SEG`, 150 s). El mantenimiento del daemon lo marca cada 60 s, así que lo esperable es **entre 150 y 210 s** desde el último heartbeat. El aviso de caída del broker (LWT) llega mucho antes y queda registrado en el log del daemon (`LWT: caída detectada por el broker`). El panel no lo usa a propósito (`Reproductor.php`, comentario de `marcarLwtOffline()`).
+**Cuánto se espera.**
+- El estado del panel se calcula **sólo por el heartbeat HTTP** (`SPUI_UMBRAL_CONEXION_SEG`, 150 s). El mantenimiento del daemon lo marca cada 60 s.
+- Por eso lo esperable es **entre 150 y 210 s desde el último heartbeat**, que fue como mucho 60 s antes de la caída.
+- El aviso de caída del broker (LWT) llega mucho antes y queda registrado en el log del daemon (`LWT: caída detectada por el broker`). El panel no lo usa a propósito (`Reproductor.php`, comentario de `marcarLwtOffline()`).
 
-**Dos variantes:**
-- **A. Proceso muerto:** `sudo systemctl kill -s KILL spui`. El sistema cierra las conexiones, así que el broker se entera en el acto.
-- **B. Cable cortado:** el bloqueo de CP05 cambiando `REJECT` por `DROP`. No se cierra nada, y el broker se entera por el keepalive (60 s × 1,5).
+**Script:** `bash /opt/spui/pruebas/cp08.sh colgado|red`, con el panel de Reproductores abierto en la PC. El script toma las horas. Vos refrescás el panel y apretás Enter cuando cambia el estado: primero a Desconectado y, después de restaurar, a Conectado. Una demora de menos de 60 s la marca como sospechosa: con el umbral de 150 s es imposible, así que seguramente se apretó Enter antes de tiempo.
 
-**Procedimiento.** Para cada variante, 3 repeticiones:
-1. Anotar la hora del último `Heartbeat` exitoso. Si el nivel de log no lo muestra, usar la hora del corte.
-2. Provocar la caída y anotar la hora.
-3. Refrescar el panel de Reproductores hasta que muestre Desconectado. Anotar la hora.
-4. Anotar también la hora de `LWT: caída detectada` en el daemon.
-5. Restaurar: `sudo systemctl start spui`, o quitar la regla. Esperar a que vuelva a Conectado y anotar cuánto tardó.
+**Dos variantes**, 3 repeticiones cada una:
+- **`colgado`:** congela el proceso (`SIGSTOP`) y después lo libera (`SIGCONT`). Las conexiones quedan abiertas, pero sin heartbeats, como un equipo colgado.
+- **`red`:** el bloqueo de CP05 con `drop` en lugar de `reject`. Los paquetes se pierden sin respuesta, que es lo que ve el CMS cuando se desenchufa la Pi o se cae el Wi-Fi. El broker se entera por el keepalive (60 s × 1,5).
+
+No se usa matar el proceso: el servicio tiene `Restart=always`, y systemd lo levanta a los 10 s, antes de que el panel llegue a notarlo.
 
 | # | Variante | Caída | LWT (daemon) | Desconectado en el panel | Demora | Volvió a Conectado |
 |---|---|---|---|---|---|---|
-| 1 | A | | | | | |
+| 1 | colgado | | | | | |
 
 ### CP09 — Solicitud o mensaje sin credenciales, rechazado
 
 **Qué prueba.** Ni la API ni el broker aceptan pedidos sin credenciales válidas, y un reproductor no puede emitir alertas.
 
-Desde la Pi, 5 repeticiones de cada vector:
+**Script:** `sudo /opt/spui/venv/bin/python3 /opt/spui/pruebas/cp09.py [--repeticiones 5]`. Usa la configuración real de la Pi (`/etc/spui/spui.env`) y el mismo `paho-mqtt` del cliente, así que no hace falta instalar `mosquitto-clients`. Se conecta con su propio client id, así que no le corta la sesión al servicio.
 
-```bash
-# 1. API sin clave → 401
-curl -s -o /dev/null -w '%{http_code}\n' -X POST http://intranet/api/spui/reproductores/sync
-# 2. API con clave inventada → 401
-curl -s -o /dev/null -w '%{http_code}\n' -X POST -H 'X-Api-Key: clave-invalida' http://intranet/api/spui/reproductores/sync
-# 3. Media sin clave → 401
-curl -s -o /dev/null -w '%{http_code}\n' http://intranet/api/spui/media/cualquiera.jpg
-```
+| Vector | Esperado |
+|---|---|
+| Control: API con la clave real | 200 (sirve además para obtener el id del reproductor) |
+| API sin clave | 401 |
+| API con clave inventada | 401 |
+| Media sin clave | 401 |
+| MQTT anónimo en el puerto configurado (8883 con TLS) | Rechazado |
+| MQTT anónimo en el 1883 sin TLS (mientras siga abierto, hasta C2) | Rechazado |
+| MQTT con el usuario del reproductor y una clave incorrecta | Rechazado |
+| El reproductor publica en `spui/alertas/emergencia` con sus credenciales reales | No llega: un suscriptor no la recibe |
 
-Para el broker hace falta `mosquitto-clients` en la Pi (`sudo apt install mosquitto-clients`). Usar el puerto que tenga `MQTT_PORT` en `/etc/spui/spui.env`. Con TLS, agregar `--cafile` con la CA de `MQTT_CA_CERT`.
+El último vector manda un mensaje sin `retain` con una marca propia. Si la ACL estuviera mal y pasara, las pantallas lo descartan como "payload desconocido": la prueba no puede disparar una alerta real.
 
-```bash
-# 4. Conexión anónima → "Not authorized" / "Connection Refused"
-mosquitto_pub -h intranet -p 1883 -t spui/alertas/emergencia -m '{"prueba":1}'
-# 5. Un reproductor intentando publicar una alerta con sus propias credenciales.
-#    El broker acepta la conexión pero descarta la publicación (ACL); la prueba
-#    es que ninguna Pi ni el CMS la reciban: escuchar en paralelo con
-#    mosquitto_sub con las mismas credenciales y comprobar que no llega nada.
-mosquitto_pub -h intranet -p 1883 -u spui-repro-<id> -P '<clave_mqtt>' -t spui/alertas/emergencia -m '{"prueba":1}' -d
-```
-
-La clave MQTT del reproductor es `sha256(api_key + SPUI_MQTT_SALT)`, la misma que calcula el cliente. No se escribe en la planilla.
-
-| Vector | Esperado | Rep. 1 | 2 | 3 | 4 | 5 |
-|---|---|---|---|---|---|---|
-| API sin clave | 401 | | | | | |
-| API con clave inválida | 401 | | | | | |
-| Media sin clave | 401 | | | | | |
-| MQTT anónimo | Rechazado | | | | | |
-| Reproductor publica alerta | No llega a nadie | | | | | |
+`sin conexión` en el resultado significa que no hubo respuesta: es un problema de red, no un rechazo, y la corrida no vale.
 
 ### CP10 — Encendido y apagado programado
 
