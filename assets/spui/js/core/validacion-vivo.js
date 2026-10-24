@@ -210,6 +210,14 @@
             mostrar(campo, 'El archivo pesa ' + formatear(archivo.size) + ' y el máximo es ' + formatear(max) + '. Elegí uno más liviano.');
             return false;
         }
+
+        // Lo que se sabe recién después de leer el archivo (video-archivo.js:
+        // la resolución de un video) queda marcado en el campo, para que
+        // Guardar no lo envíe igual.
+        if (campo.dataset.spuiArchivoInvalido) {
+            mostrar(campo, campo.dataset.spuiArchivoInvalido);
+            return false;
+        }
         return true;
     }
 
@@ -305,4 +313,8 @@
 
     window.spui = window.spui || {};
     window.spui.formatearTamano = formatear;
+    // Para reglas que se resuelven fuera de este archivo (video-archivo.js):
+    // mismo lugar y mismo aspecto que cualquier otro error de campo.
+    window.spui.errorDeCampo = mostrar;
+    window.spui.limpiarErrorDeCampo = limpiar;
 }());

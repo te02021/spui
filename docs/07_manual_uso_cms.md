@@ -124,12 +124,15 @@ El repositorio de todo lo que puede aparecer en una pantalla. Seis tipos:
 |---|---|---|
 | **Texto** | El texto a mostrar | — |
 | **Imagen** | Archivo JPG, PNG, GIF o WebP | Se calcula su hash para que la Pi detecte cambios |
-| **Video** | Archivo MP4 o WebM | Ídem |
+| **Video** | Archivo MP4 o MOV en H.264, hasta 1920×1080 y 30 cuadros por segundo | Un video más grande no se acepta: en la pantalla se vería trabado. El aviso aparece apenas se elige el archivo |
 | **YouTube** | La URL del video | Se reproduce a pantalla completa |
 | **QR** | URL destino y vencimiento opcional, en el mismo formulario | El sistema genera la imagen automáticamente (ver §3.3) |
 | **Cronograma** | Nada al crearlo | Al guardar se abre su listado de ítems (ver §3.2) |
 
-Además se define **título** y **duración en segundos** (vacío = permanente).
+Además se define **título** y **duración en segundos**:
+
+- **Vacío = permanente:** si es el único contenido de la playlist queda fijo; si comparte playlist, se muestra 10 segundos.
+- **Un video no pide duración:** dura lo que dura el archivo. El CMS la lee al guardarlo y la muestra al editarlo; la playlist lo muestra completo.
 
 **Estados y flujo:**
 
@@ -199,7 +202,7 @@ Listas ordenadas que se reproducen en loop.
   - abajo, todos los contenidos publicados, para **agregar**. Un mismo contenido **se puede agregar más de una vez** (por ejemplo, para que un aviso salga más seguido dentro del loop); el catálogo indica "En la lista ×N".
 - **Guardar y Cancelar de la ventana de ítems aparecen sólo cuando cambiaste algo.** **Guardar** confirma la lista y cierra la ventana (al reabrirla, sigue ahí); **Cancelar** vuelve a lo que estaba y cierra.
 - **Lo que se guarda de verdad es la playlist:** los ítems confirmados se persisten recién con el **Guardar** del formulario de la playlist, junto con el nombre y la descripción. Si cancelás la playlist, no queda nada de lo que hiciste en los ítems. Al guardar, las pantallas que usan esa playlist reciben el cambio en segundos.
-- **La duración la define el contenido**, no la playlist: un mismo contenido dura lo mismo en todas las playlists donde esté (y en cada una de sus repeticiones).
+- **La duración la define el contenido**, no la playlist: un mismo contenido dura lo mismo en todas las playlists donde esté (y en cada una de sus repeticiones). La ventana de ítems muestra al lado de cada uno **cuánto va a durar de verdad** en esa playlist ("10 s", "23 s", "En bucle", "Permanente"), y se actualiza al agregar o quitar ítems.
 - Desde **Ver** se consulta la lista de ítems en modo sólo lectura.
 - Si alguna pantalla que usa la playlist tiene su reproductor **desconectado**, editarla y eliminarla quedan bloqueados (ver 6).
 

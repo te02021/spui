@@ -40,7 +40,7 @@ class ContenidoType extends AbstractType
                 'constraints'  => [new NotBlank(message: 'Seleccioná un tipo.')],
             ])
             ->add('duracionSegundos', IntegerType::class, [
-                'label'      => 'Duración por defecto (segundos)',
+                'label'      => 'Duración (segundos)',
                 'label_attr' => ['class' => 'unraf-form-label'],
                 'required'   => false,
                 'attr'       => [

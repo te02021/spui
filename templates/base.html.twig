@@ -156,6 +156,9 @@
 <script src="{{ asset('spui/js/core/content-type-fields.js') }}"></script>
 <script src="{{ asset('spui/js/core/alerta-sonido-field.js') }}"></script>
 <script src="{{ asset('spui/js/core/contenido-archivo-field.js') }}"></script>
+{# Antes que validacion-vivo.js: al elegir otro video, tiene que borrar la marca
+   de inválido del anterior antes de que validacion-vivo.js revise el campo. #}
+<script src="{{ asset('spui/js/core/video-archivo.js') }}"></script>
 <script src="{{ asset('spui/js/core/validacion-vivo.js') }}"></script>
 {# AssetMapper versiona los .svg con un hash: media-viewer.js no puede
    armar esas URLs por su cuenta, así que se las pasamos acá. #}

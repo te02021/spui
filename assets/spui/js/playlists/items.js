@@ -48,9 +48,11 @@
                 contenidoId: el.dataset.contenidoId,
                 titulo:      el.dataset.titulo,
                 tipo:        el.dataset.tipo,
-                duracion:    el.dataset.duracion
+                duracionSeg: el.dataset.duracionSeg,
+                esVideo:     el.dataset.esVideo
             };
         });
+        this.rotacion = parseInt(root.dataset.duracionRotacion, 10) || 10;
 
         // Si ya se confirmó una lista en esta misma edición (alta o edición),
         // vive en el formulario de la playlist y manda sobre lo que dibujó el
@@ -123,8 +125,40 @@
             });
         }
 
+        // Cuánto va a durar cada fila depende de cuántas haya: un contenido
+        // permanente queda fijo si está solo y dura lo de rotación si no.
+        if (this.lista) {
+            var self = this, total = ids.length;
+            this.lista.querySelectorAll('[data-contenido-id]').forEach(function (li) {
+                var badge = li.querySelector('[data-spui-item-duracion]');
+                if (badge) badge.textContent = self.etiquetaDuracion(li.dataset.duracionSeg, li.dataset.esVideo === '1', total);
+            });
+        }
+
         if (this.acciones) this.acciones.hidden = !this.hayCambios();
     };
+
+    /**
+     * Misma regla que PlaylistItem::getDuracionEfectiva() / etiquetaDuracion()
+     * en el servidor, que es la que recibe la Pi. Si cambia una, cambia la otra.
+     */
+    ListaItems.prototype.etiquetaDuracion = function (seg, esVideo, total) {
+        var unico = total <= 1;
+        var s = seg === '' || seg === undefined ? null : parseInt(seg, 10);
+        if (esVideo) {
+            if (unico) return 'En bucle';
+            return s === null ? 'Hasta que termine' : legible(s);
+        }
+        if (s !== null) return legible(s);
+        return unico ? 'Permanente' : legible(this.rotacion);
+    };
+
+    /** "45 s", "1 min 12 s": como Contenido::duracionLegible(). */
+    function legible(seg) {
+        if (seg < 60) return seg + ' s';
+        var min = Math.floor(seg / 60), resto = seg % 60;
+        return min + ' min' + (resto ? ' ' + resto + ' s' : '');
+    }
 
     ListaItems.prototype.bindAgregar = function () {
         var self = this;
@@ -148,7 +182,8 @@
         li.dataset.contenidoId = d.contenidoId;
         li.dataset.titulo      = d.titulo;
         li.dataset.tipo        = d.tipo;
-        li.dataset.duracion    = d.duracion;
+        li.dataset.duracionSeg = d.duracionSeg || '';
+        li.dataset.esVideo     = d.esVideo || '0';
         // Las URLs de los íconos vienen de la raíz (con el hash de AssetMapper
         // ya resuelto por Twig): con la lista vacía no hay fila de dónde copiarlas.
         li.innerHTML =
@@ -158,7 +193,8 @@
             '<span class="spui-badge-borrador" style="min-width:1.8rem;text-align:center" data-spui-item-orden></span>' +
             '<div class="flex-grow-1"><strong>' + esc(d.titulo) + '</strong>' +
                 '<small class="text-muted ms-2">' + esc(d.tipo) + '</small></div>' +
-            '<span class="duracion-badge text-muted small">' + esc(d.duracion) + '</span>' +
+            // El texto lo pone sincronizarVista(): depende de cuántos ítems haya.
+            '<span class="duracion-badge text-muted small" data-spui-item-duracion></span>' +
             '<button type="button" class="unraf-btn-icon btn-delete" data-spui-item-quitar title="Quitar de la playlist">' +
                 '<img src="' + esc(this.root.dataset.iconoQuitar || '') + '" class="unraf-icon-svg" alt="Quitar">' +
             '</button>';

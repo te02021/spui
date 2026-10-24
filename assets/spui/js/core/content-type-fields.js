@@ -31,6 +31,13 @@
         if (campoTexto)      campoTexto.style.display      = esTexto      ? '' : 'none';
         if (campoCronograma) campoCronograma.style.display = esCronograma ? '' : 'none';
         if (campoQr)         campoQr.style.display         = esQr         ? '' : 'none';
+
+        // Un video dura lo que dura su archivo (lo lee el CMS al guardar): no
+        // se pide la duración, se explica de dónde sale.
+        var campoDuracion = document.getElementById('campoDuracion');
+        var notaVideo     = document.getElementById('notaDuracionVideo');
+        if (campoDuracion) campoDuracion.hidden = tipo === 'video';
+        if (notaVideo)     notaVideo.hidden     = tipo !== 'video';
         if (archivoInput)    archivoInput.required = esArchivo;
         if (textarea)        textarea.required     = esTexto;
         if (qrUrl)           qrUrl.required        = esQr;

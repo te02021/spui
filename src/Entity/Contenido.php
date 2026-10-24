@@ -104,6 +104,28 @@ class Contenido
     public function getDuracionSegundos(): ?int { return $this->duracionSegundos; }
     public function setDuracionSegundos(?int $duracionSegundos): static { $this->duracionSegundos = $duracionSegundos; return $this; }
 
+    /** "45 s", "1 min 12 s", "2 min". La misma forma que usa playlists/items.js. */
+    public static function duracionLegible(int $segundos): string
+    {
+        if ($segundos < 60) {
+            return $segundos . ' s';
+        }
+        $min = intdiv($segundos, 60);
+        $seg = $segundos % 60;
+        return $min . ' min' . ($seg ? ' ' . $seg . ' s' : '');
+    }
+
+    /** La duración propia del contenido, para listados y para el catálogo de la playlist. */
+    public function etiquetaDuracion(): string
+    {
+        if ($this->duracionSegundos !== null) {
+            return self::duracionLegible($this->duracionSegundos);
+        }
+        // Un video sin duración es uno subido antes de que se leyera del
+        // archivo: igual se muestra completo.
+        return $this->tipo === TipoContenido::Video ? 'Hasta que termine' : 'Permanente';
+    }
+
     public function getHashArchivo(): ?string { return $this->hashArchivo; }
     public function setHashArchivo(?string $hashArchivo): static { $this->hashArchivo = $hashArchivo; return $this; }
 

@@ -28,7 +28,9 @@
     </div>
 </div>
 
-<div class="mb-3">
+{# content-type-fields.js oculta este campo en un video: su duración la lee el
+   CMS del archivo al guardarlo, y se muestra la nota de abajo en su lugar. #}
+<div class="mb-3" id="campoDuracion">
     {{ form_label(form.duracionSegundos) }}
     <div class="spui-input-with-addon">
         {{ form_widget(form.duracionSegundos) }}
@@ -37,7 +39,11 @@
     {% for e in form.duracionSegundos.vars.errors %}
         <p class="spui-campo-error">{{ e.message }}</p>
     {% endfor %}
-    <small class="text-muted d-block mt-1">Dura lo mismo en todas las playlists donde esté.</small>
+    <small class="text-muted d-block mt-1">{{ include('@SPUI/contenidos/_ayuda_duracion.html.twig') }}</small>
+</div>
+<div class="mb-3" id="notaDuracionVideo" hidden>
+    <span class="unraf-form-label d-block">Duración</span>
+    <small class="text-muted d-block">Un video dura lo que dura el archivo: el CMS la lee al guardarlo y la playlist lo muestra completo.</small>
 </div>
 
 {# data-spui-campo: los errores del archivo (del servidor y de validacion-vivo.js,
@@ -49,6 +55,7 @@
        validacion-vivo.js y el texto de ayuda de abajo. #}
     <input type="file" name="archivo" id="archivoInput" class="form-control{{ err.archivo is defined ? ' is-invalid' }}"
            data-spui-formatos-por-tipo="{{ constant('SPUI\\Service\\MediaStorageService::FORMATOS')|json_encode }}"
+           data-spui-video-max="{{ constant('SPUI\\Service\\VideoInspectorService::LADO_MAYOR_MAXIMO') }}x{{ constant('SPUI\\Service\\VideoInspectorService::LADO_MENOR_MAXIMO') }}"
            {% if max_bytes_archivo is defined %}data-spui-max-bytes="{{ max_bytes_archivo }}"{% endif %}>
     <small class="text-muted" id="archivoAyuda"></small>
     {% if err.archivo is defined %}<p class="spui-campo-error">{{ err.archivo }}</p>{% endif %}

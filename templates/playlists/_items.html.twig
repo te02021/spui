@@ -28,6 +28,7 @@
 
 <div data-spui-items-root
      data-alta="{{ esAlta ? '1' : '0' }}"
+     data-duracion-rotacion="{{ constant('SPUI\\Entity\\PlaylistItem::DURACION_EN_ROTACION') }}"
      data-icono-arrastre="{{ asset('unraf-ui/icons/dots-six-vertical.svg') }}"
      data-icono-quitar="{{ asset('unraf-ui/icons/trash.svg') }}">
 
@@ -53,7 +54,8 @@
             data-contenido-id="{{ c.id }}"
             data-titulo="{{ c.titulo }}"
             data-tipo="{{ c.tipo.etiqueta }}"
-            data-duracion="{{ c.duracionSegundos ? c.duracionSegundos ~ 's' : 'Permanente' }}">
+            data-duracion-seg="{{ c.duracionSegundos ?? '' }}"
+            data-es-video="{{ c.tipo.value == 'video' ? '1' : '0' }}">
             {% if not ro %}
                 <span class="item-drag-handle">
                     <img src="{{ asset('unraf-ui/icons/dots-six-vertical.svg') }}" class="unraf-icon-svg" alt="">
@@ -64,9 +66,9 @@
                 <strong>{{ c.titulo }}</strong>
                 <small class="text-muted ms-2">{{ c.tipo.etiqueta }}</small>
             </div>
-            <span class="duracion-badge text-muted small">
-                {{ c.duracionSegundos ? c.duracionSegundos ~ 's' : 'Permanente' }}
-            </span>
+            {# Lo que va a durar en pantalla en ESTA playlist (PlaylistItem::etiquetaDuracion);
+               items.js lo recalcula al agregar o quitar ítems. #}
+            <span class="duracion-badge text-muted small" data-spui-item-duracion>{{ item.etiquetaDuracion }}</span>
             {% if not ro %}
                 <button type="button" class="unraf-btn-icon btn-delete"
                         data-spui-item-quitar
@@ -104,16 +106,16 @@
                         data-contenido-id="{{ c.id }}"
                         data-titulo="{{ c.titulo }}"
                         data-tipo="{{ c.tipo.etiqueta }}"
-                        data-duracion="{{ c.duracionSegundos ? c.duracionSegundos ~ 's' : 'Permanente' }}"
+                        data-duracion-seg="{{ c.duracionSegundos ?? '' }}"
+                        data-es-video="{{ c.tipo.value == 'video' ? '1' : '0' }}"
                         data-filter-text="{{ (c.titulo ~ ' ' ~ c.tipo.etiqueta)|lower }}">
                         <div class="flex-grow-1">
                             <strong>{{ c.titulo }}</strong>
                             <small class="text-muted ms-2">{{ c.tipo.etiqueta }}</small>
                             <small class="spui-items-en-lista ms-2" data-spui-en-lista hidden></small>
                         </div>
-                        <span class="duracion-badge text-muted small">
-                            {{ c.duracionSegundos ? c.duracionSegundos ~ 's' : 'Permanente' }}
-                        </span>
+                        {# La duración propia del contenido; en la lista de arriba se ve la que tendría en esta playlist. #}
+                        <span class="duracion-badge text-muted small">{{ c.etiquetaDuracion }}</span>
                         <button type="button" class="unraf-btn spui-btn-crear unraf-btn-sm"
                                 data-spui-item-agregar
                                 title="Agregar a la playlist">

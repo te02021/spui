@@ -21,7 +21,9 @@ use SPUI\Service\MqttSecurityService;
 use SPUI\Service\QrEscaneoPublisherService;
 use SPUI\Service\QrGeneratorService;
 use SPUI\Service\UsuarioResolverService;
+use SPUI\Service\VideoInspectorService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\Form\FormInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -50,11 +52,41 @@ class ContenidoCmsController extends AbstractController
         private readonly QrGeneratorService $qrGenerator,
         private readonly CacheItemPoolInterface $cache,
         private readonly UsuarioResolverService $usuarios,
+        private readonly VideoInspectorService $videos,
     ) {}
 
     private function em()
     {
         return $this->doctrine->getManager('SPUI');
+    }
+
+    /**
+     * Valida el archivo subido para este tipo de contenido y, si es un video,
+     * comprueba que la Pi lo pueda reproducir fluido y toma su duración.
+     *
+     * La duración de un video no la escribe nadie: se lee del archivo y se
+     * guarda en el contenido, para que la playlist lo muestre completo. Si se
+     * reemplaza el archivo, se vuelve a leer.
+     *
+     * @return string|null Mensaje para mostrar debajo del campo, o null si el archivo sirve.
+     */
+    private function validarArchivo(UploadedFile $archivo, Contenido $contenido): ?string
+    {
+        $tipo = $contenido->getTipo()->value;
+        if ($error = $this->media->validar($archivo, $tipo)) {
+            return $error;
+        }
+        if ($tipo !== 'video') {
+            return null;
+        }
+
+        $info = $this->videos->inspeccionar($archivo->getPathname());
+        if ($motivo = $this->videos->motivoRechazo($info)) {
+            return $motivo;
+        }
+
+        $contenido->setDuracionSegundos(VideoInspectorService::segundos($info));
+        return null;
     }
 
     /** Subcarpeta de MediaStorageService que corresponde a cada tipo de archivo. */
@@ -359,7 +391,7 @@ class ContenidoCmsController extends AbstractController
                 if (!$archivo) {
                     return $this->errorAlta($request, $form, 'archivo', 'El archivo es requerido para el tipo "' . $tipo->etiqueta() . '".');
                 }
-                if ($errValidacion = $this->media->validar($archivo)) {
+                if ($errValidacion = $this->validarArchivo($archivo, $contenido)) {
                     return $this->errorAlta($request, $form, 'archivo', $errValidacion);
                 }
                 $hash = $this->media->hashArchivoSubido($archivo);
@@ -454,8 +486,12 @@ class ContenidoCmsController extends AbstractController
             }
 
             $c->setTitulo($titulo);
-            $durStr = $request->request->get('duracion_segundos', '');
-            $c->setDuracionSegundos($durStr !== '' ? max(1, (int) $durStr) : null);
+            // La duración de un video sale del archivo (validarArchivo), no del
+            // formulario: lo que llegue en duracion_segundos se ignora.
+            if ($c->getTipo() !== TipoContenido::Video) {
+                $durStr = $request->request->get('duracion_segundos', '');
+                $c->setDuracionSegundos($durStr !== '' ? max(1, (int) $durStr) : null);
+            }
 
             if (in_array($c->getTipo()->value, ['texto', 'youtube'], true)) {
                 $texto = trim($request->request->get('contenido_texto', ''));
@@ -478,7 +514,7 @@ class ContenidoCmsController extends AbstractController
             if (in_array($c->getTipo()->value, self::TIPOS_ARCHIVO, true)) {
                 $archivo = $request->files->get('archivo');
                 if ($archivo) {
-                    if ($errValidacion = $this->media->validar($archivo)) {
+                    if ($errValidacion = $this->validarArchivo($archivo, $c)) {
                         return $this->errorEdicion($request, $c, 'archivo', $errValidacion);
                     }
                     // Se borra el viejo DESPUÉS de guardar el nuevo, no antes: si

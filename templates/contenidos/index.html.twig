@@ -79,7 +79,7 @@
                             <span class="unraf-badge-turquesa">{{ c.tipo.value }}</span>
                         {% endif %}
                     </td>
-                    <td class="p-3" data-label="Duración">{{ c.duracionSegundos ? c.duracionSegundos ~ 's' : '∞ Permanente' }}</td>
+                    <td class="p-3" data-label="Duración">{{ c.etiquetaDuracion }}</td>
                     <td class="p-3" data-label="Estado"><span class="spui-badge-{{ c.estado.value }}">{{ c.estado.value|capitalize }}</span></td>
                     <td class="p-3" data-label="Creado"><small>{{ c.creadoEn|date('d/m/Y') }}</small></td>
                     <td class="p-3" data-label="Acciones">

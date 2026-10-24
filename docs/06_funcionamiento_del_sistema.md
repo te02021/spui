@@ -74,7 +74,7 @@ Cadena: `Edificio → Ubicacion → Pantalla → Reproductor`.
 | **CronogramaItem** | Las filas de un contenido tipo cronograma (materia, aula, horario, días) |
 | **CodigoQr** | Un QR dinámico con URL destino, vencimiento y contador de escaneos. Pertenece al `Contenido` de tipo `qr` que lo muestra: se crea, se edita y se borra desde ahí, no desde una sección propia |
 | **Playlist** | Una lista ordenada de contenidos |
-| **PlaylistItem** | Una aparición de un contenido dentro de una playlist, con su orden. Un mismo contenido puede tener varias en la misma playlist (más frecuencia en el loop). La duración no es del ítem: la define el contenido, igual en todas las playlists |
+| **PlaylistItem** | Una aparición de un contenido dentro de una playlist, con su orden. Un mismo contenido puede tener varias en la misma playlist (más frecuencia en el loop). La duración no es del ítem: la define el contenido, igual en todas las playlists. Lo que sí depende de la playlist es qué pasa con un contenido sin duración, y lo resuelve `PlaylistItem::getDuracionEfectiva()` (ver §5) |
 
 Un contenido tiene tres estados: **borrador** (no se puede usar), **publicado** (disponible para playlists), **archivado** (retirado sin borrar).
 
@@ -139,6 +139,27 @@ El usuario MQTT de cada Pi es `spui-repro-{id}` (el id llega en el primer sync) 
 4. **Si no hay red:** se usa lo último guardado y se reintenta a los 30 segundos (±10 s al azar) en vez de esperar 5 minutos. El azar es a propósito: si se corta la red del campus, todas las Pi pierden la conexión a la vez y, con un reintento fijo, vuelven a la vez y le caen juntas al CMS (y al límite de 2 syncs por minuto). Con ±10 s llegan repartidas en 20 segundos.
 5. **Se aplica el horario energético:** si está fuera de hora, se apaga la pantalla y no se reproduce nada.
 6. **Se decide qué mostrar** según la prioridad de la sección 4.
+
+### Cómo muestra cada contenido
+
+**Duración.** La regla vive en un solo lugar, `PlaylistItem::getDuracionEfectiva()`. El CMS la calcula y la manda en `duracion_efectiva_seg`, la Pi la obedece y la ventana de ítems del CMS muestra exactamente eso (`etiquetaDuracion()`; `playlists/items.js` repite la regla para recalcular mientras se arma la lista):
+
+| Contenido | Único en la playlist | Comparte playlist |
+|---|---|---|
+| Video | Se repite en bucle | Dura lo que dura el archivo |
+| Con duración propia | Esa duración | Esa duración |
+| Permanente (sin duración) | Queda fijo | 10 s (`DURACION_EN_ROTACION`) |
+
+La duración de un video no la escribe nadie: el CMS la lee del archivo al subirlo (`VideoInspectorService`) y la vuelve a leer si se reemplaza. En la Pi, un video termina cuando VLC informa el final, no a reloj; su duración es sólo el máximo a esperar. Antes se esperaba la duración a reloj y un video sin duración cargada se cortaba a los 10 s.
+
+**Qué videos se aceptan.** Sólo MP4 o MOV con H.264, hasta 1920×1080 (en cualquier orientación) y hasta 30 cuadros por segundo. Es lo que la Pi 4 reproduce fluido: decodifica H.264 por hardware hasta 1080p. Un 1080p a 24 fps se vio fluido en el equipo el 24/10/2026; un 2560×1440 se trababa y llegaba a congelar la pantalla. El CMS lo controla dos veces:
+
+- **En el navegador**, al elegir el archivo (`video-archivo.js`): resolución y duración, antes de subir nada.
+- **En el servidor**, al guardar (`VideoInspectorService`): además el códec y los cuadros por segundo, leídos de las cajas del MP4 sin ffprobe ni librerías.
+
+WebM y OGG se dejaron de aceptar: la Pi los decodifica por software. Los casos de prueba están en `tools/verificacion/video.php`, dentro de la suite.
+
+**Texto y cronograma** se dibujan como una imagen a pantalla completa con Pillow: fondo azul institucional, fuente Museo y el tamaño de letra que haga entrar todo el texto (`Player._imagen_de_texto()`). Se muestran por el mismo camino que una imagen fija, igual que la pantalla de espera y la alerta. Antes iban con el filtro marq de VLC sobre `blank://`, y en la Pi la pantalla quedaba en negro durante el turno del texto. Cada texto genera su imagen una vez (el nombre sale de un hash del texto) y se conservan las últimas 30.
 
 ### Por qué sigue andando sin red
 

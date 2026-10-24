@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace SPUI\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
+use SPUI\Enum\TipoContenido;
 use SPUI\Repository\PlaylistItemRepository;
 
 #[ORM\Entity(repositoryClass: PlaylistItemRepository::class)]
@@ -40,18 +41,57 @@ class PlaylistItem
     public function setOrden(int $orden): static { $this->orden = $orden; return $this; }
 
     /**
-     * Segundos que dura este ítem, o null si el contenido es permanente.
+     * Segundos que dura un contenido permanente cuando comparte la playlist con
+     * otros: "permanente" dentro de una rotación dejaría a los demás sin verse.
+     */
+    public const DURACION_EN_ROTACION = 10;
+
+    /**
+     * Cuánto dura este ítem en pantalla, en segundos, o null si queda fijo.
      *
      * La duración la define el contenido y sólo el contenido: antes existía un
      * duracion_override_seg por ítem que permitía pisarla en cada playlist, y
-     * eso dejaba dos fuentes de verdad para el mismo dato.
+     * eso dejaba dos fuentes de verdad para el mismo dato. Lo que sí depende de
+     * la playlist es qué pasa con un contenido sin duración, y esa regla vive
+     * acá y en ningún otro lado: es lo que recibe la Pi (SyncController) y lo
+     * que muestra la ventana de ítems (etiquetaDuracion(); playlists/items.js
+     * repite la misma regla para recalcular mientras se arma la lista).
      *
-     * El método sobrevive aunque hoy sea un passthrough: es el contrato que
-     * consumen SyncController y la API de playlists, y mantiene al cliente Pi
-     * aislado de cómo el CMS resuelve la duración.
+     *   - Video: dura lo que dura el archivo (se lee al subirlo). Si es el
+     *     único contenido de la playlist, null: se repite en bucle.
+     *   - Con duración propia: esa duración.
+     *   - Permanente y único contenido: null, queda fijo en pantalla.
+     *   - Permanente en una playlist con otros: DURACION_EN_ROTACION.
      */
     public function getDuracionEfectiva(): ?int
     {
-        return $this->contenido->getDuracionSegundos();
+        $propia = $this->contenido->getDuracionSegundos();
+        $unico  = $this->playlist->getItems()->count() <= 1;
+
+        if ($this->contenido->getTipo() === TipoContenido::Video) {
+            return $unico ? null : $propia;
+        }
+        if ($propia !== null) {
+            return $propia;
+        }
+
+        return $unico ? null : self::DURACION_EN_ROTACION;
+    }
+
+    /** Lo que muestra la ventana de ítems: exactamente lo que va a pasar en pantalla. */
+    public function etiquetaDuracion(): string
+    {
+        $segundos = $this->getDuracionEfectiva();
+        if ($segundos !== null) {
+            return Contenido::duracionLegible($segundos);
+        }
+
+        if ($this->contenido->getTipo() === TipoContenido::Video) {
+            // Único video de la playlist, o uno cargado antes de que se leyera
+            // la duración del archivo: en los dos casos se ve completo.
+            return $this->playlist->getItems()->count() <= 1 ? 'En bucle' : 'Hasta que termine';
+        }
+
+        return 'Permanente';
     }
 }

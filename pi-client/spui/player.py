@@ -20,6 +20,7 @@ NOTA Pi-only:
   Para producción: iniciar X11 o usar Raspberry Pi OS Desktop + autostart.
 """
 
+import hashlib
 import logging
 import math
 import os
@@ -221,6 +222,12 @@ class Player:
     # una rotación eso dejaría a los demás sin mostrarse nunca.
     _DURACION_POR_DEFECTO = 10
 
+    # Un video se muestra hasta que termina; su duración (la del archivo, que el
+    # CMS lee al subirlo) es el máximo a esperar si VLC no avisa el final, más
+    # este margen por lo que tarda en arrancar. Sin duración, el tope.
+    _MARGEN_FIN_VIDEO_SEG = 5
+    _TOPE_VIDEO_SEG = 3600
+
     # Un ítem permanente devuelve None, no un número: "permanente" es un estado,
     # no una cantidad de segundos. Antes acá había un tope de 300 s inventado por
     # el cliente, y el resultado era que una imagen configurada para verse
@@ -316,9 +323,15 @@ class Player:
             return self._DURACION_POR_DEFECTO
 
         duracion = item.get('duracion_efectiva_seg')
+        es_video = ((item.get('contenido') or {}).get('tipo')) == 'video'
 
         if duracion is None:
-            return self.PERMANENTE if total_items == 1 else self._DURACION_POR_DEFECTO
+            if total_items == 1:
+                return self.PERMANENTE
+            # Un video sin duración en una rotación es uno subido antes de que
+            # el CMS la leyera del archivo: se ve completo (el tope es sólo
+            # para no quedar esperando para siempre si VLC no avisa el final).
+            return self._TOPE_VIDEO_SEG if es_video else self._DURACION_POR_DEFECTO
 
         try:
             duracion = int(duracion)
@@ -691,6 +704,93 @@ class Player:
             logger.error('No se pudo componer la imagen de la alerta (%s) — se usa el texto superpuesto de VLC.', exc)
             return None
 
+    # ── Texto y cronograma como imagen ───────────────────────────────────
+    _AZUL           = (11, 61, 145)    # mismo fondo que la pantalla de espera
+    _AZUL_OSCURO    = (7, 40, 97)
+    _TEXTO_PREFIJO  = '_texto_'
+    _TEXTO_GUARDADAS = 30              # imágenes de texto que se conservan en el caché
+
+    def _imagen_de_texto(self, texto: str, titulo: Optional[str] = None) -> Optional[str]:
+        """
+        PNG a pantalla completa con el texto de un contenido (o un cronograma,
+        con su título en una banda arriba), o None si no se pudo armar.
+
+        Se guarda una por texto (el nombre sale de un hash): en cada vuelta de
+        la playlist se reusa la misma imagen en vez de volver a dibujarla, y un
+        texto editado en el CMS da otro nombre, así que nunca se muestra uno
+        viejo. Se conservan las últimas _TEXTO_GUARDADAS.
+
+        El tamaño de letra se achica hasta que todo el texto entra: nunca se
+        corta una parte. Un cronograma (con título) va alineado a la izquierda,
+        como una tabla; un texto suelto, centrado.
+        """
+        clave = hashlib.sha1(f'v1\0{titulo or ""}\0{texto}'.encode('utf-8')).hexdigest()[:16]
+        ruta = os.path.join(self._media_dir, f'{self._TEXTO_PREFIJO}{clave}.png')
+        if os.path.exists(ruta):
+            return ruta
+
+        try:
+            from PIL import Image, ImageDraw   # noqa: PLC0415 — opcional, sólo acá
+        except ImportError:
+            logger.warning('Pillow no disponible — el texto se muestra con el texto superpuesto de VLC.')
+            return None
+
+        try:
+            ancho, alto = self._ALERTA_ANCHO, self._ALERTA_ALTO
+            margen = 140
+            img  = Image.new('RGB', (ancho, alto), self._AZUL)
+            draw = ImageDraw.Draw(img)
+
+            y_ini = 0
+            if titulo:
+                alto_banda = 170
+                draw.rectangle([(0, 0), (ancho, alto_banda)], fill=self._AZUL_OSCURO)
+                fuente_titulo = self._fuente_alerta(64)
+                linea = self._envolver_texto(draw, titulo, fuente_titulo, ancho - margen)[0]
+                caja = draw.textbbox((0, 0), linea, font=fuente_titulo)
+                draw.text(((ancho - (caja[2] - caja[0])) / 2, (alto_banda - (caja[3] - caja[1])) / 2 - caja[1]),
+                          linea, font=fuente_titulo, fill=self._BLANCO)
+                y_ini = alto_banda
+
+            alto_region = alto - y_ini - 60
+            centrado = titulo is None
+            tamano = 140 if centrado else 64
+            while True:
+                fuente = self._fuente_alerta(tamano)
+                lineas = self._envolver_texto(draw, texto, fuente, ancho - 2 * margen)
+                alto_linea = draw.textbbox((0, 0), 'Ag', font=fuente)[3] * 1.35
+                if alto_linea * len(lineas) <= alto_region - 40 or tamano <= 28:
+                    break
+                tamano -= 6
+
+            y = y_ini + 30 + max(0, (alto_region - alto_linea * len(lineas)) / 2)
+            for linea in lineas:
+                caja = draw.textbbox((0, 0), linea, font=fuente)
+                x = (ancho - (caja[2] - caja[0])) / 2 if centrado else margen
+                draw.text((x, y), linea, font=fuente, fill=self._BLANCO)
+                y += alto_linea
+
+            os.makedirs(self._media_dir, exist_ok=True)
+            img.save(ruta)
+            self._podar_imagenes_de_texto()
+            return ruta
+        except Exception as exc:
+            logger.error('No se pudo dibujar el texto (%s) — se usa el texto superpuesto de VLC.', exc)
+            return None
+
+    def _podar_imagenes_de_texto(self) -> None:
+        """Deja sólo las últimas imágenes de texto: cada edición de un texto genera una nueva."""
+        try:
+            viejas = sorted(
+                (os.path.join(self._media_dir, n) for n in os.listdir(self._media_dir)
+                 if n.startswith(self._TEXTO_PREFIJO) and n.endswith('.png')),
+                key=os.path.getmtime,
+            )
+            for ruta in viejas[:-self._TEXTO_GUARDADAS]:
+                os.remove(ruta)
+        except OSError as exc:
+            logger.warning('No se pudieron limpiar imágenes de texto viejas: %s', exc)
+
     def _reproducir_imagen_alerta(self, ruta: str) -> None:
         """Muestra la pantalla de alerta ya compuesta, hasta que se desactive."""
         if self._simulacion:
@@ -869,20 +969,17 @@ class Player:
         pantalla en blanco.
         """
         if not items:
-            self._reproducir_texto(
-                f'{titulo}\n\nSin actividades programadas para hoy.',
-                duracion,
-            )
+            self._reproducir_texto('Sin actividades programadas para hoy.', duracion, titulo=titulo)
             return
 
-        lineas = [titulo, '']
+        lineas = []
         for it in items:
-            horario = f"{it.get('hora_inicio', '')}-{it.get('hora_fin', '')}"
+            horario = f"{it.get('hora_inicio', '')} a {it.get('hora_fin', '')}"
             aula    = it.get('aula') or ''
             nombre  = it.get('nombre', '')
-            lineas.append(f"{horario}  {nombre}" + (f"  ({aula})" if aula else ''))
+            lineas.append(f"{horario} · {nombre}" + (f" · {aula}" if aula else ''))
 
-        self._reproducir_texto('\n'.join(lineas), duracion)
+        self._reproducir_texto('\n'.join(lineas), duracion, titulo=titulo)
 
     def _resolver_local(self, url_descarga: str, contenido: dict, sync_client) -> Optional[str]:
         """
@@ -1035,7 +1132,26 @@ class Player:
         self._reproducir_media(media)
 
         if duracion is not None:
-            self._esperar(duracion)
+            self._esperar_fin_video(duracion)
+
+    def _esperar_fin_video(self, maximo: int) -> None:
+        """
+        Espera a que el video termine. Antes se esperaba la duración a reloj:
+        un video que tardaba un segundo en arrancar se cortaba un segundo antes
+        del final, y uno sin duración cargada se cortaba a los 10 s.
+
+        Corta antes si llega una alerta o se detiene el cliente, igual que
+        _esperar(). `maximo` (la duración del archivo) es la red de seguridad
+        si VLC nunca informa el final.
+        """
+        fin = time.monotonic() + maximo + self._MARGEN_FIN_VIDEO_SEG
+        while time.monotonic() < fin:
+            if self._tiene_alerta() or self._stop.is_set():
+                return
+            estado = self._media_player.get_state()
+            if estado in (vlc.State.Ended, vlc.State.Error, vlc.State.Stopped):
+                return
+            time.sleep(0.25)
 
     def _reproducir_texto(
         self,
@@ -1044,11 +1160,19 @@ class Player:
         es_alerta: bool = False,
         fondo_ruta: Optional[str] = None,
         fondo_tipo: Optional[str] = None,
+        titulo: Optional[str] = None,
     ) -> None:
         """
         Muestra texto en pantalla, opcionalmente superpuesto sobre una imagen o
         video de fondo (fondo_ruta/fondo_tipo — hoy sólo lo usa mostrar_alerta,
         para el contenido multimedia adjunto a una alerta).
+
+        Un contenido de texto o un cronograma se dibujan como UNA imagen
+        (_imagen_de_texto) y se muestran por el camino de imagen fija, el mismo
+        que ya usan la pantalla de espera y la alerta. Antes iban con el filtro
+        marq de VLC sobre blank://, y en la Pi no se veía nada: la pantalla
+        quedaba en negro durante todo el turno del texto. El marq queda sólo
+        como reserva si Pillow no está.
 
         duracion=None significa "sin límite", y se resuelve distinto según el caso:
           - alerta: se queda hasta que la desactiven (bucle vigilando el estado).
@@ -1066,6 +1190,14 @@ class Player:
             else:
                 self._esperar_simulado(duracion)
             return
+
+        if not es_alerta and not fondo_ruta:
+            imagen = self._imagen_de_texto(texto, titulo)
+            if imagen:
+                self._reproducir_imagen(imagen, duracion)
+                return
+        if titulo:
+            texto = f'{titulo}\n\n{texto}'
 
         if fondo_ruta:
             media = self._vlc.media_new(fondo_ruta)

@@ -114,6 +114,8 @@ Verificados contra código. Si algo "deja de andar", empezar por acá.
 
 19. **El código en disco de la Pi puede ser más nuevo que el que corre.** Si el servicio no se reinicia después de copiar, los tests pasan (leen el disco) y el reproductor sigue con el comportamiento anterior. Pasó el 19/10/2026: el reintento sin red seguía en 30 s fijos con el código del ±10 s ya instalado, y el servicio tenía el PID del arranque. No se pudo determinar por qué no se reinició: la sospecha es un `ssh` del último paso que falló, que el script no revisaba. Desde el 21/10, `deploy.ps1` compara el PID antes y después del reinicio y falla si no cambió. Además, el cliente muestra al arrancar la versión desplegada (`SPUI Client iniciado (versión <commit> <fecha>)`, desde `/opt/spui/VERSION`). Para comprobarlo a mano: `journalctl -u spui -o cat | grep "SPUI Client iniciado" | tail -1`.
 
+20. **La Pi 4 reproduce fluido video H.264 hasta 1920×1080 y 30 cuadros por segundo; el CMS no acepta otros.** Un 2560×1440 se trababa y llegaba a congelar la pantalla (24/10/2026). Ojo con el nombre del archivo: el de prueba se llamaba "uhd-3840-2160" y era de 2560×1440. `VideoInspectorService` lee el archivo real al subirlo y además toma su duración, que es la que usa la playlist; WebM y OGG ya no se aceptan. Si un video "no sube", el motivo está debajo del campo. Ver `06` §5, "Cómo muestra cada contenido".
+
 ---
 
 ## 3.1. Registro de auditorías

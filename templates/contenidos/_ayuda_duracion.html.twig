@@ -1,0 +1,4 @@
+{# Una sola redacción de la regla de duración, para el alta y la edición. La
+   regla en sí vive en PlaylistItem::getDuracionEfectiva(). #}
+Cuánto se muestra en cada vuelta de la playlist, igual en todas las playlists donde esté.
+Vacío = permanente: si es el único contenido de la playlist queda fijo; si comparte playlist, se muestra {{ constant('SPUI\\Entity\\PlaylistItem::DURACION_EN_ROTACION') }} s.
