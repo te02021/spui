@@ -165,11 +165,11 @@ Cada paso es una repetición. Se corre la secuencia completa 2 veces.
 
 **Antes de correrlo**, en el CMS:
 - **El intervalo de sync del reproductor en 1 minuto.** El cliente recién nota el corte en su próximo ciclo: con 5 minutos podría no llegar a reintentar.
-- **Una playlist con dos ítems o más con duración** (imagen y video). Un único contenido permanente no vuelve a registrarse en el log, y el script no tendría evidencia de que siguió reproduciendo.
+- **Una playlist con dos ítems o más con duración y una vuelta corta,** por ejemplo dos imágenes de 5 s (ver "El jitter", abajo). Un único contenido permanente no vuelve a registrarse en el log, y el script no tendría evidencia de que siguió reproduciendo.
 
 **Qué mira el script:**
 - **CP05 cumple** si después del corte el cliente usó la caché (`Usando caché de sync`), registró reproducciones y no hubo errores (`No hay una copia válida`, `Archivo no cacheado y sin red`, `Traceback`, `Error reproduciendo`).
-- **El jitter:** cada intervalo entre reintentos es una vuelta de playlist más 30 ± 10 s más ~3 s del chequeo de red. Como la vuelta dura siempre lo mismo, los intervalos tienen que variar entre sí; si son todos iguales, el cliente corre código anterior al 15/10.
+- **El jitter:** desde el 24/10 la playlist gira sin pausa y el reintento se hace al terminar la vuelta en la que vencieron los 30 ± 10 s (más ~3 s del chequeo de red). Con vueltas cortas, de unos 10 s, los intervalos tienen que variar entre ~20 y ~45 s. Con una vuelta de 40 s o más caen siempre al final de cada vuelta y salen casi iguales: eso no indica código viejo. Para ver el jitter, usar en esta prueba una playlist de vuelta corta.
 - **CP06 cumple** con un `Sync OK` en menos de 60 s desde la restauración. Por diseño es como mucho ~43 s: el próximo reintento más el chequeo.
 
 **Repeticiones:** 3.

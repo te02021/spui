@@ -139,6 +139,7 @@ El usuario MQTT de cada Pi es `spui-repro-{id}` (el id llega en el primer sync) 
 4. **Si no hay red:** se usa lo último guardado y se reintenta a los 30 segundos (±10 s al azar) en vez de esperar 5 minutos. El azar es a propósito: si se corta la red del campus, todas las Pi pierden la conexión a la vez y, con un reintento fijo, vuelven a la vez y le caen juntas al CMS (y al límite de 2 syncs por minuto). Con ±10 s llegan repartidas en 20 segundos.
 5. **Se aplica el horario energético:** si está fuera de hora, se apaga la pantalla y no se reproduce nada.
 6. **Se decide qué mostrar** según la prioridad de la sección 4.
+7. **La playlist gira sin pausa hasta el próximo sync:** al terminar el último contenido sigue el primero, vuelta tras vuelta (`main._girar_playlist()`), y el sync del paso 1 se hace al terminar la vuelta en la que vence el intervalo. Un `sync_ahora`, una alerta o el apagado cortan entre vueltas. Antes se hacía una sola vuelta y después se esperaba el intervalo entero, con la pantalla quieta en el último cuadro del último contenido hasta 5 minutos (24/10/2026). Lo mismo sin red: el reintento de 30 ± 10 s se hace al terminar la vuelta en curso, así que con una playlist larga los reintentos caen al final de cada vuelta. Un contenido permanente solo no gira: queda fijo hasta el próximo sync.
 
 ### Cómo muestra cada contenido
 

@@ -254,6 +254,7 @@ def main() -> None:
     intervalo_sync = config.SYNC_INTERVAL
 
     while _corriendo:
+        inicio_ciclo = time.monotonic()
         sync_data = None
         espera    = intervalo_sync
 
@@ -380,7 +381,7 @@ def main() -> None:
                 _esperar_interruptible(min(espera, 60))
                 continue
             elif playlist and playlist.get('items'):
-                player.reproducir_playlist(playlist['items'], sync_client=sync)
+                _girar_playlist(player, playlist['items'], sync, hasta=inicio_ciclo + espera)
             else:
                 # Cubre tanto "sin programación" como "playlist vacía". El
                 # fallback es permanente: queda en pantalla hasta que haya
@@ -399,7 +400,9 @@ def main() -> None:
                 f'Error al reproducir el contenido programado ({exc}). Se reintenta en el próximo ciclo.',
             )
 
-        _esperar_interruptible(espera)
+        # Lo que falte hasta el próximo sync. Con una playlist que gira no
+        # queda nada: las vueltas ya llenaron el intervalo.
+        _esperar_interruptible(max(0.0, inicio_ciclo + espera - time.monotonic()))
 
     # ── Cierre limpio ────────────────────────────────────────────────────────
     player.detener()
@@ -408,6 +411,33 @@ def main() -> None:
     telemetria.detener()
     cache.close()
     logger.info('SPUI Client detenido correctamente.')
+
+
+def _girar_playlist(player, items: list, sync, hasta: float) -> None:
+    """
+    Vueltas de la playlist, una detrás de otra, hasta que toque sincronizar.
+
+    Al terminar el último contenido se pasa al primero sin pausa. Antes el
+    ciclo hacía UNA vuelta y después esperaba el intervalo de sync entero:
+    al terminar el último ítem (un video, por ejemplo) la pantalla se quedaba
+    en su último cuadro hasta 5 minutos, y recién después volvía al primero.
+
+    Corta entre vueltas si llega un 'sync_ahora' (el cambio se aplica al
+    terminar la vuelta en curso, igual que antes), si hay una alerta o si se
+    cierra el cliente. Una vuelta que dura menos de un segundo no se repite:
+    es un contenido permanente que ya quedó en pantalla, o nada que se pueda
+    mostrar, y repetirla sería girar en vacío.
+    """
+    while _corriendo and not _despertar.is_set():
+        inicio = time.monotonic()
+        player.reproducir_playlist(items, sync_client=sync)
+        ahora = time.monotonic()
+        if player.esta_mostrando_alerta() or ahora >= hasta or ahora - inicio < _VUELTA_MINIMA_SEG:
+            return
+
+
+# Una vuelta más corta que esto no se repite (ver _girar_playlist).
+_VUELTA_MINIMA_SEG = 1.0
 
 
 def _esperar_interruptible(segundos: float) -> None:
