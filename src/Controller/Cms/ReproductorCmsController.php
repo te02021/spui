@@ -232,7 +232,7 @@ class ReproductorCmsController extends AbstractController
 
         $host = $reproductor->getHostname();
 
-        // El CMS acepta hasta 2 syncs por minuto por reproductor: si acaba de
+        // El CMS acepta hasta 4 syncs por minuto por reproductor: si acaba de
         // sincronizar, el pedido terminaría rechazado del lado de la Pi.
         $hace = $reproductor->getUltimoSync() !== null ? time() - $reproductor->getUltimoSync()->getTimestamp() : null;
         if ($hace !== null && $hace < self::SYNC_MANUAL_ESPERA_SEG) {
@@ -253,7 +253,7 @@ class ReproductorCmsController extends AbstractController
             'Pedido enviado. «' . $host . '» se sincroniza en unos segundos; el último sync se actualiza solo en el listado.');
     }
 
-    /** Un sync manual, como mucho cada 30 s: la mitad del límite de 2 por minuto. */
+    /** Un sync manual, como mucho cada 30 s: deja lugar en el límite de 4 por minuto para el periódico y los avisos. */
     private const SYNC_MANUAL_ESPERA_SEG = 30;
 
     private function respuestaAccion(Request $request, bool $ok, string $mensaje, ?string $tipo = null): Response

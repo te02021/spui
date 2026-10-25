@@ -360,7 +360,7 @@ def escenario_rafaga(args, reps, medidor):
                        'fallidos': sum(1 for ok, _ in resultados.values() if not ok),
                        'p50_ms': percentil(tiempos, 50), 'p95_ms': percentil(tiempos, 95), 'max_ms': max(tiempos)})
         if ronda < args.repeticiones:
-            time.sleep(35)   # el CMS acepta 2 syncs por minuto por reproductor
+            time.sleep(35)   # holgado frente al límite de syncs por minuto por reproductor
     return {'rondas': rondas}
 
 
@@ -482,7 +482,7 @@ def escribir_informe(escenario, args, n, preparacion, resultado, http, servidor,
     if escenario == 'carga':
         L.append(f'- **Duración:** {args.minutos} min · sync cada {args.intervalo_sync} s · heartbeat cada 60 s · telemetría MQTT cada 60 s · cada reproductor arranca en un momento al azar.')
     elif escenario == 'rafaga':
-        L.append(f'- **Rondas:** {args.repeticiones}, todos los reproductores piden sync en el mismo instante; 35 s entre rondas (límite de 2 syncs/min por reproductor).')
+        L.append(f'- **Rondas:** {args.repeticiones}, todos los reproductores piden sync en el mismo instante; 35 s entre rondas (límite de syncs por minuto por reproductor).')
     else:
         L.append(f'- **Rondas:** {args.repeticiones}. La alerta se activa con el mismo POST del botón Activar del CMS (sesión, CSRF, chequeo de conectados), dirigida sólo a las pantallas [SIM]; timeout {args.timeout_alerta} s por ronda.')
     L += [f'- **CMS:** `{args.api}` · broker `{args.mqtt_host}:{args.mqtt_port}` (sin TLS) · commit `{commit}`.',

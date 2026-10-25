@@ -27,5 +27,37 @@ class EsperaReintentoTest(unittest.TestCase):
         self.assertGreater(len(esperas), 50, 'si fueran todas iguales no dispersaría nada')
 
 
+class _Respuesta:
+    def __init__(self, codigo, cabeceras):
+        self.status_code = codigo
+        self.headers = cabeceras
+
+
+class _ErrorHttp(Exception):
+    def __init__(self, codigo, cabeceras=None):
+        super().__init__(f'HTTP {codigo}')
+        self.response = _Respuesta(codigo, cabeceras or {})
+
+
+class EsperaTrasFalloTest(unittest.TestCase):
+    """Un 429 se reintenta cuando el CMS dice, no en el próximo intervalo (24/10/2026)."""
+
+    def test_un_429_respeta_retry_after(self):
+        espera = main._espera_tras_fallo(_ErrorHttp(429, {'Retry-After': '7'}))
+        self.assertGreaterEqual(espera, 7)
+        self.assertLessEqual(espera, 9)
+
+    def test_un_retry_after_absurdo_se_acota(self):
+        self.assertLessEqual(main._espera_tras_fallo(_ErrorHttp(429, {'Retry-After': '9999'})), 62)
+        self.assertGreaterEqual(main._espera_tras_fallo(_ErrorHttp(429, {'Retry-After': '-3'})), 1)
+        self.assertLessEqual(main._espera_tras_fallo(_ErrorHttp(429, {'Retry-After': 'mañana'})), 17)
+
+    def test_otro_fallo_espera_como_sin_red(self):
+        for exc in (_ErrorHttp(500), ConnectionError('sin ruta')):
+            espera = main._espera_tras_fallo(exc)
+            self.assertGreaterEqual(espera, 20)
+            self.assertLessEqual(espera, 40)
+
+
 if __name__ == '__main__':
     unittest.main()

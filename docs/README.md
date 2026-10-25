@@ -86,7 +86,7 @@ Verificados contra código. Si algo "deja de andar", empezar por acá.
 
 5. **La API key se muestra una sola vez**, tanto al registrar el reproductor como al regenerarla, con botón de copiar. No es recuperable: en la base sólo queda su hash. Al regenerarla, la anterior deja de servir en el acto y hay que actualizar `SPUI_API_KEY` en `/etc/spui/spui.env` y reiniciar el servicio. La contraseña MQTT de la Pi se deriva de esa clave, así que se renueva sola con ella.
 
-6. **Rate limiting activo:** 2 sync/min y 3 heartbeat/min por reproductor (`config/packages/rate_limiter.yaml`). Al hacer pruebas manuales con `curl` es fácil comerse un 429.
+6. **Rate limiting activo:** 4 sync/min y 3 heartbeat/min por reproductor (`config/packages/rate_limiter.yaml`). Al hacer pruebas manuales con `curl` es fácil comerse un 429.
 
 7. **La config de Mosquitto se pierde al reinstalar.** La que vale es la versionada en `config/mosquitto/mosquitto.conf` (listeners 1883, 8883 con TLS y 9001 WebSocket, `allow_anonymous false`, plugin Dynamic Security); la copia del directorio de instalación es descartable. Ya pasó dos veces — procedimiento en `config/mosquitto/README.md`, sección *Recuperación ante reinstalación de Mosquitto*.
 
@@ -115,6 +115,10 @@ Verificados contra código. Si algo "deja de andar", empezar por acá.
 19. **El código en disco de la Pi puede ser más nuevo que el que corre.** Si el servicio no se reinicia después de copiar, los tests pasan (leen el disco) y el reproductor sigue con el comportamiento anterior. Pasó el 19/10/2026: el reintento sin red seguía en 30 s fijos con el código del ±10 s ya instalado, y el servicio tenía el PID del arranque. No se pudo determinar por qué no se reinició: la sospecha es un `ssh` del último paso que falló, que el script no revisaba. Desde el 21/10, `deploy.ps1` compara el PID antes y después del reinicio y falla si no cambió. Además, el cliente muestra al arrancar la versión desplegada (`SPUI Client iniciado (versión <commit> <fecha>)`, desde `/opt/spui/VERSION`). Para comprobarlo a mano: `journalctl -u spui -o cat | grep "SPUI Client iniciado" | tail -1`.
 
 20. **La Pi 4 reproduce fluido video H.264 hasta 1920×1080 y 30 cuadros por segundo; el CMS no acepta otros.** Un 2560×1440 se trababa y llegaba a congelar la pantalla (24/10/2026). Ojo con el nombre del archivo: el de prueba se llamaba "uhd-3840-2160" y era de 2560×1440. `VideoInspectorService` lee el archivo real al subirlo y además toma su duración, que es la que usa la playlist; WebM y OGG ya no se aceptan. Si un video "no sube", el motivo está debajo del campo. Ver `06` §5, "Cómo muestra cada contenido".
+
+21. **Las imágenes se adaptan solas al subirlas (derechas, 1920×1080 como máximo) porque una foto grande girada por EXIF cerraba VLC** con `free(): double free detected`, y el servicio entraba en un bucle de reinicios que además agotaba el límite de syncs (24/10/2026). Si igual aparece un contenido que cierra el reproductor, el cliente lo saltea después de dos caídas seguidas y lo informa en el diagnóstico (`spui/guardia.py`). En el journal: `El reproductor se cerró mostrando «…»`.
+
+22. **En la Pi, sólo el hilo de reproducción usa VLC** (`spui/reproduccion.py`). El hilo principal sincroniza y MQTT avisa, pero ninguno de los dos toca VLC: le dicen al hilo de reproducción qué mostrar. Un código nuevo que llame a métodos del player que usan VLC desde otro hilo reabre la carrera que puede cerrar el proceso. Ver `06` §5, "Dos hilos".
 
 ---
 

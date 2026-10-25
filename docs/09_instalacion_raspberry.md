@@ -678,7 +678,7 @@ Confirmá que todo levanta solo: autologin → X11 → Openbox → servicio spui
 | `curl` al `/sync` da **timeout** | Firewall de Windows o Apache no acepta la IP de la Pi | Paso 7 (b) y (c) |
 | `curl` al `/sync` da **403** | Falta `Require ip <ip_de_la_pi>` en `httpd-vhosts.conf` | Paso 7 (b) + reiniciar Apache |
 | `curl` al `/sync` da **401** | Es lo esperado sin API key — no es un error | Seguir adelante |
-| **429** en los logs del cliente | Rate limit: 2 sync/min, 3 heartbeat/min por reproductor | Esperar; no lanzar `curl` repetidos mientras el servicio corre |
+| **429** en los logs del cliente | Rate limit: 4 sync/min, 3 heartbeat/min por reproductor | Esperar; no lanzar `curl` repetidos mientras el servicio corre |
 | Servicio se reinicia en loop | `/etc/spui/spui.env` con placeholders sin completar | `sudo cat /etc/spui/spui.env` y completar (paso 11) |
 | `SPUI_API_KEY no configurada` en el log | Falta la key en el env | Paso 11.2 |
 | Sync OK, log dice **`Modo SIMULACIÓN`** | X11 no está corriendo → el cliente ni intenta usar VLC | Paso 8; verificar con `pgrep -a Xorg` |

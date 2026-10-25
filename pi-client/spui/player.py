@@ -97,8 +97,14 @@ class Player:
     #   gl/glx  → OpenGL; más rápidas pero dependen de drivers 3D bien configurados
     _VOUT_ALTERNATIVAS = ('xcb_x11', 'xcb_xv', 'gl', 'glx')
 
-    def __init__(self, media_dir: str, sync_client=None):
+    def __init__(self, media_dir: str, sync_client=None, guardia=None):
         self._media_dir = media_dir
+        # Saltea los contenidos que cerraron el reproductor (spui/guardia.py).
+        self._guardia = guardia
+        # Corta lo que se está mostrando para pasar al programa nuevo en el
+        # acto (spui/reproduccion.py): una playlist distinta, una alerta, el
+        # apagado. Lo prende otro hilo; lo revisan las esperas de acá.
+        self._interrumpido = threading.Event()
         # Mismo cliente HTTP que ya descarga imágenes/video (sync.py): permite
         # bajar y cachear un sonido de alerta personalizado con la misma
         # verificación de hash. Puede llegar None (p.ej. uso directo del
@@ -234,19 +240,22 @@ class Player:
     # siempre se borraba a los 5 minutos y dejaba la pantalla en negro.
     PERMANENTE = None
 
-    def reproducir_playlist(self, items: list[dict], sync_client=None) -> None:
+    def reproducir_playlist(self, items: list[dict], sync_client=None) -> bool:
         """
-        Reproduce la playlist una vuelta.
+        Reproduce la playlist una vuelta. Devuelve True si hay que dar otra
+        vuelta a continuación, False si lo que quedó en pantalla es fijo (un
+        contenido permanente, la pantalla de espera, o todos los contenidos
+        salteados): ahí el hilo de reproducción espera un cambio en vez de
+        girar en vacío.
 
         Un contenido permanente (único ítem sin duración) se carga una sola vez
-        y se deja en pantalla: en los ciclos siguientes se detecta que ya está
-        puesto y no se vuelve a cargar, para que no parpadee cada vez que el
-        cliente sincroniza. Si el CMS cambia la programación, la firma cambia y
-        recién ahí se reemplaza lo que se está mostrando.
+        y se deja en pantalla: en las vueltas siguientes se detecta que ya está
+        puesto y no se vuelve a cargar, para que no parpadee. Si el CMS cambia
+        la programación, la firma cambia y recién ahí se reemplaza.
         """
         if not items:
             self.mostrar_fallback()
-            return
+            return False
 
         firma = self._firma_playlist(items)
 
@@ -257,21 +266,35 @@ class Player:
             and firma == self._firma_actual
             and not self._mostrando_fallback
         ):
-            return
+            return False
 
         self._firma_actual = firma
+        mostrados = 0
 
         for item in items:
-            if self._tiene_alerta() or self._stop.is_set():
-                return
+            if self._tiene_alerta() or self._stop.is_set() or self._interrumpido.is_set():
+                return True
 
             duracion = self._resolver_duracion(item, len(items))
+            contenido = item.get('contenido') or {}
+            if self._guardia is not None and self._guardia.salteado(contenido):
+                continue
+            if self._guardia is not None:
+                self._guardia.empezar(contenido)
             self._reproducir_item(item, sync_client, duracion)
+            if self._guardia is not None:
+                self._guardia.terminar(contenido)
+            mostrados += 1
 
-            # Permanente: ya quedó en pantalla y ahí se queda. No se espera ni
-            # se borra; el ciclo de main.py decide cuándo reemplazarlo.
+            # Permanente: ya quedó en pantalla y ahí se queda.
             if duracion is None:
-                return
+                return False
+
+        if mostrados == 0:
+            # Todos salteados por la guardia: que no quede la pantalla vacía.
+            self.mostrar_fallback()
+            return False
+        return True
 
     @staticmethod
     def _firma_playlist(items: list[dict]) -> str:
@@ -395,6 +418,9 @@ class Player:
                     f'{titulo}\n\n{mensaje}', duracion=None, es_alerta=True,
                     fondo_ruta=fondo_ruta, fondo_tipo=fondo_tipo,
                 )
+            # Terminó (se desactivó o la reemplazó otra): el sonido se corta
+            # acá, en el mismo hilo que lo arrancó.
+            self._detener_sonido()
         except Exception:
             logger.exception('Falló al mostrar la alerta — se vuelve a la programación normal.')
             with self._lock:
@@ -429,20 +455,39 @@ class Player:
             logger.warning('No se pudo descargar el contenido de la alerta (%s) — se muestra solo el texto.', exc)
             return None, None
 
+    def marcar_alerta(self, alerta: dict) -> None:
+        """
+        Deja anotada la alerta para que la playlist se corte en el acto, sin
+        tocar VLC. La muestra el hilo de reproducción (spui/reproduccion.py),
+        el único que usa VLC: dos hilos usando el mismo reproductor de VLC a
+        la vez lo pueden cerrar con un error nativo.
+        """
+        with self._lock:
+            self._alerta = alerta
+        self._interrumpido.set()
+
     def desactivar_alerta(self) -> None:
+        """
+        Sólo cambia el estado; se puede llamar desde cualquier hilo. El hilo de
+        reproducción, que está esperando en _esperar_alerta(), lo nota en
+        menos de medio segundo y ahí mismo corta la imagen y el sonido
+        (mostrar_alerta). Antes esto paraba VLC desde el hilo de MQTT mientras
+        el otro hilo lo estaba usando.
+        """
         with self._lock:
             self._alerta = None
         logger.info('Alerta desactivada — volviendo a programación normal.')
-        self._parar_vlc()
-        # Se corta acá mismo (no alcanza con que _esperar_alerta() lo note en
-        # su próxima vuelta, hasta 0.5s después): un sonido de alarma que
-        # sigue sonando un rato después de desactivada es exactamente el bug
-        # que no se quiere.
-        self._detener_sonido()
-        # La pantalla quedó vacía: hay que volver a cargar la playlist en el
-        # próximo ciclo, aunque la programación no haya cambiado.
+        # La pantalla queda vacía: hay que volver a cargar la playlist aunque
+        # la programación no haya cambiado.
         self._firma_actual       = None
         self._mostrando_fallback = False
+
+    def interrumpir(self) -> None:
+        """Corta lo que se está mostrando (desde cualquier hilo)."""
+        self._interrumpido.set()
+
+    def limpiar_interrupcion(self) -> None:
+        self._interrumpido.clear()
 
     # Texto institucional que se muestra cuando no hay nada programado.
     _TEXTO_FALLBACK = 'UNRaf\nSistema de Pantallas Informativas'
@@ -881,6 +926,7 @@ class Player:
         """
         self._firma_actual = None
         self._mostrando_fallback = False
+        self._interrumpido.set()
 
     def detener(self) -> None:
         self._stop.set()
@@ -1146,7 +1192,7 @@ class Player:
         """
         fin = time.monotonic() + maximo + self._MARGEN_FIN_VIDEO_SEG
         while time.monotonic() < fin:
-            if self._tiene_alerta() or self._stop.is_set():
+            if self._tiene_alerta() or self._stop.is_set() or self._interrumpido.is_set():
                 return
             estado = self._media_player.get_state()
             if estado in (vlc.State.Ended, vlc.State.Error, vlc.State.Stopped):
@@ -1266,9 +1312,9 @@ class Player:
 
         deadline = time.monotonic() + segundos
         while time.monotonic() < deadline:
-            if self._tiene_alerta() or self._stop.is_set():
+            if self._tiene_alerta() or self._stop.is_set() or self._interrumpido.is_set():
                 return
-            time.sleep(0.5)
+            time.sleep(0.2)
 
     def _esperar_alerta(self) -> None:
         """
@@ -1296,7 +1342,10 @@ class Player:
         sonando = False        # True mientras la repetición actual sigue en curso
         fin_pausa = 0.0        # monotonic; 0 = sin pausa pendiente
 
-        while self._tiene_alerta() and not self._stop.is_set():
+        # Mientras siga vigente ESTA alerta: si se desactiva o llega otra
+        # distinta, se sale y el hilo de reproducción muestra lo que toque.
+        mostrada = self._alerta_actual()
+        while mostrada is not None and self._alerta_actual() is mostrada and not self._stop.is_set():
             if config.ALERTA_SONIDO_ACTIVO:
                 terminado = not sonando
                 if sonando:

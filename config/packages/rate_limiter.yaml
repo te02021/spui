@@ -1,9 +1,13 @@
 framework:
     rate_limiter:
-        # Reproductor → sync: máx 2 por minuto (el Pi sincroniza cada 5 min normalmente)
+        # Reproductor → sync: máx 4 por minuto. El sync periódico usa uno (cada
+        # 1 a 5 min, según el reproductor) y el resto queda para los avisos del
+        # CMS (sync_ahora) al guardar un cambio. Con 2 (hasta el 24/10/2026),
+        # guardar la playlist y después la pantalla en el mismo minuto ya
+        # recibía 429 y el cambio tardaba en verse.
         spui_reproductor_sync:
             policy: sliding_window
-            limit: 2
+            limit: 4
             interval: '1 minute'
             cache_pool: cache.app
 

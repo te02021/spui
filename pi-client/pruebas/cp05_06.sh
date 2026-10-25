@@ -65,7 +65,7 @@ else
     echo "| Primer uso de la caché tras el corte | no ocurrió: el corte fue más corto que el intervalo de sync |"
 fi
 echo "| Intervalos entre reintentos (s) | ${INTERVALOS:-—} |"
-echo "| Diferencia entre el más corto y el más largo | ${DISPERSION:-—} s (con vueltas cortas tiene que ser > 0; ver docs/10 CP05) |"
+echo "| Diferencia entre el más corto y el más largo | ${DISPERSION:-—} s (con jitter tiene que ser > 0) |"
 echo "| Reproducciones registradas durante el corte | $REPRODUCCIONES |"
 echo "| Errores de reproducción durante el corte | $N_ERRORES |"
 if [ -n "$T_SYNC" ]; then

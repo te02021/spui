@@ -14,6 +14,7 @@ Correr desde la carpeta del cliente:
 import os
 import sys
 import tempfile
+import threading
 import time
 import unittest
 from unittest import mock
@@ -30,6 +31,8 @@ def _player(media_dir: str = '') -> Player:
     p._media_dir = media_dir
     p._stop = mock.Mock(is_set=mock.Mock(return_value=False))
     p._tiene_alerta = mock.Mock(return_value=False)
+    p._interrumpido = threading.Event()
+    p._guardia = None
     return p
 
 

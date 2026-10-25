@@ -16,6 +16,7 @@ use SPUI\Repository\ContenidoRepository;
 use SPUI\Service\AlcanceReproductorService;
 use SPUI\Service\ComandoPublisherService;
 use SPUI\Service\ContenidoQrService;
+use SPUI\Service\ImagenNormalizerService;
 use SPUI\Service\MediaStorageService;
 use SPUI\Service\MqttSecurityService;
 use SPUI\Service\QrEscaneoPublisherService;
@@ -53,6 +54,7 @@ class ContenidoCmsController extends AbstractController
         private readonly CacheItemPoolInterface $cache,
         private readonly UsuarioResolverService $usuarios,
         private readonly VideoInspectorService $videos,
+        private readonly ImagenNormalizerService $imagenes,
     ) {}
 
     private function em()
@@ -61,32 +63,57 @@ class ContenidoCmsController extends AbstractController
     }
 
     /**
-     * Valida el archivo subido para este tipo de contenido y, si es un video,
-     * comprueba que la Pi lo pueda reproducir fluido y toma su duración.
+     * Deja el archivo subido como lo puede mostrar la Pi, o dice por qué no se puede.
      *
-     * La duración de un video no la escribe nadie: se lee del archivo y se
-     * guarda en el contenido, para que la playlist lo muestre completo. Si se
-     * reemplaza el archivo, se vuelve a leer.
+     *   - Imagen: se gira según la foto y se achica a 1920×1080 como máximo
+     *     (ImagenNormalizerService). Lo que se guarda y se hashea es la imagen
+     *     ya adaptada.
+     *   - Video: se comprueba que la Pi lo reproduzca fluido y se toma su
+     *     duración del archivo (VideoInspectorService). La duración de un
+     *     video no la escribe nadie: si se reemplaza el archivo, se vuelve a leer.
      *
-     * @return string|null Mensaje para mostrar debajo del campo, o null si el archivo sirve.
+     * @return UploadedFile|string El archivo a guardar, o el mensaje para mostrar debajo del campo.
      */
-    private function validarArchivo(UploadedFile $archivo, Contenido $contenido): ?string
+    private function prepararArchivo(UploadedFile $archivo, Contenido $contenido): UploadedFile|string
     {
         $tipo = $contenido->getTipo()->value;
         if ($error = $this->media->validar($archivo, $tipo)) {
             return $error;
         }
-        if ($tipo !== 'video') {
-            return null;
+
+        if ($tipo === 'video') {
+            $info = $this->videos->inspeccionar($archivo->getPathname());
+            if ($motivo = $this->videos->motivoRechazo($info)) {
+                return $motivo;
+            }
+            $contenido->setDuracionSegundos(VideoInspectorService::segundos($info));
+            return $archivo;
         }
 
-        $info = $this->videos->inspeccionar($archivo->getPathname());
-        if ($motivo = $this->videos->motivoRechazo($info)) {
-            return $motivo;
+        $r = $this->imagenes->normalizar($archivo->getPathname());
+        if (isset($r['error'])) {
+            return $r['error'];
         }
+        if (!$r['cambio']) {
+            return $archivo;
+        }
+        $nombre = pathinfo($archivo->getClientOriginalName(), PATHINFO_FILENAME) . '.' . $r['extension'];
+        return new UploadedFile($r['ruta'], $nombre, $r['mime'], null, true);
+    }
 
-        $contenido->setDuracionSegundos(VideoInspectorService::segundos($info));
-        return null;
+    /** Guarda el archivo ya preparado y lo deja en el contenido. Devuelve la ruta anterior (para borrarla). */
+    private function guardarArchivo(UploadedFile $archivo, Contenido $contenido): ?string
+    {
+        $anterior = $contenido->getRutaArchivo();
+        $hash = $this->media->hashArchivoSubido($archivo);
+        $ruta = $this->media->guardar($archivo, self::categoriaDeTipo($contenido->getTipo()->value));
+        $contenido->setRutaArchivo($ruta);
+        $contenido->setHashArchivo($hash);
+        // La imagen adaptada es un temporal propio: con S3 queda en disco después de subirla.
+        if (str_starts_with(basename($archivo->getPathname()), 'spui_img_')) {
+            @unlink($archivo->getPathname());
+        }
+        return $anterior;
     }
 
     /** Subcarpeta de MediaStorageService que corresponde a cada tipo de archivo. */
@@ -391,13 +418,11 @@ class ContenidoCmsController extends AbstractController
                 if (!$archivo) {
                     return $this->errorAlta($request, $form, 'archivo', 'El archivo es requerido para el tipo "' . $tipo->etiqueta() . '".');
                 }
-                if ($errValidacion = $this->validarArchivo($archivo, $contenido)) {
-                    return $this->errorAlta($request, $form, 'archivo', $errValidacion);
+                $preparado = $this->prepararArchivo($archivo, $contenido);
+                if (is_string($preparado)) {
+                    return $this->errorAlta($request, $form, 'archivo', $preparado);
                 }
-                $hash = $this->media->hashArchivoSubido($archivo);
-                $ruta = $this->media->guardar($archivo, self::categoriaDeTipo($tipo->value));
-                $contenido->setRutaArchivo($ruta);
-                $contenido->setHashArchivo($hash);
+                $this->guardarArchivo($preparado, $contenido);
             } elseif ($tipo === TipoContenido::Cronograma) {
                 // El cronograma no requiere archivo ni texto — los ítems se gestionan en el builder
             } elseif ($tipo === TipoContenido::Qr) {
@@ -514,18 +539,14 @@ class ContenidoCmsController extends AbstractController
             if (in_array($c->getTipo()->value, self::TIPOS_ARCHIVO, true)) {
                 $archivo = $request->files->get('archivo');
                 if ($archivo) {
-                    if ($errValidacion = $this->validarArchivo($archivo, $c)) {
-                        return $this->errorEdicion($request, $c, 'archivo', $errValidacion);
+                    $preparado = $this->prepararArchivo($archivo, $c);
+                    if (is_string($preparado)) {
+                        return $this->errorEdicion($request, $c, 'archivo', $preparado);
                     }
                     // Se borra el viejo DESPUÉS de guardar el nuevo, no antes: si
                     // guardar() falla (S3 caído, disco lleno), el contenido no se
                     // queda sin ningún archivo.
-                    $anterior = $c->getRutaArchivo();
-                    $hash = $this->media->hashArchivoSubido($archivo);
-                    $ruta = $this->media->guardar($archivo, self::categoriaDeTipo($c->getTipo()->value));
-                    $c->setRutaArchivo($ruta);
-                    $c->setHashArchivo($hash);
-                    $this->media->borrar($anterior);
+                    $this->media->borrar($this->guardarArchivo($preparado, $c));
                 }
             }
 

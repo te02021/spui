@@ -18,7 +18,7 @@ import requests
 
 logger = logging.getLogger(__name__)
 
-# El CMS acepta hasta 2 syncs por minuto por reproductor: por debajo de 30 s
+# El CMS acepta hasta 4 syncs por minuto por reproductor (antes 2): por debajo de 30 s
 # los pedidos terminarían rechazados (429).
 MINIMO_SYNC_SEG = 30
 

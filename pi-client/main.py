@@ -4,6 +4,8 @@ SPUI Pi Client — Cliente multimedia para reproductores Raspberry Pi.
 
 Arquitectura de threads:
   Main thread   → loop de sync + decisión de qué reproducir
+  reproduccion  → daemon, el ÚNICO que usa VLC: muestra la alerta o gira la
+                  playlist sin pausa (spui/reproduccion.py)
   heartbeat     → daemon, POST /reproductores/heartbeat cada 60s
   mqtt-listener → daemon, suscrito a alertas, estado (LWT) y comandos
                   ('spui/{alertas,estado,comandos}/reproductor/{id}')
@@ -13,10 +15,12 @@ Flujo por ciclo (Fase 7 — offline/fail-safe):
   1. NetworkMonitor.is_online() — TCP check rápido (no HTTP)
      OFFLINE → servir del caché SQLite, reintentar en OFFLINE_RETRY_SEG (30s)
      ONLINE  → POST /reproductores/sync, guardar en caché, prefetch de todos los archivos
-  2. Decidir qué reproducir:
-     alerta activa    → player.mostrar_alerta()
-     programación     → player.reproducir_playlist()
-     nada             → player.mostrar_fallback()
+  2. Decidir qué reproducir y avisárselo al hilo de reproducción, que lo
+     cambia en el acto si es distinto de lo que está mostrando:
+     alerta activa    → reproduccion.alerta_segun_sync()
+     programación     → reproduccion.programar(PLAYLIST, items)
+     nada             → reproduccion.programar(ESPERA)
+     fuera de horario → reproduccion.programar(APAGADO)
   3. Esperar hasta el próximo sync — interrumpible por Ctrl+C/SIGTERM o por un
      comando 'sync_ahora' del CMS (tarea 1.5, push instantáneo: cambios de
      programación/playlist/contenido/pantalla llegan en segundos, no esperan
@@ -41,11 +45,13 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import config
 from spui.cache import Cache
+from spui.guardia import GuardiaContenido
 from spui.energia import GestorEnergia
 from spui.heartbeat import HeartbeatSender
 from spui.mqtt_listener import MqttListener
 from spui.network import NetworkMonitor
 from spui.player import Player
+from spui.reproduccion import APAGADO, ESPERA, PLAYLIST, Reproduccion
 from spui.sync import SyncClient, intervalo_desde_sync
 from spui.telemetria import TelemetriaPublisher
 
@@ -128,10 +134,16 @@ logger = logging.getLogger('spui.main')
 
 _corriendo = True
 
-# Interrumpe la espera entre ciclos (_esperar_interruptible) antes de tiempo.
-# Dos motivos la disparan: una señal de cierre (para no tardar hasta 300s en
-# apagarse) y un 'sync_ahora' por MQTT (tarea 1.5 — push instantáneo).
+# Interrumpe la espera entre ciclos (_esperar_interruptible) antes de tiempo:
+# una señal de cierre, un 'sync_ahora' por MQTT (tarea 1.5 — push instantáneo)
+# o una alerta por MQTT (para volver a aplicar el horario energético).
 _despertar = threading.Event()
+
+# Además de despertar, pide un sync. Una alerta por MQTT despierta SIN pedirlo:
+# ya trae lo que hace falta, y cada sync de más consume el límite del CMS
+# (4 por minuto); el 24/10/2026 un cambio de playlist recibía 429 porque los
+# había gastado activar y desactivar una alerta.
+_pedido_sync = threading.Event()
 
 def _manejar_senal(signum, frame) -> None:
     global _corriendo
@@ -156,7 +168,9 @@ def main() -> None:
     cache   = Cache(config.DB_PATH)
     sync    = SyncClient(config.API_URL, config.API_KEY, config.MEDIA_DIR)
     sync.limpiar_parciales()  # descargas a medias de una ejecución anterior
-    player  = Player(config.MEDIA_DIR, sync_client=sync)
+    guardia = GuardiaContenido(config.CACHE_DIR, config.VERSION)
+    player  = Player(config.MEDIA_DIR, sync_client=sync, guardia=guardia)
+    reproduccion = Reproduccion(player, sync_client=sync)
     network = NetworkMonitor(config.API_URL)
     # El brillo de referencia de cada pantalla se guarda en el caché para
     # sobrevivir a reinicios; si la pantalla no deja controlar su brillo, el
@@ -188,6 +202,9 @@ def main() -> None:
         # cualquier encendido/apagado o brillo que haya fallado.
         problemas.extend(energia.diagnostico())
 
+        # Contenidos que cerraron el reproductor y se están salteando.
+        problemas.extend(guardia.problemas())
+
         problemas.extend(_PROBLEMAS.consultar())
 
         return problemas
@@ -199,16 +216,16 @@ def main() -> None:
     )
     heartbeat.start()
 
+    # Las alertas por MQTT van al hilo de reproducción, nunca directo a VLC
+    # (spui/reproduccion.py). Se despierta además al ciclo principal: un sync
+    # en el momento aplica el horario energético (una alerta enciende la
+    # pantalla aunque sea fuera de hora, y al terminar vuelve a apagarla).
+    def alerta_y_despertar(alerta: dict) -> None:
+        reproduccion.alerta(alerta)
+        _despertar.set()
+
     def desactivar_alerta_y_despertar() -> None:
-        """
-        Al desactivar, player.desactivar_alerta() para VLC y limpia el estado,
-        pero NADA despertaba al loop principal — se quedaba mostrando la
-        pantalla negra hasta que el sleep en curso terminara solo (hasta
-        SYNC_INTERVAL, 300s por defecto). Mismo mecanismo que sync_ahora: sin
-        esto la vuelta a la programación normal parecía "trabada" en vez de
-        instantánea.
-        """
-        player.desactivar_alerta()
+        reproduccion.quitar_alerta()
         _despertar.set()
 
     def sync_ahora(payload: dict) -> None:
@@ -223,15 +240,17 @@ def main() -> None:
         """
         time.sleep(random.uniform(0, 2))
         logger.info('Sync inmediato (motivo=%s).', payload.get('motivo'))
+        _pedido_sync.set()
         _despertar.set()
 
     mqtt = MqttListener(
         host=config.MQTT_HOST,
         port=config.MQTT_PORT,
-        on_alerta=player.mostrar_alerta,
+        on_alerta=alerta_y_despertar,
         on_desactivar=desactivar_alerta_y_despertar,
         on_sync_ahora=sync_ahora,
     )
+    reproduccion.start()
     mqtt.start()
 
     # sync_client habilita el respaldo por HTTP: si el broker se cae o nadie
@@ -252,15 +271,25 @@ def main() -> None:
     # Cada cuánto sincronizar: arranca con SPUI_SYNC_INTERVAL de spui.env y
     # después lo fija el CMS en cada sync (se configura por reproductor).
     intervalo_sync = config.SYNC_INTERVAL
+    # Cuándo fue el último sync que respondió (monotonic; 0 = ninguno todavía):
+    # para que un sync sacado del caché no reviva una alerta ya desactivada.
+    ultimo_sync_ok = 0.0
+    # Cuándo toca el próximo sync (monotonic) y lo último que se supo del CMS:
+    # un ciclo despertado sólo por una alerta usa esto y no sincroniza.
+    proximo_sync = 0.0
+    ultimo_sync_data = None
 
     while _corriendo:
-        inicio_ciclo = time.monotonic()
+        hacer_sync = _pedido_sync.is_set() or time.monotonic() >= proximo_sync or ultimo_sync_data is None
+        _pedido_sync.clear()
         sync_data = None
         espera    = intervalo_sync
 
         # ── Sync con detección de red (Fase 7) ───────────────────────────
         sync_ok = False   # el CMS respondió en este ciclo (ver energía, más abajo)
-        if network.is_online():
+        if not hacer_sync:
+            sync_data = ultimo_sync_data
+        elif network.is_online():
             try:
                 sync_data = sync.sincronizar()
                 cache.guardar_sync(sync_data)
@@ -280,11 +309,13 @@ def main() -> None:
 
                 _PROBLEMAS.resolver('sync')
                 sync_ok = True
+                ultimo_sync_ok = time.monotonic()
                 intervalo_sync = intervalo_desde_sync(sync_data, intervalo_sync)
                 espera = intervalo_sync
 
             except Exception as exc:
-                logger.warning('Sync falló estando online: %s — usando caché.', exc)
+                espera = _espera_tras_fallo(exc)
+                logger.warning('Sync falló estando online: %s — usando caché; se reintenta en %d s.', exc, round(espera))
                 _PROBLEMAS.reportar(
                     'sync',
                     f'No se pudo sincronizar con el CMS ({exc}). Se está reproduciendo desde el caché local.',
@@ -295,16 +326,22 @@ def main() -> None:
             sync_data = cache.obtener_sync()
             espera    = _espera_reintento()
 
+        if hacer_sync:
+            proximo_sync = time.monotonic() + espera
+            if sync_data is not None:
+                ultimo_sync_data = sync_data
+
         if sync_data is None:
             espera = _espera_reintento()
+            proximo_sync = time.monotonic() + espera
             logger.error('Sin datos disponibles (ni red ni caché). Reintentando en %d s.', round(espera))
             _PROBLEMAS.reportar(
                 'sin-datos',
                 'Sin programación disponible: no hay conexión con el CMS y el caché local está vacío. '
                 'Se muestra la pantalla de espera.',
             )
-            player.mostrar_fallback()
-            _esperar_interruptible(espera)
+            reproduccion.programar(ESPERA)
+            _esperar_hasta(proximo_sync)
             continue
 
         # ── Decidir qué reproducir ────────────────────────────────────────
@@ -345,67 +382,43 @@ def main() -> None:
         # sola excepción mataba el cliente, systemd lo reiniciaba, volvía a
         # fallar con el mismo contenido y la pantalla quedaba muerta.
         try:
-            # Si se arrancó sin entorno gráfico (X11 todavía no estaba listo),
-            # se reintenta en cada ciclo hasta conseguirlo. Sin esto el
-            # reproductor quedaba en simulación hasta el próximo reinicio.
-            player.reintentar_pantalla()
+            # El sync es la verdad sobre la alerta, salvo que venga del caché:
+            # ver Reproduccion.alerta_segun_sync(). En un ciclo sin sync (lo
+            # despertó una alerta por MQTT) no hay nada nuevo que decir de ella.
+            if hacer_sync:
+                reproduccion.alerta_segun_sync(alerta, fresco=sync_ok, sync_ok_desde=ultimo_sync_ok)
 
             energia.actualizar_reglas(pantalla_data.get('energia'))
             estaba_apagada = energia.esta_apagada()
             # Con el sync recién hecho, el cliente tiene la verdad del CMS: es el
             # momento de comparar el brillo de la pantalla con el de la regla.
-            energia.aplicar(hay_alerta=bool(alerta), verificar_brillo=sync_ok)
+            energia.aplicar(hay_alerta=reproduccion.mostrando_alerta(), verificar_brillo=sync_ok)
             if estaba_apagada and not energia.esta_apagada():
                 player.forzar_recarga()
 
-            # El sync es la fuente de verdad sobre si hay alerta vigente: si no
-            # trae ninguna y el player todavía cree que sí, hay que apagarla.
-            #
-            # Sin esto la alerta quedaba pegada. desactivar_alerta() sólo se
-            # invocaba desde el callback MQTT, así que un reproductor que
-            # estuvo offline justo cuando se desactivó la alerta perdía ese
-            # mensaje, y al reconectar el retenido ya había sido limpiado por
-            # el CMS. La pantalla volvía a la playlist porque reproducir_playlist()
-            # la reescribe, pero _alerta seguía seteado y esta_mostrando_alerta()
-            # devolvía True para siempre: la próxima alerta real no se mostraba,
-            # porque el bloque de abajo la daba por ya visible.
-            if not alerta and player.esta_mostrando_alerta():
-                logger.info('El sync no reporta alerta activa: se desactiva la que estaba en pantalla.')
-                player.desactivar_alerta()
-
-            if alerta:
-                if not player.esta_mostrando_alerta():
-                    player.mostrar_alerta(alerta)
-            elif energia.esta_apagada():
-                logger.info('Fuera de horario: pantalla apagada, sin reproducir.')
-                _esperar_interruptible(min(espera, 60))
-                continue
+            # Qué mostrar cuando no hay alerta. Lo muestra el hilo de
+            # reproducción: este ciclo nunca se queda esperando un contenido,
+            # así un cambio en el CMS se aplica en el acto, haya alerta o no.
+            if energia.esta_apagada():
+                reproduccion.programar(APAGADO)
             elif playlist and playlist.get('items'):
-                _girar_playlist(player, playlist['items'], sync, hasta=inicio_ciclo + espera)
+                reproduccion.programar(PLAYLIST, playlist['items'])
             else:
-                # Cubre tanto "sin programación" como "playlist vacía". El
-                # fallback es permanente: queda en pantalla hasta que haya
-                # contenido real. Si tuviera una duración, al vencerse la
-                # pantalla volvería a quedar en negro.
-                if playlist:
-                    logger.info('La playlist programada no tiene contenidos.')
-                else:
-                    logger.info('Sin programación activa ahora mismo.')
-                player.mostrar_fallback()
+                # Sin programación o con la playlist vacía: la pantalla de
+                # espera, que queda fija hasta que haya contenido real.
+                reproduccion.programar(ESPERA)
 
         except Exception as exc:
-            logger.exception('Error reproduciendo (se continúa en el próximo ciclo): %s', exc)
+            logger.exception('Error aplicando el sync (se continúa en el próximo ciclo): %s', exc)
             _PROBLEMAS.reportar(
                 'reproduccion',
-                f'Error al reproducir el contenido programado ({exc}). Se reintenta en el próximo ciclo.',
+                f'Error al aplicar la programación ({exc}). Se reintenta en el próximo ciclo.',
             )
 
-        # Lo que falte hasta el próximo sync. Con una playlist que gira no
-        # queda nada: las vueltas ya llenaron el intervalo.
-        _esperar_interruptible(max(0.0, inicio_ciclo + espera - time.monotonic()))
+        _esperar_hasta(proximo_sync)
 
     # ── Cierre limpio ────────────────────────────────────────────────────────
-    player.detener()
+    reproduccion.detener()
     heartbeat.detener()
     mqtt.detener()
     telemetria.detener()
@@ -413,31 +426,26 @@ def main() -> None:
     logger.info('SPUI Client detenido correctamente.')
 
 
-def _girar_playlist(player, items: list, sync, hasta: float) -> None:
+def _espera_tras_fallo(exc: Exception) -> float:
     """
-    Vueltas de la playlist, una detrás de otra, hasta que toque sincronizar.
-
-    Al terminar el último contenido se pasa al primero sin pausa. Antes el
-    ciclo hacía UNA vuelta y después esperaba el intervalo de sync entero:
-    al terminar el último ítem (un video, por ejemplo) la pantalla se quedaba
-    en su último cuadro hasta 5 minutos, y recién después volvía al primero.
-
-    Corta entre vueltas si llega un 'sync_ahora' (el cambio se aplica al
-    terminar la vuelta en curso, igual que antes), si hay una alerta o si se
-    cierra el cliente. Una vuelta que dura menos de un segundo no se repite:
-    es un contenido permanente que ya quedó en pantalla, o nada que se pueda
-    mostrar, y repetirla sería girar en vacío.
+    Cuánto esperar después de un sync fallido con red. Un 429 (límite de syncs
+    del CMS) trae Retry-After: se reintenta apenas se pueda, para que el cambio
+    que motivó el sync llegue en segundos y no recién en el próximo intervalo.
+    Cualquier otro fallo, como sin red: 30 ± 10 s.
     """
-    while _corriendo and not _despertar.is_set():
-        inicio = time.monotonic()
-        player.reproducir_playlist(items, sync_client=sync)
-        ahora = time.monotonic()
-        if player.esta_mostrando_alerta() or ahora >= hasta or ahora - inicio < _VUELTA_MINIMA_SEG:
-            return
+    respuesta = getattr(exc, 'response', None)
+    if respuesta is not None and getattr(respuesta, 'status_code', None) == 429:
+        try:
+            segundos = float(respuesta.headers.get('Retry-After', ''))
+        except (TypeError, ValueError):
+            segundos = 15.0
+        return max(1.0, min(60.0, segundos)) + random.uniform(0, 2)
+    return _espera_reintento()
 
 
-# Una vuelta más corta que esto no se repite (ver _girar_playlist).
-_VUELTA_MINIMA_SEG = 1.0
+def _esperar_hasta(momento: float) -> None:
+    """Espera hasta `momento` (monotonic), o menos si algo despierta al ciclo."""
+    _esperar_interruptible(max(0.0, momento - time.monotonic()))
 
 
 def _esperar_interruptible(segundos: float) -> None:

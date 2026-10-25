@@ -11,6 +11,7 @@
       4. formularios.php cada FormType con un campo vacío por vez: nunca una excepción
       4a. video.php     qué videos acepta el CMS (H.264 hasta 1080p y 30 fps) y su duración, con
                         MP4 sintéticos: 4K, HEVC, 60 fps, moov al final, cajas de 64 bits, basura
+      4b'. imagen.php   cada imagen sale derecha (las 8 orientaciones EXIF) y de 1920×1080 o menos
       4b. cliente-pi    sintaxis del cliente Python con 3.10 y sus tests (pi-client/tests) con el
                         venv de D:\tools\spui-python (py -3.14 -m venv + requests paho-mqtt psutil Pillow)
       5. assets.php     ¿el navegador recibe el JS/CSS actual? Si no, no falla: avisa que hay que
@@ -77,6 +78,7 @@ try {
     Paso 'smoke'          { php (Join-Path $aqui 'smoke.php') }
     Paso 'formularios'    { php (Join-Path $aqui 'formularios.php') }
     Paso 'video'          { php (Join-Path $aqui 'video.php') }
+    Paso 'imagen'         { php (Join-Path $aqui 'imagen.php') }
 
     # Cliente de la Pi: sintaxis con el Python más viejo disponible (3.10: si
     # compila ahí vale en el 3.11 de Raspberry Pi OS Bookworm) y tests con el

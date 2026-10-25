@@ -139,7 +139,25 @@ El usuario MQTT de cada Pi es `spui-repro-{id}` (el id llega en el primer sync) 
 4. **Si no hay red:** se usa lo último guardado y se reintenta a los 30 segundos (±10 s al azar) en vez de esperar 5 minutos. El azar es a propósito: si se corta la red del campus, todas las Pi pierden la conexión a la vez y, con un reintento fijo, vuelven a la vez y le caen juntas al CMS (y al límite de 2 syncs por minuto). Con ±10 s llegan repartidas en 20 segundos.
 5. **Se aplica el horario energético:** si está fuera de hora, se apaga la pantalla y no se reproduce nada.
 6. **Se decide qué mostrar** según la prioridad de la sección 4.
-7. **La playlist gira sin pausa hasta el próximo sync:** al terminar el último contenido sigue el primero, vuelta tras vuelta (`main._girar_playlist()`), y el sync del paso 1 se hace al terminar la vuelta en la que vence el intervalo. Un `sync_ahora`, una alerta o el apagado cortan entre vueltas. Antes se hacía una sola vuelta y después se esperaba el intervalo entero, con la pantalla quieta en el último cuadro del último contenido hasta 5 minutos (24/10/2026). Lo mismo sin red: el reintento de 30 ± 10 s se hace al terminar la vuelta en curso, así que con una playlist larga los reintentos caen al final de cada vuelta. Un contenido permanente solo no gira: queda fijo hasta el próximo sync.
+7. **Se le avisa al hilo de reproducción qué mostrar,** y el ciclo espera hasta el próximo sync. Ver "Dos hilos: uno sincroniza, otro muestra", abajo.
+
+### Dos hilos: uno sincroniza, otro muestra
+
+El ciclo de arriba corre en el hilo principal y **nunca muestra nada**: sólo decide qué hay que mostrar y se lo avisa al hilo de reproducción (`spui/reproduccion.py`), que es el **único que usa VLC**. Hasta el 24/10/2026 el mismo hilo sincronizaba y reproducía, y las alertas se mostraban desde el hilo de MQTT. En la Pi real eso daba tres problemas:
+
+- **Mientras había una alerta en pantalla, el sync quedaba bloqueado.** Un cambio guardado en el CMS recién se aplicaba al desactivarla.
+- **Un cambio de playlist esperaba a que terminara la vuelta en curso,** que con un video largo podían ser minutos. Antes de eso, la pantalla incluso se quedaba quieta en el último contenido hasta el próximo sync.
+- **Dos hilos usaban el mismo reproductor de VLC a la vez,** una carrera que puede cerrar el proceso con un error nativo.
+
+Cómo funciona ahora:
+
+- **La playlist gira sin pausa:** al terminar el último contenido sigue el primero.
+- **Si el sync trae algo distinto, se corta en el acto** lo que se está mostrando y se pasa a lo nuevo: otra playlist, el apagado por horario o la pantalla de espera. La misma playlist (misma firma: contenidos, archivos y duraciones) no corta nada, así el sync de cada minuto no reinicia la rotación.
+- **Una alerta por MQTT corta la playlist y se muestra enseguida.** Al desactivarse se vuelve a la playlist desde el primer contenido. Una alerta por MQTT no pide un sync: despierta al ciclo sólo para volver a aplicar el horario energético con los datos que ya tiene.
+- **Un sync que no responde y se reemplaza por el último guardado** (sin red, o un 429) no revive una alerta que se desactivó por MQTT después de guardarlo, y tampoco saca una que llegó por MQTT. Sólo un sync recién hecho dice la verdad sobre la alerta. Pasó el 24/10/2026: la alerta reaparecía medio segundo después de desactivarla.
+- **Después de un 429, se reintenta cuando dice el CMS** (`Retry-After`, unos segundos) y no en el próximo intervalo. El límite es de 4 syncs por minuto (`config/packages/rate_limiter.yaml`).
+
+**Contenidos que cierran el reproductor** (`spui/guardia.py`). Un archivo que VLC no aguanta puede matar el proceso con un error que Python no puede atrapar. systemd lo reinicia, vuelve a mostrar el mismo contenido y entra en un bucle. Por eso, antes de cada contenido se anota cuál es, en `/dev/shm`: en memoria, para no gastar la SD, y se borra al reiniciar la Pi. Si el proceso muere dos veces seguidas mostrando el mismo contenido, se saltea, y el CMS lo muestra en el diagnóstico del reproductor. Volver a subir el archivo (otro hash) o desplegar otra versión del cliente lo vuelve a intentar.
 
 ### Cómo muestra cada contenido
 
@@ -159,6 +177,8 @@ La duración de un video no la escribe nadie: el CMS la lee del archivo al subir
 - **En el servidor**, al guardar (`VideoInspectorService`): además el códec y los cuadros por segundo, leídos de las cajas del MP4 sin ffprobe ni librerías.
 
 WebM y OGG se dejaron de aceptar: la Pi los decodifica por software. Los casos de prueba están en `tools/verificacion/video.php`, dentro de la suite.
+
+**Las imágenes se adaptan al subirlas** (`ImagenNormalizerService`): se giran según la orientación EXIF de la foto, se achican para entrar en 1920×1080 (en cualquier orientación) y se guardan como JPEG, o como PNG si tienen transparencia. La que ya cumple no se toca. Una foto de celular de 4608×3456 girada por EXIF cerraba VLC en la Pi (24/10/2026). A diferencia de los videos, no se rechazan: achicarlas no pierde nada que la pantalla pueda mostrar, y quien carga contenido sube fotos de celular todo el tiempo. Los casos de prueba, incluidas las 8 orientaciones EXIF, están en `tools/verificacion/imagen.php`.
 
 **Texto y cronograma** se dibujan como una imagen a pantalla completa con Pillow: fondo azul institucional, fuente Museo y el tamaño de letra que haga entrar todo el texto (`Player._imagen_de_texto()`). Se muestran por el mismo camino que una imagen fija, igual que la pantalla de espera y la alerta. Antes iban con el filtro marq de VLC sobre `blank://`, y en la Pi la pantalla quedaba en negro durante el turno del texto. Cada texto genera su imagen una vez (el nombre sale de un hash del texto) y se conservan las últimas 30.
 
@@ -228,7 +248,7 @@ Toda acción del CMS que cambia lo que muestra un reproductor se **rechaza si es
 | Redirect y PNG de QR | Público por diseño: los abre el celular de un visitante |
 | Broker MQTT | Sin acceso anónimo (`allow_anonymous false`), usuarios y ACL por rol con el plugin Dynamic Security, TLS en 8883. Detalle en `config/mosquitto/README.md` |
 | CORS | Lista blanca configurable (`SPUI_CORS_ORIGINS`) |
-| Límite de peticiones | 2 sync/min y 3 heartbeat/min por reproductor; 120/min por IP en el resto de la API |
+| Límite de peticiones | 4 sync/min y 3 heartbeat/min por reproductor; 120/min por IP en el resto de la API |
 
 No hay API de administración: el CRUD JSON que existía bajo `/api/spui/*` duplicaba al CMS sin ningún consumidor y se dio de baja. Bajo `/api/spui` quedan sólo los cuatro controllers de arriba (sync y heartbeat, media, telemetría, QR).
 
