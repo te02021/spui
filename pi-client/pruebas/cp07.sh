@@ -30,12 +30,36 @@ trap 'echo; echo "Cortado a mano: se restaura la red."; exit 130' INT TERM
 variante_alterado() {
     local archivo=${1:-} t0 t_detecta t_baja h0 h1 limite=900
     if [ -z "$archivo" ]; then
-        echo "Archivos en $MEDIA (el más reciente primero):"
-        mapfile -t lista < <(ls -t "$MEDIA" | grep -v '\.part$')
-        [ ${#lista[@]} -gt 0 ] || { echo "El caché está vacío."; exit 1; }
-        local i; for i in "${!lista[@]}"; do printf '  %2d) %s\n' $(( i + 1 )) "${lista[$i]}"; done
-        read -r -p "Número de un archivo de la playlist actual: " i
+        # Sólo los archivos de la playlist que se está mostrando, en su orden,
+        # sacados del último sync guardado. Antes se listaba todo el caché por
+        # fecha: el orden cambiaba en cuanto se bajaba un archivo, y en la
+        # segunda repetición el mismo número ya era una foto que no se mostraba
+        # (25/10/2026), con lo que la prueba esperaba los 15 min para nada.
+        mapfile -t lista < <(python3 -I - "$CACHE/spui.db" <<'PY'
+import json, sqlite3, sys
+try:
+    fila = sqlite3.connect(f'file:{sys.argv[1]}?mode=ro', uri=True).execute(
+        "SELECT value FROM sync_data WHERE key = 'ultimo_sync'").fetchone()
+    pantallas = (json.loads(fila[0]) if fila else {}).get('pantallas') or [{}]
+    vistos = []
+    for item in ((pantallas[0].get('playlist') or {}).get('items') or []):
+        c = item.get('contenido') or {}
+        url = c.get('url_descarga')
+        if c.get('tipo') in ('imagen', 'video') and url:
+            nombre = url.rstrip('/').split('/')[-1]
+            if nombre not in vistos:
+                vistos.append(nombre)
+                print(f"{nombre}\t{c.get('titulo') or ''}")
+except Exception:
+    pass
+PY
+)
+        [ ${#lista[@]} -gt 0 ] || { echo "La playlist actual no tiene imágenes ni videos (o no hay un sync guardado)."; exit 1; }
+        echo "Imágenes y videos de la playlist que se está mostrando:"
+        local i; for i in "${!lista[@]}"; do printf '  %2d) %-28s %s\n' $(( i + 1 )) "${lista[$i]#*$'\t'}" "${lista[$i]%%$'\t'*}"; done
+        read -r -p "Número: " i
         archivo=${lista[$(( i - 1 ))]:-}
+        archivo=${archivo%%$'\t'*}
     fi
     [ -f "$MEDIA/$archivo" ] || { echo "No existe $MEDIA/$archivo"; exit 1; }
 
