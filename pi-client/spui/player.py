@@ -534,22 +534,34 @@ class Player:
         if os.path.exists(propia):
             return propia
 
-        generada = os.path.join(self._media_dir, '_fallback.png')
+        # v2: el nombre cambia con el diseño para que se regenere la vieja.
+        generada = os.path.join(self._media_dir, '_fallback_v2.png')
         if os.path.exists(generada):
             return generada
 
         try:
             from PIL import Image, ImageDraw   # noqa: PLC0415 — opcional, sólo acá
 
-            img  = Image.new('RGB', (1920, 1080), (11, 61, 145))   # azul institucional
+            # Antes se dibujaba con la fuente de mapa de bits de PIL, que no
+            # escala: el cartel salía chiquito en el centro y de lejos no se
+            # leía (28/10/2026). Ahora, con la fuente de marca, del tamaño de
+            # un cartel: "UNRaf" grande y el nombre del sistema debajo.
+            ancho, alto = 1920, 1080
+            img  = Image.new('RGB', (ancho, alto), self._AZUL)
             draw = ImageDraw.Draw(img)
-            texto = self._TEXTO_FALLBACK
-            # Sin fuente propia se usa la de PIL: alcanza para un cartel de espera.
-            caja = draw.multiline_textbbox((0, 0), texto, align='center')
-            draw.multiline_text(
-                ((1920 - (caja[2] - caja[0])) / 2, (1080 - (caja[3] - caja[1])) / 2),
-                texto, fill=(255, 255, 255), align='center',
-            )
+            titulo, subtitulo = self._TEXTO_FALLBACK.split('\n', 1)
+            f_titulo = self._fuente_alerta(300)
+            f_sub    = self._fuente_alerta(72)
+            c_t = draw.textbbox((0, 0), titulo, font=f_titulo)
+            c_s = draw.textbbox((0, 0), subtitulo, font=f_sub)
+            alto_t, alto_s, separacion = c_t[3] - c_t[1], c_s[3] - c_s[1], 70
+            y = (alto - (alto_t + separacion + alto_s)) / 2
+            draw.text(((ancho - (c_t[2] - c_t[0])) / 2 - c_t[0], y - c_t[1]), titulo, font=f_titulo, fill=self._BLANCO)
+            # Una línea fina entre los dos, como separador institucional.
+            y_linea = y + alto_t + separacion / 2
+            draw.line([(ancho / 2 - 260, y_linea), (ancho / 2 + 260, y_linea)], fill=(255, 255, 255), width=4)
+            y_sub = y + alto_t + separacion
+            draw.text(((ancho - (c_s[2] - c_s[0])) / 2 - c_s[0], y_sub - c_s[1]), subtitulo, font=f_sub, fill=self._BLANCO)
             os.makedirs(self._media_dir, exist_ok=True)
             img.save(generada)
             logger.info('Imagen de espera generada en %s', generada)

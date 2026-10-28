@@ -1664,38 +1664,60 @@ textarea.is-invalid,
     font-variant-numeric: tabular-nums;
 }
 
-/* ---- Tarjetas de día de la semana como switch ---- */
+/* ---- Tarjetas de día de la semana como switch ----
+   Grilla pareja: los siete en una fila en escritorio y 4 + 3 en celular. Con
+   flex-wrap, "Dom" quedaba sola en una segunda línea (28/10/2026). */
 .spui-dias-switches {
-    display: flex;
-    gap: .6rem;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: .5rem;
+}
+@media (max-width: 575.98px) {
+    .spui-dias-switches { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
 .spui-dia-switch {
     display: flex;
-    flex-direction: column;
     align-items: center;
-    gap: .3rem;
-    padding: .4rem .5rem;
+    justify-content: center;
+    padding: .5rem .25rem;
     border-radius: .5rem;
     background: #f8f9fa;
     border: 1px solid #dee2e6;
-    min-width: 3rem;
     transition: background .15s, border-color .15s;
     cursor: pointer;
 }
+.spui-dia-switch .form-check-label {
+    font-size: .85rem;
+    font-weight: 600;
+    color: #495057;
+    cursor: pointer;
+    user-select: none;
+}
+
+/* ---- Interruptores sin la sangría de Bootstrap ----
+   El tema de formularios envuelve cada checkbox en un .form-check, que le
+   suma un padding-left y corre el input con margin-left negativo: dentro de
+   una tarjeta o debajo de una etiqueta, el interruptor quedaba desplazado.
+   Acá el input y su texto van en una fila, alineados. */
+.spui-switch-limpio .form-check {
+    display: flex;
+    align-items: center;
+    gap: .45rem;
+    padding-left: 0;
+    margin: 0;
+    min-height: 0;
+}
+.spui-switch-limpio .form-check-input {
+    float: none;
+    margin: 0;
+}
+.spui-switch-limpio .form-check-label:empty { display: none; }
+/* .form-switch suma además su propio padding-left de 2.5em. */
+.spui-switch-limpio .spui-switch-fila .form-switch { padding-left: 0; }
+.spui-switch-limpio .spui-switch-fila { min-height: 2.4rem; }
 .spui-dia-switch:has(input:checked) {
     background: rgba(74, 153, 48, .1);
     border-color: var(--unraf-success, #4A9930);
-}
-.spui-dia-label {
-    font-size: .7rem;
-    font-weight: 700;
-    color: #495057;
-    cursor: pointer;
-    text-transform: uppercase;
-    letter-spacing: .04em;
-    margin: 0;
-    user-select: none;
 }
 .spui-dia-switch .form-switch {
     padding-left: 0;
@@ -1749,9 +1771,12 @@ textarea.is-invalid,
 }
 /* Hora y fecha ya traen su propio ícono (reloj / calendario): el "!" de
    Bootstrap para inválido les comía el ancho y en celular cortaba la fecha
-   ("dd/mm/yyy"). El borde rojo y el mensaje de abajo ya marcan el error. */
+   ("dd/mm/yyy"). El borde rojo y el mensaje de abajo ya marcan el error.
+   .spui-fecha-field es lo mismo con la etiqueta a la izquierda (Programación). */
 .spui-hora-field input[type="time"].is-invalid,
-.spui-hora-field input[type="date"].is-invalid {
+.spui-hora-field input[type="date"].is-invalid,
+.spui-fecha-field input[type="time"].is-invalid,
+.spui-fecha-field input[type="date"].is-invalid {
     background-image: none;
     padding-right: .75rem;
 }

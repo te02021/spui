@@ -312,8 +312,8 @@ Máximo ≤ 0,5 s, frente a un criterio de 2 s. La imagen de la alerta aparece e
 Cada cambio llegó a la pantalla en 1 a 2 s.
 
 **Observaciones de Mateo que no hacen fallar el caso, pero hay que corregir:**
-- **Pantalla de espera ilegible de lejos.** El texto "UNRaf / Sistema de Pantallas Informativas" se ve chiquito en el centro: la imagen se genera con la fuente de mapa de bits de Pillow, que no escala.
-- **El formulario de reglas de Programación se ve desprolijo,** en el alta y en la edición.
+- **Pantalla de espera ilegible de lejos.** El texto "UNRaf / Sistema de Pantallas Informativas" se ve chiquito en el centro: la imagen se genera con la fuente de mapa de bits de Pillow, que no escala. **Corregido el 28/10:** "UNRaf" en grande con la fuente de marca y el nombre del sistema debajo (`_fallback_v2.png`).
+- **El formulario de reglas de Programación se ve desprolijo,** en el alta y en la edición. **Corregido el 28/10:** etiquetas a la izquierda, los 7 días en una grilla pareja (4 + 3 en celular) y Prioridad, Estado y Repetir alineados. La sangría de Bootstrap (`.form-check` y `.form-switch`) corría los interruptores.
 
 ### 25 y 27/10/2026 — Tanda 1, con la Pi y el monitor Philips
 
