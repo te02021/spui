@@ -43,7 +43,7 @@
 </div>
 <div class="mb-3" id="notaDuracionVideo" hidden>
     <span class="unraf-form-label d-block">Duración</span>
-    <small class="text-muted d-block">Un video dura lo que dura el archivo: el CMS la lee al guardarlo y la playlist lo muestra completo.</small>
+    <small class="text-muted d-block">Un video, subido o de YouTube, dura lo que dura: la playlist lo muestra completo.</small>
 </div>
 
 {# data-spui-campo: los errores del archivo (del servidor y de validacion-vivo.js,
@@ -65,6 +65,7 @@
     <label class="unraf-form-label" id="labelTexto">Texto <span class="text-danger">*</span></label>
     <textarea name="contenido_texto" id="textareaTexto" class="unraf-form-control{{ err.contenido_texto is defined ? ' is-invalid' }}" rows="4" placeholder="Ingresá el texto a mostrar…">{{ contenido_texto|default('') }}</textarea>
     {% if err.contenido_texto is defined %}<p class="spui-campo-error">{{ err.contenido_texto }}</p>{% endif %}
+    <small class="text-muted d-block mt-1" id="ayudaYoutube" hidden>La pantalla descarga el video y lo reproduce como uno subido: la primera vez tarda unos minutos y, mientras tanto, se saltea. Para un video propio conviene subir el archivo.</small>
 </div>
 
 <div id="campoCronograma" class="mb-3" style="display:none">

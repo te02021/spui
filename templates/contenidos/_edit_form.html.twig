@@ -39,13 +39,16 @@
         </div>
     </div>
 
-    {% if contenido.tipo.value == 'video' %}
-        {# La duración de un video no se escribe: es la del archivo, que el CMS
-           lee al subirlo (y de nuevo si se reemplaza). #}
+    {% if contenido.esVideo %}
+        {# La duración de un video no se escribe: la del subido es la del
+           archivo, que el CMS lee al subirlo (y de nuevo si se reemplaza); la de
+           un YouTube, la del video, que la pantalla reproduce completo. #}
         <div class="mb-4">
             <span class="unraf-form-label d-block">Duración</span>
-            <strong>{{ contenido.duracionSegundos is not null ? contenido.etiquetaDuracion : 'Hasta que termine' }}</strong>
-            <small class="text-muted d-block mt-1">La del archivo de video: la playlist lo muestra completo. Si reemplazás el archivo, se vuelve a leer.</small>
+            <strong>{{ contenido.etiquetaDuracion }}</strong>
+            <small class="text-muted d-block mt-1">{{ contenido.tipo.value == 'youtube'
+                ? 'La del video de YouTube: la pantalla lo descarga y lo muestra completo.'
+                : 'La del archivo de video: la playlist lo muestra completo. Si reemplazás el archivo, se vuelve a leer.' }}</small>
         </div>
     {% else %}
         <div class="mb-4">
@@ -71,6 +74,9 @@
                       placeholder="{{ contenido.tipo.value == 'youtube' ? 'https://www.youtube.com/watch?v=…' : 'Texto que se muestra en pantalla' }}"
                       required>{{ contenido.contenidoTexto }}</textarea>
             {% if err.contenido_texto is defined %}<p class="spui-campo-error">{{ err.contenido_texto }}</p>{% endif %}
+            {% if contenido.tipo.value == 'youtube' %}
+                <small class="text-muted d-block mt-1">La pantalla descarga el video y lo reproduce como uno subido: la primera vez tarda unos minutos y, mientras tanto, se saltea. Para un video propio conviene subir el archivo.</small>
+            {% endif %}
         </div>
 
     {% elseif contenido.tipo.value == 'qr' %}

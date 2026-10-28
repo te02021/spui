@@ -545,7 +545,7 @@ chmod +x install.sh
 > **No usar `sudo ./install.sh`.** El script detecta tu usuario con `whoami` para configurar permisos y el servicio systemd; corriéndolo como root se configuraría mal. Pide `sudo` internamente donde hace falta.
 
 El script:
-1. Instala VLC, Python 3 y venv vía `apt`
+1. Instala VLC, Python 3 y venv vía `apt`, más ffmpeg y Deno (o Node) para los videos de YouTube
 2. Crea el entorno virtual e instala `requirements.txt`
 3. Copia el cliente a `/opt/spui`
 4. Crea `/etc/spui/spui.env` con placeholders

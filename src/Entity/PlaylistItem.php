@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace SPUI\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
-use SPUI\Enum\TipoContenido;
 use SPUI\Repository\PlaylistItemRepository;
 
 #[ORM\Entity(repositoryClass: PlaylistItemRepository::class)]
@@ -57,8 +56,10 @@ class PlaylistItem
      * que muestra la ventana de ítems (etiquetaDuracion(); playlists/items.js
      * repite la misma regla para recalcular mientras se arma la lista).
      *
-     *   - Video: dura lo que dura el archivo (se lee al subirlo). Si es el
-     *     único contenido de la playlist, null: se repite en bucle.
+     *   - Video (subido o de YouTube): dura lo que dura. El subido, lo que dice
+     *     su archivo (se lee al subirlo); el de YouTube, hasta que termina (la
+     *     Pi lo descarga). Si es el único contenido de la playlist, null: se
+     *     repite en bucle.
      *   - Con duración propia: esa duración.
      *   - Permanente y único contenido: null, queda fijo en pantalla.
      *   - Permanente en una playlist con otros: DURACION_EN_ROTACION.
@@ -68,7 +69,7 @@ class PlaylistItem
         $propia = $this->contenido->getDuracionSegundos();
         $unico  = $this->playlist->getItems()->count() <= 1;
 
-        if ($this->contenido->getTipo() === TipoContenido::Video) {
+        if ($this->contenido->esVideo()) {
             return $unico ? null : $propia;
         }
         if ($propia !== null) {
@@ -86,7 +87,7 @@ class PlaylistItem
             return Contenido::duracionLegible($segundos);
         }
 
-        if ($this->contenido->getTipo() === TipoContenido::Video) {
+        if ($this->contenido->esVideo()) {
             // Único video de la playlist, o uno cargado antes de que se leyera
             // la duración del archivo: en los dos casos se ve completo.
             return $this->playlist->getItems()->count() <= 1 ? 'En bucle' : 'Hasta que termine';

@@ -121,9 +121,15 @@ class Contenido
         if ($this->duracionSegundos !== null) {
             return self::duracionLegible($this->duracionSegundos);
         }
-        // Un video sin duración es uno subido antes de que se leyera del
-        // archivo: igual se muestra completo.
-        return $this->tipo === TipoContenido::Video ? 'Hasta que termine' : 'Permanente';
+        // Un video sin duración (uno de YouTube, o uno subido antes de que se
+        // leyera del archivo) se muestra completo.
+        return $this->esVideo() ? 'Hasta que termine' : 'Permanente';
+    }
+
+    /** Un video subido o uno de YouTube: dura lo que dura el video, no se escribe. */
+    public function esVideo(): bool
+    {
+        return in_array($this->tipo, [TipoContenido::Video, TipoContenido::Youtube], true);
     }
 
     public function getHashArchivo(): ?string { return $this->hashArchivo; }

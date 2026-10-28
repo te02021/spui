@@ -120,6 +120,8 @@ Verificados contra código. Si algo "deja de andar", empezar por acá.
 
 22. **En la Pi, sólo el hilo de reproducción usa VLC** (`spui/reproduccion.py`). El hilo principal sincroniza y MQTT avisa, pero ninguno de los dos toca VLC: le dicen al hilo de reproducción qué mostrar. Un código nuevo que llame a métodos del player que usan VLC desde otro hilo reabre la carrera que puede cerrar el proceso. Ver `06` §5, "Dos hilos".
 
+23. **Un YouTube no se reproduce desde internet: la Pi lo baja con `yt-dlp`** y lo muestra como un video local (`spui/youtube.py`). Si "no aparece", lo más común es que todavía se esté bajando (en el journal: `Descargando video de YouTube «…»` y después `listo`) o que `yt-dlp` haya quedado viejo: YouTube cambia seguido, y `install.sh` lo actualiza en cada deploy. Necesita además Deno (o Node) y ffmpeg. El motivo de una falla aparece en el diagnóstico del reproductor.
+
 ---
 
 ## 3.1. Registro de auditorías

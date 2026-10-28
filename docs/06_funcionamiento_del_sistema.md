@@ -180,6 +180,20 @@ WebM y OGG se dejaron de aceptar: la Pi los decodifica por software. Los casos d
 
 **Las imágenes se adaptan al subirlas** (`ImagenNormalizerService`): se giran según la orientación EXIF de la foto, se achican para entrar en 1920×1080 (en cualquier orientación) y se guardan como JPEG, o como PNG si tienen transparencia. La que ya cumple no se toca. Una foto de celular de 4608×3456 girada por EXIF cerraba VLC en la Pi (24/10/2026). A diferencia de los videos, no se rechazan: achicarlas no pierde nada que la pantalla pueda mostrar, y quien carga contenido sube fotos de celular todo el tiempo. Los casos de prueba, incluidas las 8 orientaciones EXIF, están en `tools/verificacion/imagen.php`.
 
+**YouTube** (`spui/youtube.py`). VLC no abre un link de YouTube: quedaba en `State.Opening` y la pantalla se trababa (28/10/2026). Por eso el reproductor baja cada video con `yt-dlp` y lo muestra como un video local, igual que uno subido:
+
+- **El formato** es el que la Pi reproduce fluido: H.264, hasta 1080p y 30 fps, con audio AAC.
+- **La descarga va en un hilo propio, de a una por vez,** y el sync no la espera. Se baja a una carpeta temporal y recién al terminar pasa al caché como `youtube-<id>.mp4`: el player nunca ve un archivo a medias.
+- **Mientras no terminó de bajarse, la playlist saltea ese ítem.** Una vez bajado, sigue andando sin red.
+- **Si falla** (video privado, más de una hora, sin versión en H.264), se reintenta a la media hora, y el motivo aparece en el diagnóstico del reproductor.
+
+El CMS valida el link y lo guarda normalizado como `watch?v=<id>` (`YoutubeUrl`): así, dos formas del mismo link son un solo archivo. Igual que un video subido, un YouTube dura lo que dura el video.
+
+Para funcionar, la Pi necesita tres cosas, y las instala `install.sh`:
+- `yt-dlp[default]`, que trae el resolvedor de desafíos que YouTube exige desde 2025. Se actualiza en cada instalación, porque una versión vieja deja de poder bajar.
+- Deno, o Node como alternativa: el intérprete de JavaScript que necesita `yt-dlp`.
+- ffmpeg, que une el video y el audio.
+
 **Texto y cronograma** se dibujan como una imagen a pantalla completa con Pillow: fondo azul institucional, fuente Museo y el tamaño de letra que haga entrar todo el texto (`Player._imagen_de_texto()`). Se muestran por el mismo camino que una imagen fija, igual que la pantalla de espera y la alerta. Antes iban con el filtro marq de VLC sobre `blank://`, y en la Pi la pantalla quedaba en negro durante el turno del texto. Cada texto genera su imagen una vez (el nombre sale de un hash del texto) y se conservan las últimas 30.
 
 ### Por qué sigue andando sin red

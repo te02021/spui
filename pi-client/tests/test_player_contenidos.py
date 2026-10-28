@@ -125,8 +125,8 @@ class TextoComoImagenTest(unittest.TestCase):
         self.p._reproducir_media = mock.Mock(return_value=False)
         self.p._esperar = mock.Mock()
         self.p._esperar_fin_video = mock.Mock()
-        self.p._reproducir_youtube('https://www.youtube.com/watch?v=x', 10)
         self.p._reproducir_video('/tmp/x.mp4', 23)
+        self.p._reproducir_imagen('/tmp/x.jpg', 10)
         self.p._esperar.assert_not_called()
         self.p._esperar_fin_video.assert_not_called()
 

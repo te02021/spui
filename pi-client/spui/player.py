@@ -97,8 +97,11 @@ class Player:
     #   gl/glx  → OpenGL; más rápidas pero dependen de drivers 3D bien configurados
     _VOUT_ALTERNATIVAS = ('xcb_x11', 'xcb_xv', 'gl', 'glx')
 
-    def __init__(self, media_dir: str, sync_client=None, guardia=None):
+    def __init__(self, media_dir: str, sync_client=None, guardia=None, youtube=None):
         self._media_dir = media_dir
+        # Los YouTube se reproducen ya bajados (spui/youtube.py): VLC no abre el link.
+        self._youtube = youtube
+        self._youtube_avisados: set[str] = set()
         # Saltea los contenidos que cerraron el reproductor (spui/guardia.py).
         self._guardia = guardia
         # Corta lo que se está mostrando para pasar al programa nuevo en el
@@ -346,7 +349,7 @@ class Player:
             return self._DURACION_POR_DEFECTO
 
         duracion = item.get('duracion_efectiva_seg')
-        es_video = ((item.get('contenido') or {}).get('tipo')) == 'video'
+        es_video = ((item.get('contenido') or {}).get('tipo')) in ('video', 'youtube')
 
         if duracion is None:
             if total_items == 1:
@@ -1300,20 +1303,19 @@ class Player:
         # Texto permanente: queda en pantalla, sin esperar ni borrar.
 
     def _reproducir_youtube(self, url: str, duracion: Optional[int]) -> None:
-        if self._simulacion:
-            logger.info('[SIM] youtube: %s', url)
-            self._esperar_simulado(duracion)
+        """
+        Un YouTube se muestra como un video local, ya bajado por
+        spui/youtube.py. Mientras no terminó de bajarse se saltea (y se avisa
+        una sola vez en el registro, no en cada vuelta).
+        """
+        local = self._youtube.ruta(url) if self._youtube is not None else None
+        if local is None:
+            if url not in self._youtube_avisados:
+                self._youtube_avisados.add(url)
+                logger.info('El video de YouTube %s todavía no está descargado: se saltea por ahora.', url)
             return
-
-        media = self._vlc.media_new(url)
-        if duracion is None:
-            media.add_option(':input-repeat=65535')
-
-        if not self._reproducir_media(media):
-            return
-
-        if duracion is not None:
-            self._esperar(duracion)
+        self._youtube_avisados.discard(url)
+        self._reproducir_video(local, duracion)
 
     # ── Utilidades ────────────────────────────────────────────────────────
 

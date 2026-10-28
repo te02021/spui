@@ -36,8 +36,11 @@
         // se pide la duración, se explica de dónde sale.
         var campoDuracion = document.getElementById('campoDuracion');
         var notaVideo     = document.getElementById('notaDuracionVideo');
-        if (campoDuracion) campoDuracion.hidden = tipo === 'video';
-        if (notaVideo)     notaVideo.hidden     = tipo !== 'video';
+        var esVideo = tipo === 'video' || tipo === 'youtube';
+        if (campoDuracion) campoDuracion.hidden = esVideo;
+        if (notaVideo)     notaVideo.hidden     = !esVideo;
+        var ayudaYoutube = document.getElementById('ayudaYoutube');
+        if (ayudaYoutube)  ayudaYoutube.hidden  = tipo !== 'youtube';
         if (archivoInput)    archivoInput.required = esArchivo;
         if (textarea)        textarea.required     = esTexto;
         if (qrUrl)           qrUrl.required        = esQr;

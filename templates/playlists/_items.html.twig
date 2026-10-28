@@ -55,7 +55,7 @@
             data-titulo="{{ c.titulo }}"
             data-tipo="{{ c.tipo.etiqueta }}"
             data-duracion-seg="{{ c.duracionSegundos ?? '' }}"
-            data-es-video="{{ c.tipo.value == 'video' ? '1' : '0' }}">
+            data-es-video="{{ c.esVideo ? '1' : '0' }}">
             {% if not ro %}
                 <span class="item-drag-handle">
                     <img src="{{ asset('unraf-ui/icons/dots-six-vertical.svg') }}" class="unraf-icon-svg" alt="">
@@ -107,7 +107,7 @@
                         data-titulo="{{ c.titulo }}"
                         data-tipo="{{ c.tipo.etiqueta }}"
                         data-duracion-seg="{{ c.duracionSegundos ?? '' }}"
-                        data-es-video="{{ c.tipo.value == 'video' ? '1' : '0' }}"
+                        data-es-video="{{ c.esVideo ? '1' : '0' }}"
                         data-filter-text="{{ (c.titulo ~ ' ' ~ c.tipo.etiqueta)|lower }}">
                         <div class="flex-grow-1">
                             <strong>{{ c.titulo }}</strong>
