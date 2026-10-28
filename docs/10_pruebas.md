@@ -14,10 +14,10 @@ Las pruebas de carga (CP11, CP12) las corre el simulador de `tools/simulador/` y
 | CP02 | Segmentación por pantalla, ubicación y edificio | No (necesita 2 reproductores) | Sin ejecutar |
 | CP03 | Orden de prioridad | No | Sin ejecutar |
 | CP04 | Alerta global con sonido, < 2 s (p95) | La latencia no; el sonido sí | Sin ejecutar |
-| CP05 | Corte de red sin interrupción | No (se ve en el log) | ✅ 1 de 3 (25/10/2026) |
-| CP06 | Resincronización tras el corte, < 60 s | No | ✅ 1 de 3: 33,8 s (25/10/2026) |
-| CP07 | Descarga interrumpida o archivo alterado no entra a caché | No | ✅ descarga 2 de 2; alterado 1 de 3 (25/10/2026) |
-| CP08 | Desconexión abrupta visible en el panel | No | ✅ 4 de 6: 121–155 s (25/10/2026) |
+| CP05 | Corte de red sin interrupción | No (se ve en el log) | ✅ Cumple (3 de 3, 25 y 27/10/2026) |
+| CP06 | Resincronización tras el corte, < 60 s | No | ✅ Cumple (3 de 3: 0,8–38,6 s) |
+| CP07 | Descarga interrumpida o archivo alterado no entra a caché | No | ✅ Cumple (descarga 2 de 2, alterado 3 de 3) |
+| CP08 | Desconexión abrupta visible en el panel | No | ✅ Cumple (6 de 6: 113–155 s) |
 | CP09 | Solicitud o mensaje sin credenciales, rechazado | No | ✅ Cumple desde la Pi (25/10/2026, 5 repeticiones) |
 | CP10 | Encendido y apagado programado | **Sí** | Sin ejecutar |
 | CP11 | Carga con 50 simulados: error < 1 %, API < 500 ms (p95) | No | ✅ Cumple (13/10/2026, entorno de desarrollo) |
@@ -267,10 +267,10 @@ Cuestionario SUS estándar (10 ítems, escala 1–5) a operadores del CMS despu�
 
 Las planillas completas de cada corrida se agregan debajo, con la fecha. La más reciente va primero.
 
-### 25/10/2026 — Tanda 1, con la Pi y el monitor Philips
+### 25 y 27/10/2026 — Tanda 1, con la Pi y el monitor Philips
 
 **Condiciones:**
-- Pi `spui-pi-01` por Wi-Fi en la misma LAN que el CMS, versión `943b3aa 24/10/2026 21:01`, con el monitor conectado.
+- Pi `spui-pi-01` por Wi-Fi en la misma LAN que el CMS, con el monitor conectado. Versión `943b3aa` el 25/10 y `ad78d0b` el 27/10 (sólo cambió el listado de `cp07.sh`; el cliente es el mismo).
 - Playlist de respaldo `PRUEBA PRINCIPAL` (imagen 10 s, texto 10 s, video 1080p de 23 s) y sync cada 1 min.
 - Los scripts de `pi-client/pruebas/` corrieron en la Pi. Las horas del LWT salen de `C:\ProgramData\spui\telemetria.log`, en la PC.
 
@@ -287,13 +287,15 @@ Las planillas completas de cada corrida se agregan debajo, con la fecha. La más
 | MQTT con clave incorrecta | rechazado | rechazado ×5 | ✅ |
 | Reproductor publica una alerta | no llegó | no llegó ×5 | ✅ |
 
-**CP07 A — ✅ en 1 de 3 repeticiones; faltan 2.**
+**CP07 A — ✅ cumple (3 de 3).**
 
 | # | Archivo | Alterado | Descartado (log) | Vuelto a bajar | Hash final = original |
 |---|---|---|---|---|---|
-| 1 | `ContenidoPrueba` (`IMG-20241020-155457-…-6add45e291f90.jpg`) | 20:41:13 | 20:41:41 (+28,3 s) | 20:41:41 | sí |
+| 1 | `ContenidoPrueba` (`IMG-20241020-155457-…-6add45e291f90.jpg`) | 25/10 20:41:13 | 20:41:41 (+28,3 s) | 20:41:41 | sí |
+| 2 | ídem | 27/10 22:10:45 | 22:10:59 (+14,2 s) | 22:10:59 | sí |
+| 3 | ídem | 27/10 22:12:30 | 22:12:51 (+21,5 s) | 22:12:51 | sí |
 
-La segunda se cortó a mano. El script listaba todo el caché por fecha, el orden había cambiado y el número elegido ya era una foto que no estaba en la playlist, así que nunca se mostró. Se corrigió el script: ahora lista sólo las imágenes y videos de la playlist en pantalla, con su título. Esa foto quedó alterada en el caché; la Pi la va a descartar y volver a bajar la próxima vez que la muestre, que es justamente lo que prueba el caso.
+Un primer intento de la repetición 2 (25/10) se cortó a mano. El script listaba todo el caché por fecha, el orden había cambiado y el número elegido ya era una foto que no estaba en la playlist, así que nunca se mostró. Se corrigió el script: ahora lista sólo las imágenes y videos de la playlist en pantalla, con su título. Esa foto quedó alterada en el caché; la Pi la va a descartar y volver a bajar la próxima vez que la muestre, que es justamente lo que prueba el caso.
 
 **CP07 B — ✅ cumple (2 de 2).**
 
@@ -304,7 +306,7 @@ La segunda se cortó a mano. El script listaba todo el caché por fecha, el orde
 
 La descarga cortada nunca quedó con el nombre que usa el player, y se completó en el primer reintento tras volver la red.
 
-**CP08 — ✅ en 4 de 6 repeticiones (2 colgado, 2 red); falta 1 de cada variante.**
+**CP08 — ✅ cumple (6 de 6: 3 colgado, 3 red).**
 
 | # | Variante | Caída | LWT (broker) | Desconectado en el panel | Demora | Volvió a Conectado |
 |---|---|---|---|---|---|---|
@@ -312,16 +314,20 @@ La descarga cortada nunca quedó con el nombre que usa el player, y se completó
 | 2 | colgado | 21:08:03 | 21:08:56 (+53 s) | 21:10:26 | **142,5 s** | +13,0 s |
 | 3 | red | 21:10:57 | 21:11:58 (+61 s) | 21:12:59 | **122,8 s** | +39,2 s |
 | 4 | red | 21:13:46 | 21:14:57 (+71 s) | 21:16:20 | **154,6 s** | +19,0 s |
+| 5 | colgado | 27/10 22:17:59 | 22:18:31 (+32 s) | 22:19:52 | **112,7 s** | +6,5 s |
+| 6 | red | 27/10 22:20:13 | 22:21:24 (+71 s) | 22:22:43 | **150,6 s** | +14,9 s |
 
 Todas dentro de lo esperado por diseño: 150 s desde el último heartbeat, que es como mucho 60 s antes de la caída, más hasta 60 s del mantenimiento. El broker detecta la caída por el keepalive (60 s × 1,5) entre 53 y 90 s antes de que lo muestre el panel, que usa sólo el heartbeat (ver §3, CP08).
 
-**CP05 y CP06 — ✅ cumplen en 1 de 3 repeticiones; faltan 2.**
+**CP05 y CP06 — ✅ cumplen (3 de 3).**
 
 | # | Corte | Primer uso de caché | Intervalos (s) | Reproducciones / errores | CP05 | CP06 latencia | CP06 |
 |---|---|---|---|---|---|---|---|
-| 1 | 21:17:22 → 21:22:22 (300,6 s) | +45,0 s | 23,5 · 28,4 · 33,4 · 35,5 · 21,3 · 39,3 · 28,9 · 38,3 | 21 / 0 | ✅ | **33,8 s** | ✅ |
+| 1 | 25/10 21:17:22 → 21:22:22 (300,6 s) | +45,0 s | 23,5 · 28,4 · 33,4 · 35,5 · 21,3 · 39,3 · 28,9 · 38,3 | 21 / 0 | ✅ | **33,8 s** | ✅ |
+| 2 | 27/10 22:23:07 → 22:28:08 (300,7 s) | +47,4 s | 38,2 · 33,9 · 25,8 · 28,9 · 24,7 · 25,7 · 26,9 · 38,3 | 21 / 0 | ✅ | **38,6 s** | ✅ |
+| 3 | 27/10 22:30:41 → 22:35:41 (300,6 s) | +5,8 s | 38,4 · 22,3 · 25,3 · 35,0 · 31,5 · 39,0 · 35,6 · 34,5 | 21 / 0 | ✅ | **0,8 s** | ✅ |
 
-Los intervalos varían entre 21 y 39 s: el jitter funciona, y desde el 24/10 lo hace aunque la playlist incluya un video de 23 s. El primer uso de la caché llegó a los 45 s porque el cliente nota el corte en su próximo sync, que con intervalo de 1 minuto puede tardar hasta 60 s.
+En la repetición 3, el primer uso de la caché (+5,8 s) y la resincronización (0,8 s) salieron cortos porque un reintento cayó justo después del corte y otro justo después de restaurar: es el azar de los reintentos, no otra cosa. Con las tres, CP06 queda entre 0,8 y 38,6 s, siempre por debajo de los ~43 s del diseño. Los intervalos varían entre 21 y 39 s: el jitter funciona, y desde el 24/10 lo hace aunque la playlist incluya un video de 23 s. El primer uso de la caché llegó a los 45 s porque el cliente nota el corte en su próximo sync, que con intervalo de 1 minuto puede tardar hasta 60 s.
 
 ### 21/10/2026 — CP09 en banco, con un reproductor simulado desde la PC
 
