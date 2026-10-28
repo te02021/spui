@@ -10,10 +10,10 @@ Las pruebas de carga (CP11, CP12) las corre el simulador de `tools/simulador/` y
 
 | Caso | Criterio | Necesita ver la pantalla | Estado |
 |---|---|---|---|
-| CP01 | Publicación y sincronización en < 60 s | No | Sin ejecutar |
+| CP01 | Publicación y sincronización en < 60 s | No | ✅ 5 de 10: ≤ 2,5 s (28/10/2026) |
 | CP02 | Segmentación por pantalla, ubicación y edificio | No (necesita 2 reproductores) | Sin ejecutar |
-| CP03 | Orden de prioridad | No | Sin ejecutar |
-| CP04 | Alerta global con sonido, < 2 s (p95) | La latencia no; el sonido sí | Sin ejecutar |
+| CP03 | Orden de prioridad | No | ✅ 1 de 2 vueltas, 6 pasos correctos (28/10/2026) |
+| CP04 | Alerta global con sonido, < 2 s (p95) | La latencia no; el sonido sí | ✅ 5 de 10: ≤ 0,5 s, sonó en todas (28/10/2026) |
 | CP05 | Corte de red sin interrupción | No (se ve en el log) | ✅ Cumple (3 de 3, 25 y 27/10/2026) |
 | CP06 | Resincronización tras el corte, < 60 s | No | ✅ Cumple (3 de 3: 0,8–38,6 s) |
 | CP07 | Descarga interrumpida o archivo alterado no entra a caché | No | ✅ Cumple (descarga 2 de 2, alterado 3 de 3) |
@@ -266,6 +266,54 @@ Cuestionario SUS estándar (10 ítems, escala 1–5) a operadores del CMS despu�
 ## 4. Registro de corridas
 
 Las planillas completas de cada corrida se agregan debajo, con la fecha. La más reciente va primero.
+
+### 28/10/2026 — Tanda 2, desde el CMS con la Pi y el monitor Philips
+
+**Condiciones:**
+- Pi `spui-pi-01` con el monitor conectado, versión `ad78d0b`; `PRUEBA PRINCIPAL` (imagen 10 s, texto 10 s, video 23 s) y sync cada 1 min.
+- Las latencias salen de cruzar dos fuentes: la hora de llegada de cada POST al Apache del CMS (`c:\wamp64\logs\access.log`, resolución de 1 s) y la hora del evento en el journal de la Pi (`journalctl -o short-unix`, con microsegundos).
+- Como el POST llegó en algún momento dentro de ese segundo, cada valor es una **cota superior**. La PC no sincroniza su reloj, y en 2 de los 15 eventos la Pi registró el evento unas décimas antes del segundo de Apache. Para criterios de 2 y 60 s esa incertidumbre no cambia el veredicto.
+
+**CP01 — ✅ cumple en 5 de 10 repeticiones** (Mateo hizo 5; las 5 se vieron en el monitor).
+
+| # | Guardar (Apache) | Sync OK en la Pi | Latencia | Texto nuevo en pantalla |
+|---|---|---|---|---|
+| 1 | 16:43:00 | 16:43:01,589 | ≤ 1,6 s | sí |
+| 2 | 16:43:30 | 16:43:30,225 | ≤ 0,2 s | sí |
+| 3 | 16:43:51 | 16:43:53,528 | ≤ 2,5 s | sí |
+| 4 | 16:44:06 | 16:44:08,025 | ≤ 2,0 s | sí |
+| 5 | 16:44:25 | 16:44:26,159 | ≤ 1,2 s | sí |
+
+Máximo ≤ 2,5 s, frente a un criterio de 60 s. Incluye los 0 a 2 s de azar a propósito del `sync_ahora`. En cada caso la playlist se cortó y volvió a empezar, y el texto nuevo apareció en su turno, 10 s después.
+
+**CP04 — ✅ cumple en 5 de 10 repeticiones** (Mateo hizo 5; la quinta es el paso 6 de CP03).
+
+| # | Activar (Apache) | Alerta recibida en la Pi | Latencia | Desactivar (Apache) | Baja recibida | Latencia | Sonido |
+|---|---|---|---|---|---|---|---|
+| 1 | 16:45:51 | 16:45:51,519 | ≤ 0,5 s | 16:46:12 | 16:46:12,617 | ≤ 0,6 s | sí (oído y en el log) |
+| 2 | 16:46:25 | 16:46:25,520 | ≤ 0,5 s | 16:47:19 | 16:47:19,181 | ≤ 0,2 s | sí |
+| 3 | 16:48:19 | 16:48:19,387 | ≤ 0,4 s | 16:48:49 | 16:48:49,499 | ≤ 0,5 s | sí |
+| 4 | 16:48:53 | 16:48:52,975 | ≈ 0 s | 16:49:09 | 16:49:08,815 | ≈ 0 s | sí |
+| 5 | 16:57:12 | 16:57:12,085 | ≤ 0,1 s | 16:57:18 | 16:57:18,229 | ≤ 0,2 s | sí |
+
+Máximo ≤ 0,5 s, frente a un criterio de 2 s. La imagen de la alerta aparece entre 0,02 y 0,15 s después de recibirla. El sonido arranca entre 0,3 y 0,9 s después, y se repite al terminar mientras la alerta sigue activa. Mateo la escuchó en todas las activaciones.
+
+**CP03 — ✅ cumple en 1 de 2 vueltas** (Mateo hizo una; los 6 pasos dieron lo esperado).
+
+| Paso | Configuración | Esperado | Visto en el monitor | En el log de la Pi |
+|---|---|---|---|---|
+| 1 | Sin respaldo ni reglas | Pantalla de espera | Pantalla de espera ⚠ | 16:51:15 |
+| 2 | Respaldo `PRUEBA PRINCIPAL` | Playlist principal | Ni bien se guarda | 16:53:23 |
+| 3 | Regla A, prioridad 5 | REGLA A | REGLA A | `programacion=7`, 16:55:06 |
+| 4 | + Regla B, prioridad 10 | REGLA B | REGLA B | `programacion=8`, 16:56:31 |
+| 5 | Se desactiva B | REGLA A | REGLA A | `programacion=7`, 16:56:51 |
+| 6 | Alerta y baja | Alerta, después REGLA A | Alerta, después REGLA A | 16:57:12 → 16:57:18 |
+
+Cada cambio llegó a la pantalla en 1 a 2 s.
+
+**Observaciones de Mateo que no hacen fallar el caso, pero hay que corregir:**
+- **Pantalla de espera ilegible de lejos.** El texto "UNRaf / Sistema de Pantallas Informativas" se ve chiquito en el centro: la imagen se genera con la fuente de mapa de bits de Pillow, que no escala.
+- **El formulario de reglas de Programación se ve desprolijo,** en el alta y en la edición.
 
 ### 25 y 27/10/2026 — Tanda 1, con la Pi y el monitor Philips
 
