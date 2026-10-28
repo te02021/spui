@@ -5,7 +5,6 @@ Tipos de contenido soportados (deben coincidir con SPUI\Enum\TipoContenido):
   texto      → texto mostrado con overlay VLC marquee
   imagen     → imagen estática (PNG, JPG) mostrada N segundos
   video      → archivo de video reproducido N segundos
-  youtube    → URL de YouTube reproducida con VLC
   qr         → imagen PNG del QR (descargada del CMS)
   cronograma → tabla de actividades del día, renderizada como texto
 
@@ -97,17 +96,16 @@ class Player:
     #   gl/glx  → OpenGL; más rápidas pero dependen de drivers 3D bien configurados
     _VOUT_ALTERNATIVAS = ('xcb_x11', 'xcb_xv', 'gl', 'glx')
 
-    def __init__(self, media_dir: str, sync_client=None, guardia=None, youtube=None):
+    def __init__(self, media_dir: str, sync_client=None, guardia=None):
         self._media_dir = media_dir
-        # Los YouTube se reproducen ya bajados (spui/youtube.py): VLC no abre el link.
-        self._youtube = youtube
-        self._youtube_avisados: set[str] = set()
         # Saltea los contenidos que cerraron el reproductor (spui/guardia.py).
         self._guardia = guardia
         # Corta lo que se está mostrando para pasar al programa nuevo en el
         # acto (spui/reproduccion.py): una playlist distinta, una alerta, el
         # apagado. Lo prende otro hilo; lo revisan las esperas de acá.
         self._interrumpido = threading.Event()
+        # Tipos desconocidos ya avisados en el registro (una vez cada uno).
+        self._tipos_avisados: set[str] = set()
         # Mismo cliente HTTP que ya descarga imágenes/video (sync.py): permite
         # bajar y cachear un sonido de alerta personalizado con la misma
         # verificación de hash. Puede llegar None (p.ej. uso directo del
@@ -231,6 +229,9 @@ class Player:
     # una rotación eso dejaría a los demás sin mostrarse nunca.
     _DURACION_POR_DEFECTO = 10
 
+    # Los tipos que sabe mostrar este cliente (los de SPUI\Enum\TipoContenido).
+    _TIPOS_CONOCIDOS = ('texto', 'imagen', 'video', 'qr', 'cronograma')
+
     # Un video se muestra hasta que termina; su duración (la del archivo, que el
     # CMS lee al subirlo) es el máximo a esperar si VLC no avisa el final, más
     # este margen por lo que tarda en arrancar. Sin duración, el tope.
@@ -349,7 +350,7 @@ class Player:
             return self._DURACION_POR_DEFECTO
 
         duracion = item.get('duracion_efectiva_seg')
-        es_video = ((item.get('contenido') or {}).get('tipo')) in ('video', 'youtube')
+        es_video = ((item.get('contenido') or {}).get('tipo')) == 'video'
 
         if duracion is None:
             if total_items == 1:
@@ -962,20 +963,20 @@ class Player:
         contenido = item.get('contenido') or {}
         tipo      = contenido.get('tipo') or ''
 
-        # Un YouTube que todavía no se bajó no se muestra: se saltea sin
-        # anotarlo como "Reproduciendo" (el log lo decía en cada vuelta y en
-        # pantalla no aparecía nunca, 28/10/2026). _reproducir_youtube avisa
-        # una sola vez que falta.
-        if tipo == 'youtube' and (self._youtube is None
-                                  or self._youtube.ruta(contenido.get('contenido_texto') or '') is None):
-            self._reproducir_youtube(contenido.get('contenido_texto') or '', duracion)
+        # Un tipo que este cliente no conoce (por ejemplo 'youtube', que el CMS
+        # dejó de tener el 28/10/2026) se saltea en el acto, sin anotarlo como
+        # "Reproduciendo" ni esperar su duración: no hay nada que mostrar.
+        if tipo not in self._TIPOS_CONOCIDOS:
+            if tipo not in self._tipos_avisados:
+                self._tipos_avisados.add(tipo)
+                logger.warning('Tipo de contenido desconocido (%s): se saltea.', tipo or 'vacío')
             return
 
         # %s y no %d: con un contenido permanente la duración es None, y %d
         # revienta el formateo del log (lo que tiraba el proceso entero).
         if duracion is None:
             cuanto = 'permanente'
-        elif tipo in ('video', 'youtube') and duracion >= self._TOPE_VIDEO_SEG:
+        elif tipo == 'video' and duracion >= self._TOPE_VIDEO_SEG:
             cuanto = 'hasta que termine'   # el tope no es una duración real
         else:
             cuanto = f'{duracion}s'
@@ -1013,9 +1014,6 @@ class Player:
                 self.mostrar_fallback()
                 # La firma se invalida para reintentar el contenido real luego.
                 self._firma_actual = None
-
-        elif tipo == 'youtube':
-            self._reproducir_youtube(contenido.get('contenido_texto') or '', duracion)
 
         elif tipo == 'cronograma':
             # El CMS ya filtró los items por el día de hoy y los ordenó por hora
@@ -1084,7 +1082,7 @@ class Player:
         Pone un medio en pantalla completa y arranca la reproducción. Devuelve
         True si llegó a mostrarse. Si no, quien llama pasa al contenido
         siguiente sin esperar su duración: antes la pantalla quedaba trabada
-        todo ese tiempo (un YouTube que VLC no abre, 28/10/2026).
+        todo ese tiempo (pasó con un link de YouTube, 28/10/2026).
 
         El fullscreen se vuelve a pedir en CADA medio a propósito: VLC lo
         asocia a la ventana de salida de vídeo, y esa ventana se recrea al
@@ -1311,21 +1309,6 @@ class Player:
             self._esperar_alerta()
             self._parar_vlc()   # al desactivarse, se limpia para volver a la playlist
         # Texto permanente: queda en pantalla, sin esperar ni borrar.
-
-    def _reproducir_youtube(self, url: str, duracion: Optional[int]) -> None:
-        """
-        Un YouTube se muestra como un video local, ya bajado por
-        spui/youtube.py. Mientras no terminó de bajarse se saltea (y se avisa
-        una sola vez en el registro, no en cada vuelta).
-        """
-        local = self._youtube.ruta(url) if self._youtube is not None else None
-        if local is None:
-            if url not in self._youtube_avisados:
-                self._youtube_avisados.add(url)
-                logger.info('El video de YouTube %s todavía no está descargado: se saltea por ahora.', url)
-            return
-        self._youtube_avisados.discard(url)
-        self._reproducir_video(local, duracion)
 
     # ── Utilidades ────────────────────────────────────────────────────────
 

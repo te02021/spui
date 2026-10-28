@@ -23,7 +23,7 @@
         // El QR no se carga como texto: se cargan acá mismo el destino y el
         // vencimiento, y el CMS genera la imagen — así los escaneos se pueden
         // contar y no hay que pasar antes por ninguna otra pantalla.
-        var esTexto      = tipo === 'texto' || tipo === 'youtube';
+        var esTexto      = tipo === 'texto';
         var esCronograma = tipo === 'cronograma';
         var esQr         = tipo === 'qr';
 
@@ -36,11 +36,8 @@
         // se pide la duración, se explica de dónde sale.
         var campoDuracion = document.getElementById('campoDuracion');
         var notaVideo     = document.getElementById('notaDuracionVideo');
-        var esVideo = tipo === 'video' || tipo === 'youtube';
-        if (campoDuracion) campoDuracion.hidden = esVideo;
-        if (notaVideo)     notaVideo.hidden     = !esVideo;
-        var ayudaYoutube = document.getElementById('ayudaYoutube');
-        if (ayudaYoutube)  ayudaYoutube.hidden  = tipo !== 'youtube';
+        if (campoDuracion) campoDuracion.hidden = tipo === 'video';
+        if (notaVideo)     notaVideo.hidden     = tipo !== 'video';
         if (archivoInput)    archivoInput.required = esArchivo;
         if (textarea)        textarea.required     = esTexto;
         if (qrUrl)           qrUrl.required        = esQr;
@@ -66,12 +63,7 @@
         }
 
         if (labelTexto && labelTexto.childNodes[0]) {
-            labelTexto.childNodes[0].textContent =
-                tipo === 'youtube' ? 'URL de YouTube ' : 'Texto a mostrar ';
-        }
-        if (textarea) {
-            textarea.placeholder =
-                tipo === 'youtube' ? 'https://www.youtube.com/watch?v=...' : 'Ingresá el texto a mostrar…';
+            labelTexto.childNodes[0].textContent = 'Texto a mostrar ';
         }
     }
 

@@ -2,7 +2,7 @@
 
    El tipo NO se puede cambiar (un cronograma no se convierte en video), pero sí
    se edita lo que ese tipo tiene cargado: el archivo en imagen/video, el destino
-   y el vencimiento del código en qr, el texto o la URL en texto/youtube.
+   y el vencimiento del código en qr, el texto en texto.
 
    El bloque por tipo lo resuelve el server, no content-type-fields.js: ese
    módulo depende del <select> de tipo del alta, que acá no existe, y como el
@@ -31,7 +31,7 @@
                 <span class="unraf-badge-turquesa">{{ contenido.tipo.etiqueta }}</span>
             {% elseif contenido.tipo.value in ['imagen', 'qr'] %}
                 <span class="unraf-badge-info">{{ contenido.tipo.etiqueta }}</span>
-            {% elseif contenido.tipo.value in ['video', 'youtube'] %}
+            {% elseif contenido.tipo.value == 'video' %}
                 <span class="unraf-badge-azul">{{ contenido.tipo.etiqueta }}</span>
             {% else %}
                 <span class="unraf-badge-turquesa">{{ contenido.tipo.etiqueta }}</span>
@@ -40,15 +40,12 @@
     </div>
 
     {% if contenido.esVideo %}
-        {# La duración de un video no se escribe: la del subido es la del
-           archivo, que el CMS lee al subirlo (y de nuevo si se reemplaza); la de
-           un YouTube, la del video, que la pantalla reproduce completo. #}
+        {# La duración de un video no se escribe: es la del archivo, que el CMS
+           lee al subirlo (y de nuevo si se reemplaza). #}
         <div class="mb-4">
             <span class="unraf-form-label d-block">Duración</span>
             <strong>{{ contenido.etiquetaDuracion }}</strong>
-            <small class="text-muted d-block mt-1">{{ contenido.tipo.value == 'youtube'
-                ? 'La del video de YouTube: la pantalla lo descarga y lo muestra completo.'
-                : 'La del archivo de video: la playlist lo muestra completo. Si reemplazás el archivo, se vuelve a leer.' }}</small>
+            <small class="text-muted d-block mt-1">La del archivo de video: la playlist lo muestra completo. Si reemplazás el archivo, se vuelve a leer.</small>
         </div>
     {% else %}
         <div class="mb-4">
@@ -64,19 +61,16 @@
     {% endif %}
 
     {# ── Lo que carga cada tipo ── #}
-    {% if contenido.tipo.value in ['texto', 'youtube'] %}
+    {% if contenido.tipo.value == 'texto' %}
         <div class="mb-3">
             <label class="unraf-form-label" for="ed_texto">
-                {{ contenido.tipo.value == 'youtube' ? 'URL de YouTube' : 'Texto a mostrar' }}
+                Texto a mostrar
                 <span class="text-danger">*</span>
             </label>
             <textarea id="ed_texto" name="contenido_texto" class="unraf-form-control" rows="3"
-                      placeholder="{{ contenido.tipo.value == 'youtube' ? 'https://www.youtube.com/watch?v=…' : 'Texto que se muestra en pantalla' }}"
+                      placeholder="Texto que se muestra en pantalla"
                       required>{{ contenido.contenidoTexto }}</textarea>
             {% if err.contenido_texto is defined %}<p class="spui-campo-error">{{ err.contenido_texto }}</p>{% endif %}
-            {% if contenido.tipo.value == 'youtube' %}
-                <small class="text-muted d-block mt-1">La pantalla descarga el video y lo reproduce como uno subido: la primera vez tarda unos minutos y, mientras tanto, se saltea. Para un video propio conviene subir el archivo.</small>
-            {% endif %}
         </div>
 
     {% elseif contenido.tipo.value == 'qr' %}

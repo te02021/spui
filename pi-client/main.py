@@ -54,7 +54,6 @@ from spui.player import Player
 from spui.reproduccion import APAGADO, ESPERA, PLAYLIST, Reproduccion
 from spui.sync import SyncClient, intervalo_desde_sync
 from spui.telemetria import TelemetriaPublisher
-from spui.youtube import DescargasYoutube, de_sync as youtube_de_sync
 
 # Cuántos segundos esperar entre reintentos cuando estamos offline
 _OFFLINE_RETRY_SEG = 30
@@ -170,8 +169,7 @@ def main() -> None:
     sync    = SyncClient(config.API_URL, config.API_KEY, config.MEDIA_DIR)
     sync.limpiar_parciales()  # descargas a medias de una ejecución anterior
     guardia = GuardiaContenido(config.CACHE_DIR, config.VERSION)
-    youtube = DescargasYoutube(config.MEDIA_DIR)
-    player  = Player(config.MEDIA_DIR, sync_client=sync, guardia=guardia, youtube=youtube)
+    player  = Player(config.MEDIA_DIR, sync_client=sync, guardia=guardia)
     reproduccion = Reproduccion(player, sync_client=sync)
     network = NetworkMonitor(config.API_URL)
     # El brillo de referencia de cada pantalla se guarda en el caché para
@@ -206,8 +204,6 @@ def main() -> None:
 
         # Contenidos que cerraron el reproductor y se están salteando.
         problemas.extend(guardia.problemas())
-        # Videos de YouTube que no se pudieron bajar.
-        problemas.extend(youtube.problemas())
 
         problemas.extend(_PROBLEMAS.consultar())
 
@@ -255,7 +251,6 @@ def main() -> None:
         on_sync_ahora=sync_ahora,
     )
     reproduccion.start()
-    youtube.start()
     mqtt.start()
 
     # sync_client habilita el respaldo por HTTP: si el broker se cae o nadie
@@ -311,8 +306,6 @@ def main() -> None:
                 # mientras la red esté disponible, para que el caché esté completo
                 # antes de que la red se pierda.
                 sync.prefetch_media(sync_data)
-                # Los YouTube se bajan en su propio hilo: el sync no espera.
-                youtube.pedir(youtube_de_sync(sync_data))
 
                 _PROBLEMAS.resolver('sync')
                 sync_ok = True
@@ -426,7 +419,6 @@ def main() -> None:
 
     # ── Cierre limpio ────────────────────────────────────────────────────────
     reproduccion.detener()
-    youtube.detener()
     heartbeat.detener()
     mqtt.detener()
     telemetria.detener()

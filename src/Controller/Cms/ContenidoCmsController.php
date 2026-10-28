@@ -23,7 +23,6 @@ use SPUI\Service\QrEscaneoPublisherService;
 use SPUI\Service\QrGeneratorService;
 use SPUI\Service\UsuarioResolverService;
 use SPUI\Service\VideoInspectorService;
-use SPUI\Service\YoutubeUrl;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\Form\FormInterface;
@@ -42,8 +41,6 @@ class ContenidoCmsController extends AbstractController
 
     /** Tope de la columna codigo_qr.url_destino. */
     private const QR_URL_MAX = 500;
-
-    private const MSG_YOUTUBE_INVALIDO = 'No es un link de YouTube. Pegá el link del video, por ejemplo https://www.youtube.com/watch?v=… o https://youtu.be/…';
 
     public function __construct(
         private readonly ContenidoRepository $repo,
@@ -443,14 +440,6 @@ class ContenidoCmsController extends AbstractController
                 if (!$texto) {
                     return $this->errorAlta($request, $form, 'contenido_texto', 'El campo de texto/URL es requerido para este tipo.');
                 }
-                if ($tipo === TipoContenido::Youtube) {
-                    $texto = YoutubeUrl::normalizar($texto);
-                    if ($texto === null) {
-                        return $this->errorAlta($request, $form, 'contenido_texto', self::MSG_YOUTUBE_INVALIDO);
-                    }
-                    // Dura lo que dura el video, como uno subido: no se toma del formulario.
-                    $contenido->setDuracionSegundos(null);
-                }
                 $contenido->setContenidoTexto($texto);
             }
 
@@ -522,21 +511,15 @@ class ContenidoCmsController extends AbstractController
             }
 
             $c->setTitulo($titulo);
-            // La duración de un video sale del archivo (validarArchivo), y la de
-            // un YouTube es la del video: lo que llegue en duracion_segundos se ignora.
-            if (!in_array($c->getTipo(), [TipoContenido::Video, TipoContenido::Youtube], true)) {
+            // La duración de un video sale del archivo (validarArchivo), no del
+            // formulario: lo que llegue en duracion_segundos se ignora.
+            if ($c->getTipo() !== TipoContenido::Video) {
                 $durStr = $request->request->get('duracion_segundos', '');
                 $c->setDuracionSegundos($durStr !== '' ? max(1, (int) $durStr) : null);
             }
 
-            if (in_array($c->getTipo()->value, ['texto', 'youtube'], true)) {
+            if ($c->getTipo() === TipoContenido::Texto) {
                 $texto = trim($request->request->get('contenido_texto', ''));
-                if ($texto !== '' && $c->getTipo() === TipoContenido::Youtube) {
-                    $texto = YoutubeUrl::normalizar($texto);
-                    if ($texto === null) {
-                        return $this->errorEdicion($request, $c, 'contenido_texto', self::MSG_YOUTUBE_INVALIDO);
-                    }
-                }
                 if ($texto !== '') { $c->setContenidoTexto($texto); }
             }
 

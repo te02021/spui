@@ -55,37 +55,11 @@ sudo apt-get update -qq
 # ddcutil: brillo real del monitor por DDC/CI (como el brillo de Windows para
 # un monitor externo). Si la pantalla no lo soporta, el cliente oscurece la
 # imagen en su lugar.
-# ffmpeg: une el video y el audio de YouTube, que vienen por separado
-# (spui/youtube.py). unzip: para instalar Deno, más abajo.
 sudo apt-get install -y \
     vlc vlc-plugin-base \
     x11-utils x11-xserver-utils \
     cec-utils ddcutil \
-    ffmpeg unzip \
     python3 python3-pip python3-venv
-
-# Deno: el intérprete de JavaScript que yt-dlp necesita para bajar de YouTube
-# (lo exige desde 2025). No está en los repositorios de Debian: se baja el
-# binario oficial. Si no se puede, Node.js de Debian sirve como alternativa.
-# Ninguno de los dos es obligatorio para el resto del reproductor.
-if ! command -v deno >/dev/null 2>&1; then
-    case "$(uname -m)" in
-        aarch64|arm64) DENO_ZIP=deno-aarch64-unknown-linux-gnu.zip ;;
-        x86_64)        DENO_ZIP=deno-x86_64-unknown-linux-gnu.zip ;;
-        *)             DENO_ZIP= ;;
-    esac
-    if [ -n "$DENO_ZIP" ] \
-       && curl -fsSL -o /tmp/deno.zip "https://github.com/denoland/deno/releases/latest/download/$DENO_ZIP" \
-       && sudo unzip -o -q /tmp/deno.zip -d /usr/local/bin \
-       && sudo chmod +x /usr/local/bin/deno; then
-        echo "  OK: Deno instalado para los videos de YouTube."
-    else
-        echo "  AVISO: no se pudo instalar Deno; se prueba con Node.js."
-        sudo apt-get install -y nodejs \
-            || echo "  AVISO: sin intérprete de JavaScript los videos de YouTube no se van a poder bajar."
-    fi
-    rm -f /tmp/deno.zip
-fi
 
 # DDC/CI viaja por el bus I2C del HDMI: hace falta el módulo i2c-dev cargado en
 # cada arranque y que el usuario del servicio pueda abrir /dev/i2c-*.
@@ -123,10 +97,6 @@ if [ ! -d "$INSTALL_DIR/venv" ]; then
     sudo python3 -m venv "$INSTALL_DIR/venv"
 fi
 sudo "$INSTALL_DIR/venv/bin/pip" install --quiet -r "$(dirname "$0")/requirements.txt"
-# yt-dlp siempre a la última versión: YouTube cambia seguido y una vieja deja
-# de poder bajar. No frena la instalación si no hay internet.
-sudo "$INSTALL_DIR/venv/bin/pip" install --quiet --upgrade "yt-dlp[default]" \
-    || echo "  AVISO: no se pudo actualizar yt-dlp; se sigue con la versión instalada."
 
 # 3. Copiar cliente
 echo "[3/5] Copiando cliente a $INSTALL_DIR..."

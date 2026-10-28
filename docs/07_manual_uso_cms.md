@@ -118,14 +118,13 @@ SPUI_MQTT_SALT=<el mismo valor que tiene el CMS>
 
 ### 3.1 Contenidos — `/spui/contenidos`
 
-El repositorio de todo lo que puede aparecer en una pantalla. Seis tipos:
+El repositorio de todo lo que puede aparecer en una pantalla. Cinco tipos:
 
 | Tipo | Qué se carga | Notas |
 |---|---|---|
 | **Texto** | El texto a mostrar | — |
 | **Imagen** | Archivo JPG, PNG, GIF o WebP | Se adapta sola al guardarla: se gira según la foto y se achica a 1920×1080 como máximo, que es lo que muestra la pantalla. Una foto de celular se puede subir tal cual |
-| **Video** | Archivo MP4 o MOV en H.264, hasta 1920×1080 y 30 cuadros por segundo | Un video más grande no se acepta: en la pantalla se vería trabado. El aviso aparece apenas se elige el archivo |
-| **YouTube** | El link del video (`youtube.com/watch?v=…`, `youtu.be/…`, `shorts/…`) | La pantalla descarga el video y lo reproduce como uno subido: la primera vez tarda unos minutos y, mientras tanto, se saltea. Dura lo que dura el video. Para un video propio conviene subir el archivo |
+| **Video** | Archivo MP4 o MOV en H.264, hasta 1920×1080 y 30 cuadros por segundo | Un video más grande no se acepta: en la pantalla se vería trabado. El aviso aparece apenas se elige el archivo. **Un video de YouTube** se baja desde la PC (en 1080p o menos) y se sube como video: no hay un tipo para pegar el link |
 | **QR** | URL destino y vencimiento opcional, en el mismo formulario | El sistema genera la imagen automáticamente (ver §3.3) |
 | **Cronograma** | Nada al crearlo | Al guardar se abre su listado de ítems (ver §3.2) |
 

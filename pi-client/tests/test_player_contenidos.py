@@ -119,7 +119,7 @@ class TextoComoImagenTest(unittest.TestCase):
         self.assertEqual(len(guardadas), 3)
 
     def test_si_vlc_no_lo_muestra_no_se_espera_su_duracion(self):
-        """Un YouTube que VLC no abre dejaba la pantalla trabada toda su duración (28/10/2026)."""
+        """Un contenido que VLC no abre dejaba la pantalla trabada toda su duración (28/10/2026)."""
         self.p._simulacion = False
         self.p._vlc = mock.Mock()
         self.p._reproducir_media = mock.Mock(return_value=False)
@@ -129,6 +129,15 @@ class TextoComoImagenTest(unittest.TestCase):
         self.p._reproducir_imagen('/tmp/x.jpg', 10)
         self.p._esperar.assert_not_called()
         self.p._esperar_fin_video.assert_not_called()
+
+    def test_un_tipo_desconocido_se_saltea_sin_esperar(self):
+        """Un 'youtube' viejo (el CMS ya no lo tiene) no puede trabar la playlist."""
+        self.p._simulacion = False
+        self.p._tipos_avisados = set()
+        self.p._esperar = mock.Mock()
+        self.p._reproducir_item({'contenido': {'tipo': 'youtube', 'titulo': 'YT'}}, None, 10)
+        self.p._esperar.assert_not_called()
+        self.assertIn('youtube', self.p._tipos_avisados)
 
     def test_el_texto_va_por_el_camino_de_imagen_no_por_marq(self):
         self.p._simulacion = False

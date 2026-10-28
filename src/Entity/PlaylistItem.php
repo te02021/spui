@@ -56,10 +56,8 @@ class PlaylistItem
      * que muestra la ventana de ítems (etiquetaDuracion(); playlists/items.js
      * repite la misma regla para recalcular mientras se arma la lista).
      *
-     *   - Video (subido o de YouTube): dura lo que dura. El subido, lo que dice
-     *     su archivo (se lee al subirlo); el de YouTube, hasta que termina (la
-     *     Pi lo descarga). Si es el único contenido de la playlist, null: se
-     *     repite en bucle.
+     *   - Video: dura lo que dura el archivo (se lee al subirlo). Si es el
+     *     único contenido de la playlist, null: se repite en bucle.
      *   - Con duración propia: esa duración.
      *   - Permanente y único contenido: null, queda fijo en pantalla.
      *   - Permanente en una playlist con otros: DURACION_EN_ROTACION.

@@ -185,8 +185,12 @@ async function botonesDeModal(page) {
 /** Nuevo → Guardar sin completar nada: tienen que verse los errores y no crearse nada. */
 async function guardarVacio(page, vista, nombre) {
     const form = page.locator('#spuiAbmBody form[data-spui-ajax]');
+    // El formulario puede tardar un instante más que el modal en aparecer:
+    // contarlo en el acto daba una falla intermitente que no era del CMS
+    // (dos veces el 28/10/2026, y al repetir pasaba).
+    await form.first().waitFor({ state: 'attached', timeout: 5000 }).catch(() => {});
     if (!await form.count()) {
-        falla('el modal de alta no tiene un formulario para probar Guardar vacío (¿cargó a tiempo?)');
+        falla(`el modal de alta de ${nombre} no tiene un formulario para probar Guardar vacío, ni a los 5 s`);
         return;
     }
     await page.evaluate(() => {

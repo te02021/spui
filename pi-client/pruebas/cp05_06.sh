@@ -44,7 +44,7 @@ T_SYNC=$(esperar_log "$T_REST" "Sync OK" "$ESPERA_RESYNC")
 # ── Análisis del log ────────────────────────────────────────────────────────
 DURANTE=$(log_desde "$T_CORTE" | awk -v fin="$T_REST" '$1 < fin')
 T_DETECTA=$(echo "$DURANTE" | grep -E "Usando caché de sync" | head -1 | awk '{print $1}')
-REPRODUCCIONES=$(echo "$DURANTE" | grep -cE 'Reproduciendo \[|\[SIM\] (imagen|video|texto|qr|cronograma|youtube)')
+REPRODUCCIONES=$(echo "$DURANTE" | grep -cE 'Reproduciendo \[|\[SIM\] (imagen|video|texto|qr|cronograma)')
 ERRORES=$(echo "$DURANTE" | grep -E 'No hay una copia válida|Archivo no cacheado y sin red|Traceback|Error reproduciendo|Sin datos disponibles' )
 N_ERRORES=$(printf '%s' "$ERRORES" | grep -c . )
 INTERVALOS=$(echo "$DURANTE" | grep "Usando caché de sync" | awk '{print $1}' |

@@ -10,7 +10,7 @@
         <span class="unraf-badge-turquesa flex-shrink-0">{{ contenido.tipo.etiqueta }}</span>
     {% elseif contenido.tipo.value in ['imagen', 'qr'] %}
         <span class="unraf-badge-info flex-shrink-0">{{ contenido.tipo.etiqueta }}</span>
-    {% elseif contenido.tipo.value in ['video', 'youtube'] %}
+    {% elseif contenido.tipo.value == 'video' %}
         <span class="unraf-badge-azul flex-shrink-0">{{ contenido.tipo.etiqueta }}</span>
     {% else %}
         <span class="unraf-badge-turquesa flex-shrink-0">{{ contenido.tipo.etiqueta }}</span>

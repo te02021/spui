@@ -281,7 +281,7 @@ Con este monitor el apagado es por corte de señal HDMI (no responde a CEC) y el
 
 **Aviso de cambio manual (VCP 0x02) — el Philips lo implementa.** Antes de tocar nada, `getvcp 02` → `0x01` ("No new control values"). Después de cambiar el brillo con los botones del monitor → `0x02` ("One or more new control values have been saved"). Es lo que usa `ddc.hubo_cambio_manual()` para tomar un brillo manual como nueva referencia en los momentos clave, sin consultar el monitor periódicamente.
 
-**B6 YouTube — ❌ no se reproduce.** VLC no abre la URL de YouTube: queda en `State.Opening` y el log informa `El contenido no llegó a mostrarse en pantalla`. Además, la pantalla quedaba trabada los 10 s del contenido antes de pasar al siguiente. Esa espera se corrigió el mismo día: un contenido que VLC no logra mostrar se saltea en el acto. Falta decidir cómo soportar YouTube.
+**B6 YouTube — ❌ no se reproduce.** VLC no abre la URL de YouTube: queda en `State.Opening` y el log informa `El contenido no llegó a mostrarse en pantalla`. Además, la pantalla quedaba trabada los 10 s del contenido antes de pasar al siguiente. Esa espera se corrigió el mismo día: un contenido que VLC no logra mostrar se saltea en el acto. Después se probó bajarlo en la Pi con `yt-dlp` (con Deno y ffmpeg): desde la PC anduvo, pero YouTube frenó a la Pi en todos sus modos de acceso (429 y "Sign in to confirm you're not a bot"). **Decisión de Mateo: se saca el tipo YouTube;** un video de YouTube se baja desde la PC y se sube como video (`06` §5).
 
 ### 28/10/2026 — Tanda 2, desde el CMS con la Pi y el monitor Philips
 

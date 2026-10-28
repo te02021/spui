@@ -105,34 +105,5 @@ foreach ($casos as $i => [$nombre, $bytes, $acepta, $esperado]) {
 }
 @rmdir($dir);
 
-// ── Links de YouTube (SPUI\Service\YoutubeUrl) ──────────────────────────────
-// Toda forma en que se copia un link termina en el mismo watch?v=<id>, que es
-// lo que la Pi descarga y el nombre con que lo guarda.
-$links = [
-    'https://www.youtube.com/watch?v=aqz-KE-bpKQ'                      => 'aqz-KE-bpKQ',
-    'https://youtube.com/watch?v=aqz-KE-bpKQ&t=42s&list=PL123'         => 'aqz-KE-bpKQ',
-    'https://m.youtube.com/watch?feature=share&v=aqz-KE-bpKQ'          => 'aqz-KE-bpKQ',
-    'https://youtu.be/aqz-KE-bpKQ?si=abc123'                           => 'aqz-KE-bpKQ',
-    'youtu.be/aqz-KE-bpKQ'                                             => 'aqz-KE-bpKQ',
-    'https://www.youtube.com/shorts/aqz-KE-bpKQ'                       => 'aqz-KE-bpKQ',
-    'https://www.youtube.com/embed/aqz-KE-bpKQ?autoplay=1'             => 'aqz-KE-bpKQ',
-    'https://www.youtube.com/live/aqz-KE-bpKQ'                         => 'aqz-KE-bpKQ',
-    'https://www.youtube.com/watch?v=corto'                            => null,
-    'https://www.youtube.com/channel/UCabcdefghijklmnopqrstuv'         => null,
-    'https://vimeo.com/123456789'                                      => null,
-    'https://www.youtube.com.evil.com/watch?v=aqz-KE-bpKQ'             => null,
-    'un texto cualquiera'                                              => null,
-];
-foreach ($links as $link => $id) {
-    $real = SPUI\Service\YoutubeUrl::id($link);
-    $ok = $real === $id;
-    $fallas += $ok ? 0 : 1;
-    printf("  %-5s %-62s %s\n", $ok ? 'OK' : 'FALLA', $link, $real ?? 'no es de YouTube');
-}
-if (SPUI\Service\YoutubeUrl::normalizar('youtu.be/aqz-KE-bpKQ?si=x') !== 'https://www.youtube.com/watch?v=aqz-KE-bpKQ') {
-    $fallas++;
-    echo "  FALLA normalizar no deja el link como watch?v=<id>\n";
-}
-
-echo $fallas === 0 ? "Video: los " . count($casos) . " videos y los " . count($links) . " links de YouTube dan lo esperado.\n" : "Video: $fallas caso(s) fallaron.\n";
+echo $fallas === 0 ? "Video: los " . count($casos) . " casos dan lo esperado.\n" : "Video: $fallas caso(s) fallaron.\n";
 exit($fallas === 0 ? 0 : 1);

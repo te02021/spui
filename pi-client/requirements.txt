@@ -26,11 +26,3 @@ psutil>=5.9.0
 # overlay, que funciona pero es menos confiable. Viene preinstalado en
 # Raspberry Pi OS.
 Pillow>=9.0.0
-
-# YouTube — VLC no abre un link de YouTube: el reproductor baja el video con
-# yt-dlp y lo muestra como un video local (spui/youtube.py). [default] trae el
-# resolvedor de desafíos que YouTube exige desde 2025; además hace falta un
-# intérprete de JavaScript (Deno) y ffmpeg, que instala install.sh. install.sh
-# lo actualiza en cada instalación: YouTube cambia seguido y una versión
-# vieja deja de poder bajar.
-yt-dlp[default]>=2026.10.26
