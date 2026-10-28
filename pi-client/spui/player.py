@@ -962,14 +962,24 @@ class Player:
         contenido = item.get('contenido') or {}
         tipo      = contenido.get('tipo') or ''
 
+        # Un YouTube que todavía no se bajó no se muestra: se saltea sin
+        # anotarlo como "Reproduciendo" (el log lo decía en cada vuelta y en
+        # pantalla no aparecía nunca, 28/10/2026). _reproducir_youtube avisa
+        # una sola vez que falta.
+        if tipo == 'youtube' and (self._youtube is None
+                                  or self._youtube.ruta(contenido.get('contenido_texto') or '') is None):
+            self._reproducir_youtube(contenido.get('contenido_texto') or '', duracion)
+            return
+
         # %s y no %d: con un contenido permanente la duración es None, y %d
         # revienta el formateo del log (lo que tiraba el proceso entero).
-        logger.info(
-            'Reproduciendo [%s] "%s" (%s)',
-            tipo,
-            contenido.get('titulo') or '',
-            'permanente' if duracion is None else f'{duracion}s',
-        )
+        if duracion is None:
+            cuanto = 'permanente'
+        elif tipo in ('video', 'youtube') and duracion >= self._TOPE_VIDEO_SEG:
+            cuanto = 'hasta que termine'   # el tope no es una duración real
+        else:
+            cuanto = f'{duracion}s'
+        logger.info('Reproduciendo [%s] "%s" (%s)', tipo, contenido.get('titulo') or '', cuanto)
 
         if tipo == 'texto':
             # contenido_texto es nullable en el CMS: un texto sin cuerpo llega
