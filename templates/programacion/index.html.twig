@@ -40,7 +40,9 @@
                 {# Una regla puede apuntar a una pantalla, ubicación, edificio o
                    ser global: el servicio resuelve los cuatro casos. #}
                 {% set motivo = spui_alcance.motivoParaEntidad(prog, ids_offline|default({})) %}
-                <tr class="{{ not prog.activo ? 'opacity-50' : '' }}">
+                {# Sin atenuar la fila de una regla inactiva: los botones se ven y funcionan
+                   igual (Activar, Editar…), y el estado ya lo dice la insignia "Inactiva". #}
+                <tr>
                     <td class="p-3" data-label="Destino">
                         {% if prog.pantalla %}
                             {{ prog.pantalla.nombre }}

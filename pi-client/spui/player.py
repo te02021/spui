@@ -1066,9 +1066,12 @@ class Player:
 
     # ── VLC wrappers ──────────────────────────────────────────────────────
 
-    def _reproducir_media(self, media, es_imagen_fija: bool = False) -> None:
+    def _reproducir_media(self, media, es_imagen_fija: bool = False) -> bool:
         """
-        Pone un medio en pantalla completa y arranca la reproducción.
+        Pone un medio en pantalla completa y arranca la reproducción. Devuelve
+        True si llegó a mostrarse. Si no, quien llama pasa al contenido
+        siguiente sin esperar su duración: antes la pantalla quedaba trabada
+        todo ese tiempo (un YouTube que VLC no abre, 28/10/2026).
 
         El fullscreen se vuelve a pedir en CADA medio a propósito: VLC lo
         asocia a la ventana de salida de vídeo, y esa ventana se recrea al
@@ -1098,7 +1101,7 @@ class Player:
                 'entorno gráfico y que el archivo sea reproducible.'
             )
             logger.error('%s', self.problema_pantalla)
-            return
+            return False
 
         try:
             self._media_player.set_fullscreen(True)
@@ -1110,7 +1113,7 @@ class Player:
         estado_ok = False
         for _ in range(20):                      # hasta ~2 segundos
             if self._stop.is_set():
-                return
+                return False
             estado = self._media_player.get_state()
             if estado == vlc.State.Playing:
                 estado_ok = True
@@ -1137,7 +1140,7 @@ class Player:
                 f'{self._media_player.get_state()}). La pantalla puede estar en negro.'
             )
             logger.error('%s', self.problema_pantalla)
-            return
+            return False
 
         # Reproduce bien: se comprueba el fullscreen. Si el gestor de ventanas
         # ignora el pedido, el contenido se ve enmarcado — algo que sólo se nota
@@ -1154,6 +1157,7 @@ class Player:
                 self.problema_pantalla = None
         except Exception as exc:
             logger.warning('No se pudo verificar el estado de pantalla completa: %s', exc)
+        return True
 
     def _reproducir_imagen(self, path: str, duracion: Optional[int]) -> None:
         """duracion=None → la imagen queda en pantalla hasta que algo la reemplace."""
@@ -1167,7 +1171,8 @@ class Player:
         # -1 = VLC deja la imagen indefinidamente; el tiempo lo controlamos
         # nosotros con _esperar(), no VLC.
         media.add_option(':image-duration=-1')
-        self._reproducir_media(media, es_imagen_fija=True)
+        if not self._reproducir_media(media, es_imagen_fija=True):
+            return
 
         # Sin duración no hay nada que esperar: la imagen ya está en pantalla y
         # ahí se queda. Tampoco se llama a _parar_vlc(): borrar el medio dejaría
@@ -1187,7 +1192,8 @@ class Player:
         if duracion is None:
             media.add_option(':input-repeat=65535')
 
-        self._reproducir_media(media)
+        if not self._reproducir_media(media):
+            return
 
         if duracion is not None:
             self._esperar_fin_video(duracion)
@@ -1303,7 +1309,8 @@ class Player:
         if duracion is None:
             media.add_option(':input-repeat=65535')
 
-        self._reproducir_media(media)
+        if not self._reproducir_media(media):
+            return
 
         if duracion is not None:
             self._esperar(duracion)

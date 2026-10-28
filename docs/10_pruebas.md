@@ -19,7 +19,7 @@ Las pruebas de carga (CP11, CP12) las corre el simulador de `tools/simulador/` y
 | CP07 | Descarga interrumpida o archivo alterado no entra a caché | No | ✅ Cumple (descarga 2 de 2, alterado 3 de 3) |
 | CP08 | Desconexión abrupta visible en el panel | No | ✅ Cumple (6 de 6: 113–155 s) |
 | CP09 | Solicitud o mensaje sin credenciales, rechazado | No | ✅ Cumple desde la Pi (25/10/2026, 5 repeticiones) |
-| CP10 | Encendido y apagado programado | **Sí** | Sin ejecutar |
+| CP10 | Encendido y apagado programado | **Sí** | ✅ Monitor Philips: apagado, encendido y brillo real al 30 % (28/10/2026); falta el Smart TV |
 | CP11 | Carga con 50 simulados: error < 1 %, API < 500 ms (p95) | No | ✅ Cumple (13/10/2026, entorno de desarrollo) |
 | CP12 | Alerta simultánea a 100 simulados, < 5 s | No | ✅ Cumple (13/10 y 15/10/2026, entorno de desarrollo) |
 | CP13 | Usabilidad SUS ≥ 70 | — (participantes) | Sin ejecutar |
@@ -266,6 +266,22 @@ Cuestionario SUS estándar (10 ítems, escala 1–5) a operadores del CMS despu�
 ## 4. Registro de corridas
 
 Las planillas completas de cada corrida se agregan debajo, con la fecha. La más reciente va primero.
+
+### 28/10/2026 — Tanda 3, con el monitor Philips (DDC/CI, sin CEC)
+
+**CP10 y brillo (B2) — ✅ cumplen (1 repetición).**
+
+| Paso | Configuración | Esperado | Resultado |
+|---|---|---|---|
+| Brillo | Regla de 17:20 a 17:25 con brillo 30 % | Brillo real del monitor al 30 % de la referencia (73) ≈ 22 | `ddcutil getvcp 10` → **22** de 100 ✅ |
+| Apagado | Se pasa la hora de apagado (17:25) | El monitor entra en reposo | Se apagó del todo ✅ |
+| Encendido | Encendido 2 min después, brillo 100 | El monitor se prende solo a esa hora | Se prendió a la hora ✅ |
+
+Con este monitor el apagado es por corte de señal HDMI (no responde a CEC) y el brillo es el real, por DDC/CI, relativo al que tenía configurado. Falta el Smart TV (CEC y oscurecido por software).
+
+**Aviso de cambio manual (VCP 0x02) — el Philips lo implementa.** Antes de tocar nada, `getvcp 02` → `0x01` ("No new control values"). Después de cambiar el brillo con los botones del monitor → `0x02` ("One or more new control values have been saved"). Es lo que usa `ddc.hubo_cambio_manual()` para tomar un brillo manual como nueva referencia en los momentos clave, sin consultar el monitor periódicamente.
+
+**B6 YouTube — ❌ no se reproduce.** VLC no abre la URL de YouTube: queda en `State.Opening` y el log informa `El contenido no llegó a mostrarse en pantalla`. Además, la pantalla quedaba trabada los 10 s del contenido antes de pasar al siguiente. Esa espera se corrigió el mismo día: un contenido que VLC no logra mostrar se saltea en el acto. Falta decidir cómo soportar YouTube.
 
 ### 28/10/2026 — Tanda 2, desde el CMS con la Pi y el monitor Philips
 

@@ -118,6 +118,18 @@ class TextoComoImagenTest(unittest.TestCase):
         guardadas = [n for n in os.listdir(self.dir) if n.startswith(Player._TEXTO_PREFIJO)]
         self.assertEqual(len(guardadas), 3)
 
+    def test_si_vlc_no_lo_muestra_no_se_espera_su_duracion(self):
+        """Un YouTube que VLC no abre dejaba la pantalla trabada toda su duración (28/10/2026)."""
+        self.p._simulacion = False
+        self.p._vlc = mock.Mock()
+        self.p._reproducir_media = mock.Mock(return_value=False)
+        self.p._esperar = mock.Mock()
+        self.p._esperar_fin_video = mock.Mock()
+        self.p._reproducir_youtube('https://www.youtube.com/watch?v=x', 10)
+        self.p._reproducir_video('/tmp/x.mp4', 23)
+        self.p._esperar.assert_not_called()
+        self.p._esperar_fin_video.assert_not_called()
+
     def test_el_texto_va_por_el_camino_de_imagen_no_por_marq(self):
         self.p._simulacion = False
         self.p._reproducir_imagen = mock.Mock()
