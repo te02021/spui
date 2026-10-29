@@ -33,9 +33,17 @@ Los pasos 1 a 4 se hacen una vez por pantalla instalada. Del 5 en adelante es el
 Es la pantalla de inicio. Muestra:
 
 - **Cuatro tarjetas:** total de reproductores, conectados, desconectados, y cuántos llevan más de 5 minutos sin dar señal.
-- **Banner rojo** si hay una alerta activa, con un botón para desactivarla ahí mismo.
-- **Banner de temperatura** si algún reproductor superó los 80 °C, listando cuáles y a cuánto están.
 - **Tabla de reproductores** con estado, último heartbeat, temperatura, RAM y disco libre.
+
+Arriba de la tabla aparecen avisos sólo cuando hay algo que atender:
+
+| Aviso | Cuándo aparece | Qué hacer |
+|---|---|---|
+| **Alerta activa** (rojo) | Hay una alerta de emergencia mostrándose | Desactivarla desde el mismo aviso cuando termine la emergencia |
+| **Temperatura** (rojo) | Algún reproductor superó los 80 °C | Revisar la ventilación del equipo; lista cuáles y a cuánto están |
+| **Reproductores con problemas** (ámbar) | Un reproductor está conectado pero informa algo que le impide mostrar bien (por ejemplo, la pantalla no responde al apagado programado) | Leer el detalle que lista debajo de cada equipo |
+| **Intentos con API key inválida** (ámbar) | En la última hora, algún equipo pidió datos con una clave que no es la vigente | Si nombra un reproductor que "sigue usando la clave anterior", copiar la clave nueva a su `spui.env` y reiniciar el servicio en la Pi |
+| **Tareas automáticas detenidas** (rojo) | El proceso del servidor que cada minuto marca reproductores caídos y vence alertas, y cada hora resume la telemetría, dejó de correr hace más de dos horas | Reiniciar el servicio `spui-telemetria` del servidor. Esas tareas corren solas: no hay nada que ejecutar a mano. Hasta el 29/10/2026 este aviso salía también, durante un rato de cada hora, con el servicio funcionando: era un error de cálculo, corregido |
 - Botón **Actualizar** que refresca los datos sin recargar la página.
 
 La temperatura se pinta en ámbar a partir del 85 % del umbral y en rojo al superarlo.

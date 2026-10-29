@@ -119,18 +119,20 @@
     {# ── Scheduler interno desactualizado ──
        El mantenimiento y el rollup corren dentro de spui:mqtt:subscribe
        (tareas 1.5/1.7), no como cron aparte. Si ese proceso se cae, nada más
-       lo detecta — esto compara la telemetría cruda más reciente contra la
-       última hora ya agregada. #}
+       lo detecta: TelemetriaRollupService::estaDesactualizado() busca una
+       lectura que ya tendría que estar agregada y no lo está. #}
     {% if scheduler_desactualizado %}
         <div class="alert alert-danger d-flex align-items-start gap-2 mb-4" role="alert">
             <img src="{{ asset('unraf-ui/icons/warning.svg') }}" style="width:1.2rem;height:1.2rem;flex-shrink:0;margin-top:.15rem" alt="">
             <div>
-                <strong>El proceso de mantenimiento/rollup parece detenido.</strong>
+                <strong>Las tareas automáticas del sistema no están corriendo.</strong>
                 <div class="small mt-1 text-muted">
-                    Hay telemetría reciente sin agregar hace más de 2 horas — probablemente
-                    <code>spui-telemetria</code> (Windows) o el servicio equivalente en Linux no está
-                    corriendo. Sin él, la telemetría cruda no se purga y las alertas vencidas
-                    pueden tardar más en desactivarse.
+                    El servidor tiene un proceso que, cada minuto, marca como desconectados los
+                    reproductores que dejan de responder y desactiva las alertas vencidas, y cada
+                    hora resume la telemetría. Hace más de dos horas que no lo hace. Mientras siga
+                    así, el estado de conexión, las alertas vencidas y los gráficos de telemetría
+                    pueden quedar desactualizados. Avisale a quien administra el servidor: hay que
+                    reiniciar el servicio <strong>spui-telemetria</strong>.
                 </div>
             </div>
         </div>

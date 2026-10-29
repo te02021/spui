@@ -271,7 +271,28 @@
     // avisa). Pasaba con el último campo de un formulario, cuyo Tab cae justo
     // en Cancelar.
     var presionado = null;
-    document.addEventListener('pointerdown', function (e) { presionado = e.target; }, true);
+
+    // Con el mouse, el campo pierde el foco al APRETAR el botón y el clic se
+    // completa al soltarlo. Si el aviso de obligatorio aparece en el medio,
+    // empuja el formulario y el clic cae en otro lugar (pasaba al tocar un día
+    // del cronograma con el Nombre vacío). Mientras haya un clic en curso, el
+    // aviso espera a que termine. Con Tab no hay clic: sale en el acto.
+    var clicEnCurso = false;
+    var pendientes = [];
+
+    function revisarPendientes() {
+        clicEnCurso = false;
+        var lista = pendientes;
+        pendientes = [];
+        lista.forEach(function (c) { if (c.isConnected) revisar(c, true); });
+    }
+
+    document.addEventListener('pointerdown', function (e) { presionado = e.target; clicEnCurso = true; }, true);
+    // setTimeout: después de que el clic hizo lo suyo (marcar la casilla, abrir
+    // el selector). El segundo timeout cubre un clic que nunca llega (se soltó
+    // fuera del elemento, o el gesto terminó en arrastre).
+    document.addEventListener('click', function () { setTimeout(revisarPendientes, 0); }, true);
+    document.addEventListener('pointerup', function () { setTimeout(revisarPendientes, 400); }, true);
 
     // Al salir de un campo: si es obligatorio y quedó vacío, se avisa ya. Sólo
     // cuando el foco pasa a OTRO elemento de la página (Tab, clic en otro
@@ -284,6 +305,10 @@
         if (!destino) return;
         var cerrar = destino.closest && destino.closest('[data-spui-close], .spui-abm-modal-close');
         if (cerrar && presionado && cerrar.contains(presionado)) return;
+        if (clicEnCurso) {
+            if (pendientes.indexOf(t) === -1) pendientes.push(t);
+            return;
+        }
         revisar(t, true);
     }
 

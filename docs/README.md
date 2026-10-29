@@ -401,7 +401,7 @@ Desde el 10/10/2026 ningún cambio del CMS se da por terminado sin `tools/verifi
 
 Los tests del cliente (`pi-client/tests`, 42 casos de caché, energía y brillo) corren en la PC dentro de `verificar.ps1`, con el venv fijo `D:\tools\spui-python`, y en la Pi con `/opt/spui/venv/bin/python3 -m unittest discover -s tests`. El comportamiento real con hardware (reposo con `xrandr --off` confirmado por Mateo con el monitor de banco; falta el brillo por DDC/CI y que VLC vuelva a pantalla completa tras `xrandr --auto`) hay que confirmarlo en la Pi.
 
-**Pendiente detectado, sin corregir:** en el alta de un ítem de cronograma el foco arranca en "Nombre". Si se hace clic directo en un día con el nombre vacío, el aviso "Este campo es obligatorio" aparece en ese momento, empuja el formulario hacia abajo y el clic termina en otro lugar. Pasa en cualquier formulario cuyo primer campo sea obligatorio.
+**Corregido el 29/10/2026:** en el alta de un ítem de cronograma (y en cualquier formulario cuyo primer campo sea obligatorio), un clic directo en un día con el campo vacío se perdía: el campo pierde el foco al *apretar* el botón del mouse, el aviso "Este campo es obligatorio" aparecía en ese momento, empujaba el formulario y el clic se completaba en otro lugar. `validacion-vivo.js` ahora espera a que termine el clic para mostrar el aviso (con Tab sigue saliendo en el acto). Reproducido y verificado con Playwright en escritorio y celular: antes el día no cambiaba, ahora sí.
 
 ---
 
