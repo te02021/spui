@@ -10,9 +10,10 @@
     arrastre y el zoom se sentían trabados. Temperatura, RAM y disco van en
     gráficos separados con escala fija (°C, %, GB): un eje doble haría que dos
     series se vean comparables sin serlo.
-  - Histórico: trae los últimos 60 días; 24 h / 7 d / 30 d eligen la ventana.
-    Arrastrar mueve la vista, la rueda del mouse hace zoom (suave, centrado en
-    el puntero) y los tres gráficos se mueven juntos. Nunca más allá de ahora.
+  - Histórico: trae los últimos 60 días; 24 h / 7 d / 30 d eligen la ventana
+    de los tres. Arrastrar mueve la vista, la rueda del mouse hace zoom (suave,
+    centrado en el puntero). Cada gráfico es independiente: lo que se hace en
+    uno no mueve a los otros. Nunca más allá de ahora.
   - En vivo: mientras la página está abierta, la Pi publica temperatura y RAM
     cada 1 s por MQTT directo al navegador (no se guarda). El panel tiene su
     lugar reservado desde el principio, con un spinner, para que no empuje la
@@ -116,16 +117,25 @@
 {% if cfg_vivo %}
 <div class="unraf-card mb-4" data-tel-vivo-panel>
     <div class="p-3 border-bottom d-flex justify-content-between align-items-center flex-wrap gap-2">
-        <div>
-            <strong>En vivo · últimos minutos</strong>
-            <div class="small text-muted">Una lectura por segundo. No se guarda: es para mirar en el momento.</div>
-        </div>
-        {{ t.herramientas('vivo') }}
+        <strong>En vivo · últimos minutos</strong>
+        <small class="text-muted">Una lectura por segundo. No se guarda: es para mirar en el momento.</small>
     </div>
     <div class="spui-tel-vivo-cuerpo">
         <div class="row g-0">
-            <div class="col-12 col-lg-6 p-2 p-md-3"><div class="spui-tel-lienzo spui-tel-lienzo-vivo" data-tel-chart="vivo_temp"></div></div>
-            <div class="col-12 col-lg-6 p-2 p-md-3"><div class="spui-tel-lienzo spui-tel-lienzo-vivo" data-tel-chart="vivo_ram"></div></div>
+            <div class="col-12 col-lg-6 p-2 p-md-3" data-tel-vivo-grafico>
+                <div class="d-flex justify-content-between align-items-center gap-2 mb-1">
+                    <strong class="small">Temperatura</strong>
+                    {{ t.herramientas('vivo') }}
+                </div>
+                <div class="spui-tel-lienzo spui-tel-lienzo-vivo" data-tel-chart="vivo_temp"></div>
+            </div>
+            <div class="col-12 col-lg-6 p-2 p-md-3" data-tel-vivo-grafico>
+                <div class="d-flex justify-content-between align-items-center gap-2 mb-1">
+                    <strong class="small">RAM</strong>
+                    {{ t.herramientas('vivo') }}
+                </div>
+                <div class="spui-tel-lienzo spui-tel-lienzo-vivo" data-tel-chart="vivo_ram"></div>
+            </div>
         </div>
         <div class="spui-tel-espera" data-tel-vivo-espera>
             <div class="spinner-border" role="status" data-tel-vivo-spinner></div>

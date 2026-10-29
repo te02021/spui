@@ -3,17 +3,19 @@
 // Con ECharts (canvas) y no ApexCharts (SVG): ApexCharts redibuja el gráfico
 // entero en cada movimiento y el arrastre se sentía trabado (29/10/2026).
 //
-//   - Histórico por hora: tres gráficos conectados (se mueven y muestran el
-//     tooltip juntos). La página trae los últimos 60 días; 24 h / 7 d / 30 d
-//     eligen la ventana. Arrastrar mueve la vista, la rueda hace zoom centrado
-//     en el puntero, y los botones + / − / volver hacen lo mismo. Todo pasa por
-//     Vista.irA(), que anima la transición: nunca hay saltos. Tope en "ahora".
+//   - Histórico por hora: tres gráficos INDEPENDIENTES (pedido de Mateo: el
+//     zoom o el arrastre de uno no mueve a los otros). La página trae los
+//     últimos 60 días; 24 h / 7 d / 30 d eligen la ventana de los tres a la
+//     vez. Arrastrar mueve la vista, la rueda hace zoom centrado en el puntero,
+//     y los botones + / − / volver / imagen de cada gráfico actúan sólo sobre
+//     él. Todo pasa por Vista.irA(), que anima la transición. Tope en "ahora".
 //   - Indicadores circulares: temperatura, RAM y disco en uso.
 //   - En vivo: suscrito por WebSocket a spui/telemetria/vivo/{id}. Mientras la
 //     pestaña está visible se le pide a la Pi (POST /telemetria/vivo) que
 //     publique cada 1 s, y se renueva a la mitad del plazo. Guarda los últimos
-//     10 minutos: muestra los 2 últimos deslizándose solos, y se puede
-//     arrastrar o hacer zoom hacia atrás; "volver" retoma el seguimiento.
+//     10 minutos: muestra los 2 últimos deslizándose solos. Temperatura y RAM
+//     son independientes: cada uno se arrastra, se acerca y deja de seguir
+//     los datos nuevos por su cuenta; su "volver" retoma el seguimiento.
 //   - Exportar: el modal (_telemetria_exportar.html.twig) se envía desde acá;
 //     lo que vuelve es un archivo, o un 422 con los errores por campo.
 (function () {
@@ -86,8 +88,8 @@
     // La rueda y los botones pasan por irA(), que anima desde donde se está
     // hasta donde se pidió; varios giros de rueda seguidos se encadenan sin
     // cortes porque cada uno parte de la posición animada del momento.
-    function Vista(lista, limites, minVentana) {
-        this.lista = lista;
+    function Vista(grafico, limites, minVentana) {
+        this.lista = [grafico];
         this.limites = limites;
         this.minVentana = minVentana;
         this.actual = null;
@@ -96,7 +98,7 @@
         this.propio = false;
         this.alMover = null;
         var self = this;
-        lista[0].on('datazoom', function () {
+        grafico.on('datazoom', function () {
             if (self.propio) return;
             var v = self.leer();
             cancelAnimationFrame(self.animacion);
@@ -165,7 +167,7 @@
         }, { passive: false, capture: true });
     };
 
-    /** Botones de una barra (data-tel-herramientas) para una vista y sus gráficos. */
+    /** Botones de una barra (data-tel-herramientas): actúan sólo sobre el gráfico de esa vista. */
     function herramientas(barra, vista, alVolver) {
         if (!barra) return;
         barra.addEventListener('click', function (e) {
@@ -176,13 +178,10 @@
             else if (accion === 'menos') vista.zoom(1 / 0.6);
             else if (accion === 'inicio') alVolver();
             else if (accion === 'png') {
-                barra.closest('.unraf-card').querySelectorAll('[data-tel-chart]').forEach(function (el, i) {
-                    var c = echarts.getInstanceByDom(el);
-                    var a = document.createElement('a');
-                    a.href = c.getDataURL({ pixelRatio: 2, backgroundColor: '#fff' });
-                    a.download = 'telemetria-' + (raiz.dataset.hostname || '') + '-' + el.dataset.telChart + '.png';
-                    setTimeout(function () { a.click(); }, i * 300);
-                });
+                var c = vista.lista[0], a = document.createElement('a');
+                a.href = c.getDataURL({ pixelRatio: 2, backgroundColor: '#fff' });
+                a.download = 'telemetria-' + (raiz.dataset.hostname || '') + '-' + c.getDom().dataset.telChart + '.png';
+                a.click();
             }
         });
     }
@@ -308,14 +307,15 @@
             series: [linea(discoTotalGb ? 'Disco en uso' : 'Disco libre', VIOLETA, s.disco, true,
                 discoTotalGb ? { markLine: lineaLimite(discoTotalGb, 'Capacidad ' + num(discoTotalGb, 0) + ' GB', true) } : {})]
         })));
-        [hist.temp, hist.ram, hist.disco].forEach(function (c) { c.group = 'spui-tel-historico'; });
-        echarts.connect('spui-tel-historico');
     }());
 
-    var vistaHist = new Vista([hist.temp, hist.ram, hist.disco], limitesHist, MIN_VENTANA_HIST);
-    [hist.temp, hist.ram, hist.disco].forEach(function (c) { vistaHist.conRueda(c); });
-    raiz.querySelectorAll('[data-tel-herramientas="historico"]').forEach(function (b) {
-        herramientas(b, vistaHist, function () { var v = ventana(rango); vistaHist.irA(v.s, v.e, 600); });
+    // Una vista por gráfico; la barra de cada tarjeta maneja sólo el suyo.
+    var vistasHist = [hist.temp, hist.ram, hist.disco].map(function (c) {
+        var vista = new Vista(c, limitesHist, MIN_VENTANA_HIST);
+        vista.conRueda(c);
+        herramientas(c.getDom().closest('.unraf-card').querySelector('[data-tel-herramientas]'), vista,
+            function () { var v = ventana(rango); vista.irA(v.s, v.e, 600); });
+        return vista;
     });
 
     raiz.querySelectorAll('[data-tel-rango]').forEach(function (b) {
@@ -330,22 +330,23 @@
             try { history.replaceState(null, '', '?rango=' + rango); } catch (e) { /* sin historial */ }
             resumen(datos.resumenes[rango]);
             var v = ventana(rango);
-            vistaHist.irA(v.s, v.e, 700);
+            vistasHist.forEach(function (vista) { vista.irA(v.s, v.e, 700); });
         });
     });
 
-    /** Datos nuevos (refresco de cada minuto) sin perder adónde se había movido la vista. */
+    /** Datos nuevos (refresco de cada minuto) sin perder adónde se había movido cada vista. */
     function actualizarHistorico() {
-        var antes = vistaHist.objetivo || vistaHist.leer(), finAntes = antes.e;
+        var antes = vistasHist.map(function (v) { return v.objetivo || v.leer(); });
         var l = limitesHist(), s = seriesHist(datos.serie), tMax = maxTemp(datos.serie);
-        var alFinal = finAntes >= l.max - REFRESCO_MS - 10 * 60e3;
         hist.temp.setOption({ xAxis: { min: l.min, max: l.max }, yAxis: { max: tMax, interval: tMax / 5 },
                               series: [{ data: s.temp[0] }, { data: s.temp[1] }] });
         hist.ram.setOption({ xAxis: { min: l.min, max: l.max }, series: [{ data: s.ram }] });
         hist.disco.setOption({ xAxis: { min: l.min, max: l.max }, series: [{ data: s.disco }] });
-        var span = antes.e - antes.s;
-        vistaHist.actual = null;
-        if (alFinal) vistaHist.irA(l.max - span, l.max, 0); else vistaHist.irA(antes.s, antes.e, 0);
+        vistasHist.forEach(function (vista, i) {
+            var a = antes[i], span = a.e - a.s;
+            vista.actual = null;
+            if (a.e >= l.max - REFRESCO_MS - 10 * 60e3) vista.irA(l.max - span, l.max, 0); else vista.irA(a.s, a.e, 0);
+        });
     }
 
     // ── Indicadores circulares ──────────────────────────────────────────────
@@ -459,16 +460,16 @@
         var espera = panelVivo.querySelector('[data-tel-vivo-espera]');
         var esperaTexto = panelVivo.querySelector('[data-tel-vivo-espera-texto]');
         var esperaSpinner = panelVivo.querySelector('[data-tel-vivo-spinner]');
-        var pausado = false, renovar = null, sinDatos = null, ultimaMuestra = 0, siguiendo = true;
+        var pausado = false, renovar = null, sinDatos = null, ultimaMuestra = 0;
         var puntos = { temp: [], ram: [] };
 
-        var limitesVivo = function () {
-            var ult = puntos.temp.length ? puntos.temp[puntos.temp.length - 1][0] : Date.now();
-            var pri = puntos.temp.length ? puntos.temp[0][0] : ult - VIVO_VENTANA;
+        var limitesDe = function (lista) {
+            var ult = lista.length ? lista[lista.length - 1][0] : Date.now();
+            var pri = lista.length ? lista[0][0] : ult - VIVO_VENTANA;
             return { min: Math.min(pri, ult - VIVO_VENTANA), max: ult };
         };
         var armarVivo = function (sel, nombre, color, unidad, limite) {
-            var c = crear(panelVivo.querySelector(sel)), l = limitesVivo();
+            var c = crear(panelVivo.querySelector(sel)), l = limitesDe([]);
             var o = opcion({
                 min: l.min, max: l.max, desde: l.max - VIVO_VENTANA, hasta: l.max, minVentana: MIN_VENTANA_VIVO, segundos: true,
                 yMax: 100, eje: function (x) { return Math.round(x) + ' ' + unidad; }, formato: function (x) { return num(x, 1) + ' ' + unidad; },
@@ -481,52 +482,70 @@
             // Marcas cada 15 s como mínimo: con 5 s las horas se pisaban.
             o.xAxis.minInterval = 15e3;
             o.xAxis.splitNumber = 4;
-            o.title = { text: nombre, left: 0, top: 0, textStyle: { fontSize: 13, fontWeight: 600, color: '#2b3a4a' } };
             c.setOption(o);
-            c.group = 'spui-tel-vivo';
             return c;
         };
-        var cTemp = armarVivo('[data-tel-chart="vivo_temp"]', 'Temperatura', AMBAR, '°C', UMBRAL);
-        var cRam  = armarVivo('[data-tel-chart="vivo_ram"]', 'RAM', AZUL, '%', null);
-        echarts.connect('spui-tel-vivo');
-        var vistaVivo = new Vista([cTemp, cRam], limitesVivo, MIN_VENTANA_VIVO);
-        [cTemp, cRam].forEach(function (c) { vistaVivo.conRueda(c); });
-        // Si el usuario lleva la vista hacia atrás deja de seguir los datos
-        // nuevos; los vuelve a seguir si la lleva de nuevo hasta el final.
-        vistaVivo.alMover = function (v, delUsuario) {
-            if (delUsuario) siguiendo = v.e >= limitesVivo().max - 1500;
-        };
-        var zoomOriginal = vistaVivo.zoom;
-        vistaVivo.zoom = function (f, ancla, dur) {
-            zoomOriginal.call(vistaVivo, f, siguiendo ? limitesVivo().max : ancla, dur);
-        };
-        // Mientras se aprieta el mouse (o el dedo) sobre un gráfico en vivo, la
-        // vista no se desliza sola: el deslizamiento corre cuadro a cuadro y
-        // pisaba el arrastre, que nunca llegaba a moverse. Al soltar, si quedó
-        // al final vuelve a seguir los datos; si no, se queda donde se la dejó.
-        var apretado = false;
-        [cTemp, cRam].forEach(function (c) {
-            c.getDom().addEventListener('pointerdown', function () {
-                apretado = true;
-                siguiendo = false;
-                cancelAnimationFrame(vistaVivo.animacion);
-                vistaVivo.animacion = null;
+
+        /**
+         * Un gráfico en vivo con su propia vista: sigue los datos nuevos (se
+         * desliza solo) hasta que el usuario lo arrastra o lo acerca hacia
+         * atrás; lo vuelve a seguir si lo lleva otra vez hasta el final o toca
+         * "volver". Mientras se aprieta el mouse sobre él no se desliza: el
+         * deslizamiento corre cuadro a cuadro y pisaba el arrastre.
+         */
+        var graficoVivo = function (sel, nombre, color, unidad, limite, lista) {
+            var g = { c: armarVivo(sel, nombre, color, unidad, limite), lista: lista, siguiendo: true, apretado: false };
+            g.limites = function () { return limitesDe(g.lista()); };
+            g.vista = new Vista(g.c, g.limites, MIN_VENTANA_VIVO);
+            g.vista.conRueda(g.c);
+            g.vista.alMover = function (v, delUsuario) {
+                if (delUsuario) g.siguiendo = v.e >= g.limites().max - 1500;
+            };
+            var zoomOriginal = g.vista.zoom;
+            g.vista.zoom = function (f, ancla, dur) {
+                zoomOriginal.call(g.vista, f, g.siguiendo ? g.limites().max : ancla, dur);
+            };
+            g.c.getDom().addEventListener('pointerdown', function () {
+                g.apretado = true;
+                g.siguiendo = false;
+                cancelAnimationFrame(g.vista.animacion);
+                g.vista.animacion = null;
             }, true);
-        });
-        document.addEventListener('pointerup', function () {
-            if (!apretado) return;
-            apretado = false;
-            var v = vistaVivo.leer();
-            vistaVivo.actual = v;
-            vistaVivo.objetivo = v;
-            siguiendo = v.e >= limitesVivo().max - 1500;
-        });
-        var volverAlFinal = function () {
-            siguiendo = true;
-            var l = limitesVivo();
-            vistaVivo.irA(l.max - VIVO_VENTANA, l.max, 500);
+            document.addEventListener('pointerup', function () {
+                if (!g.apretado) return;
+                g.apretado = false;
+                var v = g.vista.leer();
+                g.vista.actual = v;
+                g.vista.objetivo = v;
+                g.siguiendo = v.e >= g.limites().max - 1500;
+            });
+            herramientas(g.c.getDom().closest('[data-tel-vivo-grafico]').querySelector('[data-tel-herramientas]'), g.vista, function () {
+                g.siguiendo = true;
+                var l = g.limites();
+                g.vista.irA(l.max - VIVO_VENTANA, l.max, 500);
+            });
+            /** Lectura nueva: datos al gráfico y, si se lo está siguiendo, deslizar un segundo en un segundo. */
+            g.actualizar = function () {
+                var datosG = g.lista();
+                // Mientras se arrastra no se toca: cambiar los límites del eje
+                // correría la vista bajo el puntero. Aparece con la siguiente.
+                if (g.apretado || datosG.length < 2) return;
+                var antes = g.vista.objetivo || g.vista.leer(), l = g.limites();
+                g.c.setOption({ xAxis: { min: l.min, max: l.max }, series: [{ data: datosG }] });
+                // setOption reubicó la vista según los límites nuevos: se la
+                // vuelve a poner donde estaba antes de deslizarla.
+                g.vista.aplicar(antes);
+                if (g.siguiendo) {
+                    var span = Math.max(MIN_VENTANA_VIVO, antes.e - antes.s);
+                    g.vista.irA(l.max - span, l.max, datosG.length > 2 ? 950 : 0, true);
+                }
+            };
+            return g;
         };
-        herramientas(panelVivo.querySelector('[data-tel-herramientas="vivo"]'), vistaVivo, volverAlFinal);
+        var vivos = [
+            graficoVivo('[data-tel-chart="vivo_temp"]', 'Temperatura', AMBAR, '°C', UMBRAL, function () { return puntos.temp; }),
+            graficoVivo('[data-tel-chart="vivo_ram"]', 'RAM', AZUL, '%', null, function () { return puntos.ram; })
+        ];
 
         var mostrarEspera = function (texto, conSpinner) {
             espera.hidden = !texto;
@@ -551,7 +570,7 @@
                     vivoActivo = false;
                     estado('Sin datos en vivo', 'is-sin-datos');
                     btnVivo.title = 'El reproductor no está mandando datos en vivo: puede estar apagado o desconectado. Se sigue intentando.';
-                    if (puntos.temp.length < 2) mostrarEspera('El reproductor no está mandando datos en vivo: puede estar apagado o desconectado. Se sigue intentando.', false);
+                    if (puntos.temp.length < 2 && puntos.ram.length < 2) mostrarEspera('El reproductor no está mandando datos en vivo: puede estar apagado o desconectado. Se sigue intentando.', false);
                 }
             }, SIN_DATOS_VIVO_MS);
         };
@@ -591,24 +610,9 @@
             var total = m.espacio_disco_total_mb ? m.espacio_disco_total_mb / 1024 : null;
             indicadores(m.temperatura_soc_celsius, m.uso_ram_porcentaje, libre, total);
             raiz.querySelector('[data-tel-ultima]').textContent = 'En vivo · ' + new Date(t).toLocaleTimeString('es-AR') + '.';
-            if (puntos.temp.length < 2) return;   // con un punto no hay línea que mostrar
+            if (puntos.temp.length < 2 && puntos.ram.length < 2) return;   // con un punto no hay línea
             mostrarEspera(null);
-
-            // Mientras se arrastra no se toca el gráfico: cambiar los límites del
-            // eje correría la vista bajo el puntero. La lectura queda guardada
-            // y aparece con la siguiente, al soltar.
-            if (apretado) return;
-            var antes = vistaVivo.objetivo || vistaVivo.leer(), l = limitesVivo();
-            cTemp.setOption({ xAxis: { min: l.min, max: l.max }, series: [{ data: puntos.temp }] });
-            cRam.setOption({ xAxis: { min: l.min, max: l.max }, series: [{ data: puntos.ram }] });
-            // setOption reubicó la vista según los límites nuevos: se la vuelve
-            // a poner donde estaba y, si se está siguiendo, se la desliza un
-            // segundo en un segundo, para que se vea continuo.
-            vistaVivo.aplicar(antes);
-            if (siguiendo) {
-                var span = Math.max(MIN_VENTANA_VIVO, antes.e - antes.s);
-                vistaVivo.irA(l.max - span, l.max, puntos.temp.length > 2 ? 950 : 0, true);
-            }
+            vivos.forEach(function (g) { g.actualizar(); });
         });
         cliente.on('offline', function () { if (!pausado) estado('Reconectando…', 'is-sin-datos'); });
 
