@@ -24,6 +24,19 @@ Las pruebas de carga (CP11, CP12) las corre el simulador de `tools/simulador/` y
 | CP12 | Alerta simultánea a 100 simulados, < 5 s | No | ✅ Cumple (13/10 y 15/10/2026, entorno de desarrollo) |
 | CP13 | Usabilidad SUS ≥ 70 | — (participantes) | Sin ejecutar |
 
+### 1.1. Lo que falta y de qué depende
+
+Todo lo que se podía probar con una Pi, el monitor Philips y la PC ya está hecho. Lo que queda depende de algo que no está a mano. Cada fila dice qué hace falta conseguir y cómo se corre cuando esté.
+
+| Pendiente | Qué hace falta | Cómo se corre | Qué se registra |
+|---|---|---|---|
+| **CP02** — segmentación | Un **segundo reproductor real** (otra Pi con su pantalla), dado de alta en otra pantalla, y si se puede, en otra ubicación o edificio | Tres reglas de Programación con playlists distintas: una por pantalla, una por ubicación y una por edificio, más una global de menor prioridad. Cada Pi tiene que mostrar sólo lo suyo; se mira en el journal de cada una (`Sync OK … programacion=`) y en la pantalla. Detalle en §3, CP02 | Por cada regla: qué reproductor la recibió y cuál no. 1 vuelta por nivel de alcance |
+| **CP10 con Smart TV** — apagado por CEC y oscurecido por software | Un **TV con HDMI-CEC** (Anynet+, Bravia Sync, SimpLink…) activado en su menú | `cec-client -l` en la Pi tiene que listarlo. Misma regla energética que con el Philips (5 min, brillo 30 %): el TV tiene que apagarse en standby por CEC (no por corte de señal) y la imagen verse oscurecida por VLC, porque un TV no expone DDC/CI | Si apagó por CEC o cayó a corte de señal (lo dice el log), si volvió a la hora y cómo se vio el brillo |
+| **CP11 y CP12 en el servidor del piloto** | La **VM definida** (C5). Probablemente la de la intranet: ajustar antes `08_pendientes_vm.md` | `tools/simulador/simulador.py carga` y `alerta` contra la URL y el broker del servidor, con las mismas cantidades que el 13/10 (50 sostenidos, 100 en ráfaga) | El informe que deja el simulador en `pruebas/`, comparado con el de desarrollo |
+| **CP13** — usabilidad SUS | **Participantes**: operadores reales o personas que podrían serlo (5 alcanza para detectar los problemas principales, 8–12 para un puntaje representativo) | Tarea guiada del §3, CP13, sin ayuda, y después el cuestionario SUS de 10 ítems | Puntaje SUS de cada uno, promedio y los comentarios o trabas que aparecieron |
+
+Lo que depende del servidor o de una decisión de Mateo y no es una prueba (HTTPS, CORS cerrado, piloto C6) está en `ESTADO_DESARROLLO.md` §9 (servidor), §10 (piloto) y §15 (C5, C6).
+
 ---
 
 ## 2. Reglas comunes
