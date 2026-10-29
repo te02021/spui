@@ -17,14 +17,13 @@ El sistema tiene dependencias reales: no se puede crear una pantalla sin ubicaci
 3. Pantalla          ─┤
 4. Reproductor       ─┘  ← acá se genera la API key de la Pi
 
-5. Contenido         ─┐
-6. Publicarlo         ─┤ Contenido: QUÉ
-7. Playlist          ─┘
+5. Contenido         ─┐ Contenido: QUÉ
+6. Playlist          ─┘
 
-8. Programación       ─  Operación: CUÁNDO
+7. Programación       ─  Operación: CUÁNDO
 ```
 
-Los pasos 1 a 4 se hacen una vez por pantalla instalada. Del 5 en adelante es el trabajo del día a día.
+Los pasos 1 a 4 se hacen una vez por pantalla instalada. Del 5 en adelante es el trabajo del día a día. Un contenido se puede agregar a una playlist apenas se crea: no hay que publicarlo.
 
 ---
 
@@ -141,19 +140,20 @@ Además se define **título** y **duración en segundos**:
 - **Vacío = permanente:** si es el único contenido de la playlist queda fijo; si comparte playlist, se muestra 10 segundos.
 - **Un video no pide duración:** dura lo que dura el archivo. El CMS la lee al guardarlo y la muestra al editarlo; la playlist lo muestra completo.
 
-**Estados y flujo:**
+**Estados:** sólo dos.
 
 ```
-Borrador ──[Publicar]──► Publicado ──[Archivar]──► Archivado
-    ▲                         │
-    └────[Despublicar]────────┘
+Disponible ──[Archivar]──► Archivado
+    ▲                          │
+    └──────[Desarchivar]───────┘
 ```
 
-- **Borrador:** recién creado. No aparece al armar playlists.
-- **Publicado:** disponible para usar.
-- **Despublicar:** vuelve a borrador. Si ya estaba en playlists, el sistema avisa en cuántas — **hay que sacarlo a mano**, despublicar no lo quita.
-- **Archivar:** lo retira de circulación sin borrarlo.
+- **Disponible:** como queda todo contenido al crearlo. Se puede agregar a cualquier playlist.
+- **Archivar:** lo saca **en el acto de todas las pantallas** donde se estaba mostrando, sin borrarlo y sin quitarlo de sus playlists. El aviso antes de archivar dice en cuántas playlists está. Un archivado no se ofrece para agregar a playlists ni para acompañar una alerta.
+- **Desarchivar:** vuelve a estar disponible y **vuelve solo** a mostrarse en las playlists donde estaba, en el mismo lugar.
 - **Eliminar:** solo si no está en ninguna playlist.
+
+Hasta el 29/10/2026 había además **Borrador** y **Publicar/Despublicar**: un contenido recién creado no se podía usar hasta publicarlo. Se sacó para simplificar; los que estaban en borrador pasaron a disponibles.
 
 ### 3.2 Cronogramas
 
@@ -206,10 +206,13 @@ Listas ordenadas que se reproducen en loop.
 
 - **Crear y editar:** nombre, descripción y sus ítems, todo desde el mismo formulario. El botón **Ver ítems · N** abre una segunda ventana, encima del formulario, con dos listas:
   - arriba, los ítems de la playlist: se **reordenan** arrastrando por el ícono de seis puntos y se **quitan** con el tacho;
-  - abajo, todos los contenidos publicados, para **agregar**. Un mismo contenido **se puede agregar más de una vez** (por ejemplo, para que un aviso salga más seguido dentro del loop); el catálogo indica "En la lista ×N".
+  - abajo, todos los contenidos disponibles (los no archivados), para **agregar**. Un mismo contenido **se puede agregar más de una vez** (por ejemplo, para que un aviso salga más seguido dentro del loop); el catálogo indica "En la lista ×N".
 - **Guardar y Cancelar de la ventana de ítems aparecen sólo cuando cambiaste algo.** **Guardar** confirma la lista y cierra la ventana (al reabrirla, sigue ahí); **Cancelar** vuelve a lo que estaba y cierra.
 - **Lo que se guarda de verdad es la playlist:** los ítems confirmados se persisten recién con el **Guardar** del formulario de la playlist, junto con el nombre y la descripción. Si cancelás la playlist, no queda nada de lo que hiciste en los ítems. Al guardar, las pantallas que usan esa playlist reciben el cambio en segundos.
 - **La duración la define el contenido**, no la playlist: un mismo contenido dura lo mismo en todas las playlists donde esté (y en cada una de sus repeticiones). La ventana de ítems muestra al lado de cada uno **cuánto va a durar de verdad** en esa playlist ("10 s", "23 s", "En bucle", "Permanente"), y se actualiza al agregar o quitar ítems.
+- **Un contenido archivado sigue en la lista**, marcado "Archivado" y con la duración "No se muestra": no sale en pantalla, no cuenta para las duraciones de los demás y vuelve solo a su lugar al desarchivarlo. Si se lo quita de la lista, ya no vuelve.
+- **Si todos los contenidos de una playlist están archivados**, no hay nada que mostrar: una pantalla que la tenía por programación pasa a su playlist de respaldo, y si no tiene, a la pantalla de espera.
+- **No hay Activar/Desactivar** (se sacó el 29/10/2026: no frenaba la reproducción). Una playlist se muestra si está asignada a una pantalla como respaldo o a una regla de Programación vigente; para dejar de mostrarla, se la saca de ahí.
 - Desde **Ver** se consulta la lista de ítems en modo sólo lectura.
 - Si alguna pantalla que usa la playlist tiene su reproductor **desconectado**, editarla y eliminarla quedan bloqueados (ver 6).
 
@@ -309,7 +312,7 @@ Los datos se agrupan por hora: con una lectura por minuto, 7 días serían unos 
 
 - Pantallas: editar, activar/desactivar, eliminar y energía.
 - Reproductores: editar y regenerar la clave (eliminar **no**, ver 2.4).
-- Contenidos: editar, publicar, despublicar, archivar, eliminar y los ítems de un cronograma.
+- Contenidos: editar, archivar, desarchivar, eliminar y los ítems de un cronograma.
 - Playlists: editar (incluidos sus ítems) y eliminar.
 - Programación: crear, editar, pausar y eliminar reglas.
 - Alertas: activar y desactivar.
@@ -335,7 +338,8 @@ El bloqueo lo decide el servidor, no sólo el botón: si el equipo se cae entre 
 | El reproductor figura "conectado" pero está apagado | El servicio `spui:mqtt:subscribe` no está corriendo: es el que marca como desconectados a los equipos sin señal, cada minuto |
 | Un botón aparece atenuado y no hace nada | Afecta a una pantalla con el reproductor desconectado — el motivo aparece al pasar el mouse (ver 6) |
 | La pantalla no muestra nada | Sin programación vigente y sin playlist de respaldo |
-| Un contenido no aparece al armar la playlist | Está en borrador o archivado: hay que publicarlo |
+| Un contenido no aparece al armar la playlist | Está archivado: hay que desarchivarlo desde Contenidos |
+| Un contenido dejó de verse en las pantallas pero sigue en la playlist | Está archivado (la ventana de ítems lo marca): desarchivarlo |
 | La alerta tarda en llegar | MQTT no disponible; llega igual en el próximo sync (según el intervalo del reproductor, 5 min por defecto) |
 | No hay datos de telemetría | Falta el daemon `spui:mqtt:subscribe --id=spui` |
 | El QR no cuenta escaneos | Se cargó la URL como contenido de tipo texto en vez de crear un contenido de tipo **QR** |

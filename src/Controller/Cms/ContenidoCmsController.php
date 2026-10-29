@@ -410,7 +410,7 @@ class ContenidoCmsController extends AbstractController
 
         if ($form->isSubmitted() && $form->isValid()) {
             $tipo = $contenido->getTipo();
-            $contenido->setEstado(EstadoContenido::Borrador);
+            $contenido->setEstado(EstadoContenido::Disponible);
             $contenido->setCreadoPorId((int) $this->getUser()->getId());
 
             if (in_array($tipo->value, self::TIPOS_ARCHIVO, true)) {
@@ -647,68 +647,28 @@ class ContenidoCmsController extends AbstractController
     }
 
     /**
-     * Vuelve un contenido publicado a borrador.
-     *
-     * Sacarlo de circulación sin archivarlo: deja de aparecer en el selector de
-     * playlists, pero sigue editable para volver a publicarlo.
+     * Vuelve a poner disponible un contenido archivado. Como archivar no borra
+     * sus ítems, vuelve a mostrarse solo en las playlists donde estaba.
      */
-    #[Route('/{id}/despublicar', name: 'spui_cms_contenidos_despublicar', methods: ['POST'], requirements: ['id' => '\d+'])]
-    public function despublicar(int $id, Request $request): Response
+    #[Route('/{id}/desarchivar', name: 'spui_cms_contenidos_desarchivar', methods: ['POST'], requirements: ['id' => '\d+'])]
+    public function desarchivar(int $id, Request $request): Response
     {
-        $c = $this->repo->find($id);
-        if (!$c) {
-            if ($request->isXmlHttpRequest()) { return $this->json(['success' => false, 'message' => 'Contenido no encontrado.'], 404); }
-            $this->addFlash('error', 'Contenido no encontrado.');
-            return $this->redirectToRoute('spui_cms_contenidos_index');
-        }
-        if ($r = $this->denegarSiCsrfInvalido($request)) { return $r; }
-
-        $reproductores = $this->alcance->deContenido($c);
-        if ($r = $this->bloquearSiOffline($reproductores, $request, 'spui_cms_contenidos_index')) {
-            return $r;
-        }
-
-        $c->setEstado(EstadoContenido::Borrador);
-        $this->em()->flush();
-        $this->comandoPublisher->pedirSyncAhora($reproductores, 'contenido');
-        $msg = '"' . $c->getTitulo() . '" volvió a borrador.';
-        if ($request->isXmlHttpRequest()) {
-            return $this->json(['success' => true, 'message' => $msg]);
-        }
-        $this->addFlash('success', $msg);
-        return $this->redirectToRoute('spui_cms_contenidos_index');
+        return $this->cambiarEstado($id, $request, EstadoContenido::Disponible);
     }
 
-    #[Route('/{id}/publicar', name: 'spui_cms_contenidos_publicar', methods: ['POST'], requirements: ['id' => '\d+'])]
-    public function publicar(int $id, Request $request): Response
-    {
-        $c = $this->repo->find($id);
-        if (!$c) {
-            if ($request->isXmlHttpRequest()) { return $this->json(['success' => false, 'message' => 'Contenido no encontrado.'], 404); }
-            $this->addFlash('error', 'Contenido no encontrado.');
-            return $this->redirectToRoute('spui_cms_contenidos_index');
-        }
-        if ($r = $this->denegarSiCsrfInvalido($request)) { return $r; }
-
-        $reproductores = $this->alcance->deContenido($c);
-        if ($r = $this->bloquearSiOffline($reproductores, $request, 'spui_cms_contenidos_index')) {
-            return $r;
-        }
-
-        $c->setEstado(EstadoContenido::Publicado);
-        $this->em()->flush();
-        $this->comandoPublisher->pedirSyncAhora($reproductores, 'contenido');
-        $msg = '"' . $c->getTitulo() . '" publicado.';
-        if ($request->isXmlHttpRequest()) {
-            return $this->json(['success' => true, 'message' => $msg]);
-        }
-        $this->addFlash('success', $msg);
-        return $this->redirectToRoute('spui_cms_contenidos_index');
-    }
-
+    /**
+     * Lo saca de todas las pantallas en el acto (SyncController sólo manda los
+     * disponibles) y de los selectores de playlists y alertas. Los ítems se
+     * conservan: al desarchivarlo vuelve a donde estaba.
+     */
     #[Route('/{id}/archivar', name: 'spui_cms_contenidos_archivar', methods: ['POST'], requirements: ['id' => '\d+'])]
     public function archivar(int $id, Request $request): Response
     {
+        return $this->cambiarEstado($id, $request, EstadoContenido::Archivado);
+    }
+
+    private function cambiarEstado(int $id, Request $request, EstadoContenido $estado): Response
+    {
         $c = $this->repo->find($id);
         if (!$c) {
             if ($request->isXmlHttpRequest()) { return $this->json(['success' => false, 'message' => 'Contenido no encontrado.'], 404); }
@@ -722,14 +682,16 @@ class ContenidoCmsController extends AbstractController
             return $r;
         }
 
-        $c->setEstado(EstadoContenido::Archivado);
+        $c->setEstado($estado);
         $this->em()->flush();
         $this->comandoPublisher->pedirSyncAhora($reproductores, 'contenido');
-        $msg = '"' . $c->getTitulo() . '" archivado.';
+        [$msg, $tipo] = $estado === EstadoContenido::Archivado
+            ? ['"' . $c->getTitulo() . '" archivado: ya no se muestra en ninguna pantalla.', 'warning']
+            : ['"' . $c->getTitulo() . '" vuelve a estar disponible.', 'success'];
         if ($request->isXmlHttpRequest()) {
-            return $this->json(['success' => true, 'message' => $msg, 'type' => 'warning']);
+            return $this->json(['success' => true, 'message' => $msg, 'type' => $tipo]);
         }
-        $this->addFlash('warning', $msg);
+        $this->addFlash($tipo, $msg);
         return $this->redirectToRoute('spui_cms_contenidos_index');
     }
 

@@ -25,7 +25,6 @@
                 <tr>
                     <th class="p-3">Nombre</th>
                     <th class="p-3">Ítems</th>
-                    <th class="p-3">Estado</th>
                     <th class="p-3">Actualizada</th>
                     <th class="p-3">Acciones</th>
                 </tr>
@@ -40,13 +39,6 @@
                     </td>
                     <td class="p-3" data-label="Ítems">
                         <span class="spui-badge-borrador">{{ pl.items|length }}</span>
-                    </td>
-                    <td class="p-3" data-label="Estado">
-                        {% if pl.activo %}
-                            <span class="spui-badge-publicado">Activa</span>
-                        {% else %}
-                            <span class="spui-badge-archivado">Inactiva</span>
-                        {% endif %}
                     </td>
                     <td class="p-3" data-label="Actualizada"><small>{{ pl.actualizadoEn|date('d/m/Y H:i') }}</small></td>
                     <td class="p-3" data-label="Acciones">
@@ -66,21 +58,6 @@
                                 <img src="{{ asset('unraf-ui/icons/pencil.svg') }}" class="spui-action-icon" alt=""> Editar
                             </button>
 
-                            {# Atajo del switch "Estado" del formulario: mismo cambio. #}
-                            <button type="button"
-                                    class="unraf-btn unraf-btn-sm {{ pl.activo ? 'spui-btn-desactivar' : 'spui-btn-activar' }} {{ bloqueo.clase(motivo) }}"
-                                    data-spui-action="{{ path('spui_cms_playlists_toggle', {id: pl.id}) }}"
-                                    data-spui-title="{{ pl.activo ? 'Desactivar' : 'Activar' }} playlist"
-                                    data-spui-message="{{ pl.activo
-                                        ? '¿Desactivar «' ~ pl.nombre ~ '»? Las pantallas que la usan (por programación o como respaldo) dejan de reproducirla.'
-                                        : '¿Activar «' ~ pl.nombre ~ '»? Vuelve a reproducirse en las pantallas que la usan.' }}"
-                                    data-spui-variant="{{ pl.activo ? 'desactivar' : 'activar' }}"
-                                    data-spui-confirm-label="{{ pl.activo ? 'Desactivar' : 'Activar' }}"
-                                    {% if motivo %}{{ bloqueo.attrs(motivo) }}{% else %}title="{{ pl.activo ? 'Desactivar' : 'Activar' }}"{% endif %}>
-                                <img src="{{ pl.activo ? asset('unraf-ui/icons/hand-palm.svg') : asset('unraf-ui/icons/lightning.svg') }}" class="spui-action-icon" alt="">
-                                {{ pl.activo ? 'Desactivar' : 'Activar' }}
-                            </button>
-
                             <button type="button" class="unraf-btn spui-btn-eliminar unraf-btn-sm {{ bloqueo.clase(motivo) }}"
                                     data-spui-action="{{ path('spui_cms_playlists_eliminar', {id: pl.id}) }}"
                                     data-spui-title="Eliminar playlist"
@@ -94,7 +71,7 @@
                     </td>
                 </tr>
             {% else %}
-                <tr><td colspan="5" class="p-4 text-center text-muted">No hay playlists.</td></tr>
+                <tr><td colspan="4" class="p-4 text-center text-muted">No hay playlists.</td></tr>
             {% endfor %}
             </tbody>
         </table>

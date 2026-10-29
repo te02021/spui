@@ -76,7 +76,7 @@ Cadena: `Edificio → Ubicacion → Pantalla → Reproductor`.
 | **Playlist** | Una lista ordenada de contenidos |
 | **PlaylistItem** | Una aparición de un contenido dentro de una playlist, con su orden. Un mismo contenido puede tener varias en la misma playlist (más frecuencia en el loop). La duración no es del ítem: la define el contenido, igual en todas las playlists. Lo que sí depende de la playlist es qué pasa con un contenido sin duración, y lo resuelve `PlaylistItem::getDuracionEfectiva()` (ver §5) |
 
-Un contenido tiene tres estados: **borrador** (no se puede usar), **publicado** (disponible para playlists), **archivado** (retirado sin borrar).
+Un contenido tiene dos estados: **disponible** (como queda al crearlo) y **archivado**. Archivar lo saca de todas las pantallas en el acto: el sync sólo manda los ítems de contenidos disponibles (`Playlist::getItemsVigentes()`), pero el ítem no se borra, así que al desarchivarlo vuelve a su lugar. Los archivados no cuentan para la regla de duración (§5). Si la playlist de una regla queda sin nada que mostrar, la pantalla pasa a su playlist de respaldo. Hasta el 29/10/2026 había también borrador y publicado, y las playlists tenían Activa/Inactiva (que el sync nunca miraba); se sacaron con la migración `Version20261029120000`.
 
 ### Operación — cuándo y cómo
 

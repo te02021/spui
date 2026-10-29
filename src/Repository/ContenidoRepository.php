@@ -18,8 +18,8 @@ class ContenidoRepository extends ServiceEntityRepository
     }
 
     /** @return Contenido[] */
-    public function findPublicados(): array
+    public function findDisponibles(): array
     {
-        return $this->findBy(['estado' => EstadoContenido::Publicado]);
+        return $this->findBy(['estado' => EstadoContenido::Disponible]);
     }
 }

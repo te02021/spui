@@ -2,7 +2,7 @@
 {# Ítems de una playlist, dentro del modal de segundo nivel.
 
    Dos listados en la misma vista: arriba los que están en la playlist (drag &
-   drop + quitar) y abajo el catálogo de publicados para agregar.
+   drop + quitar) y abajo el catálogo de contenidos disponibles para agregar.
 
    NADA se persiste acá. Agregar, quitar y reordenar mutan sólo este DOM; el
    Guardar de esta ventana confirma la lista y la deja en el formulario de la
@@ -15,7 +15,11 @@
 
    Cada fila de arriba lleva título/tipo/duración en data-*: items.js las
    rearma desde ahí al restaurar una lista confirmada, incluso si el contenido
-   ya no figura en el catálogo (dejó de estar publicado).
+   ya no figura en el catálogo (se archivó).
+
+   Un contenido archivado sigue en la lista, marcado: no se muestra en
+   pantalla (SyncController sólo manda los disponibles) pero vuelve solo a su
+   lugar al desarchivarlo. No cuenta para las duraciones.
 
    Modo readonly = true (desde "Ver playlist"): sólo el listado de arriba, sin
    controles. #}
@@ -55,7 +59,8 @@
             data-titulo="{{ c.titulo }}"
             data-tipo="{{ c.tipo.etiqueta }}"
             data-duracion-seg="{{ c.duracionSegundos ?? '' }}"
-            data-es-video="{{ c.esVideo ? '1' : '0' }}">
+            data-es-video="{{ c.esVideo ? '1' : '0' }}"
+            data-archivado="{{ c.estaArchivado ? '1' : '0' }}">
             {% if not ro %}
                 <span class="item-drag-handle">
                     <img src="{{ asset('unraf-ui/icons/dots-six-vertical.svg') }}" class="unraf-icon-svg" alt="">
@@ -65,6 +70,7 @@
             <div class="flex-grow-1">
                 <strong>{{ c.titulo }}</strong>
                 <small class="text-muted ms-2">{{ c.tipo.etiqueta }}</small>
+                {% if c.estaArchivado %}<span class="spui-badge-archivado ms-2" title="No se muestra en pantalla hasta desarchivarlo">Archivado</span>{% endif %}
             </div>
             {# Lo que va a durar en pantalla en ESTA playlist (PlaylistItem::etiquetaDuracion);
                items.js lo recalcula al agregar o quitar ítems. #}
@@ -80,7 +86,7 @@
     {% endfor %}
     </ul>
 
-    {# ── Catálogo de contenidos publicados ───────────────────────────────── #}
+    {# ── Catálogo de contenidos disponibles ───────────────────────────────── #}
     {% if not ro %}
         <div class="spui-items-separador">
             <div class="d-flex justify-content-between align-items-center mb-2 gap-2 flex-wrap">
@@ -96,7 +102,7 @@
 
             {% if disponibles|default([])|length == 0 %}
                 <div class="p-4 text-center text-muted">
-                    No hay contenidos publicados para agregar.<br>
+                    No hay contenidos disponibles para agregar.<br>
                     <small>Creá uno desde <strong>Contenidos</strong> y volvé acá.</small>
                 </div>
             {% else %}

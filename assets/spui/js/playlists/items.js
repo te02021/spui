@@ -49,7 +49,8 @@
                 titulo:      el.dataset.titulo,
                 tipo:        el.dataset.tipo,
                 duracionSeg: el.dataset.duracionSeg,
-                esVideo:     el.dataset.esVideo
+                esVideo:     el.dataset.esVideo,
+                archivado:   el.dataset.archivado
             };
         });
         this.rotacion = parseInt(root.dataset.duracionRotacion, 10) || 10;
@@ -125,13 +126,20 @@
             });
         }
 
-        // Cuánto va a durar cada fila depende de cuántas haya: un contenido
-        // permanente queda fijo si está solo y dura lo de rotación si no.
+        // Cuánto va a durar cada fila depende de cuántas se ven: un contenido
+        // permanente queda fijo si está solo y dura lo de rotación si no. Un
+        // archivado sigue en la lista (vuelve solo al desarchivarlo) pero no
+        // está en pantalla, así que no cuenta.
         if (this.lista) {
-            var self = this, total = ids.length;
-            this.lista.querySelectorAll('[data-contenido-id]').forEach(function (li) {
+            var self = this;
+            var filas = this.lista.querySelectorAll('[data-contenido-id]');
+            var total = Array.prototype.filter.call(filas, function (li) { return li.dataset.archivado !== '1'; }).length;
+            filas.forEach(function (li) {
                 var badge = li.querySelector('[data-spui-item-duracion]');
-                if (badge) badge.textContent = self.etiquetaDuracion(li.dataset.duracionSeg, li.dataset.esVideo === '1', total);
+                if (!badge) return;
+                badge.textContent = li.dataset.archivado === '1'
+                    ? 'No se muestra'
+                    : self.etiquetaDuracion(li.dataset.duracionSeg, li.dataset.esVideo === '1', total);
             });
         }
 
@@ -184,6 +192,7 @@
         li.dataset.tipo        = d.tipo;
         li.dataset.duracionSeg = d.duracionSeg || '';
         li.dataset.esVideo     = d.esVideo || '0';
+        li.dataset.archivado   = d.archivado || '0';
         // Las URLs de los íconos vienen de la raíz (con el hash de AssetMapper
         // ya resuelto por Twig): con la lista vacía no hay fila de dónde copiarlas.
         li.innerHTML =
@@ -192,7 +201,8 @@
             '</span>' +
             '<span class="spui-badge-borrador" style="min-width:1.8rem;text-align:center" data-spui-item-orden></span>' +
             '<div class="flex-grow-1"><strong>' + esc(d.titulo) + '</strong>' +
-                '<small class="text-muted ms-2">' + esc(d.tipo) + '</small></div>' +
+                '<small class="text-muted ms-2">' + esc(d.tipo) + '</small>' +
+                (d.archivado === '1' ? ' <span class="spui-badge-archivado ms-2">Archivado</span>' : '') + '</div>' +
             // El texto lo pone sincronizarVista(): depende de cuántos ítems haya.
             '<span class="duracion-badge text-muted small" data-spui-item-duracion></span>' +
             '<button type="button" class="unraf-btn-icon btn-delete" data-spui-item-quitar title="Quitar de la playlist">' +

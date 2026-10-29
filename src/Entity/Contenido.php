@@ -55,7 +55,7 @@ class Contenido
     private ?CodigoQr $codigoQr = null;
 
     #[ORM\Column(enumType: EstadoContenido::class)]
-    private EstadoContenido $estado = EstadoContenido::Borrador;
+    private EstadoContenido $estado = EstadoContenido::Disponible;
 
     /** Referencia cross-DB a Intranet.user — sin FK Doctrine */
     #[ORM\Column(type: 'integer', options: ['unsigned' => true])]
@@ -140,6 +140,18 @@ class Contenido
 
     public function getEstado(): EstadoContenido { return $this->estado; }
     public function setEstado(EstadoContenido $estado): static { $this->estado = $estado; return $this; }
+
+    public function estaArchivado(): bool { return $this->estado === EstadoContenido::Archivado; }
+
+    /** En cuántas playlists distintas está (para avisar antes de archivarlo). */
+    public function cantidadPlaylists(): int
+    {
+        $ids = [];
+        foreach ($this->playlistItems as $item) {
+            $ids[$item->getPlaylist()->getId()] = true;
+        }
+        return count($ids);
+    }
 
     public function getCreadoPorId(): int { return $this->creadoPorId; }
     public function setCreadoPorId(int $creadoPorId): static { $this->creadoPorId = $creadoPorId; return $this; }

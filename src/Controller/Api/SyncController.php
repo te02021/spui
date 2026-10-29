@@ -108,7 +108,11 @@ class SyncController extends AbstractController
 
             if ($progActiva !== null) {
                 $playlistData = $this->serializePlaylist($progActiva->getPlaylist(), $request);
-            } elseif ($pantalla->getPlaylistFallback() !== null) {
+            }
+            // Si la playlist de la regla no tiene nada que mostrar (todos sus
+            // contenidos archivados), la pantalla cae a su playlist de
+            // respaldo, como si no hubiera regla, y no a la pantalla de espera.
+            if (($playlistData === null || $playlistData['items'] === []) && $pantalla->getPlaylistFallback() !== null) {
                 $playlistData = $this->serializePlaylist($pantalla->getPlaylistFallback(), $request);
             }
 
@@ -292,9 +296,10 @@ class SyncController extends AbstractController
         return [
             'id'     => $playlist->getId(),
             'nombre' => $playlist->getNombre(),
+            // Sin los archivados: archivar saca el contenido de las pantallas.
             'items'  => array_map(
                 fn(PlaylistItem $item) => $this->serializeItem($item, $request),
-                $playlist->getItems()->toArray(),
+                $playlist->getItemsVigentes(),
             ),
         ];
     }

@@ -105,7 +105,10 @@ textarea.is-invalid,
 }
 
 /* ----- Badges de estado de contenido ----- */
-.spui-badge-publicado {
+/* "disponible" es el estado de un contenido (EstadoContenido); "publicado"
+   quedó como el verde genérico que usan Activa/Activo en otros listados. */
+.spui-badge-publicado,
+.spui-badge-disponible {
     background-color: var(--unraf-success, #4A9930);
     color: #fff;
     font-size: .75rem;

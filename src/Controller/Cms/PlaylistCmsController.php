@@ -66,7 +66,6 @@ class PlaylistCmsController extends AbstractController
             $playlist = new Playlist();
             $playlist->setNombre($nombre);
             $playlist->setDescripcion(trim($request->request->get('descripcion', '')) ?: null);
-            $playlist->setActivo(true);
             $playlist->setCreadoPorId((int) $this->getUser()->getId());
 
             $this->em()->persist($playlist);
@@ -129,7 +128,6 @@ class PlaylistCmsController extends AbstractController
 
             $playlist->setNombre($nombre);
             $playlist->setDescripcion(trim($request->request->get('descripcion', '')) ?: null);
-            $playlist->setActivo((bool) $request->request->get('activo', false));
             $this->em()->flush();
 
             // Los ítems viajan con este mismo Guardar (único punto de guardado):
@@ -154,35 +152,6 @@ class PlaylistCmsController extends AbstractController
                 'html'  => $this->renderView('@SPUI/playlists/_edit_form.html.twig', ['playlist' => $playlist]),
             ]);
         }
-        return $this->redirectToRoute('spui_cms_playlists_index');
-    }
-
-    /**
-     * Activar / desactivar desde el listado: el mismo cambio que el switch del
-     * formulario. Una playlist inactiva no se reproduce (ni por programación
-     * ni como respaldo), así que avisa a las pantallas que la usan.
-     */
-    #[Route('/{id}/toggle', name: 'spui_cms_playlists_toggle', methods: ['POST'], requirements: ['id' => '\d+'])]
-    public function toggle(int $id, Request $request): Response
-    {
-        $playlist = $this->repo->find($id);
-        if (!$playlist) { throw $this->createNotFoundException(); }
-        if ($r = $this->denegarSiCsrfInvalido($request)) { return $r; }
-
-        $reproductores = $this->alcance->dePlaylist($playlist);
-        if ($r = $this->bloquearSiOffline($reproductores, $request, 'spui_cms_playlists_index')) {
-            return $r;
-        }
-
-        $playlist->setActivo(!$playlist->isActivo());
-        $this->em()->flush();
-        $this->comandoPublisher->pedirSyncAhora($reproductores, 'playlist');
-
-        $msg = 'Playlist "' . $playlist->getNombre() . '" ' . ($playlist->isActivo() ? 'activada' : 'desactivada') . '.';
-        if ($request->isXmlHttpRequest()) {
-            return $this->json(['success' => true, 'message' => $msg]);
-        }
-        $this->addFlash('success', $msg);
         return $this->redirectToRoute('spui_cms_playlists_index');
     }
 
@@ -267,15 +236,15 @@ class PlaylistCmsController extends AbstractController
     /**
      * Catálogo de contenidos que se pueden agregar a una playlist.
      *
-     * Sólo los publicados: un contenido en borrador no puede reproducirse, así
-     * que ofrecerlo en el selector induciría al error.
+     * Todos menos los archivados: archivar es justamente la forma de sacar
+     * un contenido de circulación.
      *
      * @return list<\SPUI\Entity\Contenido>
      */
-    private function contenidosPublicados(): array
+    private function contenidosDisponibles(): array
     {
         return $this->contenidoRepo->findBy(
-            ['estado' => EstadoContenido::Publicado],
+            ['estado' => EstadoContenido::Disponible],
             ['titulo' => 'ASC'],
         );
     }
@@ -293,7 +262,7 @@ class PlaylistCmsController extends AbstractController
         $html = $this->renderView('@SPUI/playlists/_items.html.twig', [
             'playlist'    => null,
             'items'       => [],
-            'disponibles' => $this->contenidosPublicados(),
+            'disponibles' => $this->contenidosDisponibles(),
             'readonly'    => false,
         ]);
 
@@ -316,14 +285,14 @@ class PlaylistCmsController extends AbstractController
         $playlist = $this->repo->find($id);
         if (!$playlist) { throw $this->createNotFoundException(); }
 
-        // Todos los publicados, incluidos los que ya están en la playlist: el
+        // Todos los disponibles, incluidos los que ya están en la playlist: el
         // navegador oculta o muestra cada fila según dónde esté el contenido en
         // ese momento. Filtrarlos acá hacía que un ítem quitado sin guardar no
         // se pudiera volver a agregar, porque su fila nunca llegaba al DOM.
         $html = $this->renderView('@SPUI/playlists/_items.html.twig', [
             'playlist'    => $playlist,
             'items'       => $playlist->getItems(),
-            'disponibles' => $this->contenidosPublicados(),
+            'disponibles' => $this->contenidosDisponibles(),
             'readonly'    => $request->query->getBoolean('ro'),
         ]);
 
@@ -379,11 +348,11 @@ class PlaylistCmsController extends AbstractController
 
                 if ($item === null) {
                     $contenido = $this->contenidoRepo->find($contenidoId);
-                    // Un id que no existe o que dejó de estar publicado se
+                    // Un id que no existe o que se archivó mientras tanto se
                     // ignora en silencio: puede haber cambiado entre que se
                     // dibujó la lista y se apretó Guardar, y abortar todo por
                     // eso le haría perder al operador el resto del trabajo.
-                    if ($contenido === null || $contenido->getEstado() !== EstadoContenido::Publicado) {
+                    if ($contenido === null || $contenido->estaArchivado()) {
                         continue;
                     }
                     // addItem() y no sólo setPlaylist(): además de colgarlo de
@@ -446,7 +415,6 @@ class PlaylistCmsController extends AbstractController
             'values'            => [
                 'nombre'      => trim((string) $request->request->get('nombre', '')),
                 'descripcion' => trim((string) $request->request->get('descripcion', '')),
-                'activo'      => $request->request->getBoolean('activo'),
             ],
             'items_confirmados' => $this->itemsModificados($request) ? $this->idsDeContenidoDelRequest($request) : null,
         ];

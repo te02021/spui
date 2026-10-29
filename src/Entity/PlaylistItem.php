@@ -65,7 +65,11 @@ class PlaylistItem
     public function getDuracionEfectiva(): ?int
     {
         $propia = $this->contenido->getDuracionSegundos();
-        $unico  = $this->playlist->getItems()->count() <= 1;
+        if ($this->contenido->estaArchivado()) {
+            return null;
+        }
+        // Cuentan sólo los que se ven: un archivado no está en pantalla.
+        $unico  = count($this->playlist->getItemsVigentes()) <= 1;
 
         if ($this->contenido->esVideo()) {
             return $unico ? null : $propia;
@@ -80,6 +84,9 @@ class PlaylistItem
     /** Lo que muestra la ventana de ítems: exactamente lo que va a pasar en pantalla. */
     public function etiquetaDuracion(): string
     {
+        if ($this->contenido->estaArchivado()) {
+            return 'No se muestra';
+        }
         $segundos = $this->getDuracionEfectiva();
         if ($segundos !== null) {
             return Contenido::duracionLegible($segundos);
@@ -88,7 +95,7 @@ class PlaylistItem
         if ($this->contenido->esVideo()) {
             // Único video de la playlist, o uno cargado antes de que se leyera
             // la duración del archivo: en los dos casos se ve completo.
-            return $this->playlist->getItems()->count() <= 1 ? 'En bucle' : 'Hasta que termine';
+            return count($this->playlist->getItemsVigentes()) <= 1 ? 'En bucle' : 'Hasta que termine';
         }
 
         return 'Permanente';

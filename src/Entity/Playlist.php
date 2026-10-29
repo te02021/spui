@@ -26,9 +26,6 @@ class Playlist
     #[ORM\Column(type: 'text', nullable: true)]
     private ?string $descripcion = null;
 
-    #[ORM\Column]
-    private bool $activo = true;
-
     /** Referencia cross-DB a Intranet.user — sin FK Doctrine */
     #[ORM\Column(type: 'integer', options: ['unsigned' => true])]
     private int $creadoPorId;
@@ -68,9 +65,6 @@ class Playlist
     public function getDescripcion(): ?string { return $this->descripcion; }
     public function setDescripcion(?string $descripcion): static { $this->descripcion = $descripcion; return $this; }
 
-    public function isActivo(): bool { return $this->activo; }
-    public function setActivo(bool $activo): static { $this->activo = $activo; return $this; }
-
     public function getCreadoPorId(): int { return $this->creadoPorId; }
     public function setCreadoPorId(int $creadoPorId): static { $this->creadoPorId = $creadoPorId; return $this; }
 
@@ -78,6 +72,21 @@ class Playlist
     public function getActualizadoEn(): DateTimeImmutable { return $this->actualizadoEn; }
 
     public function getItems(): Collection { return $this->items; }
+
+    /**
+     * Los ítems que se muestran en pantalla: sin los de contenidos archivados.
+     * Archivar un contenido lo saca de todas sus playlists en el acto sin
+     * borrar el ítem, así que al desarchivarlo vuelve solo a donde estaba.
+     *
+     * @return PlaylistItem[]
+     */
+    public function getItemsVigentes(): array
+    {
+        return array_values(array_filter(
+            $this->items->toArray(),
+            fn(PlaylistItem $i) => !$i->getContenido()->estaArchivado(),
+        ));
+    }
 
     public function addItem(PlaylistItem $item): static
     {

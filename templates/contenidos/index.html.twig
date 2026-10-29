@@ -9,9 +9,7 @@
         <p class="text-muted mb-0">
             Imágenes, videos, textos y cronogramas.
             <span class="text-muted small">
-                <strong>Borrador</strong> = no disponible &nbsp;·&nbsp;
-                <strong>Publicado</strong> = listo para usar en playlists &nbsp;·&nbsp;
-                <strong>Archivado</strong> = retirado
+                <strong>Archivar</strong> lo saca de las pantallas sin borrarlo.
             </span>
         </p>
     </div>
@@ -78,7 +76,7 @@
                         {% endif %}
                     </td>
                     <td class="p-3" data-label="Duración">{{ c.etiquetaDuracion }}</td>
-                    <td class="p-3" data-label="Estado"><span class="spui-badge-{{ c.estado.value }}">{{ c.estado.value|capitalize }}</span></td>
+                    <td class="p-3" data-label="Estado"><span class="spui-badge-{{ c.estado.value }}">{{ c.estado.etiqueta }}</span></td>
                     <td class="p-3" data-label="Creado"><small>{{ c.creadoEn|date('d/m/Y') }}</small></td>
                     <td class="p-3" data-label="Acciones">
                         <div class="spui-acciones">
@@ -110,36 +108,24 @@
                                 </button>
                             {% endif %}
 
-                            {% if c.estado.value != 'publicado' %}
-                                <button type="button" class="unraf-btn spui-btn-publicar unraf-btn-sm {{ bloqueo.clase(motivo) }}"
-                                        data-spui-action="{{ path('spui_cms_contenidos_publicar', {id: c.id}) }}"
-                                        data-spui-title="Publicar contenido"
-                                        data-spui-confirm-label="Publicar"
-                                        data-spui-message="¿Publicar «{{ c.titulo }}»? Quedará disponible para playlists."
-                                        data-spui-variant="publicar"
-                                        {% if motivo %}{{ bloqueo.attrs(motivo) }}{% else %}title="Publicar"{% endif %}>
-                                    <img src="{{ asset('unraf-ui/icons/check-circle.svg') }}" class="spui-action-icon" alt=""> Publicar
+                            {% if c.estaArchivado %}
+                                {% set n = c.cantidadPlaylists %}
+                                <button type="button" class="unraf-btn spui-btn-desarchivar unraf-btn-sm {{ bloqueo.clase(motivo) }}"
+                                        data-spui-action="{{ path('spui_cms_contenidos_desarchivar', {id: c.id}) }}"
+                                        data-spui-title="Desarchivar contenido"
+                                        data-spui-confirm-label="Desarchivar"
+                                        data-spui-message="¿Desarchivar «{{ c.titulo }}»? Vuelve a estar disponible{% if n %} y a mostrarse en {{ n == 1 ? 'la playlist' : 'las ' ~ n ~ ' playlists' }} donde estaba{% endif %}."
+                                        data-spui-variant="desarchivar"
+                                        {% if motivo %}{{ bloqueo.attrs(motivo) }}{% else %}title="Desarchivar"{% endif %}>
+                                    <img src="{{ asset('unraf-ui/icons/arrow-u-left-up.svg') }}" class="spui-action-icon" alt=""> Desarchivar
                                 </button>
-                            {% endif %}
-
-                            {% if c.estado.value == 'publicado' %}
-                                <button type="button" class="unraf-btn spui-btn-despublicar unraf-btn-sm {{ bloqueo.clase(motivo) }}"
-                                        data-spui-action="{{ path('spui_cms_contenidos_despublicar', {id: c.id}) }}"
-                                        data-spui-title="Volver a borrador"
-                                        data-spui-confirm-label="Volver a borrador"
-                                        data-spui-message="¿Despublicar «{{ c.titulo }}»? Dejará de aparecer al armar playlists."
-                                        data-spui-variant="despublicar"
-                                        {% if motivo %}{{ bloqueo.attrs(motivo) }}{% else %}title="Volver a borrador"{% endif %}>
-                                    <img src="{{ asset('unraf-ui/icons/arrow-u-left-up.svg') }}" class="spui-action-icon" alt=""> Despublicar
-                                </button>
-                            {% endif %}
-
-                            {% if c.estado.value != 'archivado' %}
+                            {% else %}
+                                {% set n = c.cantidadPlaylists %}
                                 <button type="button" class="unraf-btn spui-btn-archivar unraf-btn-sm {{ bloqueo.clase(motivo) }}"
                                         data-spui-action="{{ path('spui_cms_contenidos_archivar', {id: c.id}) }}"
                                         data-spui-title="Archivar contenido"
                                         data-spui-confirm-label="Archivar"
-                                        data-spui-message="¿Archivar «{{ c.titulo }}»? Dejará de estar disponible en playlists."
+                                        data-spui-message="¿Archivar «{{ c.titulo }}»? {% if n %}Está en {{ n == 1 ? '1 playlist' : n ~ ' playlists' }}: deja de mostrarse en todas las pantallas ahora mismo. Al desarchivarlo vuelve a donde estaba.{% else %}No va a poder agregarse a playlists hasta desarchivarlo.{% endif %}"
                                         data-spui-variant="archivar"
                                         {% if motivo %}{{ bloqueo.attrs(motivo) }}{% else %}title="Archivar"{% endif %}>
                                     <img src="{{ asset('unraf-ui/icons/box-arrow-down.svg') }}" class="spui-action-icon" alt=""> Archivar
