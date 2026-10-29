@@ -267,6 +267,20 @@ Cuestionario SUS estándar (10 ítems, escala 1–5) a operadores del CMS despu�
 
 Las planillas completas de cada corrida se agregan debajo, con la fecha. La más reciente va primero.
 
+### 28/10/2026 — Acceso remoto de desarrollo (Tailscale y espejo), en casa
+
+No es un caso de prueba de la tesis: es la herramienta de `09` §16 para trabajar con la Pi lejos de la PC.
+
+| Paso | Resultado |
+|---|---|
+| La Pi apunta al CMS por la IP de Tailscale de la PC | `curl` → 401, `Sync OK` y MQTT conectado a `spui-broker.unraf.local:8883` ✅ (antes, 403 hasta reiniciar Apache con `Restart-Service`) |
+| Deploy por Tailscale | ✅ |
+| Espejo: imagen en VLC desde la PC | Casi en tiempo real ✅ |
+| Espejo: sonido | El tono de `probar` y una alerta suenan en la PC y en el monitor ✅ (la primera versión, con el plugin `multi`, daba underruns: se cambió por `alsaloop`) |
+| Videos con el espejo prendido | Sin trabarse ✅ |
+
+**Falta:** repetirlo desde la red del trabajo (SSH, espejo y reproductor Conectado en el CMS).
+
 ### 28/10/2026 — C2: el 1883 sin TLS cerrado a la red
 
 **Cambio:** `listener 1883 127.0.0.1` en el broker (`config/mosquitto/mosquitto.conf`, copiado y validado con `--test-config`) y se borraron las reglas de firewall del 1883 (`SPUI - Mosquitto LAN`, `SPUI - Mosquitto desde VM`). Después del reinicio, el broker escucha `0.0.0.0:8883` y `127.0.0.1:1883`.
