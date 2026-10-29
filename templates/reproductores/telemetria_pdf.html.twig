@@ -51,7 +51,12 @@
         <td><span class="valor {{ resumen.temp_max >= temp_umbral ? 'alto' }}">{{ resumen.temp_max|number_format(1, ',', '.') }} °C</span><span class="etq">Temperatura máxima (umbral {{ temp_umbral|number_format(0) }} °C)</span></td>
         <td><span class="valor">{{ resumen.ram_prom|number_format(1, ',', '.') }} %</span><span class="etq">RAM promedio</span></td>
         <td><span class="valor">{{ resumen.ram_max|number_format(1, ',', '.') }} %</span><span class="etq">RAM máxima</span></td>
-        <td><span class="valor">{{ (resumen.disco_min / 1024)|number_format(1, ',', '.') }} GB</span><span class="etq">Disco libre mínimo</span></td>
+        {% if total_mb %}
+            {% set uso_max = (total_mb - resumen.disco_min) / 1024 %}
+            <td><span class="valor">{{ uso_max|number_format(1, ',', '.') }} GB</span><span class="etq">Disco en uso máximo, de {{ (total_mb / 1024)|number_format(0, ',', '.') }} GB ({{ (uso_max * 1024 / total_mb * 100)|number_format(0) }} %)</span></td>
+        {% else %}
+            <td><span class="valor">{{ (resumen.disco_min / 1024)|number_format(1, ',', '.') }} GB</span><span class="etq">Disco libre mínimo</span></td>
+        {% endif %}
     </tr>
 </table>
 {% endif %}
@@ -59,7 +64,7 @@
 <table class="detalle">
     <thead>
         <tr>
-            <th>Hora</th><th>Temp. prom.</th><th>Temp. máx.</th><th>RAM prom.</th><th>RAM máx.</th><th>Disco libre mín.</th><th>Lecturas</th>
+            <th>Hora</th><th>Temp. prom.</th><th>Temp. máx.</th><th>RAM prom.</th><th>RAM máx.</th><th>{{ total_mb ? 'Disco en uso máx.' : 'Disco libre mín.' }}</th><th>Lecturas</th>
         </tr>
     </thead>
     <tbody>
@@ -70,7 +75,7 @@
             <td class="{{ h.temp_max >= temp_umbral ? 'alto' }}">{{ h.temp_max|number_format(1, ',', '.') }} °C</td>
             <td>{{ h.ram_prom|number_format(1, ',', '.') }} %</td>
             <td>{{ h.ram_max|number_format(1, ',', '.') }} %</td>
-            <td>{{ (h.disco_min / 1024)|number_format(1, ',', '.') }} GB</td>
+            <td>{% if total_mb %}{{ ((total_mb - h.disco_min) / 1024)|number_format(1, ',', '.') }} GB ({{ ((total_mb - h.disco_min) / total_mb * 100)|number_format(0) }} %){% else %}{{ (h.disco_min / 1024)|number_format(1, ',', '.') }} GB{% endif %}</td>
             <td>{{ h.lecturas }}</td>
         </tr>
     {% endfor %}

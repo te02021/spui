@@ -199,19 +199,33 @@ class ReproductorCmsController extends AbstractController
             return $this->json(['success' => false, 'mensaje' => 'No hay datos de este reproductor en ese período. Probá con otras fechas.'], 422);
         }
 
+        // El disco se informa EN USO contra la capacidad (lo que importa es
+        // cuánto falta para llenarlo). Por hora, el máximo en uso es la
+        // capacidad menos el mínimo libre. Sin capacidad conocida (cliente de
+        // la Pi anterior al 29/10/2026) se informa lo libre, aclarado.
+        $totalMb = $reproductor->getDiscoTotalMb();
         $columnas = [
-            ['titulo' => 'Hora',                  'tipo' => 'fecha',   'ancho' => 18],
-            ['titulo' => 'Temp. promedio (°C)',   'tipo' => 'decimal', 'ancho' => 20],
-            ['titulo' => 'Temp. máxima (°C)',     'tipo' => 'decimal', 'ancho' => 19],
-            ['titulo' => 'RAM promedio (%)',      'tipo' => 'decimal', 'ancho' => 18],
-            ['titulo' => 'RAM máxima (%)',        'tipo' => 'decimal', 'ancho' => 16],
-            ['titulo' => 'Disco libre mín. (GB)', 'tipo' => 'decimal', 'ancho' => 21],
-            ['titulo' => 'Lecturas',              'tipo' => 'entero',  'ancho' => 10],
+            ['titulo' => 'Hora',                'tipo' => 'fecha',   'ancho' => 18],
+            ['titulo' => 'Temp. promedio (°C)', 'tipo' => 'decimal', 'ancho' => 20],
+            ['titulo' => 'Temp. máxima (°C)',   'tipo' => 'decimal', 'ancho' => 19],
+            ['titulo' => 'RAM promedio (%)',    'tipo' => 'decimal', 'ancho' => 18],
+            ['titulo' => 'RAM máxima (%)',      'tipo' => 'decimal', 'ancho' => 16],
         ];
-        $filas = array_map(static fn(array $f) => [
-            $f['hora'], $f['temp_prom'], $f['temp_max'], $f['ram_prom'], $f['ram_max'],
-            round($f['disco_min'] / 1024, 1), $f['lecturas'],
-        ], $horas);
+        $columnas = array_merge($columnas, $totalMb !== null ? [
+            ['titulo' => 'Disco en uso máx. (GB)', 'tipo' => 'decimal', 'ancho' => 22],
+            ['titulo' => 'Disco en uso máx. (%)',  'tipo' => 'decimal', 'ancho' => 21],
+            ['titulo' => 'Capacidad (GB)',         'tipo' => 'decimal', 'ancho' => 15],
+        ] : [
+            ['titulo' => 'Disco libre mín. (GB)', 'tipo' => 'decimal', 'ancho' => 21],
+        ], [
+            ['titulo' => 'Lecturas', 'tipo' => 'entero', 'ancho' => 10],
+        ]);
+        $filas = array_map(static function (array $f) use ($totalMb) {
+            $disco = $totalMb !== null
+                ? [round(max(0, $totalMb - $f['disco_min']) / 1024, 1), round(max(0, $totalMb - $f['disco_min']) / $totalMb * 100, 1), round($totalMb / 1024, 1)]
+                : [round($f['disco_min'] / 1024, 1)];
+            return array_merge([$f['hora'], $f['temp_prom'], $f['temp_max'], $f['ram_prom'], $f['ram_max']], $disco, [$f['lecturas']]);
+        }, $horas);
 
         [$binario, $tipoMime] = match ($formato) {
             'xlsx' => [$xlsx->generar('Telemetría', $columnas, $filas), 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'],
@@ -264,6 +278,7 @@ class ReproductorCmsController extends AbstractController
             'hasta'       => $hasta,
             'horas'       => $horas,
             'resumen'     => $this->rollupRepo->resumen($reproductor, $desde, $hasta),
+            'total_mb'    => $reproductor->getDiscoTotalMb(),
             'temp_umbral' => $this->tempAlertaCelsius,
             'generado'    => new DateTimeImmutable(),
         ]);

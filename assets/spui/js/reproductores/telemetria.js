@@ -31,6 +31,12 @@
     var datos = JSON.parse(raiz.querySelector('[data-tel-datos]').textContent);
     var rango = datos.rango;
     var vivoActivo = false;          // llegó al menos una muestra en vivo y no se pausó
+    // Capacidad del disco (GB). Se cuenta lo EN USO contra ella, no lo libre
+    // (pedido de Mateo, 29/10/2026). Null con clientes de la Pi anteriores a
+    // esa fecha, que no la mandan: ahí se sigue mostrando lo libre, aclarado.
+    var discoTotalGb = datos.ultima ? datos.ultima.disco_total_gb : null;
+    /** GB en uso a partir de los MB libres; null si no se conoce la capacidad. */
+    function enUsoGb(libreMb) { return discoTotalGb ? Math.max(0, discoTotalGb - libreMb / 1024) : null; }
     var ajustando = false;           // la vista la está moviendo este código (rango o arrastre)
 
     // ── Idioma de los gráficos ──────────────────────────────────────────────
@@ -113,15 +119,24 @@
                 { name: 'Máxima',   data: conAhora(serie.map(function (p) { return [ms(p.periodo), p.temp_max]; })) }
             ],
             ram:   [{ name: 'RAM promedio', data: conAhora(serie.map(function (p) { return [ms(p.periodo), p.ram_prom]; })) }],
-            disco: [{ name: 'Disco libre',  data: conAhora(serie.map(function (p) { return [ms(p.periodo), Math.round(p.disco_min / 102.4) / 10]; })) }]
+            // Por hora, el máximo en uso = capacidad − mínimo libre de esa hora.
+            disco: [{ name: discoTotalGb ? 'Disco en uso' : 'Disco libre',
+                      data: conAhora(serie.map(function (p) {
+                          var gb = discoTotalGb ? enUsoGb(p.disco_min) : p.disco_min / 1024;
+                          return [ms(p.periodo), Math.round(gb * 10) / 10];
+                      })) }]
         };
     }
     function maxTemp(serie) {
         var m = serie.reduce(function (a, p) { return Math.max(a, p.temp_max || 0); }, 0);
         return Math.max(100, Math.ceil(m / 10) * 10);
     }
-    /** Tope del eje del disco: 4 marcas de un paso "redondo" (25, 40, 50 GB…), con aire arriba de la línea. */
+    /**
+     * Tope del eje del disco: la capacidad total, que es el límite real. Sin
+     * ella, 4 marcas de un paso "redondo" (25, 40, 50 GB…) con aire arriba.
+     */
     function maxDisco(s) {
+        if (discoTotalGb) return discoTotalGb;
         var m = s.disco[0].data.reduce(function (a, p) { return Math.max(a, p[1] || 0); }, 0);
         var pasos = [0.5, 1, 2, 2.5, 5, 10, 20, 25, 40, 50, 75, 100, 150, 200, 250, 500];
         var paso = pasos.filter(function (p) { return p * 4 >= m * 1.15; })[0] || 500;
@@ -154,7 +169,13 @@
         fill: { type: 'gradient', gradient: { opacityFrom: 0.3, opacityTo: 0.02 } },
         yaxis: { min: 0, max: maxDisco(s0), tickAmount: 4,
                  labels: { minWidth: ANCHO_EJE, maxWidth: ANCHO_EJE, formatter: function (v) { return num(v, (v === 0 || v >= 10) ? 0 : 1) + ' GB'; } } },
-        tooltip: { x: { format: 'dd/MM/yyyy HH:mm' }, y: { formatter: function (v) { return num(v, 1) + ' GB'; } } }
+        tooltip: { x: { format: 'dd/MM/yyyy HH:mm' }, y: { formatter: function (v) {
+            return num(v, 1) + ' GB' + (discoTotalGb ? ' (' + num(v / discoTotalGb * 100, 0) + ' %)' : '');
+        } } },
+        annotations: discoTotalGb ? { yaxis: [{ y: discoTotalGb, borderColor: ROJO, strokeDashArray: 6,
+            // A la izquierda y debajo de la línea: arriba, a la derecha, está la barra de íconos.
+            label: { text: 'Capacidad ' + num(discoTotalGb, 0) + ' GB', position: 'left', textAnchor: 'start', offsetX: 6, offsetY: 22,
+                     borderColor: ROJO, style: { color: '#fff', background: ROJO } } }] } : {}
     }));
     var LISTA = [graf.temp, graf.ram, graf.disco];
     LISTA.forEach(function (g) { g.render(); });
@@ -239,22 +260,28 @@
         g.updateOptions({ colors: [color] }, false, false);
         g.updateSeries([Math.max(0, Math.min(100, valor || 0))]);
     }
-    var discoTotalGb = datos.ultima ? datos.ultima.disco_total_gb : null;
     function indicadores(temp, ram, discoLibreGb, totalGb) {
         if (temp !== null && temp !== undefined) ponerGauge(gTemp, temp, num(temp, 1) + ' °C', colorTemp(temp));
         if (ram !== null && ram !== undefined) ponerGauge(gRam, ram, num(ram, 1) + ' %', colorPorc(ram));
         if (totalGb) discoTotalGb = totalGb;
         if (discoLibreGb !== null && discoLibreGb !== undefined) {
-            raiz.querySelector('[data-tel-numero="disco"]').textContent = num(discoLibreGb, 1) + ' GB';
+            var etiqueta = raiz.querySelector('[data-tel-disco-etq]');
             if (discoTotalGb) {
-                var uso = (discoTotalGb - discoLibreGb) / discoTotalGb * 100;
+                var usoGb = Math.max(0, discoTotalGb - discoLibreGb);
+                var uso = usoGb / discoTotalGb * 100;
                 ponerGauge(gDisco, uso, num(uso, 0) + ' %', colorPorc(uso));
+                etiqueta.textContent = 'En uso';
+                raiz.querySelector('[data-tel-numero="disco"]').textContent = num(usoGb, 1) + ' GB';
                 raiz.querySelector('[data-tel-numero="disco_total"]').textContent = num(discoTotalGb, 0) + ' GB';
             } else {
                 // Clientes anteriores al 29/10/2026 no mandan el tamaño del disco.
                 gDisco.el._texto = num(discoLibreGb, 0) + ' GB';
                 gDisco.updateSeries([0]);
+                etiqueta.textContent = 'Libre';
+                raiz.querySelector('[data-tel-numero="disco"]').textContent = num(discoLibreGb, 1) + ' GB';
             }
+            discoActualGb = discoTotalGb ? discoTotalGb - discoLibreGb : discoLibreGb;
+            maxDiscoDelPeriodo();
         }
     }
 
@@ -264,8 +291,9 @@
             temp_max:  r ? num(r.temp_max, 1) + ' °C' : '—',
             ram_prom:  r ? num(r.ram_prom, 1) + ' %' : '—',
             ram_max:   r ? num(r.ram_max, 1) + ' %' : '—',
-            disco_min: r ? num(r.disco_min / 1024, 1) + ' GB' : '—'
         };
+        resumenActual = r;
+        maxDiscoDelPeriodo();
         Object.keys(txt).forEach(function (k) {
             var el = raiz.querySelector('[data-tel-res="' + k + '"]');
             if (el) {
@@ -273,6 +301,20 @@
                 el.classList.toggle('text-danger', k === 'temp_max' && !!r && r.temp_max >= UMBRAL);
             }
         });
+    }
+
+    /**
+     * "Máximo en uso del período" debajo del disco, sólo si dice algo distinto
+     * del valor actual: el disco cambia poco y repetir el mismo número no aporta.
+     */
+    var resumenActual = null, discoActualGb = null;
+    function maxDiscoDelPeriodo() {
+        var cont = raiz.querySelector('[data-tel-disco-max]');
+        if (!cont) return;
+        var r = resumenActual;
+        var valor = r ? (discoTotalGb ? enUsoGb(r.disco_min) : r.disco_min / 1024) : null;
+        cont.hidden = valor === null || discoActualGb === null || Math.abs(valor - discoActualGb) < 0.1;
+        cont.querySelector('strong').textContent = valor === null ? '—' : num(valor, 1) + ' GB';
     }
 
     function pintar(d, conservarVentana) {
@@ -343,7 +385,9 @@
             var c = new ApexCharts(raiz.querySelector(sel), {
                 series: [{ name: nombre, data: [] }],
                 chart: { type: 'line', height: 220, fontFamily: 'inherit', toolbar: { show: false }, zoom: { enabled: false },
-                         animations: { enabled: true, easing: 'linear', dynamicAnimation: { speed: 900 } } },
+                         // Sin animación: con una lectura por segundo, la de entrada (la línea
+                         // que crece desde cero) se veía como un pico falso.
+                         animations: { enabled: false } },
                 colors: [color], stroke: { curve: 'smooth', width: 2.5 }, dataLabels: { enabled: false },
                 grid: { borderColor: '#e9ecef', strokeDashArray: 3 },
                 xaxis: { type: 'datetime', range: VIVO_PUNTOS * 1000, labels: { datetimeUTC: false, format: 'HH:mm:ss', style: { colors: GRIS } } },
@@ -353,11 +397,14 @@
                 legend: { show: false },
                 annotations: unidad === '°C' ? { yaxis: [{ y: UMBRAL, borderColor: ROJO, strokeDashArray: 6 }] } : {}
             });
-            c.render();
             return c;
         };
+        // Se dibujan recién cuando el panel se muestra (primera lectura): un
+        // ApexCharts dibujado dentro de un contenedor oculto calcula mal el
+        // ancho y la escala, y la línea quedaba pegada a cero.
         var cTemp = chartVivo('[data-tel-chart="vivo_temp"]', 'Temperatura', AMBAR, '°C');
         var cRam  = chartVivo('[data-tel-chart="vivo_ram"]', 'RAM', AZUL, '%');
+        var vivosDibujados = false;
 
         var estado = function (texto, clase) {
             textoVivo.textContent = texto;
@@ -408,18 +455,22 @@
             vivoActivo = true;
             estado('En vivo', 'is-vivo');
             btnVivo.title = 'Temperatura y RAM actualizadas cada segundo. Clic para pausar.';
-            panelVivo.hidden = false;
             var t = m.ts ? m.ts * 1000 : Date.now();
             if (m.temperatura_soc_celsius !== null && m.temperatura_soc_celsius !== undefined) puntos.temp.push([t, m.temperatura_soc_celsius]);
             if (m.uso_ram_porcentaje !== null && m.uso_ram_porcentaje !== undefined) puntos.ram.push([t, m.uso_ram_porcentaje]);
             puntos.temp = puntos.temp.slice(-VIVO_PUNTOS);
             puntos.ram = puntos.ram.slice(-VIVO_PUNTOS);
-            cTemp.updateSeries([{ name: 'Temperatura', data: puntos.temp }]);
-            cRam.updateSeries([{ name: 'RAM', data: puntos.ram }]);
             var libre = m.espacio_disco_libre_mb !== undefined ? m.espacio_disco_libre_mb / 1024 : null;
             var total = m.espacio_disco_total_mb ? m.espacio_disco_total_mb / 1024 : null;
             indicadores(m.temperatura_soc_celsius, m.uso_ram_porcentaje, libre, total);
             raiz.querySelector('[data-tel-ultima]').textContent = 'En vivo · ' + new Date(t).toLocaleTimeString('es-AR') + '.';
+            // Con un solo punto ApexCharts dibuja una raya vertical desde el
+            // eje: el panel se muestra desde la segunda lectura (1 s después).
+            if (puntos.temp.length < 2 && puntos.ram.length < 2) return;
+            panelVivo.hidden = false;
+            if (!vivosDibujados) { vivosDibujados = true; cTemp.render(); cRam.render(); }
+            cTemp.updateSeries([{ name: 'Temperatura', data: puntos.temp }]);
+            cRam.updateSeries([{ name: 'RAM', data: puntos.ram }]);
         });
         cliente.on('offline', function () { if (!pausado) estado('Reconectando…', 'is-sin-datos'); });
 

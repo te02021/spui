@@ -288,9 +288,9 @@ Para avisos urgentes o de último momento: evacuaciones, incidentes, un cambio d
 
 Se entra con el botón **Telemetría** del listado de reproductores.
 
-- **Indicadores de arriba:** temperatura, RAM y disco en uso, en círculos que se llenan hasta el valor actual (verde o azul, ámbar al acercarse al límite, rojo al pasarlo). El del disco muestra además el espacio libre y el total; el total lo informa el cliente de la Pi desde la versión del 29/10/2026. Debajo de cada uno, el promedio y el máximo del período elegido.
+- **Indicadores de arriba:** temperatura, RAM y disco en uso, en círculos que se llenan hasta el valor actual (verde o azul, ámbar al acercarse al límite, rojo al pasarlo). El del disco cuenta lo **en uso** contra la capacidad total: debajo dice cuántos GB se usan y el total, y el máximo del período sólo si es distinto del actual. La capacidad la informa el cliente de la Pi desde la versión del 29/10/2026; con uno anterior se muestra el espacio libre. Debajo de cada uno, el promedio y el máximo del período elegido.
 - **En vivo:** al abrir la pantalla, el botón **En vivo** se pone verde y temperatura y RAM se actualizan **cada segundo**, con un panel de los últimos 2 minutos. No se guarda: es para mirar en el momento. Clic en el botón para pausarlo. Si dice **Sin datos en vivo**, el reproductor está apagado, desconectado o con una versión vieja del cliente; el resto de la pantalla funciona igual.
-- **Histórico por hora:** tres gráficos con escala fija, que se mueven juntos: temperatura (con la línea roja del umbral), RAM y disco libre. Al pasar el cursor se ve el valor exacto y la hora.
+- **Histórico por hora:** tres gráficos con escala fija, que se mueven juntos: temperatura (con la línea roja del umbral), RAM y disco en uso (con la línea roja de la capacidad). Al pasar el cursor se ve el valor exacto y la hora.
   - **Últimas 24 h / 7 días / 30 días** eligen cuánto se ve a la vez.
   - **Mantener apretado y arrastrar hacia la derecha** muestra las horas anteriores, hasta 60 días atrás; hacia la izquierda se vuelve, hasta el momento actual (no más).
   - Los botones **+ / −** acercan y alejan; la **casita** vuelve al período elegido.
@@ -298,7 +298,7 @@ Se entra con el botón **Telemetría** del listado de reproductores.
   - **Excel:** planilla con filtros y fechas reales (se pueden ordenar y graficar).
   - **CSV:** texto separado por punto y coma, con coma decimal: se abre con doble clic en un Excel en castellano.
   - **PDF:** informe para imprimir o adjuntar, con el resumen del período y el detalle.
-  - Una fila por hora con promedio y máximo de temperatura y RAM, el disco libre mínimo y la cantidad de lecturas. Se conservan los últimos **60 días**; la hora en curso entra recién cuando termina.
+  - Una fila por hora con promedio y máximo de temperatura y RAM, el disco en uso máximo (en GB y %) con la capacidad, y la cantidad de lecturas. Se conservan los últimos **60 días**; la hora en curso entra recién cuando termina.
 
 Los datos se agrupan por hora: con una lectura por minuto, 7 días serían unos 10 000 puntos imposibles de leer.
 

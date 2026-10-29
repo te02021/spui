@@ -91,9 +91,9 @@
             <div class="spui-tel-indicador-titulo">Disco en uso</div>
             <div data-tel-gauge="disco" class="spui-tel-gauge"></div>
             <div class="spui-tel-indicador-pie">
-                <span>Libre <strong data-tel-numero="disco">—</strong></span>
+                <span><span data-tel-disco-etq>En uso</span> <strong data-tel-numero="disco">—</strong></span>
                 <span>Total <strong data-tel-numero="disco_total">—</strong></span>
-                <span>Mínimo libre <strong data-tel-res="disco_min">—</strong></span>
+                <span data-tel-disco-max hidden>Máximo del período <strong>—</strong></span>
             </div>
         </div>
     </div>
@@ -155,7 +155,7 @@
             </div>
             <div class="col-12 col-lg-6">
                 <div class="unraf-card h-100">
-                    <div class="p-3 border-bottom"><strong>Espacio libre en disco (GB, mínimo de cada hora)</strong></div>
+                    <div class="p-3 border-bottom"><strong>{{ reproductor.discoTotalMb ? 'Disco en uso (GB, máximo de cada hora)' : 'Espacio libre en disco (GB, mínimo de cada hora)' }}</strong></div>
                     <div class="p-2 p-md-3"><div data-tel-chart="disco"></div></div>
                 </div>
             </div>
