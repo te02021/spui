@@ -810,4 +810,103 @@ HDMI en pleno funcionamiento — el patrón de un hotplug intermitente, no un ar
 | `/var/log/spui-client.log` | Log del cliente |
 | `/etc/systemd/system/spui.service` | Unit de systemd |
 | `~/.xinitrc` | Qué ejecuta X11 al arrancar |
-| `/etc/hosts` | Mapeo `intranet` → IP del CMS |
+| `/etc/hosts` | Mapeo `intranet` y `spui-broker.unraf.local` → IP del CMS (la de Tailscale, si se usa §16) |
+| `/etc/spui/ca.crt` | Certificado de la CA del broker (MQTT por TLS) |
+| `/opt/spui/remoto/espejo.sh` | Espejo remoto de la pantalla, sólo desarrollo (§16.3) |
+
+---
+
+## 16. Acceso remoto de desarrollo (Tailscale y espejo de pantalla)
+
+**Sólo para desarrollo.** Sirve para seguir trabajando con la Pi cuando está en otro lugar que la PC del CMS (por ejemplo, la Pi en casa y la PC en el trabajo): la Pi sigue sincronizando con el CMS, se entra por SSH y se ve y escucha lo que sale por HDMI. No forma parte del despliegue en el campus.
+
+**Cómo funciona.** Tailscale arma una red privada entre la PC y la Pi por encima de internet. Cada equipo recibe una IP `100.x.y.z` que **no cambia** aunque cambie la red o el DHCP (`<ip_tailscale_del_host>`, `<ip_tailscale_de_la_pi>`, ver `README.md` §4). No hay que abrir puertos en ningún router ni tener IP fija: los dos equipos salen hacia internet, y si una red bloquea el tráfico directo, Tailscale pasa por sus relays por HTTPS (más lento, pero anda).
+
+> ⚠️ **Consultar con sistemas antes de usarlo en una red institucional.** Técnicamente no necesita nada de la red, pero una VPN puede estar fuera de su política.
+>
+> ⚠️ **Las pruebas de la tesis (`10_pruebas.md`) se corren en la red local y con el espejo apagado.** Por Tailscale las latencias incluyen internet, y la captura del espejo usa CPU de la Pi.
+
+### 16.1. Instalar Tailscale (la primera vez, con la Pi y la PC en la misma red)
+
+**En la PC:** instalar Tailscale para Windows desde `https://tailscale.com/download` e iniciar sesión (crea la cuenta la primera vez). Anotar su IP: `tailscale ip -4` → `<ip_tailscale_del_host>`.
+
+**En la Pi** (por SSH, todavía por la red local):
+
+```bash
+curl -fsSL https://tailscale.com/install.sh | sh
+sudo tailscale up
+```
+
+`tailscale up` imprime un enlace: abrirlo en el navegador de la PC con la misma cuenta. Después:
+
+```bash
+tailscale ip -4          # → <ip_tailscale_de_la_pi>
+tailscale ping <ip_tailscale_del_host>
+```
+
+En la consola web de Tailscale (*Machines*), desactivar **Key expiry** en los dos equipos. Si no, cada 180 días piden volver a iniciar sesión, y la Pi sin teclado queda afuera hasta volver.
+
+### 16.2. Apuntar la Pi al CMS por Tailscale
+
+**En la PC**, para que Apache y el firewall acepten a la Pi por su IP de Tailscale:
+
+1. En `httpd-vhosts.conf` (paso 7.b), agregar `Require ip <ip_tailscale_de_la_pi>` y reiniciar los servicios de WAMP.
+2. PowerShell como administrador:
+   ```powershell
+   netsh advfirewall firewall add rule name="SPUI - Apache desde Pi (Tailscale)" dir=in action=allow protocol=TCP localport=80 remoteip=<ip_tailscale_de_la_pi>
+   netsh advfirewall firewall add rule name="SPUI - Mosquitto TLS desde Pi (Tailscale)" dir=in action=allow protocol=TCP localport=8883 remoteip=<ip_tailscale_de_la_pi>
+   ```
+
+**En la Pi**, cambiar la línea del paso 11.1 en `/etc/hosts` por la IP de Tailscale de la PC (una sola línea con los dos nombres; borrar la vieja):
+
+```
+<ip_tailscale_del_host>  intranet spui-broker.unraf.local
+```
+
+```bash
+sudo systemctl restart spui
+curl -s -o /dev/null -w '%{http_code}\n' -X POST http://intranet/api/spui/reproductores/sync   # 401
+journalctl -u spui -n 30 --no-pager | grep -E 'Sync OK|MQTT listener conectado'
+```
+
+El certificado del broker va por nombre, no por IP, así que no hay que reemitirlo. Desde ahí la Pi encuentra al CMS esté la PC donde esté, sin volver a tocar este archivo cuando cambie su IP.
+
+**Desde la PC, en cualquier red:** `ssh <tu_usuario>@<ip_tailscale_de_la_pi>` y `.\deploy.ps1 -PiHost <ip_tailscale_de_la_pi>`.
+
+### 16.3. Espejo de pantalla: ver y escuchar lo que sale por HDMI
+
+`pi-client/remoto/espejo.sh` transmite la pantalla de la Pi (720p, 12 cuadros/s) con su sonido, sólo por Tailscale. **Nunca arranca solo**: se prende y se apaga a mano.
+
+- **Imagen:** captura la pantalla X11 donde dibuja el reproductor (videos, imágenes, textos, alertas, pantalla de espera).
+- **Sonido:** mientras está prendido, el reproductor usa un dispositivo de sonido que copia el audio al HDMI de siempre y a una placa virtual (`snd-aloop`), de donde lo toma la transmisión. El monitor sigue sonando.
+- **No muestra** lo que hace el monitor por su cuenta: apagado por horario (CEC o corte de señal) y brillo por DDC/CI.
+
+Una vez, en la Pi (requiere `SPUI_AOUT_DEVICE` en `spui.env`, §8.6):
+
+```bash
+bash /opt/spui/remoto/espejo.sh instalar
+bash /opt/spui/remoto/espejo.sh probar      # tono de 2 s: tiene que sonar en el monitor
+```
+
+Cada vez que se quiera mirar:
+
+```bash
+bash /opt/spui/remoto/espejo.sh on
+```
+
+En la PC: VLC → *Medio* → *Abrir ubicación de red* → `http://<ip_tailscale_de_la_pi>:8090`. Llega con 1–3 s de demora; es normal.
+
+Para terminar (deja el sonido exactamente como en `spui.env`):
+
+```bash
+bash /opt/spui/remoto/espejo.sh off
+```
+
+`bash /opt/spui/remoto/espejo.sh estado` dice qué está prendido. Los errores de la transmisión quedan en `journalctl -u spui-espejo`.
+
+| Síntoma | Causa probable | Qué hacer |
+|---|---|---|
+| `probar` da error | El dispositivo copiado no abre con este HDMI | `espejo.sh off` deja todo como estaba; pasar la salida de `probar` |
+| Con el espejo prendido, el monitor dejó de sonar | Ídem | `espejo.sh off` y avisar |
+| VLC no abre la dirección | La transmisión no está esperando | `espejo.sh estado` y `journalctl -u spui-espejo -n 30` |
+| Los videos de SPUI se traban con el espejo prendido | Falta de CPU | Apagarlo; con él apagado no hay ninguna carga |

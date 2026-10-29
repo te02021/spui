@@ -427,6 +427,7 @@ Las direcciones IP de este sistema **no son estables**: host del CMS y reproduct
 |---|---|---|
 | `<ip_del_host>` | PC/servidor donde corre el CMS (Apache) y Mosquitto | Windows: `ipconfig` · Linux: `hostname -I` |
 | `<ip_de_la_pi>` | Reproductor Raspberry Pi | En la Pi: `hostname -I` · o escaneo de red |
+| `<ip_tailscale_del_host>` / `<ip_tailscale_de_la_pi>` | IP `100.x.y.z` que Tailscale le da a cada equipo (acceso remoto de desarrollo, `09` §16). No cambia con la red | En cada equipo: `tailscale ip -4` |
 | `<mac_de_la_pi>` | MAC del reproductor (para reservas DHCP) | En la Pi: `ip link show wlan0` / `eth0` |
 | `<tu_usuario>` | Usuario del sistema en la Pi | El definido en el Imager; confirmar con `whoami` |
 | `<nombre_conexion>` | Perfil de NetworkManager | `nmcli -t -f NAME,DEVICE connection show --active` |
