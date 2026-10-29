@@ -271,7 +271,7 @@ Las planillas completas de cada corrida se agregan debajo, con la fecha. La más
 
 **Cambio:** `listener 1883 127.0.0.1` en el broker (`config/mosquitto/mosquitto.conf`, copiado y validado con `--test-config`) y se borraron las reglas de firewall del 1883 (`SPUI - Mosquitto LAN`, `SPUI - Mosquitto desde VM`). Después del reinicio, el broker escucha `0.0.0.0:8883` y `127.0.0.1:1883`.
 
-**Reconexión:** la Pi (versión `c13977b` + C2) volvió a conectar sola a `spui-broker.unraf.local:8883` como `spui-repro-17`, se suscribió a alertas y comandos y publicó su estado online, sin tocar nada.
+**Reconexión:** la Pi (versión `c13977b` + C2) volvió a conectar sola a `spui-broker.unraf.local:8883` como `spui-repro-17`, se suscribió a alertas y comandos y publicó su estado online, sin tocar nada. En el CMS el reproductor siguió Conectado, y una alerta de prueba se mostró y se desactivó en el acto: el CMS publica por 8883 después del reinicio del broker.
 
 **CP09 desde la Pi — ✅ cumple (5 repeticiones, 21:13).**
 
