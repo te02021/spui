@@ -85,14 +85,14 @@ API_KEY = _texto('SPUI_API_KEY', '')   # OBLIGATORIO en producción
 
 # ── MQTT (alertas de emergencia en tiempo real) ───────────────────────────────
 MQTT_HOST  = _texto('MQTT_HOST', '127.0.0.1')
-MQTT_PORT  = _entero('MQTT_PORT', 1883)
 
-# TLS (tarea 1.0.e) — false por defecto: el broker real todavía sirve por
-# 1883 sin cifrar (1.0.d escrito, no desplegado). Para migrar esta Pi cuando
-# el broker ya tenga 8883 activo: MQTT_TLS=true, MQTT_PORT=8883, y
-# MQTT_CA_CERT apuntando al ca.crt copiado desde el CMS (mismo archivo que
-# generar-certificados.ps1 deja en config/mosquitto/certs/ca.crt).
-MQTT_TLS     = _booleano('MQTT_TLS', False)
+# TLS por defecto desde el 28/10/2026 (tarea C2): el broker ya no escucha el
+# 1883 sin cifrar desde la red, así que una Pi sin TLS no recibiría alertas.
+# MQTT_CA_CERT apunta al ca.crt del broker copiado a la Pi (el mismo que
+# generar-certificados.ps1 deja en config/mosquitto/certs/ca.crt); sin él, la
+# Pi no puede validar el certificado propio del broker y no conecta.
+MQTT_TLS     = _booleano('MQTT_TLS', True)
+MQTT_PORT    = _entero('MQTT_PORT', 8883 if MQTT_TLS else 1883)
 MQTT_CA_CERT = _texto('MQTT_CA_CERT', '')
 
 # El broker exige credenciales: sin esto, cualquiera en la red del campus podría

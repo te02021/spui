@@ -118,9 +118,15 @@ SPUI_API_URL=http://TU_SERVIDOR/api/spui
 # API Key del nodo (generada desde el CMS al crear el nodo)
 SPUI_API_KEY=PEGAR_API_KEY_AQUI
 
-# MQTT (mismo host que el CMS generalmente)
-MQTT_HOST=127.0.0.1
-MQTT_PORT=1883
+# MQTT, sólo por TLS: el broker no acepta el 1883 sin cifrar desde la red.
+# MQTT_HOST es el nombre que figura en el certificado del broker (agregarlo
+# al /etc/hosts con la IP del servidor), no una IP: con una IP falla la
+# verificación del certificado. ca.crt se copia del CMS
+# (config/mosquitto/certs/ca.crt), ver docs/09 §11.
+MQTT_HOST=spui-broker.unraf.local
+MQTT_PORT=8883
+MQTT_TLS=true
+MQTT_CA_CERT=/etc/spui/ca.crt
 
 # Salt para la credencial MQTT. TIENE QUE SER IDÉNTICO al SPUI_MQTT_SALT del
 # CMS (está en su .env.local.php): la contraseña con la que este equipo se

@@ -201,10 +201,10 @@ Reiniciar Apache: ícono de WAMP → *Restart All Services*.
 **c) Firewall de Windows** — PowerShell **como administrador**:
 ```powershell
 netsh advfirewall firewall add rule name="SPUI - Apache desde Pi" dir=in action=allow protocol=TCP localport=80 remoteip=<ip_de_la_pi>
-netsh advfirewall firewall add rule name="SPUI - Mosquitto desde Pi" dir=in action=allow protocol=TCP localport=1883 remoteip=<ip_de_la_pi>
+netsh advfirewall firewall add rule name="SPUI - Mosquitto TLS desde Pi" dir=in action=allow protocol=TCP localport=8883 remoteip=<ip_de_la_pi>
 ```
 
-Si la Pi va a conectarse al broker por TLS (`MQTT_TLS=true`, paso 11.2), la regla de Mosquitto va con `localport=8883`.
+El broker sólo acepta la red por 8883 con TLS: el 1883 escucha únicamente en el propio servidor (desde el 28/10/2026, `config/mosquitto/mosquitto.conf`). Una regla para el 1883 no sirve de nada.
 
 **d) Verificá desde la Pi** (por SSH):
 ```bash
@@ -560,10 +560,26 @@ El script:
 La IP del host cambia (DHCP). Para no tener que editar la config cada vez, mapear un nombre en la Pi:
 
 ```bash
-echo "<ip_del_host>  intranet" | sudo tee -a /etc/hosts
+echo "<ip_del_host>  intranet spui-broker.unraf.local" | sudo tee -a /etc/hosts
 ```
 
 Así `SPUI_API_URL` apunta a `intranet` y cuando la IP del host cambie solo hay que corregir esta línea. (Lo definitivo en producción es un nombre DNS real — ver `08_pendientes_vm.md` §4.)
+
+`spui-broker.unraf.local` es el nombre que figura en el certificado del broker. La Pi se conecta al broker por ese nombre y no por la IP: con la IP, la verificación del certificado falla y no hay alertas.
+
+**Copiar el certificado de la CA del broker** (desde la PC, en la carpeta de la app):
+
+```powershell
+scp config\mosquitto\certs\ca.crt <usuario>@<ip_de_la_pi>:/tmp/ca.crt
+```
+
+Y en la Pi:
+
+```bash
+sudo mv /tmp/ca.crt /etc/spui/ca.crt && sudo chmod 644 /etc/spui/ca.crt
+```
+
+> Sólo `ca.crt`. `ca.key` y `server.key` no salen nunca del servidor.
 
 ### 11.2. Editar el archivo de entorno
 
@@ -578,18 +594,20 @@ Valores a completar:
 ```
 SPUI_API_URL=http://intranet/api/spui
 SPUI_API_KEY=<la API key copiada en el paso 9>
-MQTT_HOST=<ip_del_host>
-MQTT_PORT=1883
+MQTT_HOST=spui-broker.unraf.local
+MQTT_PORT=8883
+MQTT_TLS=true
+MQTT_CA_CERT=/etc/spui/ca.crt
 SPUI_MQTT_SALT=<el mismo SPUI_MQTT_SALT que tiene el CMS>
 ```
 
 > ⚠️ **`SPUI_API_URL` termina en `/api/spui`, sin `/reproductores`** — el cliente concatena el resto solo (`sync.py`).
 >
-> ⚠️ **`MQTT_HOST` es la IP del servidor donde corre Mosquitto**, no `127.0.0.1`. El default `127.0.0.1` apuntaría a la propia Pi, donde no hay broker.
+> ⚠️ **`MQTT_HOST` es el nombre del broker que se agregó al `/etc/hosts` en el paso 11.1**, no `127.0.0.1` ni la IP. El default `127.0.0.1` apuntaría a la propia Pi, donde no hay broker, y una IP no coincide con el certificado.
 >
 > ⚠️ **`SPUI_MQTT_SALT` tiene que ser idéntico al del CMS.** El broker no acepta conexiones anónimas: el usuario de la Pi es `spui-repro-<id>` y su contraseña se calcula sola a partir de la API key y este salt, así que no hay usuario ni contraseña MQTT para cargar a mano. Con el salt mal copiado, el broker la rechaza y la Pi sigue sincronizando por HTTP, pero **sin alertas instantáneas ni telemetría**. El valor lo tiene quien administra el CMS (está en su `.env.local.php`).
 >
-> 🔒 **Para conectarse por TLS** (puerto 8883): `MQTT_TLS=true`, `MQTT_PORT=8883` y `MQTT_CA_CERT` apuntando al `ca.crt` del broker copiado a la Pi (`config/mosquitto/certs/ca.crt` en el repo — ver `config/mosquitto/README.md`). Sin estas tres, la Pi usa 1883 sin cifrar.
+> 🔒 **MQTT va sólo por TLS** (puerto 8883). `MQTT_CA_CERT` es el `ca.crt` copiado en el paso 11.1. Si falta o no coincide con el del broker, la Pi sincroniza por HTTP pero no recibe alertas instantáneas. El 1883 sin cifrar no es una alternativa: el broker no lo escucha desde la red.
 >
 > 🔊 **Para que se escuchen las alertas sonoras** hace falta agregar acá `SPUI_AOUT_DEVICE` — ver §8.6, es un paso aparte porque necesita el TV ya conectado para identificar el dispositivo correcto.
 
@@ -685,7 +703,7 @@ Confirmá que todo levanta solo: autologin → X11 → Openbox → servicio spui
 | Sync OK, log dice **`VLC listo`** pero la pantalla sigue negra **con el monitor encendido/con señal** | VLC eligió una salida de vídeo que no dibuja | Ver §14.1 |
 | El monitor se queda **sin señal y entra en standby solo** (no es "negra con señal") | El driver de video no reactivó la salida después de una desconexión HDMI momentánea (cable/conversor flojo) | Ver §14.2 |
 | Reproductor **conectado** pero telemetría vacía | `spui:mqtt:subscribe` no está corriendo, o la Pi no logra autenticarse en el broker | Paso 12. Si el log de la Pi dice `Not authorized`: `SPUI_MQTT_SALT` distinto al del CMS (paso 11.2) |
-| Alertas no llegan al instante (sí en el próximo sync) | Sin conexión MQTT desde la Pi | Verificar `MQTT_HOST` (no `127.0.0.1`), `SPUI_MQTT_SALT` (paso 11.2) y la regla de firewall del puerto 1883 (u 8883 con TLS) |
+| Alertas no llegan al instante (sí en el próximo sync) | Sin conexión MQTT desde la Pi | Verificar `MQTT_HOST` (`spui-broker.unraf.local` en el `/etc/hosts`, no `127.0.0.1`), `/etc/spui/ca.crt`, `SPUI_MQTT_SALT` (paso 11.2) y la regla de firewall del puerto 8883 |
 | `Not authorized` / `Connection refused` en el log de MQTT | El broker rechaza las credenciales: salt distinto, o el usuario `spui-repro-<id>` no existe en el broker | Corregir `SPUI_MQTT_SALT`; si el salt está bien, regenerar la clave del reproductor desde el CMS (recrea su usuario MQTT). Detalle en `config/mosquitto/README.md`, *Diagnóstico* |
 | Dejó de sincronizar sin haber tocado nada | La IP del host cambió (DHCP) | Actualizar la línea de `/etc/hosts` (paso 11.1) y las reglas del paso 7 |
 | Pantalla en negro con servicio `active (running)` | Ahorro de energía HDMI | Verificar que `~/.xinitrc` tenga `xset -dpms` y `xset s off` |

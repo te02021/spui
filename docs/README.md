@@ -88,7 +88,7 @@ Verificados contra código. Si algo "deja de andar", empezar por acá.
 
 6. **Rate limiting activo:** 4 sync/min y 3 heartbeat/min por reproductor (`config/packages/rate_limiter.yaml`). Al hacer pruebas manuales con `curl` es fácil comerse un 429.
 
-7. **La config de Mosquitto se pierde al reinstalar.** La que vale es la versionada en `config/mosquitto/mosquitto.conf` (listeners 1883, 8883 con TLS y 9001 WebSocket, `allow_anonymous false`, plugin Dynamic Security); la copia del directorio de instalación es descartable. Ya pasó dos veces — procedimiento en `config/mosquitto/README.md`, sección *Recuperación ante reinstalación de Mosquitto*.
+7. **La config de Mosquitto se pierde al reinstalar.** La que vale es la versionada en `config/mosquitto/mosquitto.conf` (listeners 1883 sólo local, 8883 con TLS para la red y 9001 WebSocket, `allow_anonymous false`, plugin Dynamic Security); la copia del directorio de instalación es descartable. Ya pasó dos veces — procedimiento en `config/mosquitto/README.md`, sección *Recuperación ante reinstalación de Mosquitto*.
 
 8. **El player necesita entorno gráfico.** `python-vlc` no puede renderizar sobre Raspberry Pi OS Lite pelado; si no hay X11 activo, entra en modo simulación y loguea lo que reproduciría.
 

@@ -18,7 +18,7 @@ Las pruebas de carga (CP11, CP12) las corre el simulador de `tools/simulador/` y
 | CP06 | Resincronización tras el corte, < 60 s | No | ✅ Cumple (3 de 3: 0,8–38,6 s) |
 | CP07 | Descarga interrumpida o archivo alterado no entra a caché | No | ✅ Cumple (descarga 2 de 2, alterado 3 de 3) |
 | CP08 | Desconexión abrupta visible en el panel | No | ✅ Cumple (6 de 6: 113–155 s) |
-| CP09 | Solicitud o mensaje sin credenciales, rechazado | No | ✅ Cumple desde la Pi (25/10/2026, 5 repeticiones) |
+| CP09 | Solicitud o mensaje sin credenciales, rechazado | No | ✅ Cumple desde la Pi (25/10/2026, y otra vez el 28/10 con el 1883 cerrado; 5 repeticiones) |
 | CP10 | Encendido y apagado programado | **Sí** | ✅ Monitor Philips: apagado, encendido y brillo real al 30 % (28/10/2026); falta el Smart TV |
 | CP11 | Carga con 50 simulados: error < 1 %, API < 500 ms (p95) | No | ✅ Cumple (13/10/2026, entorno de desarrollo) |
 | CP12 | Alerta simultánea a 100 simulados, < 5 s | No | ✅ Cumple (13/10 y 15/10/2026, entorno de desarrollo) |
@@ -233,7 +233,7 @@ No se usa matar el proceso: el servicio tiene `Restart=always`, y systemd lo lev
 | API con clave inventada | 401 |
 | Media sin clave | 401 |
 | MQTT anónimo en el puerto configurado (8883 con TLS) | Rechazado |
-| MQTT anónimo en el 1883 sin TLS (mientras siga abierto, hasta C2) | Rechazado |
+| Puerto 1883 sin TLS desde la red (cerrado desde C2, 28/10/2026) | Cerrado (conexión rechazada) |
 | MQTT con el usuario del reproductor y una clave incorrecta | Rechazado |
 | El reproductor publica en `spui/alertas/emergencia` con sus credenciales reales | No llega: un suscriptor no la recibe |
 
@@ -266,6 +266,26 @@ Cuestionario SUS estándar (10 ítems, escala 1–5) a operadores del CMS despu�
 ## 4. Registro de corridas
 
 Las planillas completas de cada corrida se agregan debajo, con la fecha. La más reciente va primero.
+
+### 28/10/2026 — C2: el 1883 sin TLS cerrado a la red
+
+**Cambio:** `listener 1883 127.0.0.1` en el broker (`config/mosquitto/mosquitto.conf`, copiado y validado con `--test-config`) y se borraron las reglas de firewall del 1883 (`SPUI - Mosquitto LAN`, `SPUI - Mosquitto desde VM`). Después del reinicio, el broker escucha `0.0.0.0:8883` y `127.0.0.1:1883`.
+
+**Reconexión:** la Pi (versión `c13977b` + C2) volvió a conectar sola a `spui-broker.unraf.local:8883` como `spui-repro-17`, se suscribió a alertas y comandos y publicó su estado online, sin tocar nada.
+
+**CP09 desde la Pi — ✅ cumple (5 repeticiones, 21:13).**
+
+| Vector | Esperado | Rep. 1–5 | ¿Cumple? |
+|---|---|---|---|
+| API sin clave | 401 | 401 ×5 | ✅ |
+| API con clave inválida | 401 | 401 ×5 | ✅ |
+| Media sin clave | 401 | 401 ×5 | ✅ |
+| MQTT anónimo, puerto 8883 | rechazado | rechazado ×5 | ✅ |
+| Puerto 1883 sin TLS desde la red | cerrado | sin respuesta (timeout) ×5 | ✅ |
+| MQTT con clave incorrecta | rechazado | rechazado ×5 | ✅ |
+| Reproductor publica una alerta | no llegó | no llegó ×5 | ✅ |
+
+El script de esa corrida marcó ❌ el vector del 1883 porque sólo aceptaba "conexión rechazada". Sin regla para ese puerto, el firewall de Windows descarta el paquete en silencio, así que la Pi ve un timeout: el puerto igual es inalcanzable desde la red. Desde entonces `cp09.py` cuenta las dos respuestas como cerrado.
 
 ### 28/10/2026 — Tanda 3, con el monitor Philips (DDC/CI, sin CEC)
 
@@ -423,6 +443,6 @@ En la repetición 3, el primer uso de la caché (+5,8 s) y la resincronización 
 
 **Resultados:**
 - **Tests del cliente en la Pi:** 54 de 54 OK.
-- **Puerto MQTT de la Pi:** 8883 con TLS (`MQTT_TLS=true`), host `spui-broker.unraf.local`. La parte de la Pi de C2 ya está hecha; falta cerrar el 1883 en el broker.
+- **Puerto MQTT de la Pi:** 8883 con TLS (`MQTT_TLS=true`), host `spui-broker.unraf.local`. La parte de la Pi de C2 ya está hecha; el 1883 se cerró en el broker el 28/10.
 - **CP09 (API):** no se pudo ejecutar. Los 15 pedidos dieron `000`, sin conexión. La Pi hacía ping al CMS, pero el puerto 80 no respondía ni pidiendo por IP. La causa estaba en el host: ESET manejaba el firewall e ignoraba las reglas de Windows (`docs/README.md` §3, hecho 18). Se desinstaló ESET el 21/10. **Repetir CP09.**
 - **Observación, no cuenta como corrida de CP05:** con el CMS inaccesible, el reproductor siguió funcionando con la caché del 10/10, sin caerse, y reintentó solo. Los reintentos salieron cada 33,0 s fijos: 30 s más ~3 s del chequeo de red. Es el código anterior al jitter: el servicio seguía con el PID del arranque (773) y no se había reiniciado después del deploy, aunque el código nuevo ya estaba en disco y sus tests pasaban (hecho 19). Desde el 21/10, `deploy.ps1` comprueba el reinicio y falla si no ocurrió, y el log de arranque muestra la versión desplegada. Al repetir CP05 hay que ver intervalos variables entre ~23 y ~43 s.

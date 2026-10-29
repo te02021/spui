@@ -21,6 +21,7 @@ llega a las pantallas es un mensaje sin retain que el cliente descarta como
 import argparse
 import os
 import secrets
+import socket
 import sys
 import threading
 import time
@@ -118,6 +119,22 @@ def _cerrar(cliente) -> None:
         cliente.loop_stop()
 
 
+def puerto_cerrado(puerto: int) -> str:
+    """Desde C2 (28/10/2026) el 1883 sin TLS sólo escucha en el propio broker.
+
+    Cuenta como cerrado tanto el rechazo (nadie escucha) como el silencio (el
+    firewall descarta el paquete, que es lo que hace Windows sin una regla
+    para ese puerto): en los dos casos un cliente de la red no llega.
+    """
+    try:
+        with socket.create_connection((config.MQTT_HOST, puerto), timeout=ESPERA_CONEXION):
+            return 'abierto'
+    except (ConnectionRefusedError, TimeoutError, socket.timeout):
+        return 'cerrado'
+    except OSError as exc:
+        return f'error de red ({type(exc).__name__})'
+
+
 def mqtt_anonimo(puerto: int, tls: bool) -> str:
     cliente, resultado = _conectar(puerto, tls, None, None)
     _cerrar(cliente)
@@ -200,9 +217,8 @@ def main() -> int:
     filas.append((f'MQTT anónimo, puerto {config.MQTT_PORT}', 'rechazado',
                   [mqtt_anonimo(config.MQTT_PORT, config.MQTT_TLS) for _ in range(n)]))
     if config.MQTT_PORT != 1883:
-        # El 1883 sin TLS sigue abierto hasta C2: se prueba que tampoco acepte anónimos.
-        filas.append(('MQTT anónimo, puerto 1883 sin TLS', 'rechazado',
-                      [mqtt_anonimo(1883, False) for _ in range(n)]))
+        filas.append(('Puerto 1883 sin TLS desde la red', 'cerrado',
+                      [puerto_cerrado(1883) for _ in range(n)]))
     if usuario:
         filas.append(('MQTT con clave incorrecta', 'rechazado',
                       [mqtt_clave_incorrecta(usuario) for _ in range(n)]))

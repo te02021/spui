@@ -1,9 +1,9 @@
 parameters:
     # TLS para las conexiones MQTT del CMS al broker (tarea 1.0.e).
-    # false por defecto a propósito: el certificado (1.0.c) y el listener
-    # 8883 (1.0.d) están escritos pero el broker real todavía sirve por 1883
-    # sin cifrar. Activar esto antes de desplegar el listener dejaría al CMS
-    # sin poder conectar. Para activarlo: MQTT_TLS=true y MQTT_PORT=8883.
+    # false por defecto porque el 1883 sin cifrar sigue abierto en 127.0.0.1:
+    # un CMS en el mismo equipo que el broker conecta igual. Desde otro
+    # equipo (la VM con el broker aparte) hacen falta MQTT_TLS=true y
+    # MQTT_PORT=8883, que es lo que ya usa esta instalación.
     spui_mqtt_tls_default: false
 
     # Ruta al certificado de la CA propia (certs/ca.crt), para validar el
