@@ -126,8 +126,8 @@ El cliente Python corre como servicio (`systemd`) y levanta cuatro hilos:
 |---|---|---|
 | principal | El intervalo del reproductor (5 min por defecto, se configura en el CMS en minutos y llega en el sync como `proxima_sync_seg`), o al instante si llega un `sync_ahora` (al guardar algo en el CMS o con el botón **Sincronizar**) | Pide `/sync`, guarda en caché, descarga archivos, decide qué reproducir. El CMS registra la hora de cada sync (`reproductor.ultimo_sync`) |
 | heartbeat | 60 s | Avisa por HTTP que sigue vivo |
-| telemetría | 60 s | Publica temperatura, RAM y disco por MQTT |
-| MQTT listener | — | Escucha alertas y el comando `sync_ahora`; reacciona al instante. Publica además el estado de conexión (`online` al conectar, `offline` por LWT si se cae) |
+| telemetría | 60 s (1 s en vivo) | Publica temperatura, RAM y disco por MQTT. Con el comando `telemetria_vivo`, además temperatura y RAM cada 1 s en `spui/telemetria/vivo/{id}`, sin guardar |
+| MQTT listener | — | Escucha alertas y los comandos `sync_ahora` y `telemetria_vivo`; reacciona al instante. Publica además el estado de conexión (`online` al conectar, `offline` por LWT si se cae) |
 
 El usuario MQTT de cada Pi es `spui-repro-{id}` (el id llega en el primer sync) y su contraseña se **deriva** de la API key y de `SPUI_MQTT_SALT`, que tiene que ser idéntico en la Pi y en el CMS. Por eso regenerar la API key renueva también la credencial del broker, y un salt distinto deja a la Pi sin alertas instantáneas aunque el sync por HTTP siga andando.
 
@@ -291,8 +291,11 @@ Contra los 12 casos de uso definidos en `02_casos_de_uso.md`:
 **El QR se guarda como archivo PNG, no se genera al vuelo.**
 Así viaja por la misma tubería que una imagen (descarga, verificación por hash, caché offline) y se sigue viendo con la red caída. El PNG codifica la URL de redirect del CMS, no el destino final: por eso se pueden contar los escaneos y cambiar el destino sin reimprimir nada.
 
-**Los gráficos de telemetría son SVG hecho a mano, sin librería.**
-La red del campus puede no tener salida a internet. Una dependencia por CDN dejaría la pantalla vacía justo cuando se la quiere mostrar.
+**Los gráficos de telemetría son de ApexCharts, copiado dentro del repo** (`assets/spui/vendor/apexcharts/`, v3.54.1, licencia MIT), no por CDN: la red del campus puede no tener salida a internet, y una dependencia externa dejaría la pantalla vacía justo cuando se la quiere mostrar. Hasta el 29/10/2026 eran SVG hechos a mano; se veían estirados y sin valores al pasar el cursor.
+
+**Telemetría en vivo, a pedido.** Mientras alguien tiene abierta la telemetría de un reproductor, la página le pide al CMS (`POST /spui/reproductores/{id}/telemetria/vivo`) que publique el comando `{"accion":"telemetria_vivo","segundos":120}` en `spui/comandos/reproductor/{id}`, y lo renueva cada 60 s. La Pi publica temperatura y RAM cada 1 s en `spui/telemetria/vivo/{id}` (`pi-client/spui/telemetria.py`), además de la telemetría normal de cada minuto. Ese topic tiene un nivel más que `spui/telemetria/+`, así que el daemon no lo guarda: llega directo al navegador, que lo lee con el usuario de sólo lectura `spui-cms-web`. Con la pestaña oculta o cerrada no se renueva y la Pi vuelve sola a cada minuto a los 2 min como mucho (tope de la Pi: 5 min aunque se pida más).
+
+**El detalle por hora se conserva 60 días** (`MantenimientoService::RETENCION_HORA_DIAS`; antes no se borraba nunca) y se exporta a Excel con un rango de fechas (`/telemetria/exportar`, `XlsxSimpleService`: un .xlsx escrito a mano porque el monorepo no tiene PhpSpreadsheet).
 
 **Temperatura y RAM van en gráficos separados.**
 Son escalas distintas (°C y %). Un eje doble haría que dos series se vean comparables sin serlo.

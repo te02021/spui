@@ -81,6 +81,46 @@ class TelemetriaHoraRepository extends ServiceEntityRepository
      * Devuelve null si la tabla está vacía, caso en que el comando hace el
      * backfill completo desde la lectura cruda más antigua.
      */
+    /** Retención del detalle por hora (MantenimientoService::RETENCION_HORA_DIAS). */
+    public function purgarAnterioresA(DateTimeImmutable $fecha): int
+    {
+        return $this->createQueryBuilder('th')
+            ->delete()
+            ->where('th.hora < :fecha')
+            ->setParameter('fecha', $fecha)
+            ->getQuery()
+            ->execute();
+    }
+
+    /**
+     * Detalle por hora entre dos fechas, para exportar.
+     *
+     * @return array<int, array{hora:DateTimeImmutable, temp_prom:float, temp_max:float, ram_prom:float, ram_max:float, disco_min:int, lecturas:int}>
+     */
+    public function findEntre(Reproductor $reproductor, DateTimeImmutable $desde, DateTimeImmutable $hasta): array
+    {
+        $filas = $this->createQueryBuilder('th')
+            ->where('th.reproductor = :reproductor')
+            ->andWhere('th.hora >= :desde')
+            ->andWhere('th.hora < :hasta')
+            ->setParameter('reproductor', $reproductor)
+            ->setParameter('desde', $desde)
+            ->setParameter('hasta', $hasta)
+            ->orderBy('th.hora', 'ASC')
+            ->getQuery()
+            ->getResult();
+
+        return array_map(static fn(TelemetriaHora $th) => [
+            'hora'      => $th->getHora(),
+            'temp_prom' => round($th->getTempProm(), 1),
+            'temp_max'  => round($th->getTempMax(), 1),
+            'ram_prom'  => round($th->getRamProm(), 1),
+            'ram_max'   => round($th->getRamMax(), 1),
+            'disco_min' => $th->getDiscoMin(),
+            'lecturas'  => $th->getLecturas(),
+        ], $filas);
+    }
+
     public function ultimaHoraAgregada(): ?DateTimeImmutable
     {
         $valor = $this->createQueryBuilder('th')

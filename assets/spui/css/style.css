@@ -1922,3 +1922,81 @@ textarea.is-invalid,
     color: #6c757d;
     min-width: 4.6rem;
 }
+
+/* ----- Telemetría de un reproductor (reproductores/telemetria.html.twig) ----- */
+.spui-tel-indicador {
+    padding: 1rem 1rem .9rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+}
+.spui-tel-indicador-titulo {
+    font-weight: 600;
+    color: var(--unraf-azul);
+    font-size: .95rem;
+}
+.spui-tel-gauge { width: 100%; max-width: 260px; margin: -.5rem auto -.4rem; }
+.spui-tel-numero {
+    flex-grow: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 170px;
+    font-size: 2.6rem;
+    font-weight: 700;
+    color: #2b3a4a;
+}
+.spui-tel-numero small { font-size: 1.1rem; font-weight: 600; color: #6c757d; margin-left: .3rem; }
+.spui-tel-indicador-pie {
+    display: flex;
+    gap: 1.2rem;
+    justify-content: center;
+    flex-wrap: wrap;
+    font-size: .85rem;
+    color: #6c757d;
+}
+.spui-tel-indicador-pie strong { color: #2b3a4a; }
+
+/* Botón "En vivo": punto que late mientras llegan datos. */
+.spui-tel-vivo {
+    display: inline-flex;
+    align-items: center;
+    gap: .45rem;
+    border: 1px solid #ced4da;
+    background: #fff;
+    color: #495057;
+    border-radius: 999px;
+    padding: .3rem .8rem;
+    font-size: .85rem;
+    font-weight: 600;
+}
+.spui-tel-vivo-punto { width: .6rem; height: .6rem; border-radius: 50%; background: #adb5bd; }
+.spui-tel-vivo.is-vivo { border-color: #4A9930; color: #2f6d1c; }
+.spui-tel-vivo.is-vivo .spui-tel-vivo-punto { background: #4A9930; animation: spui-tel-latido 1.4s ease-out infinite; }
+.spui-tel-vivo.is-sin-datos { border-color: #C77F0A; color: #8a5806; }
+.spui-tel-vivo.is-sin-datos .spui-tel-vivo-punto { background: #C77F0A; }
+.spui-tel-vivo.is-pausado .spui-tel-vivo-punto { background: #adb5bd; }
+.spui-tel-vivo:disabled { opacity: .7; cursor: default; }
+@keyframes spui-tel-latido {
+    0%   { box-shadow: 0 0 0 0 rgba(74, 153, 48, .55); }
+    100% { box-shadow: 0 0 0 .55rem rgba(74, 153, 48, 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+    .spui-tel-vivo.is-vivo .spui-tel-vivo-punto { animation: none; }
+}
+
+/* Carga al cambiar de rango: velo sobre los gráficos mientras llegan los datos. */
+.spui-tel-historico { position: relative; }
+.spui-tel-historico.is-cargando [data-tel-graficos] { opacity: .35; transition: opacity .25s; }
+.spui-tel-cargando {
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding-top: 6rem;
+    color: var(--unraf-azul);
+}
+.spui-tel-cargando[hidden] { display: none; }

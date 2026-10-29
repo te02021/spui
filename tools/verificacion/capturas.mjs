@@ -62,7 +62,18 @@ const PANTALLAS = [
     ['playlists', '/spui/playlists'],
     ['programacion', '/spui/programacion'],
     ['alertas', '/spui/alertas'],
+    // La telemetría es por reproductor: la ruta sale del primer botón
+    // "Telemetría" del listado (ver resolverRuta).
+    ['telemetria', '@.spui-btn-telemetria'],
 ];
+
+/** Una ruta que empieza con @ es el href del primer elemento con ese selector en Reproductores. */
+async function resolverRuta(page, ruta) {
+    if (!ruta.startsWith('@')) return ruta;
+    await page.goto(BASE + '/spui/reproductores', { waitUntil: 'load' });
+    const href = await page.locator(ruta.slice(1)).first().getAttribute('href').catch(() => null);
+    return href ? new URL(href, BASE).pathname + new URL(href, BASE).search : null;
+}
 const VISTAS = [
     { nombre: 'escritorio', viewport: { width: 1366, height: 768 } },
     { nombre: 'celular', viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 },
@@ -283,7 +294,9 @@ for (const v of VISTAS) {
         // Un error inesperado en una pantalla queda como falla y el recorrido
         // sigue con las demás: antes podía cortar todo el script sin decir dónde.
         try {
-            const resp = await page.goto(BASE + ruta, { waitUntil: 'load' });
+            const destino = await resolverRuta(page, ruta);
+            if (destino === null) { aviso('no hay ningún reproductor para recorrer esta pantalla'); continue; }
+            const resp = await page.goto(BASE + destino, { waitUntil: 'load' });
             if (resp && resp.url().includes('unraf.edu.ar')) { falla('redirigió al login: la sesión de prueba no sirvió'); break; }
             await page.waitForTimeout(800);
             await revisarDom(page, null, !!v.isMobile);

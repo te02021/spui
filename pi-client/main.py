@@ -243,20 +243,11 @@ def main() -> None:
         _pedido_sync.set()
         _despertar.set()
 
-    mqtt = MqttListener(
-        host=config.MQTT_HOST,
-        port=config.MQTT_PORT,
-        on_alerta=alerta_y_despertar,
-        on_desactivar=desactivar_alerta_y_despertar,
-        on_sync_ahora=sync_ahora,
-    )
-    reproduccion.start()
-    mqtt.start()
-
     # sync_client habilita el respaldo por HTTP: si el broker se cae o nadie
     # está ingiriendo los mensajes, la telemetría igual llega al CMS.
     # network_monitor reusa el mismo NetworkMonitor de más arriba para medir
     # latencia_red_ms — no tiene sentido armar una segunda conexión de prueba.
+    # Se crea antes que el listener MQTT, que le pasa el comando 'telemetria_vivo'.
     telemetria = TelemetriaPublisher(
         config.MQTT_HOST,
         config.MQTT_PORT,
@@ -264,6 +255,17 @@ def main() -> None:
         sync_client=sync,
         network_monitor=network,
     )
+
+    mqtt = MqttListener(
+        host=config.MQTT_HOST,
+        port=config.MQTT_PORT,
+        on_alerta=alerta_y_despertar,
+        on_desactivar=desactivar_alerta_y_despertar,
+        on_sync_ahora=sync_ahora,
+        on_telemetria_vivo=lambda payload: telemetria.vivo(payload.get('segundos')),
+    )
+    reproduccion.start()
+    mqtt.start()
     telemetria.start()
 
     logger.info('SPUI Client iniciado (versión %s). API: %s', config.VERSION, config.API_URL)

@@ -51,13 +51,18 @@ final class MqttSecurityService
     /**
      * Usuario y rol del navegador: el panel del CMS suscrito a spui/qr/# para
      * ver los escaneos en vivo, y a spui/cms/conexion/# para destrabar los
-     * botones de los listados cuando un reproductor vuelve. Es el único
-     * cliente MQTT cuyas credenciales viajan al navegador, así que su rol es
-     * de SÓLO LECTURA y sólo sobre esos dos topics — quien las tome de la
-     * página no puede publicar nada ni leer alertas, comandos ni telemetría.
+     * botones de los listados cuando un reproductor vuelve, y a
+     * spui/telemetria/vivo/# para la telemetría en vivo. Es el único cliente
+     * MQTT cuyas credenciales viajan al navegador, así que su rol es de SÓLO
+     * LECTURA y sólo sobre esos tres topics — quien las tome de la página no
+     * puede publicar nada ni leer alertas, comandos ni la telemetría que se
+     * guarda (spui/telemetria/{id}).
      */
     public const USUARIO_WEB = 'spui-cms-web';
     public const ROL_WEB     = 'spui-cms-web';
+
+    /** Telemetría en vivo: la Pi publica en spui/telemetria/vivo/{id} (ver pi-client/spui/telemetria.py). */
+    public const TOPIC_TELEMETRIA_VIVO = 'spui/telemetria/vivo/';
 
     /**
      * Puerto del listener WebSocket del broker (ver config/mosquitto/
@@ -252,10 +257,11 @@ final class MqttSecurityService
      */
     public function asegurarClienteWeb(): bool
     {
-        // La clave lleva versión: al sumar permisos (v2: avisos de conexión),
-        // cambiarla fuerza a rehacer el alta en el próximo pedido en vez de
-        // esperar a que venza la que quedó cacheada con los permisos viejos.
-        return $this->cache->get('spui.mqtt.cliente_web.v2', function (ItemInterface $item): bool {
+        // La clave lleva versión: al sumar permisos (v2: avisos de conexión;
+        // v3: telemetría en vivo), cambiarla fuerza a rehacer el alta en el
+        // próximo pedido en vez de esperar a que venza la que quedó cacheada
+        // con los permisos viejos.
+        return $this->cache->get('spui.mqtt.cliente_web.v3', function (ItemInterface $item): bool {
             $comandos = [
                 ['command' => 'createRole', 'rolename' => self::ROL_WEB],
                 [
@@ -325,6 +331,25 @@ final class MqttSecurityService
                     'rolename' => self::ROL_CMS,
                     'acltype'  => 'publishClientSend',
                     'topic'    => ConexionPublisherService::TOPIC_PATRON,
+                    'priority' => -1,
+                    'allow'    => true,
+                ],
+                // Telemetría en vivo (la publica la propia Pi, cada 1 s, sólo
+                // mientras alguien mira la pantalla de telemetría): temperatura
+                // y RAM, lo mismo que ya muestra esa pantalla.
+                [
+                    'command'  => 'addRoleACL',
+                    'rolename' => self::ROL_WEB,
+                    'acltype'  => 'subscribePattern',
+                    'topic'    => self::TOPIC_TELEMETRIA_VIVO . '#',
+                    'priority' => -1,
+                    'allow'    => true,
+                ],
+                [
+                    'command'  => 'addRoleACL',
+                    'rolename' => self::ROL_WEB,
+                    'acltype'  => 'publishClientReceive',
+                    'topic'    => self::TOPIC_TELEMETRIA_VIVO . '#',
                     'priority' => -1,
                     'allow'    => true,
                 ],

@@ -13,9 +13,13 @@ use SPUI\Repository\TelemetriaHoraRepository;
 use SPUI\Repository\TelemetriaRepository;
 use SPUI\Service\AlcanceReproductorService;
 use SPUI\Service\ComandoPublisherService;
+use SPUI\Service\MantenimientoService;
 use SPUI\Service\MqttSecurityService;
+use SPUI\Service\XlsxSimpleService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
+use Symfony\Component\HttpFoundation\HeaderUtils;
+use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
@@ -28,6 +32,9 @@ class ReproductorCmsController extends AbstractController
 
     /** Rangos ofrecidos en el detalle de telemetría: etiqueta => horas hacia atrás. */
     private const RANGOS = ['24h' => 24, '7d' => 168, '30d' => 720];
+
+    /** Cuánto dura cada pedido de telemetría en vivo; la página lo renueva a la mitad. */
+    private const VIVO_SEG = 120;
 
     public function __construct(
         private readonly ReproductorRepository $repo,
@@ -73,6 +80,122 @@ class ReproductorCmsController extends AbstractController
         if (!isset(self::RANGOS[$rango])) {
             $rango = '24h';
         }
+
+        return $this->render('@SPUI/reproductores/telemetria.html.twig', [
+            'reproductor'   => $reproductor,
+            'datos'         => $this->datosTelemetria($reproductor, $rango),
+            'rango'         => $rango,
+            'rangos'        => array_keys(self::RANGOS),
+            'temp_umbral'   => $this->tempAlertaCelsius,
+            'topic_vivo'    => MqttSecurityService::TOPIC_TELEMETRIA_VIVO . $reproductor->getId(),
+            'vivo_seg'      => self::VIVO_SEG,
+            'export_dias'   => MantenimientoService::RETENCION_HORA_DIAS,
+        ]);
+    }
+
+    /**
+     * Los mismos datos que la página, para cambiar de rango sin recargarla
+     * (los gráficos se redibujan con animación) y para el botón Actualizar.
+     */
+    #[Route('/{id}/telemetria/datos', name: 'spui_cms_reproductores_telemetria_datos', methods: ['GET'], requirements: ['id' => '\d+'])]
+    public function telemetriaDatos(int $id, Request $request): JsonResponse
+    {
+        $reproductor = $this->repo->find($id);
+        if (!$reproductor) { throw $this->createNotFoundException(); }
+
+        $rango = $request->query->getString('rango', '24h');
+        if (!isset(self::RANGOS[$rango])) {
+            $rango = '24h';
+        }
+
+        return $this->json($this->datosTelemetria($reproductor, $rango));
+    }
+
+    /**
+     * Pide (o renueva) el modo en vivo: la Pi publica temperatura y RAM cada
+     * 1 s durante VIVO_SEG. La página lo renueva cada VIVO_SEG/2 mientras está
+     * abierta, así que al cerrarla la Pi vuelve sola a publicar cada minuto.
+     */
+    #[Route('/{id}/telemetria/vivo', name: 'spui_cms_reproductores_telemetria_vivo', methods: ['POST'], requirements: ['id' => '\d+'])]
+    public function telemetriaVivo(int $id, Request $request): Response
+    {
+        $reproductor = $this->repo->find($id);
+        if (!$reproductor) { throw $this->createNotFoundException(); }
+        if ($r = $this->denegarSiCsrfInvalido($request)) { return $r; }
+
+        $ok = $this->comandos->pedirTelemetriaVivo($reproductor, self::VIVO_SEG);
+
+        return $this->json(['success' => $ok]);
+    }
+
+    /**
+     * Detalle por hora a Excel, entre dos fechas y horas (hasta
+     * RETENCION_HORA_DIAS atrás). Los errores de las fechas vuelven como JSON
+     * por campo, para mostrarlos debajo de cada uno.
+     */
+    #[Route('/{id}/telemetria/exportar', name: 'spui_cms_reproductores_telemetria_exportar', methods: ['GET'], requirements: ['id' => '\d+'])]
+    public function telemetriaExportar(int $id, Request $request, XlsxSimpleService $xlsx): Response
+    {
+        $reproductor = $this->repo->find($id);
+        if (!$reproductor) { throw $this->createNotFoundException(); }
+
+        $leer = static function (string $valor): ?DateTimeImmutable {
+            $f = DateTimeImmutable::createFromFormat('!Y-m-d\TH:i', $valor);
+            return $f !== false ? $f : null;
+        };
+        $desde = $leer($request->query->getString('desde'));
+        $hasta = $leer($request->query->getString('hasta'));
+        $limite = new DateTimeImmutable(sprintf('-%d days', MantenimientoService::RETENCION_HORA_DIAS));
+
+        $errores = [];
+        if ($desde === null) {
+            $errores['desde'] = 'Elegí la fecha y la hora de inicio.';
+        } elseif ($desde < $limite->setTime((int) $limite->format('H'), 0)) {
+            $errores['desde'] = sprintf('Se conservan los últimos %d días: elegí una fecha desde el %s.', MantenimientoService::RETENCION_HORA_DIAS, $limite->format('d/m/Y'));
+        }
+        if ($hasta === null) {
+            $errores['hasta'] = 'Elegí la fecha y la hora de fin.';
+        } elseif ($desde !== null && $hasta <= $desde) {
+            $errores['hasta'] = 'Tiene que ser posterior al inicio.';
+        }
+        if ($errores) {
+            return $this->json(['success' => false, 'errores' => $errores], 422);
+        }
+
+        $filas = array_map(static fn(array $f) => [
+            $f['hora'], $f['temp_prom'], $f['temp_max'], $f['ram_prom'], $f['ram_max'],
+            round($f['disco_min'] / 1024, 1), $f['lecturas'],
+        ], $this->rollupRepo->findEntre($reproductor, $desde, $hasta));
+
+        $binario = $xlsx->generar('Telemetría', [
+            ['titulo' => 'Hora',               'tipo' => 'fecha',   'ancho' => 18],
+            ['titulo' => 'Temp. promedio (°C)', 'tipo' => 'decimal', 'ancho' => 20],
+            ['titulo' => 'Temp. máxima (°C)',   'tipo' => 'decimal', 'ancho' => 19],
+            ['titulo' => 'RAM promedio (%)',    'tipo' => 'decimal', 'ancho' => 18],
+            ['titulo' => 'RAM máxima (%)',      'tipo' => 'decimal', 'ancho' => 16],
+            ['titulo' => 'Disco libre mín. (GB)', 'tipo' => 'decimal', 'ancho' => 21],
+            ['titulo' => 'Lecturas',           'tipo' => 'entero',  'ancho' => 10],
+        ], $filas);
+
+        // Sólo ASCII: así el mismo nombre sirve de filename y no hace falta un
+        // respaldo genérico (que es el que terminaba usando el navegador).
+        $host = preg_replace('/[^A-Za-z0-9._-]+/', '-', $reproductor->getHostname());
+        $nombre = sprintf('telemetria-%s-%s-a-%s.xlsx', $host, $desde->format('Ymd-Hi'), $hasta->format('Ymd-Hi'));
+        $respuesta = new Response($binario);
+        $respuesta->headers->set('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        $respuesta->headers->set('Content-Disposition', HeaderUtils::makeDisposition(HeaderUtils::DISPOSITION_ATTACHMENT, $nombre));
+
+        return $respuesta;
+    }
+
+    /**
+     * Serie, resumen y última lectura de un rango, en el formato que usan los
+     * gráficos.
+     *
+     * @return array{serie: list<array<string,mixed>>, resumen: ?array<string,mixed>, ultima: ?array<string,mixed>}
+     */
+    private function datosTelemetria(Reproductor $reproductor, string $rango): array
+    {
         $horas = self::RANGOS[$rango];
         $desde = new DateTimeImmutable(sprintf('-%d hours', $horas));
 
@@ -97,15 +220,19 @@ class ReproductorCmsController extends AbstractController
             ? $this->rollupRepo->resumen($reproductor, $desde)
             : $this->telemetriaRepo->resumen($reproductor, $desde);
 
-        return $this->render('@SPUI/reproductores/telemetria.html.twig', [
-            'reproductor' => $reproductor,
-            'serie'       => $serie,
-            'resumen'     => $resumen,
-            'ultima'      => $this->telemetriaRepo->findUltimos($reproductor, 1)[0] ?? null,
-            'rango'       => $rango,
-            'rangos'      => array_keys(self::RANGOS),
-            'temp_umbral' => $this->tempAlertaCelsius,
-        ]);
+        $ultima = $this->telemetriaRepo->findUltimos($reproductor, 1)[0] ?? null;
+
+        return [
+            'rango'   => $rango,
+            'serie'   => $serie,
+            'resumen' => $resumen,
+            'ultima'  => $ultima === null ? null : [
+                'temp'      => round($ultima->getTemperaturaSocCelsius(), 1),
+                'ram'       => round($ultima->getUsoRamPorcentaje(), 1),
+                'disco_gb'  => round($ultima->getEspacioDiscoLibreMb() / 1024, 1),
+                'cuando'    => $ultima->getRegistradoEn()->format('d/m/Y H:i:s'),
+            ],
+        ];
     }
 
     #[Route('/{id}/ver', name: 'spui_cms_reproductores_ver', methods: ['GET'], requirements: ['id' => '\d+'])]

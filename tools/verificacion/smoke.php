@@ -68,11 +68,16 @@ function resolverParametros(string $path, array $ids): ?array
     }
     if ($ids[$clave] === null) return null;
     $p['id'] = $ids[$clave];
+    // Exportar sin fechas responde 422 a propósito: se prueba con las últimas 24 h.
+    if (str_ends_with($path, '/telemetria/exportar')) {
+        $p['desde'] = (new DateTimeImmutable('-24 hours'))->format('Y-m-d\TH:00');
+        $p['hasta'] = (new DateTimeImmutable())->format('Y-m-d\TH:00');
+    }
     return $p;
 }
 
 /** Rutas que no son pantallas ni modales: archivos binarios o sólo navegación. */
-const NO_HTML = ['spui_cms_alertas_sonido_preview', 'spui_cms_contenidos_archivo_preview'];
+const NO_HTML = ['spui_cms_alertas_sonido_preview', 'spui_cms_contenidos_archivo_preview', 'spui_cms_reproductores_telemetria_exportar'];
 
 $router  = $kernel->getContainer()->get('router');
 $fallos  = [];
