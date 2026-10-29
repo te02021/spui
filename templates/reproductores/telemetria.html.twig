@@ -4,21 +4,33 @@
 {#
   Telemetría de un reproductor (rehecha el 29/10/2026, pedido de Mateo).
 
-  - Gráficos con ApexCharts, COPIADO en assets/spui/vendor/apexcharts y no por
-    CDN: la red del campus puede no tener salida a internet, y la pantalla no
-    puede quedar vacía por eso. Temperatura, RAM y disco van en gráficos
-    separados con su propia escala fija (°C, %, GB): un eje doble haría que dos
+  - Gráficos con ECharts (canvas), COPIADO en assets/spui/vendor/echarts y no
+    por CDN: la red del campus puede no tener salida a internet. Se cambió de
+    ApexCharts porque éste redibuja el SVG entero en cada movimiento y el
+    arrastre y el zoom se sentían trabados. Temperatura, RAM y disco van en
+    gráficos separados con escala fija (°C, %, GB): un eje doble haría que dos
     series se vean comparables sin serlo.
-  - La página trae la serie de los últimos 60 días: los botones 24 h / 7 d /
-    30 d eligen qué ventana se ve, y arrastrando el gráfico hacia la izquierda
-    se ven las horas anteriores (nunca más allá de ahora). Los tres gráficos
-    se mueven juntos.
+  - Histórico: trae los últimos 60 días; 24 h / 7 d / 30 d eligen la ventana.
+    Arrastrar mueve la vista, la rueda del mouse hace zoom (suave, centrado en
+    el puntero) y los tres gráficos se mueven juntos. Nunca más allá de ahora.
   - En vivo: mientras la página está abierta, la Pi publica temperatura y RAM
-    cada 1 s por MQTT directo al navegador (no se guarda). Sin broker
-    alcanzable, el panel en vivo no aparece y el resto funciona igual.
+    cada 1 s por MQTT directo al navegador (no se guarda). El panel tiene su
+    lugar reservado desde el principio, con un spinner, para que no empuje la
+    página al llegar el primer dato. Sin broker alcanzable no aparece.
   - Exportar: botón del encabezado → modal estándar con formato (Excel, CSV,
     PDF) y rango de fechas, hasta export_dias días atrás.
 #}
+
+{# Barra de zoom de cada gráfico (telemetria.js la engancha por data-tel-zoom). #}
+{% macro herramientas(grafico) %}
+    <div class="spui-tel-herramientas" data-tel-herramientas="{{ grafico }}">
+        <button type="button" data-tel-zoom="mas" title="Acercar"><img src="{{ asset('unraf-ui/icons/magnifying-glass-plus.svg') }}" alt="Acercar"></button>
+        <button type="button" data-tel-zoom="menos" title="Alejar"><img src="{{ asset('unraf-ui/icons/magnifying-glass-minus.svg') }}" alt="Alejar"></button>
+        <button type="button" data-tel-zoom="inicio" title="Volver al período elegido"><img src="{{ asset('unraf-ui/icons/arrow-counter-clockwise.svg') }}" alt="Volver"></button>
+        <button type="button" data-tel-zoom="png" title="Descargar como imagen"><img src="{{ asset('unraf-ui/icons/download-simple.svg') }}" alt="Descargar imagen"></button>
+    </div>
+{% endmacro %}
+{% import _self as t %}
 
 {% block body %}
 {% set cfg_vivo = spui_mqtt_web.paraNavegador(app.request, topic_vivo) %}
@@ -28,7 +40,7 @@
      data-url-vivo="{{ path('spui_cms_reproductores_telemetria_vivo', {id: reproductor.id}) }}"
      data-umbral="{{ temp_umbral }}"
      data-vivo-seg="{{ vivo_seg }}"
-     data-export-dias="{{ export_dias }}"
+     data-hostname="{{ reproductor.hostname }}"
      {% if cfg_vivo %}
      data-mqtt-url="{{ cfg_vivo.url }}"
      data-mqtt-usuario="{{ cfg_vivo.usuario }}"
@@ -98,18 +110,27 @@
         </div>
     </div>
 </div>
-<p class="text-muted small mb-4" data-tel-ultima></p>
+<p class="text-muted small mb-4" data-tel-ultima>&nbsp;</p>
 
-{# ── En vivo: los últimos 2 minutos, segundo a segundo ── #}
+{# ── En vivo: lugar reservado desde el principio, con spinner hasta el primer dato ── #}
 {% if cfg_vivo %}
-<div class="unraf-card mb-4" data-tel-vivo-panel hidden>
+<div class="unraf-card mb-4" data-tel-vivo-panel>
     <div class="p-3 border-bottom d-flex justify-content-between align-items-center flex-wrap gap-2">
-        <strong>En vivo · últimos 2 minutos</strong>
-        <small class="text-muted">Una lectura por segundo. No se guarda: es para mirar en el momento.</small>
+        <div>
+            <strong>En vivo · últimos minutos</strong>
+            <div class="small text-muted">Una lectura por segundo. No se guarda: es para mirar en el momento.</div>
+        </div>
+        {{ t.herramientas('vivo') }}
     </div>
-    <div class="row g-0">
-        <div class="col-12 col-lg-6 p-3"><div data-tel-chart="vivo_temp"></div></div>
-        <div class="col-12 col-lg-6 p-3"><div data-tel-chart="vivo_ram"></div></div>
+    <div class="spui-tel-vivo-cuerpo">
+        <div class="row g-0">
+            <div class="col-12 col-lg-6 p-2 p-md-3"><div class="spui-tel-lienzo spui-tel-lienzo-vivo" data-tel-chart="vivo_temp"></div></div>
+            <div class="col-12 col-lg-6 p-2 p-md-3"><div class="spui-tel-lienzo spui-tel-lienzo-vivo" data-tel-chart="vivo_ram"></div></div>
+        </div>
+        <div class="spui-tel-espera" data-tel-vivo-espera>
+            <div class="spinner-border" role="status" data-tel-vivo-spinner></div>
+            <span data-tel-vivo-espera-texto>Esperando los datos del reproductor…</span>
+        </div>
     </div>
 </div>
 {% endif %}
@@ -118,7 +139,7 @@
 <div class="d-flex justify-content-between align-items-center gap-2 mb-3 flex-wrap">
     <div>
         <h2 class="h5 mb-0" style="color:var(--unraf-azul)">Histórico por hora</h2>
-        <small class="text-muted">Mantené apretado un gráfico y arrastralo hacia la derecha para ver las horas anteriores.</small>
+        <small class="text-muted">Arrastrá un gráfico para moverte en el tiempo y usá la rueda del mouse para acercar o alejar.</small>
     </div>
     <div class="d-flex gap-2 flex-wrap" role="group" aria-label="Período">
         {% for r in rangos %}
@@ -131,33 +152,36 @@
     </div>
 </div>
 
-<div class="spui-tel-historico" data-tel-historico>
-    <div class="spui-tel-cargando" data-tel-cargando hidden>
-        <div class="spinner-border" role="status"><span class="visually-hidden">Cargando…</span></div>
-    </div>
+<div class="unraf-card p-5 text-center text-muted mb-4" data-tel-vacio hidden>
+    <p class="mb-1">Este reproductor no envió telemetría en los últimos 60 días.</p>
+    <small>Cada reproductor manda sus datos una vez por minuto mientras está encendido y conectado.</small>
+</div>
 
-    <div class="unraf-card p-5 text-center text-muted mb-4" data-tel-vacio hidden>
-        <p class="mb-1">Este reproductor no envió telemetría en este período.</p>
-        <small>Cada reproductor manda sus datos una vez por minuto mientras está encendido y conectado.</small>
-    </div>
-
-    <div data-tel-graficos>
-        <div class="unraf-card mb-4">
-            <div class="p-3 border-bottom"><strong>Temperatura del procesador (°C)</strong></div>
-            <div class="p-2 p-md-3"><div data-tel-chart="temp"></div></div>
+<div data-tel-graficos>
+    <div class="unraf-card mb-4">
+        <div class="p-3 border-bottom d-flex justify-content-between align-items-center gap-2">
+            <strong>Temperatura del procesador (°C)</strong>
+            {{ t.herramientas('historico') }}
         </div>
-        <div class="row g-3 mb-4">
-            <div class="col-12 col-lg-6">
-                <div class="unraf-card h-100">
-                    <div class="p-3 border-bottom"><strong>Memoria RAM en uso (%)</strong></div>
-                    <div class="p-2 p-md-3"><div data-tel-chart="ram"></div></div>
+        <div class="p-2 p-md-3"><div class="spui-tel-lienzo spui-tel-lienzo-alto" data-tel-chart="temp"></div></div>
+    </div>
+    <div class="row g-3 mb-4">
+        <div class="col-12 col-lg-6">
+            <div class="unraf-card h-100">
+                <div class="p-3 border-bottom d-flex justify-content-between align-items-center gap-2">
+                    <strong>Memoria RAM en uso (%)</strong>
+                    {{ t.herramientas('historico') }}
                 </div>
+                <div class="p-2 p-md-3"><div class="spui-tel-lienzo" data-tel-chart="ram"></div></div>
             </div>
-            <div class="col-12 col-lg-6">
-                <div class="unraf-card h-100">
-                    <div class="p-3 border-bottom"><strong>{{ reproductor.discoTotalMb ? 'Disco en uso (GB, máximo de cada hora)' : 'Espacio libre en disco (GB, mínimo de cada hora)' }}</strong></div>
-                    <div class="p-2 p-md-3"><div data-tel-chart="disco"></div></div>
+        </div>
+        <div class="col-12 col-lg-6">
+            <div class="unraf-card h-100">
+                <div class="p-3 border-bottom d-flex justify-content-between align-items-center gap-2">
+                    <strong>{{ reproductor.discoTotalMb ? 'Disco en uso (GB, máximo de cada hora)' : 'Espacio libre en disco (GB, mínimo de cada hora)' }}</strong>
+                    {{ t.herramientas('historico') }}
                 </div>
+                <div class="p-2 p-md-3"><div class="spui-tel-lienzo" data-tel-chart="disco"></div></div>
             </div>
         </div>
     </div>
@@ -168,7 +192,7 @@
 {% endblock %}
 
 {% block javascripts %}
-    <script src="{{ asset('spui/vendor/apexcharts/apexcharts.min.js') }}"></script>
+    <script src="{{ asset('spui/vendor/echarts/echarts.min.js') }}"></script>
     <script src="https://cdn.jsdelivr.net/npm/mqtt@5.10.1/dist/mqtt.min.js"></script>
     <script src="{{ asset('spui/js/reproductores/telemetria.js') }}"></script>
 {% endblock %}

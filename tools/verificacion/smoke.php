@@ -99,7 +99,10 @@ foreach ($router->getRouteCollection()->all() as $nombre => $ruta) {
         || str_contains($nombre, '_items') || str_contains($nombre, '_energia_') || str_contains($nombre, '_cronograma_');
 
     foreach ($esModal ? [true] : [false] as $xhr) {
-        $r = spuiHttp('GET', $url, $sesion, $xhr);
+        // Las vistas previas de archivos bajan el archivo entero de S3 antes
+        // de responder: un video de 110 MB tardó 70 s en la red del trabajo
+        // (29/10/2026). Se les da más tiempo para no confundirlo con Apache caído.
+        $r = spuiHttp('GET', $url, $sesion, $xhr, [], in_array($nombre, NO_HTML, true) ? 180 : 60);
         $problema = spuiProblemaDeRespuesta($r, $xhr, in_array($nombre, NO_HTML, true));
         $etiqueta = sprintf('%-48s %s%s', $nombre, $xhr ? '[XHR] ' : '', substr($url, strlen($base)));
         if ($problema === null) { $ok++; echo "  OK    $etiqueta\n"; }

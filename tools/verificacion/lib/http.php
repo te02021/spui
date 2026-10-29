@@ -22,7 +22,7 @@ function spuiNuevaSesion(): string
 /**
  * @return array{status:int, tipo:string, cuerpo:string, redirect:string}
  */
-function spuiHttp(string $metodo, string $url, ?string $sesion, bool $xhr, array $campos = []): array
+function spuiHttp(string $metodo, string $url, ?string $sesion, bool $xhr, array $campos = [], int $timeout = 60): array
 {
     $ch = curl_init($url);
     $headers = ['Accept: text/html,application/json'];
@@ -30,7 +30,7 @@ function spuiHttp(string $metodo, string $url, ?string $sesion, bool $xhr, array
     curl_setopt_array($ch, [
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_FOLLOWLOCATION => false,
-        CURLOPT_TIMEOUT        => 60,
+        CURLOPT_TIMEOUT        => $timeout,
         CURLOPT_HTTPHEADER     => $headers,
         CURLOPT_CUSTOMREQUEST  => $metodo,
     ]);

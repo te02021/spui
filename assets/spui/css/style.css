@@ -1936,7 +1936,7 @@ textarea.is-invalid,
     color: var(--unraf-azul);
     font-size: .95rem;
 }
-.spui-tel-gauge { width: 100%; max-width: 260px; margin: -.5rem auto -.4rem; }
+.spui-tel-gauge { width: 100%; max-width: 260px; height: 200px; margin: 0 auto; }
 .spui-tel-numero {
     flex-grow: 1;
     display: flex;
@@ -1986,20 +1986,6 @@ textarea.is-invalid,
     .spui-tel-vivo.is-vivo .spui-tel-vivo-punto { animation: none; }
 }
 
-/* Carga al cambiar de rango: velo sobre los gráficos mientras llegan los datos. */
-.spui-tel-historico { position: relative; }
-.spui-tel-historico.is-cargando [data-tel-graficos] { opacity: .35; transition: opacity .25s; }
-.spui-tel-cargando {
-    position: absolute;
-    inset: 0;
-    z-index: 5;
-    display: flex;
-    align-items: flex-start;
-    justify-content: center;
-    padding-top: 6rem;
-    color: var(--unraf-azul);
-}
-.spui-tel-cargando[hidden] { display: none; }
 
 /* Modal de exportación: formato como tarjetas elegibles (radio). */
 .spui-tel-formatos { display: grid; grid-template-columns: repeat(3, 1fr); gap: .6rem; }
@@ -2023,9 +2009,33 @@ textarea.is-invalid,
 .spui-tel-formato input:checked + .spui-tel-formato-caja { border-color: var(--unraf-azul); background: #eef4fa; }
 .spui-tel-formato input:focus-visible + .spui-tel-formato-caja { outline: 3px solid rgba(51, 135, 239, .35); outline-offset: 2px; }
 
-/* Arrastre de los gráficos del histórico (telemetria.js, arrastrarVentana):
-   la mano indica que se puede mover; en celular el gesto vertical sigue
-   desplazando la página y el horizontal mueve el gráfico. */
-.spui-tel-arrastrable .apexcharts-svg { cursor: grab; }
-.spui-tel-arrastrable.is-arrastrando .apexcharts-svg { cursor: grabbing; }
-.spui-tel-arrastrable { touch-action: pan-y; user-select: none; }
+/* Lienzos de ECharts: alto fijo desde el principio, así nada empuja la
+   página cuando llegan los datos (telemetria.js). */
+.spui-tel-lienzo { width: 100%; height: 270px; cursor: grab; }
+.spui-tel-lienzo:active { cursor: grabbing; }
+.spui-tel-lienzo-alto { height: 330px; }
+.spui-tel-lienzo-vivo { height: 230px; }
+
+/* Barra de zoom de cada gráfico. */
+.spui-tel-herramientas { display: inline-flex; gap: .25rem; flex-shrink: 0; }
+.spui-tel-herramientas button {
+    width: 2rem; height: 2rem;
+    display: inline-flex; align-items: center; justify-content: center;
+    border: 1px solid #dee2e6; border-radius: .4rem; background: #fff; padding: 0;
+    transition: background-color .15s, border-color .15s;
+}
+.spui-tel-herramientas button:hover { background: #eef4fa; border-color: #9fb6cc; }
+.spui-tel-herramientas img { width: 1rem; height: 1rem; opacity: .75; }
+
+/* Panel en vivo: su lugar está reservado; hasta la segunda lectura, un velo
+   con spinner encima de los gráficos (ya dibujados, con sus ejes). */
+.spui-tel-vivo-cuerpo { position: relative; }
+.spui-tel-espera {
+    position: absolute; inset: 0; z-index: 2;
+    display: flex; align-items: center; justify-content: center; gap: .75rem;
+    padding: 1rem; text-align: center;
+    background: rgba(255, 255, 255, .82);
+    color: #495057; font-size: .9rem;
+}
+.spui-tel-espera[hidden] { display: none; }
+.spui-tel-espera .spinner-border { color: var(--unraf-azul); width: 1.6rem; height: 1.6rem; border-width: .2rem; }
