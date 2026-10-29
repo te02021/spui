@@ -33,9 +33,12 @@ set -euo pipefail
 
 PUERTO=8090
 ENV_SPUI=/etc/spui/spui.env
-ENV_ESPEJO=/etc/spui/espejo.env
-DROPIN_DIR=/etc/systemd/system/spui.service.d
+ENV_ESPEJO=/run/spui-espejo.env
+DROPIN_DIR=/run/systemd/system/spui.service.d
 DROPIN=$DROPIN_DIR/espejo.conf
+# Donde los dejaba la primera versión (sobrevivían a un reinicio).
+DROPIN_VIEJO=/etc/systemd/system/spui.service.d/espejo.conf
+ENV_VIEJO=/etc/spui/espejo.env
 ALSA_CONF=/etc/alsa/conf.d/60-spui-espejo.conf
 UNIDAD=/etc/systemd/system/spui-espejo.service
 UNIDAD_SONIDO=/etc/systemd/system/spui-espejo-sonido.service
@@ -131,6 +134,10 @@ on() {
     sudo mkdir -p "$DROPIN_DIR"
     # Un EnvironmentFile de un drop-in se lee después del de la unidad, así
     # que este SPUI_AOUT_DEVICE pisa al de spui.env sólo mientras exista.
+    # Los dos viven en /run, que se vacía al reiniciar: un corte de luz con
+    # el espejo prendido no puede dejar al reproductor mandando el sonido a
+    # una placa virtual que nadie volvió a cargar (monitor mudo).
+    sudo rm -f "$DROPIN_VIEJO" "$ENV_VIEJO"
     printf '[Service]\nEnvironmentFile=%s\n' "$ENV_ESPEJO" | sudo tee "$DROPIN" > /dev/null
     sudo systemctl daemon-reload
     # Primero el reproductor (suelta el HDMI), después alsaloop (lo toma).
@@ -145,7 +152,7 @@ on() {
 
 off() {
     sudo systemctl stop spui-espejo spui-espejo-sonido 2>/dev/null || true
-    sudo rm -f "$DROPIN" "$ENV_ESPEJO"
+    sudo rm -f "$DROPIN" "$ENV_ESPEJO" "$DROPIN_VIEJO" "$ENV_VIEJO"
     sudo systemctl daemon-reload
     sudo systemctl restart spui
     # Puede tardar en soltarse si algo la tiene abierta; no es grave que quede.

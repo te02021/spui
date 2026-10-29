@@ -896,7 +896,7 @@ bash /opt/spui/remoto/espejo.sh probar      # opcional: tono de ~5 s, tiene que 
 
 En la PC: VLC → *Medio* → *Abrir ubicación de red* → `http://<ip_tailscale_de_la_pi>:8090`. Llega con 1–3 s de demora; es normal.
 
-Para terminar (deja el sonido exactamente como en `spui.env`):
+Apagarlo cuando no se lo mira: la captura usa CPU y, mientras está prendido, el monitor suena por un camino más largo (placa virtual y `alsaloop`). Un reinicio de la Pi lo apaga solo y deja el sonido normal: el cambio que hace `on` vive en `/run`, que se vacía al arrancar. Para terminar (deja el sonido exactamente como en `spui.env`):
 
 ```bash
 bash /opt/spui/remoto/espejo.sh off
