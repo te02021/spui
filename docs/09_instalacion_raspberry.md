@@ -850,7 +850,7 @@ En la consola web de Tailscale (*Machines*), desactivar **Key expiry** en los do
 
 **En la PC**, para que Apache y el firewall acepten a la Pi por su IP de Tailscale:
 
-1. En `httpd-vhosts.conf` (paso 7.b), agregar `Require ip <ip_tailscale_de_la_pi>` y reiniciar los servicios de WAMP.
+1. En `httpd-vhosts.conf` (paso 7.b), agregar `Require ip <ip_tailscale_de_la_pi>` y reiniciar Apache: PowerShell como administrador → `Restart-Service wampapache64`. *Restart All Services* de WAMP puede no reiniciarlo (28/10/2026): si la Pi sigue recibiendo 403 y `apache_error.log` dice `client denied by server configuration` con su IP `100.x`, Apache sigue con la configuración vieja.
 2. PowerShell como administrador:
    ```powershell
    netsh advfirewall firewall add rule name="SPUI - Apache desde Pi (Tailscale)" dir=in action=allow protocol=TCP localport=80 remoteip=<ip_tailscale_de_la_pi>
@@ -878,20 +878,20 @@ El certificado del broker va por nombre, no por IP, así que no hay que reemitir
 `pi-client/remoto/espejo.sh` transmite la pantalla de la Pi (720p, 12 cuadros/s) con su sonido, sólo por Tailscale. **Nunca arranca solo**: se prende y se apaga a mano.
 
 - **Imagen:** captura la pantalla X11 donde dibuja el reproductor (videos, imágenes, textos, alertas, pantalla de espera).
-- **Sonido:** mientras está prendido, el reproductor usa un dispositivo de sonido que copia el audio al HDMI de siempre y a una placa virtual (`snd-aloop`), de donde lo toma la transmisión. El monitor sigue sonando.
+- **Sonido:** mientras está prendido, el reproductor manda el audio a una placa de sonido virtual (`snd-aloop`). De ahí lo leen dos programas a la vez: `alsaloop`, que lo pasa al HDMI de siempre (el monitor sigue sonando), y la transmisión. No se copia directo a las dos placas con el plugin `multi` de ALSA: tienen relojes distintos y `multi` no lo compensa (underruns en cadena, probado el 28/10/2026).
 - **No muestra** lo que hace el monitor por su cuenta: apagado por horario (CEC o corte de señal) y brillo por DDC/CI.
 
 Una vez, en la Pi (requiere `SPUI_AOUT_DEVICE` en `spui.env`, §8.6):
 
 ```bash
 bash /opt/spui/remoto/espejo.sh instalar
-bash /opt/spui/remoto/espejo.sh probar      # tono de 2 s: tiene que sonar en el monitor
 ```
 
 Cada vez que se quiera mirar:
 
 ```bash
 bash /opt/spui/remoto/espejo.sh on
+bash /opt/spui/remoto/espejo.sh probar      # opcional: tono de ~5 s, tiene que sonar en el monitor
 ```
 
 En la PC: VLC → *Medio* → *Abrir ubicación de red* → `http://<ip_tailscale_de_la_pi>:8090`. Llega con 1–3 s de demora; es normal.
@@ -902,11 +902,11 @@ Para terminar (deja el sonido exactamente como en `spui.env`):
 bash /opt/spui/remoto/espejo.sh off
 ```
 
-`bash /opt/spui/remoto/espejo.sh estado` dice qué está prendido. Los errores de la transmisión quedan en `journalctl -u spui-espejo`.
+`bash /opt/spui/remoto/espejo.sh estado` dice qué está prendido. Los errores quedan en `journalctl -u spui-espejo` (transmisión) y `journalctl -u spui-espejo-sonido` (sonido al monitor).
 
 | Síntoma | Causa probable | Qué hacer |
 |---|---|---|
-| `probar` da error | El dispositivo copiado no abre con este HDMI | `espejo.sh off` deja todo como estaba; pasar la salida de `probar` |
-| Con el espejo prendido, el monitor dejó de sonar | Ídem | `espejo.sh off` y avisar |
+| `on` dice que el sonido al monitor no arrancó, o `probar` no suena | `alsaloop` no pudo abrir el HDMI o la placa virtual | `espejo.sh off` deja todo como estaba; pasar `journalctl -u spui-espejo-sonido -n 30 --no-pager` |
+| Con el espejo prendido, el monitor dejó de sonar | Ídem | Ídem |
 | VLC no abre la dirección | La transmisión no está esperando | `espejo.sh estado` y `journalctl -u spui-espejo -n 30` |
 | Los videos de SPUI se traban con el espejo prendido | Falta de CPU | Apagarlo; con él apagado no hay ninguna carga |
