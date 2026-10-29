@@ -29,23 +29,24 @@ Los pasos 1 a 4 se hacen una vez por pantalla instalada. Del 5 en adelante es el
 
 ## 1. Dashboard — `/spui`
 
-Es la pantalla de inicio. Muestra:
+Es la pantalla de inicio (rehecha el 29/10/2026). Se actualiza sola cada 20 s; el botón **Actualizar** fuerza el refresco en el momento. De arriba hacia abajo:
 
-- **Cuatro tarjetas:** total de reproductores, conectados, desconectados, y cuántos llevan más de 5 minutos sin dar señal.
-- **Tabla de reproductores** con estado, último heartbeat, temperatura, RAM y disco libre.
+- **Alerta en curso** (rojo, sólo si hay alguna activa): título, mensaje, a cuántas pantallas va, desde cuándo y cuándo vence, con el botón **Desactivar**.
+- **Reproductores:** un gráfico circular con conectados, desconectados y sin registrar, y el total en el centro. Un equipo cuenta como desconectado tras el umbral de conexión sin dar señal (`SPUI_UMBRAL_CONEXION_SEG`, 150 s por defecto).
+- **Cuatro tarjetas que llevan a su sección:** pantallas (y en cuántos edificios), contenidos disponibles (y archivados), reglas de programación activas (y playlists), y alertas activas ahora (y creadas en total).
+- **Temperatura de los reproductores, últimas 24 h:** una línea por equipo, promedio por hora, con el umbral marcado. Pasando el mouse se ven los valores de cada hora.
+- **Requiere atención:** junta los avisos de la tabla de abajo; si no hay ninguno, dice "Todo en orden".
+- **Una tarjeta por reproductor:** estado, pantallas que maneja, última señal, versión, y barras de temperatura, RAM y disco en uso, con el enlace a su telemetría. El borde izquierdo es verde si está conectado, rojo si no.
 
-Arriba de la tabla aparecen avisos sólo cuando hay algo que atender:
+Los avisos de **Requiere atención** aparecen sólo cuando hay algo que atender:
 
 | Aviso | Cuándo aparece | Qué hacer |
 |---|---|---|
-| **Alerta activa** (rojo) | Hay una alerta de emergencia mostrándose | Desactivarla desde el mismo aviso cuando termine la emergencia |
 | **Temperatura** (rojo) | Algún reproductor superó los 80 °C | Revisar la ventilación del equipo; lista cuáles y a cuánto están |
 | **Reproductores con problemas** (ámbar) | Un reproductor está conectado pero informa algo que le impide mostrar bien (por ejemplo, la pantalla no responde al apagado programado) | Leer el detalle que lista debajo de cada equipo |
 | **Intentos con API key inválida** (ámbar) | En la última hora, algún equipo pidió datos con una clave que no es la vigente | Si nombra un reproductor que "sigue usando la clave anterior", copiar la clave nueva a su `spui.env` y reiniciar el servicio en la Pi |
 | **Tareas automáticas detenidas** (rojo) | El proceso del servidor que cada minuto marca reproductores caídos y vence alertas, y cada hora resume la telemetría, dejó de correr hace más de dos horas | Reiniciar el servicio `spui-telemetria` del servidor. Esas tareas corren solas: no hay nada que ejecutar a mano. Hasta el 29/10/2026 este aviso salía también, durante un rato de cada hora, con el servicio funcionando: era un error de cálculo, corregido |
-- Botón **Actualizar** que refresca los datos sin recargar la página.
-
-La temperatura se pinta en ámbar a partir del 85 % del umbral y en rojo al superarlo.
+La temperatura se pinta en ámbar a partir del 85 % del umbral y en rojo al superarlo; la RAM y el disco, en ámbar desde el 75 % y en rojo desde el 90 %.
 
 ---
 
@@ -269,9 +270,13 @@ Si la pantalla tiene horario energético y algo no se puede hacer del todo (no r
 
 Para avisos urgentes o de último momento: evacuaciones, incidentes, un cambio de aula.
 
+El listado muestra arriba cuántas hay activas, listas para activar y expiradas, y una tarjeta por alerta: las activas primero, con la etiqueta roja **En curso**; las expiradas, atenuadas. Cada tarjeta trae el mensaje (dos renglones; completo en **Ver**), la prioridad, a qué pantallas va, el vencimiento, el adjunto y si tiene sonido propio.
+
+**Ver** abre el detalle con **"Así se ve en las pantallas"**: una vista previa con el mismo diseño que dibuja el reproductor (banda oscura con el título, adjunto de imagen estirado debajo, mensaje centrado y pie institucional). Es aproximada: el reproductor ajusta el tamaño del mensaje para que entre y la vista previa lo imita por tramos de largo. Un video adjunto se indica con una etiqueta, no se reproduce.
+
 - **Crear:** título, mensaje, prioridad, vencimiento opcional, contenido multimedia opcional para acompañar, y **sonido de alerta opcional** (MP3 o WAV, hasta 5 MB) — se puede escuchar antes de guardar con el reproductor que aparece al elegir el archivo.
 - **Editar:** solo si está inactiva. Una alerta activa no se puede editar — hay que desactivarla primero, porque el aviso que ya salió a las pantallas no coincidiría con lo que muestra el panel. Desde acá también se reemplaza o se quita el sonido personalizado (casilla "Quitar sonido personalizado").
-- **Activar:** el aviso llega a todas las pantallas **en segundos**, interrumpiendo lo que estén mostrando. También aparece el banner rojo en el dashboard.
+- **Activar:** el aviso llega a todas las pantallas **en segundos**, interrumpiendo lo que estén mostrando. También aparece arriba de todo en el Dashboard, en rojo.
 - **Desactivar:** los reproductores vuelven a su programación normal (y el sonido se corta al instante).
 - **Eliminar:** solo alertas inactivas.
 - **Activar** y **Desactivar** quedan bloqueados si alguna pantalla a la que va la alerta tiene su reproductor desconectado (ver 6).

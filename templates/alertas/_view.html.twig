@@ -15,9 +15,25 @@
     {% endif %}
 </div>
 
+{# Así la dibuja el reproductor. El tamaño del mensaje imita al del player,
+   que lo achica de 88 a 36 px hasta que entra: acá va por tramos de largo,
+   así que es una aproximación, no una captura. #}
+{% set largo = alerta.mensaje|length %}
+{% set tam_mensaje = largo <= 60 ? 4.58 : (largo <= 140 ? 3.6 : (largo <= 260 ? 2.8 : 1.9)) %}
+{% set imagen = alerta.contenido and alerta.contenido.tipo.value == 'imagen' and alerta.contenido.rutaArchivo %}
 <div class="spui-view-section">
-    <p class="spui-view-section-title">Mensaje</p>
-    <p class="mb-0" style="font-size:.9rem;white-space:pre-line;line-height:1.6">{{ alerta.mensaje }}</p>
+    <p class="spui-view-section-title">Así se ve en las pantallas</p>
+    <div class="spui-alerta-pantalla" role="img" aria-label="Vista previa de la alerta en pantalla">
+        <div class="spui-alerta-pantalla-banda">{{ alerta.titulo|default('ALERTA DE EMERGENCIA') }}</div>
+        <div class="spui-alerta-pantalla-region{{ imagen ? ' con-imagen' : '' }}">
+            {% if imagen %}<img src="{{ path('spui_cms_contenidos_archivo_preview', {id: alerta.contenido.id}) }}" alt="">{% endif %}
+            {% if alerta.mensaje %}<div class="spui-alerta-pantalla-mensaje" style="font-size:{{ tam_mensaje }}cqw">{{ alerta.mensaje }}</div>{% endif %}
+        </div>
+        {% if alerta.contenido and alerta.contenido.tipo.value == 'video' %}
+            <span class="spui-alerta-pantalla-video">Con video adjunto</span>
+        {% endif %}
+        <div class="spui-alerta-pantalla-pie">UNRaf · Sistema de Pantallas Informativas</div>
+    </div>
 </div>
 
 <div class="spui-view-section">

@@ -6,7 +6,14 @@ namespace SPUI\Controller\Cms;
 
 use DateTimeImmutable;
 use Doctrine\Persistence\ManagerRegistry;
+use SPUI\Entity\AlertaEmergencia;
+use SPUI\Entity\Contenido;
+use SPUI\Entity\Pantalla;
+use SPUI\Entity\Playlist;
+use SPUI\Entity\Programacion;
+use SPUI\Entity\Reproductor;
 use SPUI\Enum\EstadoConexion;
+use SPUI\Enum\EstadoContenido;
 use SPUI\Repository\AlertaEmergenciaRepository;
 use SPUI\Repository\ReproductorRepository;
 use SPUI\Repository\TelemetriaRepository;
@@ -96,6 +103,10 @@ class DashboardController extends AbstractController
             // en vez de descubrirse semanas después con la tabla de
             // telemetría desbordada.
             'scheduler_desactualizado' => $this->rollupService->estaDesactualizado(),
+            // Lavada de cara del 29/10/2026: el resto de la red de un vistazo
+            // y la temperatura de cada equipo en las últimas 24 h.
+            'resumen_red'        => $this->resumenRed(),
+            'series_temp'        => $this->seriesTemperatura($reproductores),
         ];
 
         // El refresco automático pide esta misma ruta cada 20 s y sólo usa el
@@ -107,5 +118,50 @@ class DashboardController extends AbstractController
         }
 
         return $this->render('@SPUI/dashboard/index.html.twig', $datos);
+    }
+
+    /**
+     * Cuántas pantallas, contenidos, playlists, reglas y alertas hay: lo que
+     * se carga en el CMS, para las tarjetas del Dashboard.
+     *
+     * @return array<string, int>
+     */
+    private function resumenRed(): array
+    {
+        $em = $this->doctrine->getManager('SPUI');
+        $contar = static fn(string $clase, array $criterio = []): int => $em->getRepository($clase)->count($criterio);
+        $pantallas = $em->getRepository(Pantalla::class)->findAll();
+
+        return [
+            'pantallas'          => count($pantallas),
+            'pantallas_activas'  => count(array_filter($pantallas, static fn(Pantalla $p) => $p->isActiva())),
+            'edificios'          => count(array_unique(array_map(static fn(Pantalla $p) => $p->getUbicacion()->getEdificio()->getId(), $pantallas))),
+            'contenidos'         => $contar(Contenido::class, ['estado' => EstadoContenido::Disponible]),
+            'archivados'         => $contar(Contenido::class, ['estado' => EstadoContenido::Archivado]),
+            'playlists'          => $contar(Playlist::class),
+            'reglas'             => $contar(Programacion::class, ['activo' => true]),
+            'alertas'            => $contar(AlertaEmergencia::class),
+        ];
+    }
+
+    /**
+     * Temperatura promedio por hora de cada reproductor, últimas 24 h: el
+     * gráfico de toda la red. Sale de la telemetría cruda (incluye la hora en
+     * curso), una consulta por equipo; son pocos.
+     *
+     * @param Reproductor[] $reproductores
+     * @return list<array{nombre: string, puntos: list<array{0: string, 1: float}>}>
+     */
+    private function seriesTemperatura(array $reproductores): array
+    {
+        $desde = new DateTimeImmutable('-24 hours');
+        $series = [];
+        foreach ($reproductores as $r) {
+            $puntos = array_map(static fn(array $p) => [$p['periodo'], $p['temp_prom']], $this->telemetriaRepo->findSeriePorHora($r, $desde));
+            if ($puntos !== []) {
+                $series[] = ['nombre' => $r->getHostname(), 'puntos' => $puntos];
+            }
+        }
+        return $series;
     }
 }

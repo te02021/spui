@@ -140,18 +140,6 @@ textarea.is-invalid,
    sistema de acciones (más abajo): el botón del modal ahora toma la clase de
    la acción que lo abrió, así que no hacen falta variantes propias. */
 
-/* ----- Banner de alerta activa ----- */
-.spui-alerta-activa-banner {
-    background: linear-gradient(135deg, var(--unraf-error, #FF223D), #b02a37);
-    color: #fff;
-    padding: .6rem 1.5rem;
-    font-weight: 600;
-    display: flex;
-    align-items: center;
-    gap: .5rem;
-    flex-wrap: wrap;
-}
-
 /* ----- Flash container ----- */
 .flash-container {
     position: fixed;
@@ -388,48 +376,85 @@ textarea.is-invalid,
 .spui-aviso-problemas ul { margin: .35rem 0 0; padding-left: 1.1rem; }
 .spui-aviso-problemas li + li { margin-top: .25rem; }
 
-/* Columna Mensaje del listado de alertas: se acota para que un mensaje largo
-   no empuje al resto de las columnas. El texto completo está en el title y en
-   el modal Ver. */
-.spui-col-mensaje {
-    max-width: 22rem;
-    min-width: 10rem;
+/* Listado de alertas (tarjetas, 29/10/2026). El estado se lee por la franja
+   izquierda y la etiqueta; la expirada se atenúa salvo sus botones, que
+   siguen disponibles (Ver, Eliminar) y no deben parecer deshabilitados. */
+.spui-alertas-resumen { display: flex; flex-wrap: wrap; gap: .5rem; }
+.spui-alertas-cifra {
+    background: #fff; border: 1px solid #e0e0e0; border-radius: 2rem;
+    padding: .25rem .8rem; font-size: .85rem; color: #6c757d;
 }
+.spui-alertas-cifra strong { color: #2b3a4a; margin-right: .15rem; }
+.spui-alertas-cifra.is-activa { border-color: #ffc2cb; background: #fff1f3; color: #b3142a; }
+.spui-alertas-cifra.is-activa strong { color: #b3142a; }
+.spui-alertas-lista { display: flex; flex-direction: column; gap: .75rem; }
+.spui-alertas-lista > .unraf-card { margin-bottom: 0; }
+.spui-alerta-item {
+    display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;
+    padding: 1rem 1.25rem; border-left: 4px solid #adb5bd;
+}
+.spui-alerta-item.is-activa { border-left-color: #FF223D; background: #fff7f8; border-color: #ffd3da; border-left-color: #FF223D; }
+.spui-alerta-item.is-expirada { border-left-color: #ced4da; }
+.spui-alerta-item.is-expirada .spui-alerta-item-cuerpo { opacity: .7; }
+.spui-alerta-item-cuerpo { flex: 1 1 26rem; min-width: 0; }
+.spui-alerta-item-titulo { font-weight: 700; font-size: 1.05rem; color: #2b3a4a; overflow-wrap: anywhere; }
+.spui-alerta-item-mensaje {
+    margin: .3rem 0 .55rem; color: #5b6b7f; font-size: .9rem; overflow-wrap: anywhere;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.spui-alerta-estado {
+    display: inline-flex; align-items: center; gap: .35rem;
+    font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
+    padding: .18rem .55rem; border-radius: 1rem; background: #f1f3f5; color: #6c757d;
+}
+.spui-alerta-estado.is-activa { background: #FF223D; color: #fff; }
+.spui-alerta-latido {
+    width: .45rem; height: .45rem; border-radius: 50%; background: #fff;
+    animation: spui-alerta-latido 1.4s ease-out infinite;
+}
+@keyframes spui-alerta-latido {
+    0% { box-shadow: 0 0 0 0 rgba(255, 255, 255, .8); }
+    100% { box-shadow: 0 0 0 .45rem rgba(255, 255, 255, 0); }
+}
+.spui-alerta-chips { display: flex; flex-wrap: wrap; gap: .35rem; }
+.spui-alerta-chip {
+    display: inline-flex; align-items: center; gap: .3rem; max-width: 100%;
+    font-size: .78rem; color: #4a5a6b; background: #f4f6f8; border-radius: 4px; padding: .15rem .5rem;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.spui-alerta-chip img { width: .85rem; height: .85rem; opacity: .65; flex-shrink: 0; }
+.spui-alerta-item-acciones { flex: 0 0 auto; justify-content: flex-end; }
 @media (max-width: 768px) {
-    /* Como tarjeta ya no hay columnas que empujar. */
-    .spui-col-mensaje { max-width: none; min-width: 0; }
+    .spui-alerta-item-acciones { flex: 1 1 100%; justify-content: flex-start; }
 }
 
-/* Filas del listado de alertas: se distingue el estado con el borde izquierdo,
-   igual que hacían las tarjetas viejas, pero ahora sobre la tabla estándar
-   (que en mobile se convierte sola en tarjetas). */
-.spui-tabla-cards tr.spui-alerta-fila-activa > td:first-child {
-    box-shadow: inset 4px 0 0 0 var(--unraf-error, #FF223D);
+/* Vista previa de la alerta tal como la dibuja el reproductor
+   (pi-client/spui/player.py, _generar_imagen_alerta, lienzo de 1920x1080):
+   banda oscura de 170 px con el título, el adjunto estirado debajo, el
+   mensaje centrado y el pie institucional. Las medidas van en cqw para
+   escalar en proporción al ancho, igual que la imagen real. */
+.spui-alerta-pantalla {
+    container-type: inline-size; position: relative; aspect-ratio: 16 / 9; width: 100%;
+    background: #FF223D; color: #fff; border-radius: 6px; overflow: hidden;
+    box-shadow: 0 0 0 6px #1d232a, 0 8px 20px rgba(0, 0, 0, .25);
+    font-family: 'DejaVu Sans', 'Verdana', sans-serif; font-weight: 700; text-align: center;
 }
-.spui-tabla-cards tr.spui-alerta-fila-expirada > td:first-child {
-    box-shadow: inset 4px 0 0 0 #6c757d;
+.spui-alerta-pantalla-banda {
+    position: absolute; inset: 0 0 auto 0; height: 15.74%; background: #9C1425;
+    display: flex; align-items: center; justify-content: center; padding: 0 4cqw;
+    font-size: 3.02cqw; line-height: 1.25; overflow: hidden;
 }
-.spui-tabla-cards tr.spui-alerta-fila-activa {
-    background-color: rgba(255, 34, 61, .05);
+.spui-alerta-pantalla-region {
+    position: absolute; left: 0; right: 0; top: 15.74%; bottom: 8.33%;
+    display: flex; align-items: center; justify-content: center; padding: 0 4cqw;
 }
-/* La fila expirada se atenúa para que se lea como "ya pasó", pero las acciones
-   que siguen disponibles (Ver, Eliminar) van a color pleno: si se apagaran
-   junto con el resto parecerían deshabilitadas, que es justo lo contrario. */
-.spui-tabla-cards tr.spui-alerta-fila-expirada > td:not(:last-child) { opacity: .75; }
-.spui-tabla-cards tr.spui-alerta-fila-expirada .spui-acciones { opacity: 1; }
-
-@media (max-width: 768px) {
-    /* Como tarjeta, el indicador va en el borde de toda la fila. */
-    .spui-tabla-cards tr.spui-alerta-fila-activa > td:first-child,
-    .spui-tabla-cards tr.spui-alerta-fila-expirada > td:first-child {
-        box-shadow: none;
-    }
-    .spui-tabla-cards tr.spui-alerta-fila-activa {
-        border-left: 4px solid var(--unraf-error, #FF223D);
-    }
-    .spui-tabla-cards tr.spui-alerta-fila-expirada {
-        border-left: 4px solid #6c757d;
-    }
+.spui-alerta-pantalla-region > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: fill; }
+.spui-alerta-pantalla-mensaje { position: relative; line-height: 1.3; overflow-wrap: anywhere; white-space: pre-line; }
+.spui-alerta-pantalla-region.con-imagen .spui-alerta-pantalla-mensaje { background: rgba(0, 0, 0, .51); padding: 1.25cqw; }
+.spui-alerta-pantalla-pie { position: absolute; left: 0; right: 0; bottom: 2.2%; font-size: 1.46cqw; font-weight: 400; }
+.spui-alerta-pantalla-video {
+    position: absolute; top: 1.5cqw; right: 1.5cqw; font-size: 1.3cqw; font-weight: 600;
+    background: rgba(0, 0, 0, .45); padding: .3cqw .8cqw; border-radius: 3px;
 }
 
 /* Selector de pantallas destinatarias en el alta/edición de alerta.
@@ -2039,3 +2064,104 @@ textarea.is-invalid,
 }
 .spui-tel-espera[hidden] { display: none; }
 .spui-tel-espera .spinner-border { color: var(--unraf-azul); width: 1.6rem; height: 1.6rem; border-width: .2rem; }
+
+/* ===== Dashboard (rehecho el 29/10/2026) ===== */
+.spui-dash .unraf-card { margin-bottom: 0; }
+.spui-dash .min-w-0 { min-width: 0; }
+
+/* Alerta de emergencia en curso: lo primero que se ve. */
+.spui-dash-alerta {
+    display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;
+    padding: 1rem 1.25rem; border-radius: 8px; color: #fff;
+    background: linear-gradient(135deg, #FF223D, #b3142a);
+    box-shadow: 0 6px 18px rgba(255, 34, 61, .25);
+}
+.spui-dash-alerta-icono {
+    width: 3rem; height: 3rem; border-radius: 50%; flex-shrink: 0;
+    background: rgba(255, 255, 255, .18); display: flex; align-items: center; justify-content: center;
+    animation: spui-dash-pulso 1.8s ease-out infinite;
+}
+.spui-dash-alerta-icono img { width: 1.6rem; height: 1.6rem; filter: brightness(0) invert(1); }
+.spui-dash-alerta-rotulo { font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; opacity: .85; font-weight: 600; }
+.spui-dash-alerta-titulo { font-family: var(--unraf-font-principal); font-weight: 700; font-size: 1.25rem; line-height: 1.2; overflow-wrap: anywhere; }
+.spui-dash-alerta-mensaje { opacity: .92; margin-top: .15rem; overflow-wrap: anywhere; }
+.spui-dash-alerta-meta { display: flex; flex-wrap: wrap; gap: .25rem 1rem; font-size: .8rem; opacity: .85; margin-top: .35rem; }
+.spui-dash-alerta-btn { background: #fff; color: #b3142a; border-color: #fff; }
+.spui-dash-alerta-btn:hover { background: #ffe5e9; color: #8f0f21; }
+@keyframes spui-dash-pulso {
+    0% { box-shadow: 0 0 0 0 rgba(255, 255, 255, .45); }
+    100% { box-shadow: 0 0 0 .9rem rgba(255, 255, 255, 0); }
+}
+
+.spui-dash-tarjeta-titulo { font-weight: 700; color: #2b3a4a; margin-bottom: .5rem; }
+.spui-dash-dona { width: 150px; height: 150px; flex-shrink: 0; margin: 0 auto; }
+.spui-dash-leyenda li { display: flex; align-items: center; gap: .5rem; padding: .2rem 0; }
+.spui-dash-leyenda li strong { margin-left: auto; font-size: 1.05rem; color: #2b3a4a; }
+.spui-dash-punto { width: .6rem; height: .6rem; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+
+/* KPIs: tarjetas-enlace a cada sección. */
+.spui-dash-kpi {
+    display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto auto;
+    column-gap: .75rem; align-items: center; text-decoration: none; color: inherit;
+    border-top: 3px solid var(--kpi);
+}
+.spui-dash-kpi:hover { color: inherit; }
+.spui-dash-kpi-icono {
+    grid-row: 1 / span 3; width: 2.6rem; height: 2.6rem; border-radius: 10px;
+    background: color-mix(in srgb, var(--kpi) 12%, #fff);
+    display: flex; align-items: center; justify-content: center; align-self: start;
+}
+.spui-dash-kpi-icono img { width: 1.35rem; height: 1.35rem; opacity: .8; }
+.spui-dash-kpi-valor { font-family: var(--unraf-font-principal); font-weight: 700; font-size: 1.7rem; line-height: 1; color: #2b3a4a; }
+.spui-dash-kpi-titulo { font-weight: 600; color: #2b3a4a; font-size: .9rem; }
+.spui-dash-kpi-detalle { color: #6c757d; font-size: .78rem; line-height: 1.25; }
+
+.spui-dash-lienzo { width: 100%; height: 260px; }
+/* En celular el ícono le come el ancho al título del KPI. */
+@media (max-width: 575.98px) {
+    .spui-dash-kpi { grid-template-columns: 1fr; }
+    .spui-dash-kpi-icono { display: none; }
+    .spui-dash-lienzo { height: 220px; }
+}
+
+/* Requiere atención */
+.spui-dash-contador {
+    background: #FF223D; color: #fff; font-weight: 700; font-size: .75rem;
+    min-width: 1.4rem; height: 1.4rem; border-radius: 1rem; padding: 0 .4rem;
+    display: inline-flex; align-items: center; justify-content: center;
+}
+.spui-dash-avisos { display: flex; flex-direction: column; gap: .6rem; }
+.spui-dash-aviso {
+    border-left: 4px solid #C77F0A; background: #fff8eb; border-radius: 6px;
+    padding: .6rem .75rem; overflow-wrap: anywhere;
+}
+.spui-dash-aviso.is-grave { border-left-color: #FF223D; background: #fff1f3; }
+.spui-dash-ok { display: flex; gap: .75rem; align-items: center; padding: .5rem 0; }
+.spui-dash-ok-icono {
+    width: 2.4rem; height: 2.4rem; border-radius: 50%; flex-shrink: 0;
+    background: #eaf5e5; color: #4A9930; font-weight: 700; font-size: 1.2rem;
+    display: flex; align-items: center; justify-content: center;
+}
+
+/* Tarjetas de reproductor */
+.spui-dash-repro { padding: 1rem 1.1rem; border-left: 4px solid #adb5bd; display: flex; flex-direction: column; }
+.spui-dash-repro.is-conectado { border-left-color: #4A9930; }
+.spui-dash-repro.is-desconectado { border-left-color: #FF223D; }
+.spui-dash-repro-nombre { font-weight: 700; font-size: 1.05rem; color: #2b3a4a; overflow-wrap: anywhere; }
+.spui-dash-estado {
+    display: inline-flex; align-items: center; gap: .35rem; flex-shrink: 0;
+    font-size: .75rem; font-weight: 600; padding: .2rem .6rem; border-radius: 1rem;
+    background: #f1f3f5; color: #6c757d;
+}
+.spui-dash-estado .spui-dash-punto { background: #adb5bd; }
+.spui-dash-estado.is-conectado { background: #eaf5e5; color: #2f6d1c; }
+.spui-dash-estado.is-conectado .spui-dash-punto { background: #4A9930; }
+.spui-dash-estado.is-desconectado { background: #fff1f3; color: #b3142a; }
+.spui-dash-estado.is-desconectado .spui-dash-punto { background: #FF223D; }
+.spui-dash-metricas { display: grid; grid-template-columns: repeat(3, 1fr); gap: .75rem; margin-top: .9rem; }
+.spui-dash-metrica { display: flex; flex-direction: column; gap: .15rem; min-width: 0; }
+.spui-dash-metrica > span { font-size: .78rem; color: #6c757d; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.spui-dash-metrica > strong { font-size: 1rem; color: #2b3a4a; }
+.spui-dash-barra { height: 5px; border-radius: 3px; background: #edf0f3; overflow: hidden; }
+.spui-dash-barra > div { height: 100%; border-radius: 3px; transition: width .4s ease; }
+.spui-dash-repro .mt-3:last-child { margin-top: auto !important; padding-top: .9rem; }

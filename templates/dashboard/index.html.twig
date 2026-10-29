@@ -18,3 +18,9 @@
 </div>
 
 {% endblock %}
+
+{% block javascripts %}
+    {# ECharts copiado en assets (no CDN): el mismo que usa Telemetría. #}
+    <script src="{{ asset('spui/vendor/echarts/echarts.min.js') }}"></script>
+    <script src="{{ asset('spui/js/dashboard/dashboard.js') }}"></script>
+{% endblock %}

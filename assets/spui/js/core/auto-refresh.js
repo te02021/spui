@@ -52,6 +52,14 @@
     function aplicarCambios(viejo, nuevo) {
         var cambios = 0;
 
+        // Un grafico (ECharts dibuja su propio <canvas> adentro): no se toca.
+        // Lo actualiza su propio script con los datos nuevos, al recibir el
+        // evento spui:refrescado. Compararlo con el <div> vacio que manda el
+        // servidor lo borraria en cada ciclo.
+        if (viejo.hasAttribute('data-spui-refresh-conservar')) {
+            return cambios;
+        }
+
         // Distinta cantidad de hijos: cambio estructural (una fila nueva, una
         // alerta que aparecio). No hay forma prolija de reconciliar eso nodo a
         // nodo, asi que se reemplaza el bloque entero.
