@@ -266,7 +266,7 @@ Cosas que hoy están bien para desarrollo y **no** para mostrar en serio:
 
 | Tema | Qué hacer |
 |---|---|
-| ~~MQTT anónimo~~ | ✅ Resuelto — Dynamic Security, `allow_anonymous false`, ACL por rol (tareas 1.0.a/1.0.b) |
+| ~~MQTT anónimo~~ | ✅ Resuelto — Dynamic Security, `allow_anonymous false`, ACL por rol (tareas 1.0.a/1.0.b) y, desde el 29/10/2026, por equipo (un rol por reproductor, `spui-repro-{id}-rol`) |
 | ~~MQTT sin cifrar~~ | ✅ Resuelto — certificado propio (1.0.c), listener 8883 con TLS activo en el broker (1.0.d) y CMS + reproductor 17 verificados conectando por TLS con verificación de hostname (1.0.e) |
 | HTTP sin cifrar (API REST) | Falta HTTPS para `/api/spui/...` — no forma parte de las tareas 1.0.a-f (esas son solo MQTT) |
 | ~~1883 sigue abierto sin TLS~~ | ✅ Resuelto el 28/10/2026 (tarea 1.0.f / C2) — `listener 1883 127.0.0.1` en `mosquitto.conf`, con el CMS y la Pi entrando por 8883 desde antes. Se quitaron las reglas de firewall del 1883. En la VM, la regla del broker va sólo para el 8883 |

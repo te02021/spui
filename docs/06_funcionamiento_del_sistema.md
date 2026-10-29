@@ -253,7 +253,7 @@ Toda acción del CMS que cambia lo que muestra un reproductor se **rechaza si es
 | Endpoints de la Pi (`/sync`, `/heartbeat`, `/telemetria`) | Header `X-Api-Key`, comparada contra un hash SHA-256 |
 | Archivos de medios (`/api/spui/media/*`) | También `X-Api-Key`, con protección contra path traversal |
 | Redirect y PNG de QR | Público por diseño: los abre el celular de un visitante |
-| Broker MQTT | Sin acceso anónimo (`allow_anonymous false`), usuarios y ACL por rol con el plugin Dynamic Security, TLS en 8883. Detalle en `config/mosquitto/README.md` |
+| Broker MQTT | Sin acceso anónimo (`allow_anonymous false`), usuarios y ACL con el plugin Dynamic Security, TLS en 8883. **Permisos por equipo** (29/10/2026): cada reproductor tiene su propio rol, `spui-repro-{id}-rol`, y sólo puede publicar su telemetría (normal y en vivo) y su estado, y suscribirse a la alerta global y a sus propias alertas y comandos. No puede publicar a nombre de otro, leer los comandos de otro ni emitir alertas. El CMS arma el rol al crear el reproductor o regenerar su clave, y lo asegura en cada sync (`MqttSecurityService::asegurarPermisos()`, cacheado 1 h), así que los equipos que ya existían pasaron solos. Lo verifica `tools/verificacion/mqtt_permisos.php` contra el broker real. Detalle en `config/mosquitto/README.md` |
 | CORS | Lista blanca configurable (`SPUI_CORS_ORIGINS`) |
 | Límite de peticiones | 4 sync/min y 3 heartbeat/min por reproductor; 120/min por IP en el resto de la API |
 

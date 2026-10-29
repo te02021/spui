@@ -21,7 +21,8 @@ use SPUI\Repository\CronogramaItemRepository;
 use SPUI\Repository\ProgramacionEnergeticaRepository;
 use SPUI\Repository\ProgramacionRepository;
 use SPUI\Service\ConexionPublisherService;
-use SPUI\Service\MediaStorageService;
+use SPUI\Service\MediaStorageService;
+use SPUI\Service\MqttSecurityService;
 use SPUI\Service\ReproductorAuthService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
@@ -50,6 +51,7 @@ class SyncController extends AbstractController
         private readonly RateLimiterFactory $spuiReproductorHeartbeatLimiter,
         private readonly LoggerInterface $logger,
         private readonly ConexionPublisherService $conexionPublisher,
+        private readonly MqttSecurityService $mqttSeguridad,
         #[Autowire('%env(int:default:spui_umbral_conexion_default:SPUI_UMBRAL_CONEXION_SEG)%')]
         private readonly int $umbralConexionSeg,
     ) {}
@@ -75,6 +77,11 @@ class SyncController extends AbstractController
                 ['Retry-After' => $limit->getRetryAfter()->getTimestamp() - time()],
             );
         }
+
+        // Permisos MQTT por equipo: los reproductores que ya existían pasan
+        // solos a su rol propio en el próximo sync (cacheado una hora; no
+        // frena el sync aunque el broker esté caído).
+        $this->mqttSeguridad->asegurarPermisos($reproductor);
 
         $ahora = new DateTimeImmutable();
 
