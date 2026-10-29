@@ -279,7 +279,7 @@ No es un caso de prueba de la tesis: es la herramienta de `09` §16 para trabaja
 | Espejo: sonido | El tono de `probar` y una alerta suenan en la PC y en el monitor ✅ (la primera versión, con el plugin `multi`, daba underruns: se cambió por `alsaloop`) |
 | Videos con el espejo prendido | Sin trabarse ✅ |
 
-**Falta:** repetirlo desde la red del trabajo (SSH, espejo y reproductor Conectado en el CMS).
+**Desde la red del trabajo (29/10/2026) — ✅:** SSH a la Pi, reproductor Conectado en el CMS, espejo con imagen y sonido (unos segundos de demora, suficiente para desarrollar).
 
 ### 28/10/2026 — C2: el 1883 sin TLS cerrado a la red
 
