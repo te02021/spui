@@ -26,6 +26,14 @@ class Reproductor
     #[ORM\Column(length: 50, nullable: true)]
     private ?string $versionFirmware = null;
 
+    /**
+     * Tamaño total del disco de la Pi, que manda con su telemetría desde el
+     * 29/10/2026. Va acá y no en cada lectura: casi nunca cambia. Lo usa el
+     * indicador circular de disco (% usado). Null hasta la primera lectura.
+     */
+    #[ORM\Column(type: 'integer', nullable: true, options: ['unsigned' => true])]
+    private ?int $discoTotalMb = null;
+
     /** SHA-256 de la API key generada — nunca se almacena la key en claro */
     #[ORM\Column(length: 64)]
     private string $apiKeyHash;
@@ -126,6 +134,9 @@ class Reproductor
 
     public function getVersionFirmware(): ?string { return $this->versionFirmware; }
     public function setVersionFirmware(?string $v): static { $this->versionFirmware = $v; return $this; }
+
+    public function getDiscoTotalMb(): ?int { return $this->discoTotalMb; }
+    public function setDiscoTotalMb(?int $mb): static { $this->discoTotalMb = $mb; return $this; }
 
     public function getApiKeyHash(): string { return $this->apiKeyHash; }
     public function setApiKeyHash(string $hash): static { $this->apiKeyHash = $hash; return $this; }

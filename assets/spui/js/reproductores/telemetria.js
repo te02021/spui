@@ -1,31 +1,37 @@
 // Telemetría de un reproductor (templates/reproductores/telemetria.html.twig).
 //
-// Tres partes que comparten los indicadores de arriba:
-//   - Histórico por hora: tres gráficos ApexCharts con escala fija. Cambiar de
-//     rango pide /telemetria/datos y redibuja con animación, sin recargar.
-//     Cada minuto se vuelve a pedir el rango actual, en silencio.
+//   - Histórico por hora: tres gráficos ApexCharts con escala fija, agrupados
+//     (se mueven y muestran el tooltip juntos). La página trae los últimos 60
+//     días y los botones 24 h / 7 d / 30 d eligen qué ventana se ve. Arrastrar
+//     hacia la izquierda muestra las horas anteriores; nunca se pasa de ahora
+//     ni del primer dato. Cada minuto se vuelven a pedir los datos en silencio.
+//   - Indicadores circulares: temperatura, RAM y disco en uso.
 //   - En vivo: suscrito por WebSocket a spui/telemetria/vivo/{id}. Mientras la
 //     pestaña está visible, se le pide a la Pi (POST /telemetria/vivo) que
-//     publique cada 1 s, y se renueva a la mitad del plazo. Al cerrar o ocultar
+//     publique cada 1 s, y se renueva a la mitad del plazo. Al cerrar u ocultar
 //     la pestaña se deja de renovar y la Pi vuelve sola a publicar cada minuto.
-//   - Exportar: rango de fechas → Excel. Los errores van debajo de cada campo.
+//   - Exportar: el modal (_telemetria_exportar.html.twig) se envía desde acá;
+//     lo que vuelve es un archivo, o un 422 con los errores por campo.
 (function () {
     'use strict';
 
     var raiz = document.getElementById('spui-telemetria');
     if (!raiz || typeof window.ApexCharts === 'undefined') return;
 
-    var AZUL = '#3387EF', AMBAR = '#C77F0A', ROJO = '#FF223D', VERDE = '#4A9930', GRIS = '#6c757d';
+    var AZUL = '#3387EF', AMBAR = '#C77F0A', ROJO = '#FF223D', VERDE = '#4A9930', VIOLETA = '#7A5AF8', GRIS = '#6c757d';
     var UMBRAL = parseFloat(raiz.dataset.umbral) || 80;
     var VIVO_SEG = parseInt(raiz.dataset.vivoSeg, 10) || 120;
     var VIVO_PUNTOS = 120;           // 2 minutos a una lectura por segundo
     var SIN_DATOS_VIVO_MS = 15000;   // pedido hecho y nada llegó: la Pi no responde
     var REFRESCO_MS = 60000;
-    var CARGA_MIN_MS = 450;          // la animación de carga se ve aunque el pedido vuele
+    var CARGA_MIN_MS = 450;          // la animación de carga se ve aunque no haya pedido
+    var HORAS = { '24h': 24, '7d': 168, '30d': 720 };
+    var GRUPO = 'spui-telemetria';
 
     var datos = JSON.parse(raiz.querySelector('[data-tel-datos]').textContent);
     var rango = datos.rango;
     var vivoActivo = false;          // llegó al menos una muestra en vivo y no se pausó
+    var ajustando = false;           // la vista la está moviendo este código (rango o arrastre)
 
     // ── Idioma de los gráficos ──────────────────────────────────────────────
     var ES = {
@@ -36,26 +42,46 @@
             days: ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'],
             shortDays: ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'],
             toolbar: { exportToSVG: 'Descargar SVG', exportToPNG: 'Descargar PNG', exportToCSV: 'Descargar CSV',
-                       selection: 'Selección', selectionZoom: 'Zoom', zoomIn: 'Acercar', zoomOut: 'Alejar', pan: 'Mover', reset: 'Restablecer' }
+                       selection: 'Selección', selectionZoom: 'Acercar una zona', zoomIn: 'Acercar', zoomOut: 'Alejar',
+                       pan: 'Arrastrar para moverse', reset: 'Volver al período elegido' }
         }
     };
 
     function num(v, dec) { return (v === null || v === undefined || isNaN(v)) ? '—' : Number(v).toFixed(dec).replace('.', ','); }
     function colorTemp(t) { return t >= UMBRAL ? ROJO : (t >= UMBRAL * 0.85 ? AMBAR : VERDE); }
-    function colorRam(r) { return r >= 90 ? ROJO : (r >= 75 ? AMBAR : AZUL); }
+    function colorPorc(r) { return r >= 90 ? ROJO : (r >= 75 ? AMBAR : AZUL); }
     /** "2026-10-29 08:00" → milisegundos, en hora local (como lo guarda el CMS). */
     function ms(periodo) {
         var p = periodo.split(/[- :]/);
         return new Date(+p[0], +p[1] - 1, +p[2], +p[3], +(p[4] || 0)).getTime();
     }
 
-    function base(alto, extra) {
+    // ── Ventana visible ─────────────────────────────────────────────────────
+    function limites() {
+        var serie = datos.serie;
+        var ahora = Date.now();
+        var primero = serie.length ? ms(serie[0].periodo) : ahora - HORAS['30d'] * 3600e3;
+        return { min: Math.min(primero, ahora - 3600e3), max: ahora };
+    }
+    function ventana(r) {
+        var l = limites();
+        return { min: Math.max(l.min, l.max - HORAS[r] * 3600e3), max: l.max };
+    }
+    function base(id, alto, extra, tipo) {
         var o = {
             chart: {
-                height: alto, fontFamily: 'inherit', locales: [ES], defaultLocale: 'es',
-                toolbar: { show: true, tools: { download: true, selection: false, zoom: true, zoomin: true, zoomout: true, pan: false, reset: true } },
-                zoom: { enabled: true, type: 'x' },
-                animations: { enabled: true, easing: 'easeinout', speed: 800, dynamicAnimation: { enabled: true, speed: 600 } }
+                id: id, group: GRUPO, type: tipo || 'area', height: alto, fontFamily: 'inherit', locales: [ES], defaultLocale: 'es',
+                // Sin la mano (pan) ni la lupa de selección de ApexCharts: el
+                // arrastre lo maneja arrastrarVentana() (ver más abajo).
+                toolbar: { show: true,
+                           tools: { download: true, selection: false, zoom: false, zoomin: true, zoomout: true, pan: false, reset: true } },
+                zoom: { enabled: true, type: 'x', allowMouseWheelZoom: false },
+                // Sin animación al mover la vista (arrastre cuadro a cuadro); la del
+                // cambio de rango la pide mostrarVentana().
+                animations: { enabled: true, easing: 'easeinout', speed: 700, dynamicAnimation: { enabled: false } },
+                events: {
+                    beforeResetZoom: function () { return { xaxis: ventana(rango) }; }
+                }
             },
             stroke: { curve: 'smooth', width: 2.5 },
             dataLabels: { enabled: false },
@@ -71,16 +97,23 @@
         };
         return Object.assign(o, extra);
     }
+    // Los gráficos agrupados se alinean sólo si los ejes Y miden lo mismo.
+    var ANCHO_EJE = 62;
 
     // ── Gráficos del histórico ──────────────────────────────────────────────
     function series(serie) {
+        // Un punto vacío en "ahora" al final de cada serie: ApexCharts frena el
+        // arrastre en el último dato que conoce, y sin esto ese límite quedaba
+        // antes de la ventana (que termina en ahora) y el arrastre saltaba.
+        var ahora = Date.now();
+        function conAhora(datos) { datos.push([ahora, null]); return datos; }
         return {
             temp: [
-                { name: 'Promedio', data: serie.map(function (p) { return [ms(p.periodo), p.temp_prom]; }) },
-                { name: 'Máxima',   data: serie.map(function (p) { return [ms(p.periodo), p.temp_max]; }) }
+                { name: 'Promedio', data: conAhora(serie.map(function (p) { return [ms(p.periodo), p.temp_prom]; })) },
+                { name: 'Máxima',   data: conAhora(serie.map(function (p) { return [ms(p.periodo), p.temp_max]; })) }
             ],
-            ram:   [{ name: 'RAM promedio', data: serie.map(function (p) { return [ms(p.periodo), p.ram_prom]; }) }],
-            disco: [{ name: 'Disco libre',  data: serie.map(function (p) { return [ms(p.periodo), Math.round(p.disco_min / 102.4) / 10]; }) }]
+            ram:   [{ name: 'RAM promedio', data: conAhora(serie.map(function (p) { return [ms(p.periodo), p.ram_prom]; })) }],
+            disco: [{ name: 'Disco libre',  data: conAhora(serie.map(function (p) { return [ms(p.periodo), Math.round(p.disco_min / 102.4) / 10]; })) }]
         };
     }
     function maxTemp(serie) {
@@ -97,33 +130,86 @@
 
     var s0 = series(datos.serie);
     var graf = {};
-    graf.temp = new ApexCharts(raiz.querySelector('[data-tel-chart="temp"]'), base(320, {
+    graf.temp = new ApexCharts(raiz.querySelector('[data-tel-chart="temp"]'), base('tel-temp', 320, {
         series: s0.temp,
-        chart: Object.assign(base(320).chart, { type: 'area' }),
         colors: [AZUL, AMBAR],
         fill: { type: 'gradient', gradient: { opacityFrom: 0.35, opacityTo: 0.02 } },
-        yaxis: { min: 0, max: maxTemp(datos.serie), tickAmount: 5, title: { text: '°C', style: { color: GRIS } },
-                 labels: { formatter: function (v) { return Math.round(v) + ' °C'; } } },
+        yaxis: { min: 0, max: maxTemp(datos.serie), tickAmount: 5,
+                 labels: { minWidth: ANCHO_EJE, maxWidth: ANCHO_EJE, formatter: function (v) { return Math.round(v) + ' °C'; } } },
         tooltip: { shared: true, x: { format: 'dd/MM/yyyy HH:mm' }, y: { formatter: function (v) { return num(v, 1) + ' °C'; } } },
         annotations: { yaxis: [{ y: UMBRAL, borderColor: ROJO, strokeDashArray: 6,
             label: { text: 'Umbral ' + UMBRAL + ' °C', borderColor: ROJO, style: { color: '#fff', background: ROJO } } }] }
     }));
-    graf.ram = new ApexCharts(raiz.querySelector('[data-tel-chart="ram"]'), base(260, {
+    graf.ram = new ApexCharts(raiz.querySelector('[data-tel-chart="ram"]'), base('tel-ram', 260, {
         series: s0.ram,
-        chart: Object.assign(base(260).chart, { type: 'area' }),
         colors: [AZUL],
         fill: { type: 'gradient', gradient: { opacityFrom: 0.35, opacityTo: 0.02 } },
-        yaxis: { min: 0, max: 100, tickAmount: 5, labels: { formatter: function (v) { return Math.round(v) + ' %'; } } },
+        yaxis: { min: 0, max: 100, tickAmount: 5,
+                 labels: { minWidth: ANCHO_EJE, maxWidth: ANCHO_EJE, formatter: function (v) { return Math.round(v) + ' %'; } } },
         tooltip: { x: { format: 'dd/MM/yyyy HH:mm' }, y: { formatter: function (v) { return num(v, 1) + ' %'; } } }
     }));
-    graf.disco = new ApexCharts(raiz.querySelector('[data-tel-chart="disco"]'), base(260, {
+    graf.disco = new ApexCharts(raiz.querySelector('[data-tel-chart="disco"]'), base('tel-disco', 260, {
         series: s0.disco,
-        chart: Object.assign(base(260).chart, { type: 'line' }),
-        colors: [VERDE],
-        yaxis: { min: 0, max: maxDisco(s0), tickAmount: 4, labels: { formatter: function (v) { return num(v, (v === 0 || v >= 10) ? 0 : 1) + ' GB'; } } },
+        colors: [VIOLETA],
+        fill: { type: 'gradient', gradient: { opacityFrom: 0.3, opacityTo: 0.02 } },
+        yaxis: { min: 0, max: maxDisco(s0), tickAmount: 4,
+                 labels: { minWidth: ANCHO_EJE, maxWidth: ANCHO_EJE, formatter: function (v) { return num(v, (v === 0 || v >= 10) ? 0 : 1) + ' GB'; } } },
         tooltip: { x: { format: 'dd/MM/yyyy HH:mm' }, y: { formatter: function (v) { return num(v, 1) + ' GB'; } } }
     }));
-    Object.keys(graf).forEach(function (k) { graf[k].render(); });
+    var LISTA = [graf.temp, graf.ram, graf.disco];
+    LISTA.forEach(function (g) { g.render(); });
+
+    /** Muestra la ventana de un rango, con la animación de dibujo de ApexCharts. */
+    function mostrarVentana(r, animar) {
+        var v = ventana(r);
+        ajustando = true;
+        LISTA.forEach(function (g) {
+            try { g.updateOptions({ xaxis: { min: v.min, max: v.max } }, false, !!animar); } catch (e) { /* sin datos */ }
+        });
+        ajustando = false;
+    }
+    mostrarVentana(rango);
+
+    /**
+     * Arrastre propio: mantener apretado y mover hacia la derecha muestra las
+     * horas anteriores. El pan de ApexCharts avanza a saltos de 1/15 de la
+     * ventana por cada movimiento del mouse (11 h con 7 días) y rechaza el
+     * salto entero si se pasa del límite, así que cerca de "ahora" no se podía
+     * volver hasta el final. Acá la vista sigue al puntero y frena justo en
+     * ahora y en el primer dato. Los tres gráficos se mueven juntos.
+     */
+    var cuadroPendiente = null;
+    function arrastrarVentana(contenedor, grafico) {
+        var inicio = null;
+        contenedor.classList.add('spui-tel-arrastrable');
+        contenedor.addEventListener('pointerdown', function (e) {
+            if (e.button !== 0 || e.target.closest('.apexcharts-toolbar, .apexcharts-legend')) return;
+            var g = grafico.w.globals;
+            inicio = { x: e.clientX, min: g.minX, max: g.maxX, msPorPx: (g.maxX - g.minX) / Math.max(1, g.gridWidth) };
+            contenedor.setPointerCapture(e.pointerId);
+            contenedor.classList.add('is-arrastrando');
+        });
+        contenedor.addEventListener('pointermove', function (e) {
+            if (!inicio) return;
+            var l = limites(), span = inicio.max - inicio.min;
+            var min = inicio.min - (e.clientX - inicio.x) * inicio.msPorPx;
+            min = Math.max(l.min, Math.min(min, l.max - span));
+            if (cuadroPendiente !== null) cancelAnimationFrame(cuadroPendiente);
+            cuadroPendiente = requestAnimationFrame(function () {
+                cuadroPendiente = null;
+                ajustando = true;
+                LISTA.forEach(function (c) { c.zoomX(min, min + span); });
+                ajustando = false;
+            });
+        });
+        function soltar() {
+            inicio = null;
+            contenedor.classList.remove('is-arrastrando');
+        }
+        contenedor.addEventListener('pointerup', soltar);
+        contenedor.addEventListener('pointercancel', soltar);
+    }
+    LISTA.forEach(function (g) { arrastrarVentana(g.el, g); });
 
     // ── Indicadores circulares ──────────────────────────────────────────────
     function gauge(el, color) {
@@ -144,31 +230,32 @@
         g.render();
         return g;
     }
-    var gTemp = gauge(raiz.querySelector('[data-tel-gauge="temp"]'), VERDE);
-    var gRam  = gauge(raiz.querySelector('[data-tel-gauge="ram"]'), AZUL);
+    var gTemp  = gauge(raiz.querySelector('[data-tel-gauge="temp"]'), VERDE);
+    var gRam   = gauge(raiz.querySelector('[data-tel-gauge="ram"]'), AZUL);
+    var gDisco = gauge(raiz.querySelector('[data-tel-gauge="disco"]'), VIOLETA);
 
-    function ponerGauge(g, el, valor, texto, color) {
-        el._texto = texto;
+    function ponerGauge(g, valor, texto, color) {
+        g.el._texto = texto;
         g.updateOptions({ colors: [color] }, false, false);
         g.updateSeries([Math.max(0, Math.min(100, valor || 0))]);
     }
-    function indicadores(temp, ram) {
-        if (temp !== null && temp !== undefined) ponerGauge(gTemp, gTemp.el, temp, num(temp, 1) + ' °C', colorTemp(temp));
-        if (ram !== null && ram !== undefined) ponerGauge(gRam, gRam.el, ram, num(ram, 1) + ' %', colorRam(ram));
-    }
-
-    /** El número sube de 0 al valor la primera vez, como los indicadores circulares. */
-    function contar(el, valor, dec) {
-        if (valor === null || valor === undefined) { el.textContent = '—'; return; }
-        var desde = parseFloat(String(el.dataset.valor || '0')) || 0, t0 = null, dur = 1100;
-        el.dataset.valor = valor;
-        function paso(t) {
-            if (t0 === null) t0 = t;
-            var k = Math.min(1, (t - t0) / dur), e = 1 - Math.pow(1 - k, 3);
-            el.textContent = num(desde + (valor - desde) * e, dec);
-            if (k < 1) requestAnimationFrame(paso);
+    var discoTotalGb = datos.ultima ? datos.ultima.disco_total_gb : null;
+    function indicadores(temp, ram, discoLibreGb, totalGb) {
+        if (temp !== null && temp !== undefined) ponerGauge(gTemp, temp, num(temp, 1) + ' °C', colorTemp(temp));
+        if (ram !== null && ram !== undefined) ponerGauge(gRam, ram, num(ram, 1) + ' %', colorPorc(ram));
+        if (totalGb) discoTotalGb = totalGb;
+        if (discoLibreGb !== null && discoLibreGb !== undefined) {
+            raiz.querySelector('[data-tel-numero="disco"]').textContent = num(discoLibreGb, 1) + ' GB';
+            if (discoTotalGb) {
+                var uso = (discoTotalGb - discoLibreGb) / discoTotalGb * 100;
+                ponerGauge(gDisco, uso, num(uso, 0) + ' %', colorPorc(uso));
+                raiz.querySelector('[data-tel-numero="disco_total"]').textContent = num(discoTotalGb, 0) + ' GB';
+            } else {
+                // Clientes anteriores al 29/10/2026 no mandan el tamaño del disco.
+                gDisco.el._texto = num(discoLibreGb, 0) + ' GB';
+                gDisco.updateSeries([0]);
+            }
         }
-        requestAnimationFrame(paso);
     }
 
     function resumen(r) {
@@ -183,76 +270,76 @@
             var el = raiz.querySelector('[data-tel-res="' + k + '"]');
             if (el) {
                 el.textContent = txt[k];
-                el.classList.toggle('text-danger', k === 'temp_max' && r && r.temp_max >= UMBRAL);
+                el.classList.toggle('text-danger', k === 'temp_max' && !!r && r.temp_max >= UMBRAL);
             }
         });
     }
 
-    function pintar(d) {
+    function pintar(d, conservarVentana) {
         var vacio = !d.serie.length;
         raiz.querySelector('[data-tel-vacio]').hidden = !vacio;
         raiz.querySelector('[data-tel-graficos]').hidden = vacio;
-        resumen(d.resumen);
-        if (!vivoActivo && d.ultima) {
-            indicadores(d.ultima.temp, d.ultima.ram);
+        resumen(d.resumenes[rango]);
+        if (d.ultima && !vivoActivo) {
+            indicadores(d.ultima.temp, d.ultima.ram, d.ultima.disco_gb, d.ultima.disco_total_gb);
+            raiz.querySelector('[data-tel-ultima]').textContent = 'Última lectura guardada: ' + d.ultima.cuando + '.';
         }
-        if (d.ultima) {
-            contar(raiz.querySelector('[data-tel-numero="disco"]'), d.ultima.disco_gb, 1);
-            if (!vivoActivo) raiz.querySelector('[data-tel-ultima]').textContent = 'Última lectura guardada: ' + d.ultima.cuando + '.';
-        }
-        if (vacio) return;
+        if (vacio || !conservarVentana) return;
+        // Refresco: datos nuevos sin perder adónde se había arrastrado el gráfico.
+        var g = graf.temp.w.globals, min = g.minX, max = g.maxX, alFinal = max >= Date.now() - 3 * 3600e3;
         var s = series(d.serie);
-        graf.temp.updateOptions({ yaxis: Object.assign({}, graf.temp.opts.yaxis[0], { max: maxTemp(d.serie) }) }, false, false);
-        graf.disco.updateOptions({ yaxis: Object.assign({}, graf.disco.opts.yaxis[0], { max: maxDisco(s) }) }, false, false);
-        graf.temp.updateSeries(s.temp, true);
-        graf.ram.updateSeries(s.ram, true);
-        graf.disco.updateSeries(s.disco, true);
+        graf.temp.updateSeries(s.temp, false);
+        graf.ram.updateSeries(s.ram, false);
+        graf.disco.updateSeries(s.disco, false);
+        ajustando = true;
+        LISTA.forEach(function (c) { c.zoomX(min, alFinal ? Date.now() : max); });
+        ajustando = false;
     }
-    pintar(datos);
+    pintar(datos, false);
 
     // ── Cambio de rango y refresco ──────────────────────────────────────────
     var cargando = raiz.querySelector('[data-tel-cargando]');
     var historico = raiz.querySelector('[data-tel-historico]');
 
-    function pedir(nuevo, silencioso) {
-        var t0 = Date.now();
-        if (!silencioso) { cargando.hidden = false; historico.classList.add('is-cargando'); }
-        var url = raiz.dataset.urlDatos + '?rango=' + encodeURIComponent(nuevo);
-        return fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }, credentials: 'same-origin' })
-            .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
-            .then(function (d) {
-                return new Promise(function (ok) { setTimeout(ok, silencioso ? 0 : Math.max(0, CARGA_MIN_MS - (Date.now() - t0))); })
-                    .then(function () { rango = nuevo; datos = d; pintar(d); });
-            })
-            .catch(function () { /* sin red: se queda lo que había; el próximo refresco reintenta */ })
-            .then(function () { cargando.hidden = true; historico.classList.remove('is-cargando'); });
-    }
-
     raiz.querySelectorAll('[data-tel-rango]').forEach(function (b) {
         b.addEventListener('click', function () {
-            var nuevo = b.dataset.telRango;
-            if (nuevo === rango && !historico.classList.contains('is-cargando')) return;
+            rango = b.dataset.telRango;
             raiz.querySelectorAll('[data-tel-rango]').forEach(function (o) {
                 var sel = o === b;
                 o.classList.toggle('unraf-btn-institucion', sel);
                 o.classList.toggle('unraf-btn-light', !sel);
                 o.setAttribute('aria-pressed', sel ? 'true' : 'false');
             });
-            try { history.replaceState(null, '', '?rango=' + nuevo); } catch (e) { /* sin historial */ }
-            pedir(nuevo, false);
+            try { history.replaceState(null, '', '?rango=' + rango); } catch (e) { /* sin historial */ }
+            cargando.hidden = false;
+            historico.classList.add('is-cargando');
+            setTimeout(function () {
+                resumen(datos.resumenes[rango]);
+                mostrarVentana(rango, true);
+                cargando.hidden = true;
+                historico.classList.remove('is-cargando');
+            }, CARGA_MIN_MS);
         });
     });
-    setInterval(function () { if (!document.hidden) pedir(rango, true); }, REFRESCO_MS);
+
+    setInterval(function () {
+        if (document.hidden) return;
+        fetch(raiz.dataset.urlDatos + '?rango=' + encodeURIComponent(rango),
+              { headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }, credentials: 'same-origin' })
+            .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+            .then(function (d) { datos = d; pintar(d, true); })
+            .catch(function () { /* sin red: queda lo que había; el próximo refresco reintenta */ });
+    }, REFRESCO_MS);
 
     // ── En vivo ─────────────────────────────────────────────────────────────
     var btnVivo = raiz.querySelector('[data-tel-vivo-btn]');
     var panelVivo = raiz.querySelector('[data-tel-vivo-panel]');
     if (btnVivo && raiz.dataset.mqttUrl && typeof window.mqtt !== 'undefined') {
         var textoVivo = btnVivo.querySelector('[data-tel-vivo-texto]');
-        var pausado = false, cliente = null, renovar = null, sinDatos = null, ultimaMuestra = 0;
+        var pausado = false, renovar = null, sinDatos = null, ultimaMuestra = 0;
         var puntos = { temp: [], ram: [] };
 
-        function chartVivo(sel, nombre, color, max, unidad) {
+        var chartVivo = function (sel, nombre, color, unidad) {
             var c = new ApexCharts(raiz.querySelector(sel), {
                 series: [{ name: nombre, data: [] }],
                 chart: { type: 'line', height: 220, fontFamily: 'inherit', toolbar: { show: false }, zoom: { enabled: false },
@@ -260,7 +347,7 @@
                 colors: [color], stroke: { curve: 'smooth', width: 2.5 }, dataLabels: { enabled: false },
                 grid: { borderColor: '#e9ecef', strokeDashArray: 3 },
                 xaxis: { type: 'datetime', range: VIVO_PUNTOS * 1000, labels: { datetimeUTC: false, format: 'HH:mm:ss', style: { colors: GRIS } } },
-                yaxis: { min: 0, max: max, tickAmount: 5, labels: { formatter: function (v) { return Math.round(v) + ' ' + unidad; } } },
+                yaxis: { min: 0, max: 100, tickAmount: 5, labels: { formatter: function (v) { return Math.round(v) + ' ' + unidad; } } },
                 title: { text: nombre, style: { fontSize: '13px', fontWeight: 600 } },
                 tooltip: { x: { format: 'HH:mm:ss' }, y: { formatter: function (v) { return num(v, 1) + ' ' + unidad; } } },
                 legend: { show: false },
@@ -268,17 +355,17 @@
             });
             c.render();
             return c;
-        }
-        var cTemp = chartVivo('[data-tel-chart="vivo_temp"]', 'Temperatura', AMBAR, 100, '°C');
-        var cRam  = chartVivo('[data-tel-chart="vivo_ram"]', 'RAM', AZUL, 100, '%');
+        };
+        var cTemp = chartVivo('[data-tel-chart="vivo_temp"]', 'Temperatura', AMBAR, '°C');
+        var cRam  = chartVivo('[data-tel-chart="vivo_ram"]', 'RAM', AZUL, '%');
 
-        function estado(texto, clase) {
+        var estado = function (texto, clase) {
             textoVivo.textContent = texto;
             btnVivo.classList.remove('is-vivo', 'is-pausado', 'is-sin-datos');
             if (clase) btnVivo.classList.add(clase);
-        }
+        };
 
-        function pedirVivo() {
+        var pedirVivo = function () {
             var token = document.querySelector('meta[name="spui-csrf-token"]');
             fetch(raiz.dataset.urlVivo, {
                 method: 'POST', credentials: 'same-origin',
@@ -292,19 +379,19 @@
                     btnVivo.title = 'El reproductor no está mandando datos en vivo: puede estar apagado o desconectado. Se sigue intentando.';
                 }
             }, SIN_DATOS_VIVO_MS);
-        }
+        };
 
-        function empezar() {
+        var empezar = function () {
             if (pausado || document.hidden || renovar) return;
             pedirVivo();
             renovar = setInterval(pedirVivo, VIVO_SEG * 500);
-        }
-        function frenar() {
+        };
+        var frenar = function () {
             clearInterval(renovar); renovar = null;
             clearTimeout(sinDatos);
-        }
+        };
 
-        cliente = window.mqtt.connect(raiz.dataset.mqttUrl, {
+        var cliente = window.mqtt.connect(raiz.dataset.mqttUrl, {
             username: raiz.dataset.mqttUsuario, password: raiz.dataset.mqttPassword,
             clientId: 'spui-web-tel-' + Math.random().toString(16).slice(2, 10),
             connectTimeout: 5000, reconnectPeriod: 5000
@@ -329,7 +416,9 @@
             puntos.ram = puntos.ram.slice(-VIVO_PUNTOS);
             cTemp.updateSeries([{ name: 'Temperatura', data: puntos.temp }]);
             cRam.updateSeries([{ name: 'RAM', data: puntos.ram }]);
-            indicadores(m.temperatura_soc_celsius, m.uso_ram_porcentaje);
+            var libre = m.espacio_disco_libre_mb !== undefined ? m.espacio_disco_libre_mb / 1024 : null;
+            var total = m.espacio_disco_total_mb ? m.espacio_disco_total_mb / 1024 : null;
+            indicadores(m.temperatura_soc_celsius, m.uso_ram_porcentaje, libre, total);
             raiz.querySelector('[data-tel-ultima]').textContent = 'En vivo · ' + new Date(t).toLocaleTimeString('es-AR') + '.';
         });
         cliente.on('offline', function () { if (!pausado) estado('Reconectando…', 'is-sin-datos'); });
@@ -358,57 +447,52 @@
         btnVivo.disabled = true;
     }
 
-    // ── Exportar a Excel ────────────────────────────────────────────────────
-    var form = raiz.querySelector('[data-tel-exportar]');
-    if (form) {
-        var desde = form.querySelector('[name="desde"]'), hasta = form.querySelector('[name="hasta"]');
-        var btn = form.querySelector('[data-tel-exportar-btn]'), errorGeneral = form.querySelector('[data-tel-exportar-error]');
-        function local(d) {
-            function dd(n) { return String(n).padStart(2, '0'); }
-            return d.getFullYear() + '-' + dd(d.getMonth() + 1) + '-' + dd(d.getDate()) + 'T' + dd(d.getHours()) + ':' + dd(d.getMinutes());
-        }
-        var ahora = new Date(); ahora.setMinutes(0, 0, 0);
-        var dias = parseInt(raiz.dataset.exportDias, 10) || 60;
-        hasta.value = local(ahora);
-        desde.value = local(new Date(ahora.getTime() - 24 * 3600 * 1000));
-        var minimo = new Date(ahora.getTime() - dias * 24 * 3600 * 1000);
-        desde.min = hasta.min = local(minimo);
-
-        form.addEventListener('submit', function (e) {
-            e.preventDefault();
-            errorGeneral.hidden = true;
-            [desde, hasta].forEach(function (c) { window.spui.limpiarErrorDeCampo(c); });
-            var textoBtn = btn.textContent;
-            btn.disabled = true;
-            btn.textContent = 'Generando…';
-            var url = raiz.dataset.urlExportar + '?desde=' + encodeURIComponent(desde.value) + '&hasta=' + encodeURIComponent(hasta.value);
-            fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' }, credentials: 'same-origin' })
-                .then(function (r) {
-                    if (r.status === 422) {
-                        return r.json().then(function (j) {
-                            Object.keys(j.errores || {}).forEach(function (k) {
-                                var c = form.querySelector('[name="' + k + '"]');
-                                if (c) window.spui.errorDeCampo(c, j.errores[k]);
-                            });
+    // ── Exportar (el formulario llega en el modal) ──────────────────────────
+    // Fase de burbujeo: validacion-vivo.js revisa los campos antes, en captura,
+    // y si algo está mal corta el envío ahí.
+    document.addEventListener('submit', function (e) {
+        var form = e.target.closest && e.target.closest('form[data-tel-exportar]');
+        if (!form) return;
+        e.preventDefault();
+        var btn = form.querySelector('[data-tel-exportar-btn]'), general = form.querySelector('[data-tel-exportar-error]');
+        var campos = form.querySelectorAll('[name="desde"], [name="hasta"]');
+        general.hidden = true;
+        campos.forEach(function (c) { window.spui.limpiarErrorDeCampo(c); });
+        var textoBtn = btn.textContent;
+        btn.disabled = true;
+        btn.textContent = 'Generando…';
+        var formato = (form.querySelector('[name="formato"]:checked') || {}).value || 'xlsx';
+        var url = form.action + '?formato=' + encodeURIComponent(formato)
+            + '&desde=' + encodeURIComponent(form.querySelector('[name="desde"]').value)
+            + '&hasta=' + encodeURIComponent(form.querySelector('[name="hasta"]').value);
+        fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' }, credentials: 'same-origin' })
+            .then(function (r) {
+                if (r.status === 422) {
+                    return r.json().then(function (j) {
+                        Object.keys(j.errores || {}).forEach(function (k) {
+                            var c = form.querySelector('[name="' + k + '"]');
+                            if (c) window.spui.errorDeCampo(c, j.errores[k]);
                         });
-                    }
-                    if (!r.ok) throw new Error('HTTP ' + r.status);
-                    var disp = r.headers.get('Content-Disposition') || '';
-                    var nombre = (disp.match(/filename="?([^";]+)"?/) || [])[1] || 'telemetria.xlsx';
-                    return r.blob().then(function (b) {
-                        var a = document.createElement('a');
-                        a.href = URL.createObjectURL(b);
-                        a.download = nombre;
-                        document.body.appendChild(a);
-                        a.click();
-                        setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+                        if (j.mensaje) { general.textContent = j.mensaje; general.hidden = false; }
                     });
-                })
-                .catch(function () {
-                    errorGeneral.textContent = 'No se pudo generar el archivo. Revisá la conexión y probá de nuevo.';
-                    errorGeneral.hidden = false;
-                })
-                .then(function () { btn.disabled = false; btn.textContent = textoBtn; });
-        });
-    }
+                }
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                var disp = r.headers.get('Content-Disposition') || '';
+                var nombre = (disp.match(/filename="?([^";]+)"?/) || [])[1] || ('telemetria.' + formato);
+                return r.blob().then(function (b) {
+                    var a = document.createElement('a');
+                    a.href = URL.createObjectURL(b);
+                    a.download = nombre;
+                    document.body.appendChild(a);
+                    a.click();
+                    setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+                    if (window.spui.closeModal) window.spui.closeModal();
+                });
+            })
+            .catch(function () {
+                general.textContent = 'No se pudo generar el archivo. Revisá la conexión y probá de nuevo.';
+                general.hidden = false;
+            })
+            .then(function () { btn.disabled = false; btn.textContent = textoBtn; });
+    });
 }());

@@ -101,6 +101,10 @@ class TelemetriaController extends AbstractController
         $telemetria->setUsoRamPorcentaje($ram);
         $telemetria->setLatenciaRedMs($latencia);
         $telemetria->setEspacioDiscoLibreMb($disco);
+        $total = isset($body['espacio_disco_total_mb']) ? (int) $body['espacio_disco_total_mb'] : 0;
+        if ($total > 0 && $total <= self::DISCO_MAX_MB) {
+            $reproductor->setDiscoTotalMb($total);
+        }
 
         $em = $this->doctrine->getManager('SPUI');
         $em->persist($telemetria);

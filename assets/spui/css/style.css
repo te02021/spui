@@ -2000,3 +2000,32 @@ textarea.is-invalid,
     color: var(--unraf-azul);
 }
 .spui-tel-cargando[hidden] { display: none; }
+
+/* Modal de exportación: formato como tarjetas elegibles (radio). */
+.spui-tel-formatos { display: grid; grid-template-columns: repeat(3, 1fr); gap: .6rem; }
+@media (max-width: 575.98px) { .spui-tel-formatos { grid-template-columns: 1fr; } }
+.spui-tel-formato { position: relative; cursor: pointer; margin: 0; }
+.spui-tel-formato input { position: absolute; opacity: 0; pointer-events: none; }
+.spui-tel-formato-caja {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: .15rem;
+    padding: .8rem .5rem;
+    border: 2px solid #dee2e6;
+    border-radius: .5rem;
+    text-align: center;
+    transition: border-color .15s, background-color .15s;
+}
+.spui-tel-formato-caja img { width: 2rem; height: 2rem; }
+.spui-tel-formato-caja small { color: #6c757d; font-size: .75rem; }
+.spui-tel-formato:hover .spui-tel-formato-caja { border-color: #9fb6cc; }
+.spui-tel-formato input:checked + .spui-tel-formato-caja { border-color: var(--unraf-azul); background: #eef4fa; }
+.spui-tel-formato input:focus-visible + .spui-tel-formato-caja { outline: 3px solid rgba(51, 135, 239, .35); outline-offset: 2px; }
+
+/* Arrastre de los gráficos del histórico (telemetria.js, arrastrarVentana):
+   la mano indica que se puede mover; en celular el gesto vertical sigue
+   desplazando la página y el horizontal mueve el gráfico. */
+.spui-tel-arrastrable .apexcharts-svg { cursor: grab; }
+.spui-tel-arrastrable.is-arrastrando .apexcharts-svg { cursor: grabbing; }
+.spui-tel-arrastrable { touch-action: pan-y; user-select: none; }

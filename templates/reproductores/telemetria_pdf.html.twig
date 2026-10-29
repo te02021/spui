@@ -1,0 +1,80 @@
+{# Informe de telemetría en PDF (Dompdf). Autocontenido: sin CSS externo ni
+   imágenes remotas (isRemoteEnabled=false). Fuente DejaVu Sans, que trae °, ñ
+   y tildes. Las cifras con coma decimal, como en el CMS. #}
+{% set n = horas|length %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<style>
+    @page { margin: 22mm 14mm 18mm 14mm; }
+    body { font-family: 'DejaVu Sans', sans-serif; font-size: 8.5pt; color: #2b3a4a; }
+    .cabecera { position: fixed; top: -15mm; left: 0; right: 0; border-bottom: 2px solid #3d6589; padding-bottom: 2mm; }
+    .cabecera .marca { font-size: 11pt; font-weight: bold; color: #3d6589; }
+    .cabecera .sub { font-size: 7.5pt; color: #6c757d; }
+    .pie { position: fixed; bottom: -11mm; left: 0; right: 0; font-size: 7pt; color: #6c757d; border-top: 1px solid #dee2e6; padding-top: 1.5mm; }
+    h1 { font-size: 15pt; color: #3d6589; margin: 0 0 1mm; }
+    .periodo { color: #6c757d; margin: 0 0 5mm; }
+    table.resumen { width: 100%; border-collapse: separate; border-spacing: 2mm 0; margin: 0 -2mm 6mm; }
+    table.resumen td { background: #f1f5f9; border-radius: 2mm; padding: 3mm; text-align: center; width: 20%; }
+    table.resumen .valor { font-size: 13pt; font-weight: bold; display: block; }
+    table.resumen .etq { font-size: 7pt; color: #6c757d; }
+    .alto { color: #c8102e; }
+    table.detalle { width: 100%; border-collapse: collapse; }
+    table.detalle th { background: #3d6589; color: #fff; font-weight: bold; padding: 1.6mm 1.5mm; text-align: right; font-size: 7.5pt; }
+    table.detalle th:first-child, table.detalle td:first-child { text-align: left; }
+    table.detalle td { padding: 1.2mm 1.5mm; text-align: right; border-bottom: 1px solid #e9ecef; }
+    table.detalle tr:nth-child(even) td { background: #f8fafc; }
+    thead { display: table-header-group; }
+    tr { page-break-inside: avoid; }
+</style>
+</head>
+<body>
+<div class="cabecera">
+    <span class="marca">SPUI · Universidad Nacional de Rafaela</span><br>
+    <span class="sub">Sistema de Pantallas de Información Universitaria — informe de telemetría</span>
+</div>
+<div class="pie">
+    Generado el {{ generado|date('d/m/Y H:i') }} · {{ n }} {{ n == 1 ? 'hora' : 'horas' }} con datos · valores por hora calculados de una lectura por minuto
+</div>
+
+<h1>{{ reproductor.hostname }}</h1>
+<p class="periodo">
+    {% for p in reproductor.pantallas %}{{ p.nombre }}{% if not loop.last %} · {% endif %}{% endfor %}{% if reproductor.pantallas|length %} — {% endif %}
+    del {{ desde|date('d/m/Y H:i') }} al {{ hasta|date('d/m/Y H:i') }}
+</p>
+
+{% if resumen %}
+<table class="resumen">
+    <tr>
+        <td><span class="valor">{{ resumen.temp_prom|number_format(1, ',', '.') }} °C</span><span class="etq">Temperatura promedio</span></td>
+        <td><span class="valor {{ resumen.temp_max >= temp_umbral ? 'alto' }}">{{ resumen.temp_max|number_format(1, ',', '.') }} °C</span><span class="etq">Temperatura máxima (umbral {{ temp_umbral|number_format(0) }} °C)</span></td>
+        <td><span class="valor">{{ resumen.ram_prom|number_format(1, ',', '.') }} %</span><span class="etq">RAM promedio</span></td>
+        <td><span class="valor">{{ resumen.ram_max|number_format(1, ',', '.') }} %</span><span class="etq">RAM máxima</span></td>
+        <td><span class="valor">{{ (resumen.disco_min / 1024)|number_format(1, ',', '.') }} GB</span><span class="etq">Disco libre mínimo</span></td>
+    </tr>
+</table>
+{% endif %}
+
+<table class="detalle">
+    <thead>
+        <tr>
+            <th>Hora</th><th>Temp. prom.</th><th>Temp. máx.</th><th>RAM prom.</th><th>RAM máx.</th><th>Disco libre mín.</th><th>Lecturas</th>
+        </tr>
+    </thead>
+    <tbody>
+    {% for h in horas %}
+        <tr>
+            <td>{{ h.hora|date('d/m/Y H:i') }}</td>
+            <td>{{ h.temp_prom|number_format(1, ',', '.') }} °C</td>
+            <td class="{{ h.temp_max >= temp_umbral ? 'alto' }}">{{ h.temp_max|number_format(1, ',', '.') }} °C</td>
+            <td>{{ h.ram_prom|number_format(1, ',', '.') }} %</td>
+            <td>{{ h.ram_max|number_format(1, ',', '.') }} %</td>
+            <td>{{ (h.disco_min / 1024)|number_format(1, ',', '.') }} GB</td>
+            <td>{{ h.lecturas }}</td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+</body>
+</html>

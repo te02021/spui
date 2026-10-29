@@ -288,10 +288,17 @@ Para avisos urgentes o de último momento: evacuaciones, incidentes, un cambio d
 
 Se entra con el botón **Telemetría** del listado de reproductores.
 
-- **Indicadores de arriba:** temperatura y RAM en círculos que se llenan hasta el valor actual (verde, ámbar al acercarse al umbral, rojo al pasarlo) y el espacio libre en disco. Debajo de cada uno, el promedio y el máximo del período elegido.
+- **Indicadores de arriba:** temperatura, RAM y disco en uso, en círculos que se llenan hasta el valor actual (verde o azul, ámbar al acercarse al límite, rojo al pasarlo). El del disco muestra además el espacio libre y el total; el total lo informa el cliente de la Pi desde la versión del 29/10/2026. Debajo de cada uno, el promedio y el máximo del período elegido.
 - **En vivo:** al abrir la pantalla, el botón **En vivo** se pone verde y temperatura y RAM se actualizan **cada segundo**, con un panel de los últimos 2 minutos. No se guarda: es para mirar en el momento. Clic en el botón para pausarlo. Si dice **Sin datos en vivo**, el reproductor está apagado, desconectado o con una versión vieja del cliente; el resto de la pantalla funciona igual.
-- **Histórico por hora:** últimas 24 h, 7 días o 30 días, sin recargar la página. Tres gráficos con escala fija: temperatura (con la línea roja del umbral), RAM y disco libre. Al pasar el cursor se ve el valor exacto y la hora; se puede acercar una parte con la lupa.
-- **Exportar a Excel:** elegir desde y hasta (fecha y hora) y **Descargar Excel**. Una fila por hora con promedio y máximo de temperatura y RAM, el disco libre mínimo y la cantidad de lecturas. Se conservan los últimos **60 días**; la hora en curso entra recién cuando termina.
+- **Histórico por hora:** tres gráficos con escala fija, que se mueven juntos: temperatura (con la línea roja del umbral), RAM y disco libre. Al pasar el cursor se ve el valor exacto y la hora.
+  - **Últimas 24 h / 7 días / 30 días** eligen cuánto se ve a la vez.
+  - **Mantener apretado y arrastrar hacia la derecha** muestra las horas anteriores, hasta 60 días atrás; hacia la izquierda se vuelve, hasta el momento actual (no más).
+  - Los botones **+ / −** acercan y alejan; la **casita** vuelve al período elegido.
+- **Exportar** (botón al lado de En vivo): se abre una ventana para elegir el formato y el período, y **Descargar**.
+  - **Excel:** planilla con filtros y fechas reales (se pueden ordenar y graficar).
+  - **CSV:** texto separado por punto y coma, con coma decimal: se abre con doble clic en un Excel en castellano.
+  - **PDF:** informe para imprimir o adjuntar, con el resumen del período y el detalle.
+  - Una fila por hora con promedio y máximo de temperatura y RAM, el disco libre mínimo y la cantidad de lecturas. Se conservan los últimos **60 días**; la hora en curso entra recién cuando termina.
 
 Los datos se agrupan por hora: con una lectura por minuto, 7 días serían unos 10 000 puntos imposibles de leer.
 

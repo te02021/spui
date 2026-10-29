@@ -171,7 +171,7 @@ class TelemetriaHoraRepository extends ServiceEntityRepository
      *
      * @return array{lecturas:int, temp_prom:float, temp_max:float, ram_prom:float, ram_max:float, disco_min:int}|null
      */
-    public function resumen(Reproductor $reproductor, DateTimeImmutable $desde): ?array
+    public function resumen(Reproductor $reproductor, DateTimeImmutable $desde, ?DateTimeImmutable $hasta = null): ?array
     {
         $sql = <<<'SQL'
             SELECT SUM(lecturas)                          AS lecturas,
@@ -183,11 +183,13 @@ class TelemetriaHoraRepository extends ServiceEntityRepository
               FROM telemetria_hora
              WHERE reproductor_id = :reproductor
                AND hora >= :desde
+               AND hora < :hasta
             SQL;
 
         $f = $this->getEntityManager()->getConnection()->executeQuery($sql, [
             'reproductor' => $reproductor->getId(),
             'desde'       => $desde->format('Y-m-d H:i:s'),
+            'hasta'       => ($hasta ?? new DateTimeImmutable('+1 day'))->format('Y-m-d H:i:s'),
         ])->fetchAssociative();
 
         if (!$f || $f['lecturas'] === null || (int) $f['lecturas'] === 0) {

@@ -227,11 +227,18 @@
         }
 
         function bindFormInBody() {
+            // Cancelar/Cerrar se engancha aunque el contenido no sea un form
+            // data-spui-ajax: el modal de exportar la telemetría es un form que
+            // descarga un archivo, y su Cancelar no hacía nada.
+            if (bodyEl) {
+                bodyEl.querySelectorAll('[data-spui-close]').forEach(function (b) {
+                    if (b._spuiCierra) return;
+                    b._spuiCierra = true;
+                    b.addEventListener('click', closeModal);
+                });
+            }
             var form = bodyEl && bodyEl.querySelector('form[data-spui-ajax]');
             if (!form) return;
-            bodyEl.querySelectorAll('[data-spui-close]').forEach(function (b) {
-                b.addEventListener('click', closeModal);
-            });
             form.addEventListener('submit', function (e) {
                 e.preventDefault();
                 var btn = form.querySelector('[type=submit]');
@@ -793,6 +800,9 @@
         // Para que un contenido del nivel 2 se cierre solo al terminar (la
         // ventana de ítems de una playlist, al Guardar o Cancelar).
         window.spui.closeModal2 = closeModal2;
+        // Lo mismo para el nivel 1 (la exportación de telemetría se cierra al
+        // terminar la descarga).
+        window.spui.closeModal = closeModal;
 
         // Se exponen para el refresco automatico: cuando auto-refresh.js
         // reemplaza el HTML de una zona, los botones nuevos necesitan volver a

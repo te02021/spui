@@ -80,6 +80,27 @@ class VivoTest(unittest.TestCase):
         self.assertEqual(datos['uso_ram_porcentaje'], 40.0)
 
 
+    def test_avisa_en_el_log_cuando_termina(self):
+        """Sin esta línea no había forma de ver en el journal que la Pi volvió a cada minuto."""
+        p = _publisher(intervalo=60)
+        p._leer_disco_total = lambda: 30000
+        cliente = mock.Mock()
+        cliente.publish.return_value = mock.Mock(rc=0)
+        with mock.patch.object(tel_mod, '_MQTT_OK', True), \
+             mock.patch.object(tel_mod, 'nuevo_cliente_mqtt', return_value=cliente, create=True), \
+             mock.patch.object(tel_mod, 'VIVO_INTERVALO_SEG', 0.05), \
+             self.assertLogs('spui.telemetria', level='INFO') as log:
+            p.start()
+            time.sleep(0.1)
+            p.vivo(1)
+            time.sleep(1.4)
+            p.detener()
+            p.join(timeout=2)
+        self.assertTrue(any('en vivo terminada' in l for l in log.output), log.output)
+        datos = json.loads(cliente.publish.call_args_list[0].args[1])
+        self.assertEqual(datos['espacio_disco_total_mb'], 30000)
+
+
 class ComandoTest(unittest.TestCase):
     def test_el_listener_pasa_el_comando(self):
         recibido = threading.Event()

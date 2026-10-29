@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace SPUI\Controller\Cms;
 
 use DateTimeImmutable;
+use Dompdf\Dompdf;
+use Dompdf\Options;
 use Doctrine\Persistence\ManagerRegistry;
 use SPUI\Entity\Reproductor;
 use SPUI\Form\ReproductorType;
@@ -35,6 +37,9 @@ class ReproductorCmsController extends AbstractController
 
     /** Cuánto dura cada pedido de telemetría en vivo; la página lo renueva a la mitad. */
     private const VIVO_SEG = 120;
+
+    /** Formatos del modal de exportación: extensión => etiqueta. */
+    private const FORMATOS_EXPORTACION = ['xlsx' => 'Excel', 'csv' => 'CSV', 'pdf' => 'PDF'];
 
     public function __construct(
         private readonly ReproductorRepository $repo,
@@ -128,8 +133,30 @@ class ReproductorCmsController extends AbstractController
         return $this->json(['success' => $ok]);
     }
 
+    /** El modal de exportación (formato y rango), abierto desde el botón Exportar. */
+    #[Route('/{id}/telemetria/exportar/form', name: 'spui_cms_reproductores_telemetria_exportar_form', methods: ['GET'], requirements: ['id' => '\d+'])]
+    public function telemetriaExportarForm(int $id): Response
+    {
+        $reproductor = $this->repo->find($id);
+        if (!$reproductor) { throw $this->createNotFoundException(); }
+
+        $ahora = new DateTimeImmutable();
+        $hasta = $ahora->setTime((int) $ahora->format('H'), 0);
+        $minimo = $ahora->modify(sprintf('-%d days', MantenimientoService::RETENCION_HORA_DIAS));
+
+        // modal.js espera {html}, como el resto de los modales.
+        return $this->json(['html' => $this->renderView('@SPUI/reproductores/_telemetria_exportar.html.twig', [
+            'reproductor' => $reproductor,
+            'desde'       => $hasta->modify('-24 hours')->format('Y-m-d\TH:i'),
+            'hasta'       => $hasta->format('Y-m-d\TH:i'),
+            'minimo'      => $minimo->setTime((int) $minimo->format('H'), 0)->format('Y-m-d\TH:i'),
+            'dias'        => MantenimientoService::RETENCION_HORA_DIAS,
+            'formatos'    => self::FORMATOS_EXPORTACION,
+        ])]);
+    }
+
     /**
-     * Detalle por hora a Excel, entre dos fechas y horas (hasta
+     * Detalle por hora en Excel, CSV o PDF, entre dos fechas y horas (hasta
      * RETENCION_HORA_DIAS atrás). Los errores de las fechas vuelven como JSON
      * por campo, para mostrarlos debajo de cada uno.
      */
@@ -138,6 +165,11 @@ class ReproductorCmsController extends AbstractController
     {
         $reproductor = $this->repo->find($id);
         if (!$reproductor) { throw $this->createNotFoundException(); }
+
+        $formato = $request->query->getString('formato', 'xlsx');
+        if (!isset(self::FORMATOS_EXPORTACION[$formato])) {
+            return $this->json(['success' => false, 'errores' => ['formato' => 'Elegí un formato.']], 422);
+        }
 
         $leer = static function (string $valor): ?DateTimeImmutable {
             $f = DateTimeImmutable::createFromFormat('!Y-m-d\TH:i', $valor);
@@ -162,75 +194,140 @@ class ReproductorCmsController extends AbstractController
             return $this->json(['success' => false, 'errores' => $errores], 422);
         }
 
+        $horas = $this->rollupRepo->findEntre($reproductor, $desde, $hasta);
+        if ($horas === []) {
+            return $this->json(['success' => false, 'mensaje' => 'No hay datos de este reproductor en ese período. Probá con otras fechas.'], 422);
+        }
+
+        $columnas = [
+            ['titulo' => 'Hora',                  'tipo' => 'fecha',   'ancho' => 18],
+            ['titulo' => 'Temp. promedio (°C)',   'tipo' => 'decimal', 'ancho' => 20],
+            ['titulo' => 'Temp. máxima (°C)',     'tipo' => 'decimal', 'ancho' => 19],
+            ['titulo' => 'RAM promedio (%)',      'tipo' => 'decimal', 'ancho' => 18],
+            ['titulo' => 'RAM máxima (%)',        'tipo' => 'decimal', 'ancho' => 16],
+            ['titulo' => 'Disco libre mín. (GB)', 'tipo' => 'decimal', 'ancho' => 21],
+            ['titulo' => 'Lecturas',              'tipo' => 'entero',  'ancho' => 10],
+        ];
         $filas = array_map(static fn(array $f) => [
             $f['hora'], $f['temp_prom'], $f['temp_max'], $f['ram_prom'], $f['ram_max'],
             round($f['disco_min'] / 1024, 1), $f['lecturas'],
-        ], $this->rollupRepo->findEntre($reproductor, $desde, $hasta));
+        ], $horas);
 
-        $binario = $xlsx->generar('Telemetría', [
-            ['titulo' => 'Hora',               'tipo' => 'fecha',   'ancho' => 18],
-            ['titulo' => 'Temp. promedio (°C)', 'tipo' => 'decimal', 'ancho' => 20],
-            ['titulo' => 'Temp. máxima (°C)',   'tipo' => 'decimal', 'ancho' => 19],
-            ['titulo' => 'RAM promedio (%)',    'tipo' => 'decimal', 'ancho' => 18],
-            ['titulo' => 'RAM máxima (%)',      'tipo' => 'decimal', 'ancho' => 16],
-            ['titulo' => 'Disco libre mín. (GB)', 'tipo' => 'decimal', 'ancho' => 21],
-            ['titulo' => 'Lecturas',           'tipo' => 'entero',  'ancho' => 10],
-        ], $filas);
+        [$binario, $tipoMime] = match ($formato) {
+            'xlsx' => [$xlsx->generar('Telemetría', $columnas, $filas), 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'],
+            'csv'  => [$this->csv($columnas, $filas), 'text/csv; charset=UTF-8'],
+            'pdf'  => [$this->pdf($reproductor, $desde, $hasta, $horas), 'application/pdf'],
+        };
 
         // Sólo ASCII: así el mismo nombre sirve de filename y no hace falta un
         // respaldo genérico (que es el que terminaba usando el navegador).
         $host = preg_replace('/[^A-Za-z0-9._-]+/', '-', $reproductor->getHostname());
-        $nombre = sprintf('telemetria-%s-%s-a-%s.xlsx', $host, $desde->format('Ymd-Hi'), $hasta->format('Ymd-Hi'));
+        $nombre = sprintf('telemetria-%s-%s-a-%s.%s', $host, $desde->format('Ymd-Hi'), $hasta->format('Ymd-Hi'), $formato);
         $respuesta = new Response($binario);
-        $respuesta->headers->set('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        $respuesta->headers->set('Content-Type', $tipoMime);
         $respuesta->headers->set('Content-Disposition', HeaderUtils::makeDisposition(HeaderUtils::DISPOSITION_ATTACHMENT, $nombre));
 
         return $respuesta;
     }
 
     /**
-     * Serie, resumen y última lectura de un rango, en el formato que usan los
-     * gráficos.
+     * CSV pensado para abrirse con doble clic en un Excel en castellano: punto
+     * y coma como separador, coma decimal y BOM para que reconozca el UTF-8
+     * (sin BOM, "°C" y las tildes salen rotas).
+     */
+    private function csv(array $columnas, array $filas): string
+    {
+        $out = fopen('php://temp', 'r+');
+        fwrite($out, "\xEF\xBB\xBF");
+        fputcsv($out, array_column($columnas, 'titulo'), ';', '"', '');
+        foreach ($filas as $fila) {
+            fputcsv($out, array_map(static function ($v, array $c) {
+                return match ($c['tipo']) {
+                    'fecha'   => $v->format('d/m/Y H:i'),
+                    'decimal' => $v === null ? '' : str_replace('.', ',', (string) $v),
+                    default   => (string) $v,
+                };
+            }, $fila, $columnas), ';', '"', '');
+        }
+        rewind($out);
+        $csv = (string) stream_get_contents($out);
+        fclose($out);
+        return $csv;
+    }
+
+    /** Un informe para imprimir o adjuntar: datos del equipo, resumen del período y el detalle por hora. */
+    private function pdf(Reproductor $reproductor, DateTimeImmutable $desde, DateTimeImmutable $hasta, array $horas): string
+    {
+        $html = $this->renderView('@SPUI/reproductores/telemetria_pdf.html.twig', [
+            'reproductor' => $reproductor,
+            'desde'       => $desde,
+            'hasta'       => $hasta,
+            'horas'       => $horas,
+            'resumen'     => $this->rollupRepo->resumen($reproductor, $desde, $hasta),
+            'temp_umbral' => $this->tempAlertaCelsius,
+            'generado'    => new DateTimeImmutable(),
+        ]);
+
+        $opciones = new Options();
+        $opciones->set('defaultFont', 'DejaVu Sans');    // trae °, ñ y tildes
+        $opciones->set('isRemoteEnabled', false);
+        $dompdf = new Dompdf($opciones);
+        $dompdf->loadHtml($html, 'UTF-8');
+        $dompdf->setPaper('A4', 'portrait');
+        $dompdf->render();
+
+        return (string) $dompdf->output();
+    }
+
+    /**
+     * Todo lo que usan los gráficos: la serie por hora de los últimos
+     * RETENCION_HORA_DIAS días, el resumen de cada rango y la última lectura.
      *
-     * @return array{serie: list<array<string,mixed>>, resumen: ?array<string,mixed>, ultima: ?array<string,mixed>}
+     * La serie es siempre la de 60 días y los botones 24 h / 7 d / 30 d sólo
+     * eligen qué ventana se ve: así se puede arrastrar el gráfico hacia atrás
+     * y ver las horas anteriores sin pedir nada más (29/10/2026).
+     *
+     * @return array{rango:string, serie: list<array<string,mixed>>, resumenes: array<string,?array<string,mixed>>, ultima: ?array<string,mixed>}
      */
     private function datosTelemetria(Reproductor $reproductor, string $rango): array
     {
-        $horas = self::RANGOS[$rango];
-        $desde = new DateTimeImmutable(sprintf('-%d hours', $horas));
+        // Las horas cerradas salen del rollup; las que el rollup todavía no
+        // agregó (la en curso y, como mucho, la anterior) se calculan de la
+        // telemetría cruda, que tiene el mismo shape. Si no hay rollup todavía
+        // (un reproductor nuevo), todo sale del crudo, que se guarda 7 días.
+        $serie = $this->rollupRepo->findSerie($reproductor, new DateTimeImmutable(sprintf('-%d days', MantenimientoService::RETENCION_HORA_DIAS)));
+        $ultimoPeriodo = $serie === [] ? null : end($serie)['periodo'];
+        $desdeCrudo = $ultimoPeriodo !== null
+            ? (new DateTimeImmutable($ultimoPeriodo))->modify('+1 hour')
+            : new DateTimeImmutable(sprintf('-%d days', MantenimientoService::RETENCION_DIAS_DEFAULT));
+        foreach ($this->telemetriaRepo->findSeriePorHora($reproductor, $desdeCrudo) as $p) {
+            if ($ultimoPeriodo === null || $p['periodo'] > $ultimoPeriodo) {
+                $serie[] = $p;
+            }
+        }
 
-        // De dónde salen los datos según el rango:
-        //
-        // - 24 h → de la telemetría cruda. Está completa (la retención del
-        //   crudo es de varios días) e incluye la hora en curso, que el rollup
-        //   todavía no consolidó.
-        // - 7 d y 30 d → del rollup horario. Más allá de la retención del crudo
-        //   las lecturas ya no existen, así que leerlas de ahí devolvería una
-        //   serie truncada sin ningún aviso.
-        //
-        // Ambos repositorios devuelven el mismo shape, así que el template no
-        // se entera de la diferencia.
-        $usarRollup = $horas > self::RANGOS['24h'];
-
-        $serie = $usarRollup
-            ? $this->rollupRepo->findSerie($reproductor, $desde)
-            : $this->telemetriaRepo->findSeriePorHora($reproductor, $desde);
-
-        $resumen = $usarRollup
-            ? $this->rollupRepo->resumen($reproductor, $desde)
-            : $this->telemetriaRepo->resumen($reproductor, $desde);
+        // El resumen de las últimas 24 h sale del crudo (incluye la hora en
+        // curso); los de 7 y 30 días, del rollup ponderado por lecturas.
+        $resumenes = [];
+        foreach (self::RANGOS as $clave => $horas) {
+            $desde = new DateTimeImmutable(sprintf('-%d hours', $horas));
+            $resumenes[$clave] = $horas > self::RANGOS['24h']
+                ? $this->rollupRepo->resumen($reproductor, $desde)
+                : $this->telemetriaRepo->resumen($reproductor, $desde);
+        }
 
         $ultima = $this->telemetriaRepo->findUltimos($reproductor, 1)[0] ?? null;
 
         return [
-            'rango'   => $rango,
-            'serie'   => $serie,
-            'resumen' => $resumen,
-            'ultima'  => $ultima === null ? null : [
-                'temp'      => round($ultima->getTemperaturaSocCelsius(), 1),
-                'ram'       => round($ultima->getUsoRamPorcentaje(), 1),
-                'disco_gb'  => round($ultima->getEspacioDiscoLibreMb() / 1024, 1),
-                'cuando'    => $ultima->getRegistradoEn()->format('d/m/Y H:i:s'),
+            'rango'     => $rango,
+            'serie'     => $serie,
+            'resumenes' => $resumenes,
+            'ultima'    => $ultima === null ? null : [
+                'temp'           => round($ultima->getTemperaturaSocCelsius(), 1),
+                'ram'            => round($ultima->getUsoRamPorcentaje(), 1),
+                'disco_gb'       => round($ultima->getEspacioDiscoLibreMb() / 1024, 1),
+                'disco_total_gb' => $reproductor->getDiscoTotalMb() !== null ? round($reproductor->getDiscoTotalMb() / 1024, 1) : null,
+                'cuando'         => $ultima->getRegistradoEn()->format('d/m/Y H:i:s'),
             ],
         ];
     }

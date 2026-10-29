@@ -371,6 +371,9 @@ class MqttSubscribeCommand extends Command
         $telemetria->setUsoRamPorcentaje((float) ($data['uso_ram_porcentaje'] ?? 0.0));
         $telemetria->setLatenciaRedMs(isset($data['latencia_red_ms']) ? (int) $data['latencia_red_ms'] : null);
         $telemetria->setEspacioDiscoLibreMb((int) ($data['espacio_disco_libre_mb'] ?? 0));
+        if (isset($data['espacio_disco_total_mb']) && (int) $data['espacio_disco_total_mb'] > 0) {
+            $reproductor->setDiscoTotalMb((int) $data['espacio_disco_total_mb']);
+        }
 
         $em = $this->doctrine->getManager('SPUI');
         $em->persist($telemetria);

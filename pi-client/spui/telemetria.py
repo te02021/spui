@@ -162,6 +162,7 @@ class TelemetriaPublisher(threading.Thread):
                     self._interval, self._host, self._port)
 
         proxima = time.monotonic() + self._interval
+        estaba_en_vivo = False
         while not self._stop.is_set():
             ahora = time.monotonic()
             espera = proxima - ahora
@@ -184,6 +185,10 @@ class TelemetriaPublisher(threading.Thread):
                     self._publicar(client, self._recopilar())
                 if self.en_vivo():
                     self._publicar_vivo(client)
+                    estaba_en_vivo = True
+                elif estaba_en_vivo:
+                    estaba_en_vivo = False
+                    logger.info('Telemetría en vivo terminada: nadie la está mirando. Se vuelve a cada %d s.', self._interval)
             except Exception as exc:
                 logger.warning('Error publicando telemetría: %s', exc)
 
@@ -282,6 +287,8 @@ class TelemetriaPublisher(threading.Thread):
         payload = {
             'temperatura_soc_celsius': self._leer_temperatura(),
             'uso_ram_porcentaje':      self._leer_ram(),
+            'espacio_disco_libre_mb':  self._leer_disco(),
+            'espacio_disco_total_mb':  self._leer_disco_total(),
             'ts':                      round(time.time(), 1),
         }
         client.publish(f'spui/telemetria/vivo/{self._reproductor_id}', json.dumps(payload), qos=0)
@@ -294,6 +301,9 @@ class TelemetriaPublisher(threading.Thread):
             'temperatura_soc_celsius': self._leer_temperatura(),
             'uso_ram_porcentaje':     self._leer_ram(),
             'espacio_disco_libre_mb': self._leer_disco(),
+            # Para el indicador circular del CMS (% usado). Opcional: un CMS
+            # viejo lo ignora.
+            'espacio_disco_total_mb': self._leer_disco_total(),
             'latencia_red_ms':        self._network.medir_latencia_ms() if self._network else None,
         }
 
@@ -336,3 +346,12 @@ class TelemetriaPublisher(threading.Thread):
             except Exception:
                 pass
         return 0
+
+    def _leer_disco_total(self) -> int | None:
+        if _PSUTIL_OK:
+            try:
+                particion = '/' if os.name != 'nt' else 'C:\\'
+                return psutil.disk_usage(particion).total // (1024 * 1024)
+            except Exception:
+                pass
+        return None

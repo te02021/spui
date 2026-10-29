@@ -9,12 +9,15 @@
     puede quedar vacía por eso. Temperatura, RAM y disco van en gráficos
     separados con su propia escala fija (°C, %, GB): un eje doble haría que dos
     series se vean comparables sin serlo.
-  - Cambiar de rango no recarga la página: telemetria.js pide
-    /telemetria/datos y redibuja con animación.
+  - La página trae la serie de los últimos 60 días: los botones 24 h / 7 d /
+    30 d eligen qué ventana se ve, y arrastrando el gráfico hacia la izquierda
+    se ven las horas anteriores (nunca más allá de ahora). Los tres gráficos
+    se mueven juntos.
   - En vivo: mientras la página está abierta, la Pi publica temperatura y RAM
     cada 1 s por MQTT directo al navegador (no se guarda). Sin broker
     alcanzable, el panel en vivo no aparece y el resto funciona igual.
-  - Exportar: detalle por hora a Excel, hasta export_dias días atrás.
+  - Exportar: botón del encabezado → modal estándar con formato (Excel, CSV,
+    PDF) y rango de fechas, hasta export_dias días atrás.
 #}
 
 {% block body %}
@@ -23,7 +26,6 @@
 <div id="spui-telemetria"
      data-url-datos="{{ path('spui_cms_reproductores_telemetria_datos', {id: reproductor.id}) }}"
      data-url-vivo="{{ path('spui_cms_reproductores_telemetria_vivo', {id: reproductor.id}) }}"
-     data-url-exportar="{{ path('spui_cms_reproductores_telemetria_exportar', {id: reproductor.id}) }}"
      data-umbral="{{ temp_umbral }}"
      data-vivo-seg="{{ vivo_seg }}"
      data-export-dias="{{ export_dias }}"
@@ -52,6 +54,12 @@
                 <span data-tel-vivo-texto>Conectando…</span>
             </button>
         {% endif %}
+        <button type="button" class="unraf-btn unraf-btn-light d-inline-flex align-items-center gap-1 spui-tel-exportar"
+                data-spui-form="{{ path('spui_cms_reproductores_telemetria_exportar_form', {id: reproductor.id}) }}"
+                data-spui-title="Exportar telemetría de {{ reproductor.hostname }}"
+                title="Descargar el detalle por hora en Excel, CSV o PDF">
+            <img src="{{ asset('unraf-ui/icons/export.svg') }}" class="spui-action-icon" alt=""> Exportar
+        </button>
         <a href="{{ path('spui_cms_reproductores_index') }}" class="unraf-btn spui-btn-back">← Reproductores</a>
     </div>
 </div>
@@ -80,12 +88,12 @@
     </div>
     <div class="col-12 col-md-4">
         <div class="unraf-card spui-tel-indicador h-100">
-            <div class="spui-tel-indicador-titulo">Espacio libre en disco</div>
-            <div class="spui-tel-numero">
-                <span data-tel-numero="disco">—</span><small> GB</small>
-            </div>
+            <div class="spui-tel-indicador-titulo">Disco en uso</div>
+            <div data-tel-gauge="disco" class="spui-tel-gauge"></div>
             <div class="spui-tel-indicador-pie">
-                <span>Mínimo del período <strong data-tel-res="disco_min">—</strong></span>
+                <span>Libre <strong data-tel-numero="disco">—</strong></span>
+                <span>Total <strong data-tel-numero="disco_total">—</strong></span>
+                <span>Mínimo libre <strong data-tel-res="disco_min">—</strong></span>
             </div>
         </div>
     </div>
@@ -108,7 +116,10 @@
 
 {# ── Histórico ── #}
 <div class="d-flex justify-content-between align-items-center gap-2 mb-3 flex-wrap">
-    <h2 class="h5 mb-0" style="color:var(--unraf-azul)">Histórico por hora</h2>
+    <div>
+        <h2 class="h5 mb-0" style="color:var(--unraf-azul)">Histórico por hora</h2>
+        <small class="text-muted">Mantené apretado un gráfico y arrastralo hacia la derecha para ver las horas anteriores.</small>
+    </div>
     <div class="d-flex gap-2 flex-wrap" role="group" aria-label="Período">
         {% for r in rangos %}
             <button type="button" data-tel-rango="{{ r }}"
@@ -150,36 +161,6 @@
             </div>
         </div>
     </div>
-</div>
-
-{# ── Exportar ── #}
-<div class="unraf-card mb-4">
-    <div class="p-3 border-bottom">
-        <strong>Exportar el detalle por hora a Excel</strong>
-        <div class="small text-muted">
-            Una fila por hora con promedio, máximo y mínimo. Se conservan los últimos {{ export_dias }} días;
-            la hora en curso entra recién cuando termina.
-        </div>
-    </div>
-    <form class="p-3" data-tel-exportar novalidate>
-        <div class="row g-3 align-items-start">
-            <div class="col-12 col-sm-6 col-lg-4" data-spui-campo>
-                <label class="unraf-form-label" for="tel_desde">Desde</label>
-                <input type="datetime-local" id="tel_desde" name="desde" class="unraf-form-control" step="3600" required>
-            </div>
-            <div class="col-12 col-sm-6 col-lg-4" data-spui-campo>
-                <label class="unraf-form-label" for="tel_hasta">Hasta</label>
-                <input type="datetime-local" id="tel_hasta" name="hasta" class="unraf-form-control" step="3600" required
-                       data-spui-validar-posterior="#tel_desde" data-spui-validar-mensaje="Tiene que ser posterior a «Desde».">
-            </div>
-            <div class="col-12 col-lg-4 d-flex align-items-lg-end" style="min-height:4.3rem">
-                <button type="submit" class="unraf-btn unraf-btn-institucion w-100" data-tel-exportar-btn>
-                    Descargar Excel
-                </button>
-            </div>
-        </div>
-        <p class="spui-campo-error mt-3 mb-0" data-tel-exportar-error hidden></p>
-    </form>
 </div>
 
 <script type="application/json" data-tel-datos>{{ datos|json_encode|raw }}</script>
