@@ -2629,15 +2629,7 @@ html.spui-sidebar-plegado .spui-sidebar-plegar img { transform: rotate(180deg); 
 .spui-header-titulo { display: flex; flex-direction: column; line-height: 1.05; min-width: 0; }
 .spui-header-titulo strong { font-family: var(--unraf-font-principal); font-size: 1.35rem; letter-spacing: .05em; }
 .spui-header-titulo small { font-size: .68rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: rgba(255, 255, 255, .75); white-space: nowrap; }
-.spui-header-marca:focus-visible, .spui-header-intranet:focus-visible, .spui-usuario-btn:focus-visible { outline: 2px solid var(--unraf-amarillo); outline-offset: 3px; border-radius: 6px; }
-
-.spui-header-intranet {
-    display: inline-flex; align-items: center; gap: .4rem; height: 34px; padding: 0 .8rem;
-    color: rgba(255, 255, 255, .9); text-decoration: none; font-size: .85rem; font-weight: 600;
-    border: 1px solid rgba(255, 255, 255, .28); border-radius: 8px; transition: background-color .15s ease;
-}
-.spui-header-intranet img { width: .9rem; height: .9rem; filter: invert(1); opacity: .85; }
-.spui-header-intranet:hover { background: rgba(255, 255, 255, .12); color: #fff; }
+.spui-header-marca:focus-visible, .spui-usuario-btn:focus-visible { outline: 2px solid var(--unraf-amarillo); outline-offset: 3px; border-radius: 6px; }
 
 .spui-usuario-btn {
     display: inline-flex; align-items: center; gap: .5rem; height: 40px; padding: 0 .55rem 0 .3rem;
@@ -2662,13 +2654,10 @@ html.spui-sidebar-plegado .spui-sidebar-plegar img { transform: rotate(180deg); 
 .spui-usuario-menu .spui-desp-lista > li { padding: 0; }
 .spui-usuario-menu .spui-desp-lista > li + li { border-top: 0; }
 .spui-usuario-icono { width: .95rem; height: .95rem; opacity: .65; }
-.spui-usuario-salir { color: #b3142a; }
-.spui-usuario-salir:hover { color: #b3142a; background: #fff1f3; }
 
 @media (max-width: 768px) {
     .spui-header { padding: 0 .75rem; }
-    .spui-header-intranet span, .spui-usuario-nombre, .spui-usuario-flecha { display: none; }
-    .spui-header-intranet { padding: 0 .6rem; }
+    .spui-usuario-nombre, .spui-usuario-flecha { display: none; }
     .spui-usuario-btn { padding: 0 .25rem; height: 40px; background: none; border: 0; }
 }
 @media (max-width: 400px) {

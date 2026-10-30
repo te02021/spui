@@ -328,7 +328,7 @@ Los datos se agrupan por hora: con una lectura por minuto, 7 días serían unos 
 
 **Botones:** todos rellenos, cada acción con su color (Ver azul, Editar amarillo, Eliminar rojo, y el resto con uno propio); al pasar el mouse se oscurecen. Si no entran al lado de los datos de la tarjeta bajan a otro renglón, centrados.
 
-**Encabezado:** a la derecha, **Intranet** vuelve a la intranet y el círculo con tus iniciales abre tu cuenta (nombre, email, Volver a la Intranet, Cerrar sesión).
+**Encabezado:** a la derecha, el círculo con tus iniciales abre tu cuenta (nombre, email y **Volver a la Intranet**). El CMS no tiene cierre de sesión propio: la sesión es la de la Intranet.
 
 **Menú lateral plegable** (escritorio): el botón « a la derecha de "Principal" lo oculta y el contenido toma todo el ancho; queda un botón flotante arriba a la izquierda para volver a abrirlo. La elección se recuerda al cambiar de sección. En celular sigue el menú de hamburguesa.
 

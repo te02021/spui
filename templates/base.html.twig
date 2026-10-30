@@ -24,10 +24,11 @@
 <div class="unraf-dashboard">
 
     {# ── Header ── #}
-    {# Encabezado (30/10/2026): la marca a la izquierda; a la derecha el acceso
-       a la Intranet y el menú del usuario (iniciales + nombre armado con el
-       email, que es el único dato que trae el usuario de la Intranet). El
-       menú es un desplegable (core/desplegable.js), como el resto del CMS. #}
+    {# Encabezado (30/10/2026): la marca a la izquierda; a la derecha el menú
+       del usuario (iniciales + nombre armado con el email, que es el único
+       dato que trae el usuario de la Intranet). El menú es un desplegable
+       (core/desplegable.js), como el resto del CMS, y su única salida es
+       volver a la Intranet: el CMS no tiene cierre de sesión propio. #}
     {% set email = app.user ? app.user.userIdentifier : '' %}
     {% set partes = (email|split('@')|first)|replace({'_': '.', '-': '.'})|split('.')|filter(p => p != '') %}
     {% set nombre_usuario = partes|map(p => p|capitalize)|join(' ') %}
@@ -47,9 +48,6 @@
             </a>
         </div>
         <div class="spui-header-der">
-            <a href="{{ path('sistemas') }}" class="spui-header-intranet">
-                <img src="{{ asset('unraf-ui/icons/arrow-left.svg') }}" alt=""> <span>Intranet</span>
-            </a>
             {% if app.user %}
                 <span class="spui-desp spui-usuario">
                     <button type="button" class="spui-usuario-btn" data-spui-desp aria-expanded="false" aria-controls="spui-menu-usuario"
@@ -65,7 +63,6 @@
                         </div>
                         <ul class="spui-desp-lista">
                             <li><a class="spui-selector-opcion" href="{{ path('sistemas') }}"><img src="{{ asset('unraf-ui/icons/arrow-left.svg') }}" alt="" class="spui-usuario-icono"> Volver a la Intranet</a></li>
-                            <li><a class="spui-selector-opcion spui-usuario-salir" href="{{ path('app_logout') }}"><img src="{{ asset('unraf-ui/icons/sign-out.svg') }}" alt="" class="spui-usuario-icono"> Cerrar sesión</a></li>
                         </ul>
                     </div>
                 </span>
