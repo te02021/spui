@@ -32,7 +32,7 @@ Los pasos 1 a 4 se hacen una vez por pantalla instalada. Del 5 en adelante es el
 Es la pantalla de inicio (rehecha el 29 y el 30/10/2026). **El estado de cada reproductor cambia en el momento:** cuando un equipo vuelve o el sistema lo da por caído, el CMS avisa al navegador por MQTT y el panel se actualiza solo, sin recargar. El resto se refresca cada 20 s; el botón **Actualizar** lo fuerza. De arriba hacia abajo:
 
 - **Alerta en curso** (rojo, sólo si hay alguna activa): título, mensaje, a cuántas pantallas va, desde cuándo y cuándo vence, con el botón **Desactivar**.
-- **Requiere atención:** si no hay nada, una franja verde de un renglón ("Todo en orden"); si hay avisos, una tarjeta con uno por recuadro (tabla de abajo), que crece según cuántos haya.
+- **Requiere atención:** reproductores desconectados, temperatura, problemas informados, accesos inválidos y tareas automáticas. Si no hay nada, una franja verde de un renglón ("Todo en orden"); si hay avisos, una tarjeta con uno por recuadro (tabla de abajo), que crece según cuántos haya.
 - **Cuatro tarjetas del mismo tamaño**, cada una con una cifra, una barra que la pone en contexto y una línea de detalle; tocarlas lleva a su sección:
   - **Pantallas:** cuántas están en línea (activas y con el reproductor conectado) de las activas. Barra verde = en línea, roja = activas sin señal, gris = inactivas.
   - **Contenidos:** cuántos hay disponibles, con la barra y el detalle por tipo (texto, imagen, video, QR, cronograma).

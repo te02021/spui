@@ -10,7 +10,8 @@
 
 {% set total = reproductores|length %}
 {% set con_problemas = reproductores|filter(r => r.tieneProblemas) %}
-{% set avisos = (sobrecalentados|length > 0 ? 1 : 0) + (con_problemas|length > 0 ? 1 : 0)
+{% set caidos = reproductores|filter(r => r.estadoCalculado(spui_umbral_conexion).value == 'desconectado') %}
+{% set avisos = (caidos|length > 0 ? 1 : 0) + (sobrecalentados|length > 0 ? 1 : 0) + (con_problemas|length > 0 ? 1 : 0)
               + (intentos_fallidos|length > 0 ? 1 : 0) + (scheduler_desactualizado ? 1 : 0) %}
 {% set COLORES_ESTADO = {conectado: '#4A9930', desconectado: '#FF223D', sin_registrar: '#adb5bd'} %}
 {% set COLORES_TIPO = {texto: '#5B6B7F', imagen: '#3387EF', video: '#7A5AF8', qr: '#1CA1A7', cronograma: '#C77F0A'} %}
@@ -63,7 +64,7 @@
     {% if not avisos %}
         <section class="spui-dash-enorden mb-4" aria-label="Requiere atención">
             <span class="spui-dash-enorden-icono" aria-hidden="true">✓</span>
-            <span><strong>Todo en orden.</strong><span class="d-none d-md-inline"> Sin sobrecalentamiento, problemas informados, intentos de acceso inválidos ni tareas automáticas detenidas.</span></span>
+            <span><strong>Todo en orden.</strong><span class="d-none d-md-inline"> Todos los reproductores dan señal, sin sobrecalentamiento, problemas informados, intentos de acceso inválidos ni tareas automáticas detenidas.</span></span>
         </section>
     {% else %}
         <section class="unraf-card spui-dash-atencion mb-4" aria-labelledby="dash-atencion-titulo">
@@ -72,6 +73,22 @@
                 <span class="spui-dash-contador" aria-label="{{ texto.plural(avisos, 'aviso', 'avisos') }}">{{ avisos }}</span>
             </div>
             <div class="spui-dash-avisos">
+                {# Un reproductor sin señal: su pantalla puede seguir mostrando lo
+                   último que tenía en caché, pero ya no recibe cambios ni alertas
+                   por HTTP. #}
+                {% if caidos|length > 0 %}
+                    <div class="spui-dash-aviso is-grave">
+                        <strong>{{ texto.plural(caidos|length, 'reproductor desconectado', 'reproductores desconectados') }}</strong>
+                        {% for r in caidos %}
+                            <div class="small mt-1"><strong>{{ r.hostname }}</strong>
+                                {%- if r.ultimoHeartbeat %} · sin señal desde las {{ r.ultimoHeartbeat|date('H:i') }} del {{ r.ultimoHeartbeat|date('d/m') }}{% endif %}
+                                {%- if r.pantallas|length %} · {{ r.pantallas|map(p => p.nombre)|join(', ') }}{% endif %}
+                            </div>
+                        {% endfor %}
+                        <div class="small text-muted mt-1">Revisá que esté encendido y con red. Mientras tanto no recibe cambios de programación.</div>
+                    </div>
+                {% endif %}
+
                 {% if sobrecalentados|length > 0 %}
                     <div class="spui-dash-aviso is-grave">
                         <strong>{{ texto.plural(sobrecalentados|length, 'reproductor', 'reproductores') }} por encima de {{ temp_umbral|number_format(0) }} °C</strong>

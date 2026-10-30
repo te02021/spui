@@ -272,6 +272,16 @@
                         // respuesta entera. Sirve para que el controlador no
                         // tenga que repetir el div envoltorio en el partial.
                         fresco = doc.body;
+
+                        // Al <body> le faltan el id y el data-spui-refresh de
+                        // la zona: sin esto, copiarAtributos() se los sacaba a
+                        // la zona en el primer ciclo y la página no volvía a
+                        // refrescarse nunca más (ni por intervalo, ni por el
+                        // aviso MQTT, ni con el botón). Le pasó al Dashboard,
+                        // el único que responde sólo el fragmento (30/10/2026).
+                        for (var a = 0; a < el.attributes.length; a++) {
+                            fresco.setAttribute(el.attributes[a].name, el.attributes[a].value);
+                        }
                     }
                     if (!fresco) return;
 
@@ -345,11 +355,13 @@
             if (!document.hidden && !hayModalAbierto()) refrescar();
         });
 
-        // Botones "Actualizar" declarativos.
-        document.querySelectorAll('[data-spui-refresh-btn]').forEach(function (btn) {
-            btn.addEventListener('click', function () {
-                window.spui.refrescarAhora(btn);
-            });
+        // Botones "Actualizar" declarativos. Delegado en el documento: si el
+        // botón vive dentro de una zona refrescable, el refresco puede
+        // reemplazarlo por uno nuevo, que con un listener directo quedaba
+        // muerto.
+        document.addEventListener('click', function (e) {
+            var btn = e.target.closest('[data-spui-refresh-btn]');
+            if (btn && !btn.disabled) window.spui.refrescarAhora(btn);
         });
     });
 
