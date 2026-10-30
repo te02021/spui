@@ -29,14 +29,18 @@ Los pasos 1 a 4 se hacen una vez por pantalla instalada. Del 5 en adelante es el
 
 ## 1. Dashboard — `/spui`
 
-Es la pantalla de inicio (rehecha el 29/10/2026). Se actualiza sola cada 20 s; el botón **Actualizar** fuerza el refresco en el momento. De arriba hacia abajo:
+Es la pantalla de inicio (rehecha el 29 y el 30/10/2026). **El estado de cada reproductor cambia en el momento:** cuando un equipo vuelve o el sistema lo da por caído, el CMS avisa al navegador por MQTT y el panel se actualiza solo, sin recargar. El resto se refresca cada 20 s; el botón **Actualizar** lo fuerza. De arriba hacia abajo:
 
 - **Alerta en curso** (rojo, sólo si hay alguna activa): título, mensaje, a cuántas pantallas va, desde cuándo y cuándo vence, con el botón **Desactivar**.
-- **Reproductores:** un gráfico circular con conectados, desconectados y sin registrar, y el total en el centro. Un equipo cuenta como desconectado tras el umbral de conexión sin dar señal (`SPUI_UMBRAL_CONEXION_SEG`, 150 s por defecto).
-- **Cuatro tarjetas que llevan a su sección:** pantallas (y en cuántos edificios), contenidos disponibles (y archivados), reglas de programación activas (y playlists), y alertas activas ahora (y creadas en total).
-- **Temperatura de los reproductores, últimas 24 h:** una línea por equipo, promedio por hora, con el umbral marcado. Pasando el mouse se ven los valores de cada hora.
-- **Requiere atención:** junta los avisos de la tabla de abajo; si no hay ninguno, dice "Todo en orden".
-- **Una tarjeta por reproductor:** estado, pantallas que maneja, última señal, versión, y barras de temperatura, RAM y disco en uso, con el enlace a su telemetría. El borde izquierdo es verde si está conectado, rojo si no.
+- **Requiere atención:** si no hay nada, una franja verde de un renglón ("Todo en orden"); si hay avisos, una tarjeta con uno por recuadro (tabla de abajo), que crece según cuántos haya.
+- **Cuatro tarjetas del mismo tamaño**, cada una con una cifra, una barra que la pone en contexto y una línea de detalle; tocarlas lleva a su sección:
+  - **Pantallas:** cuántas están en línea (activas y con el reproductor conectado) de las activas. Barra verde = en línea, roja = activas sin señal, gris = inactivas.
+  - **Contenidos:** cuántos hay disponibles, con la barra y el detalle por tipo (texto, imagen, video, QR, cronograma).
+  - **Programación:** reglas activas de las creadas, cuántas playlists hay y cuántas pantallas activas no tienen playlist de respaldo (lo que muestran cuando ninguna regla aplica).
+  - **Alertas:** cuántas hay en curso de las creadas, y la última activación.
+- **Reproductores:** gráfico circular con conectados, desconectados y sin registrar, y el total en el centro. **Tocando un sector** (o su fila de la leyenda) se abre un globo encima, del color del sector, con los equipos de ese estado: pantallas, última señal y enlace a su telemetría. Se cierra con la ×, tocando afuera o con Esc. Un equipo cuenta como desconectado tras el umbral de conexión sin dar señal (`SPUI_UMBRAL_CONEXION_SEG`, 150 s por defecto).
+- **Temperatura del procesador, últimas 24 h:** el mismo gráfico que la Telemetría de un reproductor, con una línea por equipo (promedio por hora) y el umbral marcado. Se arrastra, se acerca con la rueda y tiene los mismos botones (acercar, alejar, volver a las 24 h, descargar como imagen). Este gráfico no es en vivo: suma una hora nueva a medida que llega.
+- **Detalle por reproductor:** una tarjeta por equipo con estado, pantallas que maneja, última señal, versión, y barras de temperatura, RAM y disco en uso, con el enlace a su telemetría. El borde izquierdo es verde si está conectado, rojo si no.
 
 Los avisos de **Requiere atención** aparecen sólo cuando hay algo que atender:
 

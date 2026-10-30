@@ -14,6 +14,7 @@ use SPUI\Entity\Programacion;
 use SPUI\Entity\Reproductor;
 use SPUI\Enum\EstadoConexion;
 use SPUI\Enum\EstadoContenido;
+use SPUI\Enum\TipoContenido;
 use SPUI\Repository\AlertaEmergenciaRepository;
 use SPUI\Repository\ReproductorRepository;
 use SPUI\Repository\TelemetriaRepository;
@@ -121,26 +122,51 @@ class DashboardController extends AbstractController
     }
 
     /**
-     * Cuántas pantallas, contenidos, playlists, reglas y alertas hay: lo que
-     * se carga en el CMS, para las tarjetas del Dashboard.
+     * Lo que se carga en el CMS, para las cuatro tarjetas del Dashboard. Cada
+     * una responde una pregunta de operación (rehecho el 30/10/2026):
+     * cuántas pantallas están mostrando ahora, con qué contenido, si la
+     * programación cubre a todas, y si hay alguna alerta en curso.
      *
-     * @return array<string, int>
+     * @return array<string, mixed>
      */
     private function resumenRed(): array
     {
         $em = $this->doctrine->getManager('SPUI');
-        $contar = static fn(string $clase, array $criterio = []): int => $em->getRepository($clase)->count($criterio);
         $pantallas = $em->getRepository(Pantalla::class)->findAll();
+        $activas = array_filter($pantallas, static fn(Pantalla $p) => $p->isActiva());
+
+        // "En línea": activa y con su reproductor conectado según el mismo
+        // estado calculado que usa el resto del panel.
+        $enLinea = array_filter($activas, fn(Pantalla $p) => $p->getReproductor() !== null
+            && $p->getReproductor()->estadoCalculado($this->umbralConexionSeg) === EstadoConexion::Conectado);
+
+        $porTipo = [];
+        foreach (TipoContenido::cases() as $tipo) {
+            $porTipo[] = [
+                'tipo'     => $tipo->value,
+                'etiqueta' => $tipo->etiqueta(),
+                'cantidad' => $em->getRepository(Contenido::class)->count(['tipo' => $tipo, 'estado' => EstadoContenido::Disponible]),
+            ];
+        }
+
+        $ultimaAlerta = $em->getRepository(AlertaEmergencia::class)->createQueryBuilder('a')
+            ->where('a.activadaEn IS NOT NULL')->orderBy('a.activadaEn', 'DESC')
+            ->setMaxResults(1)->getQuery()->getOneOrNullResult();
 
         return [
             'pantallas'          => count($pantallas),
-            'pantallas_activas'  => count(array_filter($pantallas, static fn(Pantalla $p) => $p->isActiva())),
+            'pantallas_activas'  => count($activas),
+            'pantallas_en_linea' => count($enLinea),
             'edificios'          => count(array_unique(array_map(static fn(Pantalla $p) => $p->getUbicacion()->getEdificio()->getId(), $pantallas))),
-            'contenidos'         => $contar(Contenido::class, ['estado' => EstadoContenido::Disponible]),
-            'archivados'         => $contar(Contenido::class, ['estado' => EstadoContenido::Archivado]),
-            'playlists'          => $contar(Playlist::class),
-            'reglas'             => $contar(Programacion::class, ['activo' => true]),
-            'alertas'            => $contar(AlertaEmergencia::class),
+            'sin_respaldo'       => count(array_filter($activas, static fn(Pantalla $p) => $p->getPlaylistFallback() === null)),
+            'contenidos'         => array_sum(array_column($porTipo, 'cantidad')),
+            'contenidos_tipo'    => $porTipo,
+            'archivados'         => $em->getRepository(Contenido::class)->count(['estado' => EstadoContenido::Archivado]),
+            'playlists'          => $em->getRepository(Playlist::class)->count([]),
+            'reglas'             => $em->getRepository(Programacion::class)->count([]),
+            'reglas_activas'     => $em->getRepository(Programacion::class)->count(['activo' => true]),
+            'alertas'            => $em->getRepository(AlertaEmergencia::class)->count([]),
+            'ultima_alerta'      => $ultimaAlerta,
         ];
     }
 

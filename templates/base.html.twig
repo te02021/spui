@@ -7,6 +7,7 @@
        toggle/etc.) que no pasan por un Symfony Form — ver CsrfProtegidoTrait. #}
     <meta name="spui-csrf-token" content="{{ csrf_token('spui_action') }}">
     <title>{% block title %}SPUI — Pantallas Digitales{% endblock %} | UNRaf</title>
+    <meta name="description" content="{% block descripcion %}SPUI, Sistema de Pantallas Informativas Universitarias de la UNRaf: administración de la cartelería digital del campus.{% endblock %}">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 128 128%22><text y=%221.2em%22 font-size=%2296%22>🖥️</text></svg>">
 
     {% block stylesheets %}

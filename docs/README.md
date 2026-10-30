@@ -66,7 +66,7 @@ Esta es la terminología real del sistema. **No usar sinónimos** en documentaci
 | `spui/telemetria/{reproductor_id}` | Pi → CMS | `telemetria.py` y `MqttSubscribeCommand::TOPIC_TELEMETRIA` |
 | `spui/estado/reproductor/{reproductor_id}` | Pi → CMS | `mqtt_listener.py`: `online` al conectar, `offline` como LWT. Lo consume `MqttSubscribeCommand::procesarEstado()` (ver §3.2) |
 | `spui/qr/escaneo/{codigo_qr_id}` | CMS → navegador (WebSocket, 9001) | `QrEscaneoPublisherService` → `qr-escaneos-vivo.js`. Ver §3.3 |
-| `spui/cms/conexion/{reproductor_id}` | CMS → navegador (WebSocket, 9001, sin `retain`) | `ConexionPublisherService` → `conexion-vivo.js`: un reproductor cambió de estado de conexión, el navegador vuelve a pedir la tabla. Ver §3.4 y `06` §6.2 |
+| `spui/cms/conexion/{reproductor_id}` | CMS → navegador (WebSocket, 9001, sin `retain`) | `ConexionPublisherService` → `conexion-vivo.js`: un reproductor cambió de estado de conexión, el navegador vuelve a pedir la tabla (Pantallas, Contenidos, Playlists, Programación y, desde el 30/10/2026, el Dashboard). Ver §3.4 y `06` §6.2 |
 
 > **No hay topics de power/brightness:** el encendido, el apagado y el brillo los resuelve el cliente Pi con el horario energético que baja por `/sync`, así que siguen funcionando aunque el broker esté caído. El único comando que el CMS le manda a una Pi es `sync_ahora`, que no lleva datos: sólo adelanta el próximo sync.
 

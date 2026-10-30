@@ -1,5 +1,6 @@
 {% extends '@SPUI/base.html.twig' %}
 {% block title %}Dashboard — SPUI{% endblock %}
+{% block descripcion %}Estado en tiempo real de la red de pantallas digitales de la UNRaf: reproductores conectados, temperatura, contenidos, programación y alertas.{% endblock %}
 {% block main_class %}{% endblock %}
 
 {% block body %}
@@ -22,5 +23,10 @@
 {% block javascripts %}
     {# ECharts copiado en assets (no CDN): el mismo que usa Telemetría. #}
     <script src="{{ asset('spui/vendor/echarts/echarts.min.js') }}"></script>
+    <script src="{{ asset('spui/js/core/graficos-tiempo.js') }}"></script>
     <script src="{{ asset('spui/js/dashboard/dashboard.js') }}"></script>
+    {# Conectado/desconectado al instante: el CMS avisa por MQTT cada vez que un
+       reproductor cambia de estado y la zona se vuelve a pedir en el acto, sin
+       esperar el ciclo de 20 s. #}
+    {{ include('@SPUI/_partials/conexion_vivo.html.twig') }}
 {% endblock %}

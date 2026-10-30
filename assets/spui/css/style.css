@@ -2065,9 +2065,15 @@ textarea.is-invalid,
 .spui-tel-espera[hidden] { display: none; }
 .spui-tel-espera .spinner-border { color: var(--unraf-azul); width: 1.6rem; height: 1.6rem; border-width: .2rem; }
 
-/* ===== Dashboard (rehecho el 29/10/2026) ===== */
+/* ===== Dashboard (rehecho el 29/10 y el 30/10/2026) ===== */
 .spui-dash .unraf-card { margin-bottom: 0; }
 .spui-dash .min-w-0 { min-width: 0; }
+.spui-dash-h1 { color: var(--unraf-azul); font-family: var(--unraf-font-principal); margin: 0; }
+.spui-dash-h2 { font-family: var(--unraf-font-texto); font-size: 1rem; font-weight: 700; color: #2b3a4a; margin: 0; }
+.spui-dash-h2-seccion { font-family: var(--unraf-font-principal); font-size: clamp(1.05rem, 3.6vw, 1.25rem); color: var(--unraf-azul); }
+.spui-dash-actualizar { font-size: .8rem; padding: .3rem .6rem; }
+.spui-dash-actualizar img { width: .85rem; height: .85rem; flex-shrink: 0; }
+.spui-dash-punto { width: .6rem; height: .6rem; border-radius: 50%; display: inline-block; flex-shrink: 0; }
 
 /* Alerta de emergencia en curso: lo primero que se ve. */
 .spui-dash-alerta {
@@ -2093,61 +2099,141 @@ textarea.is-invalid,
     100% { box-shadow: 0 0 0 .9rem rgba(255, 255, 255, 0); }
 }
 
-.spui-dash-tarjeta-titulo { font-weight: 700; color: #2b3a4a; margin-bottom: .5rem; }
-.spui-dash-dona { width: 150px; height: 150px; flex-shrink: 0; margin: 0 auto; }
-.spui-dash-leyenda li { display: flex; align-items: center; gap: .5rem; padding: .2rem 0; }
-.spui-dash-leyenda li strong { margin-left: auto; font-size: 1.05rem; color: #2b3a4a; }
-.spui-dash-punto { width: .6rem; height: .6rem; border-radius: 50%; display: inline-block; flex-shrink: 0; }
-
-/* KPIs: tarjetas-enlace a cada sección. */
-.spui-dash-kpi {
-    display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto auto;
-    column-gap: .75rem; align-items: center; text-decoration: none; color: inherit;
-    border-top: 3px solid var(--kpi);
+/* Requiere atención: una franja de un renglón cuando no hay nada... */
+.spui-dash-enorden {
+    display: flex; align-items: center; gap: .6rem;
+    padding: .55rem .9rem; border-radius: 8px; font-size: .88rem; color: #2f6d1c;
+    background: #f1f8ee; border: 1px solid #d3e9cb;
 }
-.spui-dash-kpi:hover { color: inherit; }
-.spui-dash-kpi-icono {
-    grid-row: 1 / span 3; width: 2.6rem; height: 2.6rem; border-radius: 10px;
-    background: color-mix(in srgb, var(--kpi) 12%, #fff);
-    display: flex; align-items: center; justify-content: center; align-self: start;
+.spui-dash-enorden-icono {
+    width: 1.5rem; height: 1.5rem; border-radius: 50%; flex-shrink: 0;
+    background: #4A9930; color: #fff; font-weight: 700; font-size: .85rem;
+    display: inline-flex; align-items: center; justify-content: center;
 }
-.spui-dash-kpi-icono img { width: 1.35rem; height: 1.35rem; opacity: .8; }
-.spui-dash-kpi-valor { font-family: var(--unraf-font-principal); font-weight: 700; font-size: 1.7rem; line-height: 1; color: #2b3a4a; }
-.spui-dash-kpi-titulo { font-weight: 600; color: #2b3a4a; font-size: .9rem; }
-.spui-dash-kpi-detalle { color: #6c757d; font-size: .78rem; line-height: 1.25; }
-
-.spui-dash-lienzo { width: 100%; height: 260px; }
-/* En celular el ícono le come el ancho al título del KPI. */
-@media (max-width: 575.98px) {
-    .spui-dash-kpi { grid-template-columns: 1fr; }
-    .spui-dash-kpi-icono { display: none; }
-    .spui-dash-lienzo { height: 220px; }
-}
-
-/* Requiere atención */
+/* ...y una tarjeta que crece con cada aviso cuando sí. */
+.spui-dash-atencion { border-left: 4px solid #C77F0A; }
+.spui-dash-atencion-cab { display: flex; align-items: center; gap: .5rem; padding: .75rem 1rem .25rem; }
 .spui-dash-contador {
     background: #FF223D; color: #fff; font-weight: 700; font-size: .75rem;
     min-width: 1.4rem; height: 1.4rem; border-radius: 1rem; padding: 0 .4rem;
     display: inline-flex; align-items: center; justify-content: center;
 }
-.spui-dash-avisos { display: flex; flex-direction: column; gap: .6rem; }
+.spui-dash-avisos {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+    gap: .6rem; padding: .5rem 1rem 1rem;
+}
 .spui-dash-aviso {
     border-left: 4px solid #C77F0A; background: #fff8eb; border-radius: 6px;
     padding: .6rem .75rem; overflow-wrap: anywhere;
 }
 .spui-dash-aviso.is-grave { border-left-color: #FF223D; background: #fff1f3; }
-.spui-dash-ok { display: flex; gap: .75rem; align-items: center; padding: .5rem 0; }
-.spui-dash-ok-icono {
-    width: 2.4rem; height: 2.4rem; border-radius: 50%; flex-shrink: 0;
-    background: #eaf5e5; color: #4A9930; font-weight: 700; font-size: 1.2rem;
-    display: flex; align-items: center; justify-content: center;
+
+/* Cuatro tarjetas idénticas: misma grilla, misma altura (la fila se estira
+   a la más alta) y las mismas cuatro partes en el mismo orden. */
+.spui-dash-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1rem; }
+@media (max-width: 1199.98px) { .spui-dash-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 339.98px) { .spui-dash-kpis { grid-template-columns: minmax(0, 1fr); } }
+.spui-dash-kpi {
+    display: flex; flex-direction: column; gap: .45rem; padding: .85rem 1rem;
+    text-decoration: none; color: inherit; border-top: 3px solid var(--kpi);
 }
+.spui-dash-kpi:hover { color: inherit; }
+.spui-dash-kpi:focus-visible { outline: 3px solid rgba(51, 135, 239, .4); outline-offset: 2px; }
+.spui-dash-kpi.is-alerta { background: #fff7f8; }
+.spui-dash-kpi-cab { display: flex; align-items: center; gap: .5rem; font-weight: 700; color: #2b3a4a; font-size: .9rem; }
+.spui-dash-kpi-icono {
+    width: 1.75rem; height: 1.75rem; border-radius: 7px; flex-shrink: 0;
+    background: color-mix(in srgb, var(--kpi) 12%, #fff);
+    display: inline-flex; align-items: center; justify-content: center;
+}
+.spui-dash-kpi-icono img { width: 1rem; height: 1rem; opacity: .8; }
+.spui-dash-kpi-cifra { color: #6c757d; font-size: .85rem; line-height: 1.2; }
+.spui-dash-kpi-cifra strong {
+    font-family: var(--unraf-font-principal); font-size: 1.75rem; line-height: 1;
+    color: #2b3a4a; margin-right: .2rem;
+}
+.spui-dash-kpi-barra { display: flex; gap: 2px; height: 6px; border-radius: 3px; background: #edf0f3; overflow: hidden; }
+.spui-dash-kpi-barra > span { min-width: 0; }
+.spui-dash-kpi-pie {
+    color: #6c757d; font-size: .78rem; line-height: 1.35; margin-top: auto;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.spui-dash-kpi-tipo { display: inline-flex; align-items: center; gap: .25rem; margin-right: .55rem; white-space: nowrap; }
+.spui-dash-kpi-tipo .spui-dash-punto { width: .45rem; height: .45rem; }
+/* Va después de las reglas base de la tarjeta para poder pisarlas. */
+@media (max-width: 575.98px) {
+    .spui-dash-kpis { gap: .6rem; }
+    .spui-dash-kpi { padding: .7rem .75rem; }
+    .spui-dash-kpi-cifra strong { font-size: 1.5rem; }
+    .spui-dash-kpi-cab { font-size: .82rem; gap: .4rem; min-width: 0; }
+    .spui-dash-kpi-icono { width: 1.4rem; height: 1.4rem; }
+    .spui-dash-kpi-icono img { width: .85rem; height: .85rem; }
+}
+
+/* Estado de los reproductores */
+.spui-dash-tarjeta { padding: 1rem; display: flex; flex-direction: column; gap: .5rem; }
+.spui-dash-estado-cuerpo { display: flex; align-items: center; gap: 1rem; flex: 1; }
+.spui-dash-dona { width: 150px; height: 150px; flex-shrink: 0; }
+/* Encabezado del gráfico: el título no se aprieta contra la barra de botones;
+   si no entran juntos, la barra baja a su propio renglón. */
+.spui-dash-graf-cab { display: flex; justify-content: space-between; align-items: center; gap: .5rem 1rem; flex-wrap: wrap; }
+.spui-dash-graf-cab > .min-w-0 { flex: 1 1 16rem; }
+.spui-dash-leyenda { flex: 1; min-width: 0; }
+.spui-dash-leyenda-btn {
+    width: 100%; display: flex; align-items: center; gap: .5rem;
+    background: none; border: 0; border-radius: 6px; padding: .4rem .5rem; color: #2b3a4a; font-size: .9rem;
+    white-space: nowrap;
+}
+.spui-dash-leyenda-btn:not(:disabled):hover { background: #f1f4f7; }
+.spui-dash-leyenda-btn:focus-visible { outline: 3px solid rgba(51, 135, 239, .4); }
+.spui-dash-leyenda-btn:disabled { color: #9aa4ae; cursor: default; }
+.spui-dash-leyenda-btn strong { font-size: 1.05rem; }
+.spui-dash-nota { color: #6c757d; font-size: .78rem; }
+@media (max-width: 459.98px) {
+    .spui-dash-estado-cuerpo { flex-direction: column; align-items: stretch; }
+    .spui-dash-dona { margin: 0 auto; }
+}
+
+/* Globo con los reproductores de un sector de la dona: flota encima, con
+   la punta hacia donde se tocó. */
+.spui-dash-globo {
+    position: absolute; z-index: 1050; width: min(300px, calc(100vw - 32px));
+    background: #fff; border: 1px solid #e0e4e8; border-top: 4px solid var(--globo, #adb5bd);
+    border-radius: 10px; box-shadow: 0 12px 30px rgba(20, 30, 45, .18);
+    opacity: 0; transform: translateY(6px); transition: opacity .15s ease, transform .15s ease;
+}
+.spui-dash-globo[hidden] { display: none; }
+.spui-dash-globo.is-abajo { transform: translateY(-6px); }
+.spui-dash-globo.is-visible { opacity: 1; transform: none; }
+.spui-dash-globo-flecha {
+    position: absolute; left: var(--flecha, 50%); bottom: -8px; width: 14px; height: 14px; margin-left: -7px;
+    background: #fff; border-right: 1px solid #e0e4e8; border-bottom: 1px solid #e0e4e8; transform: rotate(45deg);
+}
+.spui-dash-globo.is-abajo .spui-dash-globo-flecha {
+    bottom: auto; top: -11px; border: 0; background: var(--globo, #adb5bd);
+}
+.spui-dash-globo-cab { display: flex; align-items: center; gap: .45rem; padding: .6rem .5rem .5rem .8rem; border-bottom: 1px solid #eef1f4; }
+.spui-dash-globo-cuenta { background: #f1f3f5; color: #495057; font-size: .75rem; font-weight: 700; border-radius: 1rem; padding: .05rem .45rem; }
+.spui-dash-globo-cerrar {
+    margin-left: auto; background: none; border: 0; font-size: 1.3rem; line-height: 1;
+    color: #6c757d; width: 2rem; height: 2rem; border-radius: 6px;
+}
+.spui-dash-globo-cerrar:hover { background: #f1f3f5; color: #2b3a4a; }
+.spui-dash-globo-lista { list-style: none; margin: 0; padding: .3rem; max-height: 260px; overflow-y: auto; }
+.spui-dash-globo-lista a {
+    display: flex; flex-direction: column; padding: .45rem .55rem; border-radius: 6px;
+    text-decoration: none; color: inherit;
+}
+.spui-dash-globo-lista a:hover, .spui-dash-globo-lista a:focus-visible { background: #f4f7fa; }
+.spui-dash-globo-nombre { font-weight: 700; color: #2b3a4a; overflow-wrap: anywhere; }
+.spui-dash-globo-detalle { font-size: .78rem; color: #6c757d; overflow-wrap: anywhere; }
+.spui-dash-globo-vacio { margin: 0; padding: .75rem .8rem; color: #6c757d; font-size: .85rem; }
 
 /* Tarjetas de reproductor */
 .spui-dash-repro { padding: 1rem 1.1rem; border-left: 4px solid #adb5bd; display: flex; flex-direction: column; }
 .spui-dash-repro.is-conectado { border-left-color: #4A9930; }
 .spui-dash-repro.is-desconectado { border-left-color: #FF223D; }
-.spui-dash-repro-nombre { font-weight: 700; font-size: 1.05rem; color: #2b3a4a; overflow-wrap: anywhere; }
+.spui-dash-repro-nombre { font-family: var(--unraf-font-texto); font-weight: 700; font-size: 1.05rem; color: #2b3a4a; overflow-wrap: anywhere; margin: 0; }
 .spui-dash-estado {
     display: inline-flex; align-items: center; gap: .35rem; flex-shrink: 0;
     font-size: .75rem; font-weight: 600; padding: .2rem .6rem; border-radius: 1rem;
@@ -2158,10 +2244,10 @@ textarea.is-invalid,
 .spui-dash-estado.is-conectado .spui-dash-punto { background: #4A9930; }
 .spui-dash-estado.is-desconectado { background: #fff1f3; color: #b3142a; }
 .spui-dash-estado.is-desconectado .spui-dash-punto { background: #FF223D; }
-.spui-dash-metricas { display: grid; grid-template-columns: repeat(3, 1fr); gap: .75rem; margin-top: .9rem; }
+.spui-dash-metricas { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .75rem; margin-top: .9rem; }
 .spui-dash-metrica { display: flex; flex-direction: column; gap: .15rem; min-width: 0; }
 .spui-dash-metrica > span { font-size: .78rem; color: #6c757d; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .spui-dash-metrica > strong { font-size: 1rem; color: #2b3a4a; }
 .spui-dash-barra { height: 5px; border-radius: 3px; background: #edf0f3; overflow: hidden; }
 .spui-dash-barra > div { height: 100%; border-radius: 3px; transition: width .4s ease; }
-.spui-dash-repro .mt-3:last-child { margin-top: auto !important; padding-top: .9rem; }
+.spui-dash-repro-pie { margin-top: auto; padding-top: .9rem; display: flex; justify-content: flex-end; }

@@ -1,0 +1,11 @@
+{# Barra de zoom de cada gráfico en el tiempo: la engancha
+   core/graficos-tiempo.js (herramientas) por data-tel-zoom. La usan
+   Telemetría y el Dashboard. #}
+{% macro herramientas(grafico) %}
+    <div class="spui-tel-herramientas" data-tel-herramientas="{{ grafico }}">
+        <button type="button" data-tel-zoom="mas" title="Acercar"><img src="{{ asset('unraf-ui/icons/magnifying-glass-plus.svg') }}" alt="Acercar"></button>
+        <button type="button" data-tel-zoom="menos" title="Alejar"><img src="{{ asset('unraf-ui/icons/magnifying-glass-minus.svg') }}" alt="Alejar"></button>
+        <button type="button" data-tel-zoom="inicio" title="Volver al período elegido"><img src="{{ asset('unraf-ui/icons/arrow-counter-clockwise.svg') }}" alt="Volver"></button>
+        <button type="button" data-tel-zoom="png" title="Descargar como imagen"><img src="{{ asset('unraf-ui/icons/download-simple.svg') }}" alt="Descargar imagen"></button>
+    </div>
+{% endmacro %}

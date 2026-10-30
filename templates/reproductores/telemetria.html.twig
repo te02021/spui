@@ -22,16 +22,7 @@
     PDF) y rango de fechas, hasta export_dias días atrás.
 #}
 
-{# Barra de zoom de cada gráfico (telemetria.js la engancha por data-tel-zoom). #}
-{% macro herramientas(grafico) %}
-    <div class="spui-tel-herramientas" data-tel-herramientas="{{ grafico }}">
-        <button type="button" data-tel-zoom="mas" title="Acercar"><img src="{{ asset('unraf-ui/icons/magnifying-glass-plus.svg') }}" alt="Acercar"></button>
-        <button type="button" data-tel-zoom="menos" title="Alejar"><img src="{{ asset('unraf-ui/icons/magnifying-glass-minus.svg') }}" alt="Alejar"></button>
-        <button type="button" data-tel-zoom="inicio" title="Volver al período elegido"><img src="{{ asset('unraf-ui/icons/arrow-counter-clockwise.svg') }}" alt="Volver"></button>
-        <button type="button" data-tel-zoom="png" title="Descargar como imagen"><img src="{{ asset('unraf-ui/icons/download-simple.svg') }}" alt="Descargar imagen"></button>
-    </div>
-{% endmacro %}
-{% import _self as t %}
+{% import '@SPUI/_macros/graficos.html.twig' as t %}
 
 {% block body %}
 {% set cfg_vivo = spui_mqtt_web.paraNavegador(app.request, topic_vivo) %}
@@ -203,6 +194,7 @@
 
 {% block javascripts %}
     <script src="{{ asset('spui/vendor/echarts/echarts.min.js') }}"></script>
+    <script src="{{ asset('spui/js/core/graficos-tiempo.js') }}"></script>
     <script src="https://cdn.jsdelivr.net/npm/mqtt@5.10.1/dist/mqtt.min.js"></script>
     <script src="{{ asset('spui/js/reproductores/telemetria.js') }}"></script>
 {% endblock %}

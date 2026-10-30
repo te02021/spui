@@ -1,9 +1,10 @@
 {# Avisos de conexión de reproductores, en vivo (ver conexion-vivo.js).
 
    Se incluye desde el bloque javascripts de los listados cuyas acciones se
-   bloquean por reproductor desconectado y que no se refrescan por intervalo:
-   Pantallas, Contenidos, Playlists y Programación. La zona a refrescar es la
-   marcada con data-spui-refresh="push".
+   bloquean por reproductor desconectado y que no se refrescan por intervalo
+   (Pantallas, Contenidos, Playlists y Programación, zona data-spui-refresh="push"),
+   y desde el Dashboard, que además del intervalo de 20 s tiene que mostrar
+   el cambio de estado de un reproductor en el momento.
 
    Las credenciales son las del usuario web de sólo lectura (MqttSecurityService),
    el mismo del contador de escaneos de un QR. Si el broker no confirmó su alta,
