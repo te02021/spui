@@ -11,7 +11,15 @@
 {% set total = reproductores|length %}
 {% set con_problemas = reproductores|filter(r => r.tieneProblemas) %}
 {% set caidos = reproductores|filter(r => r.estadoCalculado(spui_umbral_conexion).value == 'desconectado') %}
-{% set avisos = caidos|length + sobrecalentados|length + con_problemas|length
+{% set sin_registrar = reproductores|filter(r => r.estadoCalculado(spui_umbral_conexion).value == 'sin_registrar') %}
+{# Tarjetas de detalle por gravedad: desconectados, sin registrar, conectados;
+   dentro de cada grupo por nombre. Con muchos equipos, un caído no queda al
+   fondo de la página. #}
+{% set RANGO = {desconectado: 0, sin_registrar: 1, conectado: 2} %}
+{% set reproductores_orden = reproductores|sort((a, b) =>
+    (RANGO[a.estadoCalculado(spui_umbral_conexion).value] <=> RANGO[b.estadoCalculado(spui_umbral_conexion).value])
+    ?: (a.hostname <=> b.hostname)) %}
+{% set avisos = caidos|length + sin_registrar|length + sobrecalentados|length + con_problemas|length
               + (intentos_fallidos|length > 0 ? 1 : 0) + (scheduler_desactualizado ? 1 : 0) %}
 {% set avisos_graves = caidos|length + sobrecalentados|length + (scheduler_desactualizado ? 1 : 0) %}
 {% set COLORES_ESTADO = {conectado: '#4A9930', desconectado: '#FF223D', sin_registrar: '#adb5bd'} %}
@@ -62,6 +70,22 @@
                                             {%- if r.pantallas|length %} · {{ r.pantallas|map(p => p.nombre)|join(', ') }}{% endif -%}
                                         </div>
                                         <div class="spui-dash-aviso-ayuda">Revisá que esté encendido y con red: mientras tanto no recibe cambios.</div>
+                                    </div>
+                                </li>
+                            {% endfor %}
+
+                            {# Dado de alta pero nunca dio señal: casi siempre la Pi no tiene
+                               bien su spui.env (clave o dirección del CMS) o el servicio no
+                               arrancó. #}
+                            {% for r in sin_registrar %}
+                                <li class="spui-dash-aviso">
+                                    <span class="spui-dash-aviso-icono" aria-hidden="true">?</span>
+                                    <div class="min-w-0">
+                                        <div class="spui-dash-aviso-titulo"><strong>{{ r.hostname }}</strong> nunca dio señal</div>
+                                        <div class="spui-dash-aviso-detalle">
+                                            {{- r.pantallas|length ? r.pantallas|map(p => p.nombre)|join(', ') : 'Sin pantallas asignadas' -}}
+                                        </div>
+                                        <div class="spui-dash-aviso-ayuda">Revisá la clave y la dirección del CMS en su <code>spui.env</code>, y que el servicio <code>spui</code> esté corriendo.</div>
                                     </div>
                                 </li>
                             {% endfor %}
@@ -272,7 +296,13 @@
                 <div class="p-3 border-bottom spui-dash-graf-cab">
                     <div class="min-w-0">
                         <h2 id="dash-temp-titulo" class="spui-dash-h2">Temperatura del procesador (°C) · últimas 24 h</h2>
-                        <small class="text-muted">Promedio por hora de cada reproductor</small>
+                        <small class="text-muted">
+                            {%- if series_temp|length > 6 -%}
+                                Se ven los 5 más calientes y el promedio de la red: tocá un nombre para mostrarlo u ocultarlo
+                            {%- else -%}
+                                Promedio por hora de cada reproductor
+                            {%- endif -%}
+                        </small>
                     </div>
                     {% if series_temp|length %}{{ g.herramientas('dashboard') }}{% endif %}
                 </div>
@@ -295,7 +325,14 @@
             <small class="text-muted text-nowrap">{{ texto.plural(total, 'registrado', 'registrados') }}</small>
         </div>
         <div class="row g-3">
-            {% for r in reproductores %}
+            {% for r in reproductores_orden %}
+                {# Un subtítulo al empezar cada grupo (vienen ordenados por gravedad). #}
+                {% set grupo = r.estadoCalculado(spui_umbral_conexion).value %}
+                {% if loop.first or (reproductores_orden|slice(loop.index0 - 1, 1)|first).estadoCalculado(spui_umbral_conexion).value != grupo %}
+                    <div class="col-12 spui-dash-grupo is-{{ grupo }}">
+                        <h3 class="spui-dash-grupo-titulo"><span class="spui-dash-punto"></span>{{ {desconectado: 'Desconectados', sin_registrar: 'Sin registrar', conectado: 'Conectados'}[grupo] }} <span class="text-muted fw-normal">· {{ conteo[grupo] }}</span></h3>
+                    </div>
+                {% endif %}
                 {# default(null): un reproductor recién registrado todavía no reportó nada #}
                 {% set tel = telemetria[r.id]|default(null) %}
                 {# Estado CALCULADO, no la columna estado_conexion: así el panel dice la

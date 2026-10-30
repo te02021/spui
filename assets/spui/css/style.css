@@ -2275,10 +2275,25 @@ textarea.is-invalid,
 .spui-dash-globo-detalle { font-size: .78rem; color: #6c757d; overflow-wrap: anywhere; }
 .spui-dash-globo-vacio { margin: 0; padding: .75rem .8rem; color: #6c757d; font-size: .85rem; }
 
+/* Subtítulos de grupo del detalle por reproductor */
+.spui-dash-grupo { margin-top: 1.5rem; }
+.spui-dash-grupo:first-child { margin-top: .75rem; }
+.spui-dash-grupo-titulo {
+    display: flex; align-items: center; gap: .45rem; margin: 0;
+    font-family: var(--unraf-font-texto); font-size: .82rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .05em; color: #495057;
+    padding-bottom: .35rem; border-bottom: 1px solid #e3e7eb;
+}
+.spui-dash-grupo .spui-dash-punto { background: #adb5bd; }
+.spui-dash-grupo.is-desconectado .spui-dash-punto { background: #FF223D; }
+.spui-dash-grupo.is-conectado .spui-dash-punto { background: #4A9930; }
+
 /* Tarjetas de reproductor */
 .spui-dash-repro { padding: 1rem 1.1rem; border-left: 4px solid #adb5bd; display: flex; flex-direction: column; }
 .spui-dash-repro.is-conectado { border-left-color: #4A9930; }
 .spui-dash-repro.is-desconectado { border-left-color: #FF223D; }
+/* Las métricas de un equipo caído son las de su última señal, no de ahora. */
+.spui-dash-repro.is-desconectado .spui-dash-metricas { opacity: .55; filter: grayscale(1); }
 .spui-dash-repro-nombre { font-family: var(--unraf-font-texto); font-weight: 700; font-size: 1.05rem; color: #2b3a4a; overflow-wrap: anywhere; margin: 0; }
 .spui-dash-estado {
     display: inline-flex; align-items: center; gap: .35rem; flex-shrink: 0;

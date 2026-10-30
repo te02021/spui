@@ -49,14 +49,20 @@ class TelemetriaRepository extends ServiceEntityRepository
             return [];
         }
 
-        // Se traen las lecturas recientes de todos los nodos de una vez y se
-        // queda la primera de cada uno. El índice (reproductor_id, registrado_en)
-        // hace que el ORDER BY salga del índice, sin filesort.
+        // La última lectura de cada equipo: la de id más alto (las filas entran
+        // en orden de llegada). Antes se traían las últimas N×20 de toda la red
+        // y se tomaba la primera de cada uno, pero con muchos equipos
+        // reportando cada minuto, uno que había dejado de reportar quedaba
+        // fuera de esa ventana y figuraba como "todavía no envió telemetría"
+        // (encontrado con 18 reproductores de prueba, 30/10/2026).
+        $ultimos = $this->createQueryBuilder('t2')
+            ->select('MAX(t2.id)')
+            ->where('t2.reproductor IN (:reproductores)')
+            ->groupBy('t2.reproductor')
+            ->getDQL();
         $filas = $this->createQueryBuilder('t')
-            ->where('t.reproductor IN (:reproductores)')
+            ->where("t.id IN ($ultimos)")
             ->setParameter('reproductores', $reproductores)
-            ->orderBy('t.registradoEn', 'DESC')
-            ->setMaxResults(count($reproductores) * 20)
             ->getQuery()
             ->getResult();
 
@@ -87,6 +93,44 @@ class TelemetriaRepository extends ServiceEntityRepository
      *
      * @return array<int, array{periodo:string, temp_prom:float, temp_max:float, ram_prom:float, disco_min:int, lecturas:int}>
      */
+    /**
+     * Temperatura promedio por hora de varios reproductores en UNA consulta
+     * (el Dashboard la pide cada 20 s por cada navegador abierto: con una
+     * consulta por equipo eran N). Mismo detalle crudo que findSeriePorHora(),
+     * así que vale para rangos cortos.
+     *
+     * @param Reproductor[] $reproductores
+     * @return array<int, list<array{0: string, 1: float}>> id del reproductor => [[periodo, temp_prom], ...]
+     */
+    public function findTemperaturaPorHoraDeVarios(array $reproductores, DateTimeImmutable $desde): array
+    {
+        $ids = array_values(array_filter(array_map(static fn(Reproductor $r) => $r->getId(), $reproductores)));
+        if ($ids === []) {
+            return [];
+        }
+        $sql = <<<'SQL'
+            SELECT reproductor_id,
+                   DATE_FORMAT(registrado_en, '%Y-%m-%d %H:00') AS periodo,
+                   AVG(temperatura_soc_celsius)                 AS temp_prom
+              FROM telemetria
+             WHERE reproductor_id IN (:ids)
+               AND registrado_en >= :desde
+             GROUP BY reproductor_id, periodo
+             ORDER BY reproductor_id, periodo
+            SQL;
+        $filas = $this->getEntityManager()->getConnection()->executeQuery(
+            $sql,
+            ['ids' => $ids, 'desde' => $desde->format('Y-m-d H:i:s')],
+            ['ids' => \Doctrine\DBAL\ArrayParameterType::INTEGER],
+        )->fetchAllAssociative();
+
+        $series = [];
+        foreach ($filas as $f) {
+            $series[(int) $f['reproductor_id']][] = [$f['periodo'], round((float) $f['temp_prom'], 1)];
+        }
+        return $series;
+    }
+
     public function findSeriePorHora(Reproductor $reproductor, DateTimeImmutable $desde): array
     {
         $sql = <<<'SQL'

@@ -187,9 +187,10 @@ class DashboardController extends AbstractController
     private function seriesTemperatura(array $reproductores, array $ultima): array
     {
         $desde = new DateTimeImmutable('-24 hours');
+        $porEquipo = $this->telemetriaRepo->findTemperaturaPorHoraDeVarios($reproductores, $desde);
         $series = [];
         foreach ($reproductores as $r) {
-            $puntos = array_map(static fn(array $p) => [$p['periodo'], $p['temp_prom']], $this->telemetriaRepo->findSeriePorHora($r, $desde));
+            $puntos = $porEquipo[$r->getId()] ?? [];
             $t = $ultima[$r->getId()] ?? null;
             if ($puntos !== [] && $t !== null && $t->getRegistradoEn() > $desde) {
                 $puntos[] = [$t->getRegistradoEn()->format('Y-m-d H:i:s'), $t->getTemperaturaSocCelsius()];

@@ -20,12 +20,17 @@
     var GRIS = '#6c757d';
     // Un color por equipo en el gráfico de temperatura: el primero es el azul
     // de Telemetría, para que con un solo equipo se vea igual que allá.
-    var PALETA = ['#3387EF', '#7A5AF8', '#1CA1A7', '#C77F0A', '#D6457A', '#4A9930', '#5B6B7F'];
+    var PALETA = ['#3387EF', '#7A5AF8', '#1CA1A7', '#C77F0A', '#D6457A', '#4A9930',
+                  '#5B6B7F', '#E0662B', '#2E9E8F', '#A35BD6', '#8A9A2C', '#C24B5A'];
+    // Con más equipos que esto, el gráfico muestra de entrada sólo los más
+    // calientes y el promedio de la red; el resto se prende desde la leyenda.
+    var POCOS = 6, VISIBLES = 5;
+    var PROMEDIO = 'Promedio de la red', UMBRAL_SERIE = '__umbral';
     var VENTANA = 24 * 3600e3, MIN_VENTANA = 3 * 3600e3;
     var ETIQUETAS = { conectado: 'Conectados', desconectado: 'Desconectados', sin_registrar: 'Sin registrar' };
 
     var datos = null;
-    var dona = null, firmaDona = null, temp = null, vistaTemp = null, firmaTemp = null;
+    var dona = null, firmaDona = null, temp = null, vistaTemp = null, firmaTemp = null, cantidadTemp = 0;
 
     function leerDatos() {
         var nodo = document.querySelector('[data-dash-datos]');
@@ -224,16 +229,84 @@
     // ── Temperatura ─────────────────────────────────────────────────────────
     function limitesTemp() { var a = Date.now(); return { min: a - VENTANA, max: a }; }
 
-    function seriesTemp() {
-        return (datos.temperatura || []).map(function (s, i) {
-            return G.linea(s.nombre, PALETA[i % PALETA.length], s.puntos.map(function (p) { return [G.ms(p[0]), p[1]]; }), true,
-                i === 0 ? { markLine: G.lineaLimite(datos.umbral, 'Umbral ' + datos.umbral + ' °C') } : {});
+    /** Las series por nombre: así cada equipo conserva su color entre refrescos. */
+    function seriesOrdenadas() {
+        return (datos.temperatura || []).slice().sort(function (a, b) { return a.nombre < b.nombre ? -1 : 1; });
+    }
+    function muchos() { return (datos.temperatura || []).length > POCOS; }
+
+    /** Promedio de todos los equipos en cada hora, y al final el de sus últimas lecturas. */
+    function promedioRed() {
+        var porHora = {}, ultimos = [], ultimoT = 0;
+        (datos.temperatura || []).forEach(function (s) {
+            s.puntos.forEach(function (p) {
+                if (p[0].length === 16) { (porHora[p[0]] = porHora[p[0]] || []).push(p[1]); }   // "Y-m-d H:00"
+                else { ultimos.push(p[1]); ultimoT = Math.max(ultimoT, G.ms(p[0])); }           // lectura más reciente
+            });
         });
+        var prom = function (l) { return Math.round(l.reduce(function (a, b) { return a + b; }, 0) / l.length * 10) / 10; };
+        var puntos = Object.keys(porHora).sort().map(function (k) { return [G.ms(k), prom(porHora[k])]; });
+        if (ultimos.length) { puntos.push([ultimoT, prom(ultimos)]); }
+        return puntos;
+    }
+
+    function seriesTemp() {
+        var conArea = !muchos();
+        var lista = seriesOrdenadas().map(function (s, i) {
+            return G.linea(s.nombre, PALETA[i % PALETA.length], s.puntos.map(function (p) { return [G.ms(p[0]), p[1]]; }), conArea);
+        });
+        if (muchos()) {
+            lista.push(G.linea(PROMEDIO, '#2b3a4a', promedioRed(), false, { lineStyle: { width: 3, color: '#2b3a4a', type: [6, 4] }, z: 5 }));
+        }
+        // El umbral va en una serie propia, sin datos y fuera de la leyenda:
+        // si colgara de un equipo, ocultarlo escondería también la línea roja.
+        lista.push({ type: 'line', name: UMBRAL_SERIE, data: [], silent: true, tooltip: { show: false },
+                     markLine: G.lineaLimite(datos.umbral, 'Umbral ' + datos.umbral + ' °C') });
+        return lista;
+    }
+
+    /** Leyenda: con muchos equipos, una sola fila con flechas y de entrada los más calientes. */
+    function leyendaTemp() {
+        var series = seriesOrdenadas();
+        var nombres = series.map(function (s) { return s.nombre; });
+        if (!muchos()) {
+            return { show: nombres.length > 1, data: nombres };
+        }
+        // Los más calientes AHORA: primero los que reportaron en el último
+        // cuarto de hora (los conectados), ordenados por su última lectura;
+        // uno caído hace horas no desplaza a un equipo que está calentando.
+        var reciente = function (s) { return G.ms(s.puntos[s.puntos.length - 1][0]) > Date.now() - 15 * 60e3; };
+        var calientes = series.slice().sort(function (a, b) {
+            return (reciente(b) - reciente(a)) || (b.puntos[b.puntos.length - 1][1] - a.puntos[a.puntos.length - 1][1]);
+        }).slice(0, VISIBLES).map(function (s) { return s.nombre; });
+        var elegidos = {};
+        nombres.forEach(function (n) { elegidos[n] = calientes.indexOf(n) !== -1; });
+        elegidos[PROMEDIO] = true;
+        return {
+            show: true, type: 'scroll', top: 0, left: 0, right: 0, data: [PROMEDIO].concat(nombres), selected: elegidos,
+            pageIconColor: '#446687', pageIconInactiveColor: '#ced4da', pageTextStyle: { color: GRIS }
+        };
     }
     function maxTemp() {
         var m = 0;
         (datos.temperatura || []).forEach(function (s) { s.puntos.forEach(function (p) { m = Math.max(m, p[1] || 0); }); });
         return Math.max(100, Math.ceil(m / 20) * 20);
+    }
+
+    function opcionTemp() {
+        var l = limitesTemp();
+        var o = G.opcion({
+            min: l.min, max: l.max, desde: l.min, hasta: l.max, minVentana: MIN_VENTANA,
+            leyenda: true,
+            yMax: maxTemp(), eje: function (x) { return Math.round(x) + ' °C'; },
+            formato: function (x) { return G.num(x, 1) + ' °C'; },
+            series: seriesTemp()
+        });
+        var ley = leyendaTemp();
+        o.legend = Object.assign(o.legend, ley);
+        if (!ley.show) { o.grid.top = 18; }
+        cantidadTemp = (datos.temperatura || []).length;
+        return o;
     }
 
     function dibujarTemp() {
@@ -244,20 +317,20 @@
         if (!temp) { vistaTemp = null; return; }
 
         if (nuevo) {
-            var l = limitesTemp();
-            temp.setOption(G.opcion({
-                min: l.min, max: l.max, desde: l.min, hasta: l.max, minVentana: MIN_VENTANA,
-                leyenda: (datos.temperatura || []).length > 1,
-                yMax: maxTemp(), eje: function (x) { return Math.round(x) + ' °C'; },
-                formato: function (x) { return G.num(x, 1) + ' °C'; },
-                series: seriesTemp()
-            }));
+            temp.setOption(opcionTemp());
             vistaTemp = new G.Vista(temp, limitesTemp, MIN_VENTANA);
             vistaTemp.conRueda(temp);
             G.herramientas(el.closest('.unraf-card').querySelector('[data-tel-herramientas]'), vistaTemp, function () {
                 var l2 = limitesTemp();
                 vistaTemp.irA(l2.min, l2.max, 450);
             }, function () { return 'dashboard-temperatura'; });
+        } else if (firma !== firmaTemp && (datos.temperatura || []).length !== cantidadTemp) {
+            // Cambió la cantidad de equipos con datos: leyenda y colores se
+            // rearman de cero sobre el mismo gráfico (notMerge), así no quedan
+            // series viejas; la vista vuelve a donde estaba.
+            var previa = vistaTemp.objetivo || vistaTemp.leer();
+            temp.setOption(opcionTemp(), { notMerge: true });
+            vistaTemp.aplicar(previa);
         } else if (firma !== firmaTemp) {
             // Llegó una lectura nueva (cada minuto, el último punto de cada
             // equipo): datos y eje hasta "ahora". Si se estaba mirando el final,
@@ -266,6 +339,7 @@
             var antes = vistaTemp.objetivo || vistaTemp.leer();
             var alFinal = antes.e >= vistaTemp.limites().max - 5 * 60e3;
             var l3 = limitesTemp();
+            // Sin "legend": así se respeta lo que el usuario prendió o apagó.
             temp.setOption({ xAxis: { min: l3.min, max: l3.max }, yAxis: { max: maxTemp(), interval: maxTemp() / 5 }, series: seriesTemp() });
             vistaTemp.aplicar(antes);
             if (alFinal) { vistaTemp.irA(l3.max - (antes.e - antes.s), l3.max, 600); }
