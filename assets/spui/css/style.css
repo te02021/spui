@@ -2427,30 +2427,44 @@ button[type="submit"].unraf-btn:not(.unraf-btn-sm),
 .spui-semana li.is-si { background: var(--unraf-turquesa); color: #fff; }
 .spui-semana li.is-no { background: #f1f3f5; color: #adb5bd; text-decoration: line-through; }
 
-/* Chips de filtro de los listados (_partials/filtros.html.twig). En celular,
-   si un grupo no entra, se desplaza en horizontal en vez de apilarse. */
-.spui-filtros { display: flex; flex-wrap: wrap; gap: .5rem 1.5rem; margin-bottom: 1rem; }
-.spui-filtros-grupo { display: flex; align-items: center; gap: .5rem; min-width: 0; max-width: 100%; }
-.spui-filtros-etiqueta { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: #6c757d; flex-shrink: 0; }
-.spui-filtros-lista {
-    display: flex; gap: .35rem; list-style: none; margin: 0; padding: 2px 0; min-width: 0;
-    overflow-x: auto; scrollbar-width: thin;
+/* Filtros de los listados (_partials/filtros.html.twig): un chip por grupo
+   con la opción elegida y una flecha; el menú (core/desplegable.js) trae
+   las demás, con su cantidad y una tilde en la elegida. Un chip con una
+   opción que no es la de por defecto queda marcado en azul: hay un filtro
+   puesto. */
+.spui-filtros { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
+.spui-selector {
+    display: inline-flex; align-items: center; gap: .45rem; white-space: nowrap;
+    min-height: 34px; padding: .2rem .55rem .2rem .85rem; border-radius: 2rem; cursor: pointer;
+    border: 1px solid #dfe5eb; background: #fff; color: #2b3a4a; font-size: .85rem;
+    transition: border-color .15s ease, background-color .15s ease;
 }
-.spui-filtro {
-    display: inline-flex; align-items: center; gap: .4rem; white-space: nowrap;
-    min-height: 32px; padding: .2rem .8rem; border-radius: 2rem;
-    border: 1px solid #dfe5eb; background: #fff; color: #2b3a4a;
-    font-size: .85rem; font-weight: 600; text-decoration: none;
-}
-.spui-filtro:hover { border-color: #9fb6cc; background: #f4f7fa; color: #2b3a4a; }
-.spui-filtro:focus-visible { outline: 3px solid rgba(51, 135, 239, .4); outline-offset: 1px; }
-.spui-filtro.is-elegido { background: var(--unraf-azul); border-color: var(--unraf-azul); color: #fff; }
+.spui-selector:hover { border-color: #9fb6cc; background: #f7f9fb; }
+.spui-selector:focus-visible { outline: 3px solid rgba(51, 135, 239, .4); outline-offset: 1px; }
+.spui-selector[aria-expanded="true"] { border-color: var(--unraf-azul); }
+.spui-selector-etiqueta { font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: #8a96a3; }
+.spui-selector-valor { font-weight: 600; }
+.spui-selector-flecha { width: .8rem; height: .8rem; opacity: .55; transition: transform .2s ease; }
+.spui-selector[aria-expanded="true"] .spui-selector-flecha { transform: rotate(180deg); }
+.spui-selector.is-activo { background: #eef4fa; border-color: #9fb6cc; }
+.spui-selector.is-activo .spui-selector-valor { color: var(--unraf-azul); }
 .spui-filtro-cuenta {
     min-width: 1.35rem; height: 1.35rem; padding: 0 .35rem; border-radius: 1rem;
     display: inline-flex; align-items: center; justify-content: center;
-    font-size: .72rem; background: #eef1f4; color: #495057;
+    font-size: .72rem; font-weight: 600; background: #eef1f4; color: #495057;
 }
-.spui-filtro.is-elegido .spui-filtro-cuenta { background: rgba(255, 255, 255, .22); color: #fff; }
+.spui-selector-menu { min-width: 13rem; padding: .3rem; }
+.spui-selector-menu .spui-desp-lista > li { padding: 0; }
+.spui-selector-menu .spui-desp-lista > li + li { border-top: 0; }
+.spui-selector-opcion {
+    display: flex; align-items: center; gap: .5rem; padding: .45rem .55rem; border-radius: 6px;
+    color: #2b3a4a; text-decoration: none; font-size: .88rem;
+}
+.spui-selector-opcion:hover, .spui-selector-opcion:focus-visible { background: #f1f5f9; color: #2b3a4a; }
+.spui-selector-check { width: .9rem; color: var(--unraf-azul); font-weight: 700; visibility: hidden; }
+.spui-selector-opcion.is-elegida { font-weight: 700; }
+.spui-selector-opcion.is-elegida .spui-selector-check { visibility: visible; }
+.spui-selector-texto { flex: 1; }
 
 /* ============================================================================
    Sidebar plegable (30/10/2026) — sólo escritorio (> 768 px)
@@ -2502,7 +2516,8 @@ html.spui-sidebar-plegado .spui-sidebar-plegar img { transform: rotate(180deg); 
 /* Barra de un listado: buscador a la izquierda, chips a la derecha
    (_partials/barra_lista.html.twig). Si no entran juntos, los chips bajan
    alineados a la derecha. */
-.spui-barra-lista { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .75rem 1.5rem; margin-bottom: 1rem; }
+.spui-barra-lista { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-start; gap: .75rem 1rem; margin-bottom: 1rem; }
+.spui-barra-lista.is-apilada, .spui-barra-lista.is-apilada .spui-barra-filtros, .spui-barra-lista.is-apilada .spui-filtros { justify-content: center; }
 .spui-buscador {
     position: relative; display: flex; align-items: center; gap: .5rem;
     flex: 1 1 16rem; max-width: 24rem; min-height: 34px;
@@ -2527,17 +2542,12 @@ html.spui-sidebar-plegado .spui-sidebar-plegar img { transform: rotate(180deg); 
 .spui-buscador-limpiar[hidden] { display: none; }
 .spui-buscador-limpiar:hover { background: #dbe2e8; color: #2b3a4a; }
 .spui-buscador-limpiar:focus-visible { outline: 3px solid rgba(51, 135, 239, .4); }
-.spui-barra-filtros { margin-left: auto; display: flex; justify-content: flex-end; min-width: 0; max-width: 100%; }
+.spui-barra-filtros { display: flex; min-width: 0; max-width: 100%; }
 .spui-barra-filtros:empty { display: none; }
-.spui-barra-filtros .spui-filtros { margin-bottom: 0; justify-content: flex-end; }
+
 @media (max-width: 575.98px) {
     .spui-buscador { flex-basis: 100%; max-width: none; }
-    /* En celular, desde la izquierda: un contenedor que se desplaza y alinea
-       a la derecha deja inalcanzable lo que se sale por la izquierda (los
-       primeros chips quedaban cortados). */
-    .spui-barra-filtros { width: 100%; justify-content: flex-start; }
-    .spui-barra-filtros .spui-filtros { justify-content: flex-start; width: 100%; }
-    .spui-filtros-grupo { flex: 1 1 100%; }
+    .spui-barra-filtros { width: 100%; justify-content: center; }
 }
 
 /* ============================================================================
@@ -2588,10 +2598,6 @@ html.spui-sidebar-plegado .spui-sidebar-plegar img { transform: rotate(180deg); 
 .spui-vacio-acciones { display: flex; gap: .5rem; flex-wrap: wrap; justify-content: center; margin-top: 1.1rem; }
 .spui-vacio-acciones:empty { display: none; }
 
-/* La barra de scroll ocupa siempre su lugar: al abrir un modal (que bloquea
-   el scroll de la página) ya no desaparece, así que el contenido no salta
-   de ancho de golpe. */
-html { scrollbar-gutter: stable; }
 
 /* Ítem de un desplegable con botón propio (los de una playlist). */
 .spui-desp-lista > li.spui-desp-item { display: flex; align-items: center; gap: .6rem; }
@@ -2605,3 +2611,67 @@ html { scrollbar-gutter: stable; }
 .spui-desp-ver img { width: .95rem; height: .95rem; filter: invert(1); }
 .spui-desp-ver:hover { background: #35506b; }
 .spui-desp-ver:focus-visible { outline: 3px solid rgba(51, 135, 239, .4); outline-offset: 1px; }
+
+/* ============================================================================
+   Encabezado (30/10/2026). Pisa el .unraf-header de unraf-ui (60 px, azul).
+   ========================================================================== */
+.spui-header {
+    height: 60px; padding: 0 1.25rem 0 1rem; gap: 1rem;
+    background: linear-gradient(90deg, #3d5d7c 0%, var(--unraf-azul) 55%, #4b7096 100%);
+    box-shadow: 0 2px 12px rgba(20, 35, 55, .22);
+    border-bottom: 3px solid var(--unraf-amarillo);
+}
+.spui-header-izq, .spui-header-der { display: flex; align-items: center; gap: .75rem; min-width: 0; }
+.spui-header .unraf-menu-toggle img { width: 1.4rem; height: 1.4rem; filter: invert(1); }
+.spui-header-marca { display: flex; align-items: center; gap: .75rem; text-decoration: none; color: #fff; min-width: 0; }
+.spui-header-logo { height: 34px; width: auto; }
+.spui-header-divisor { width: 1px; height: 30px; background: rgba(255, 255, 255, .35); }
+.spui-header-titulo { display: flex; flex-direction: column; line-height: 1.05; min-width: 0; }
+.spui-header-titulo strong { font-family: var(--unraf-font-principal); font-size: 1.35rem; letter-spacing: .05em; }
+.spui-header-titulo small { font-size: .68rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: rgba(255, 255, 255, .75); white-space: nowrap; }
+.spui-header-marca:focus-visible, .spui-header-intranet:focus-visible, .spui-usuario-btn:focus-visible { outline: 2px solid var(--unraf-amarillo); outline-offset: 3px; border-radius: 6px; }
+
+.spui-header-intranet {
+    display: inline-flex; align-items: center; gap: .4rem; height: 34px; padding: 0 .8rem;
+    color: rgba(255, 255, 255, .9); text-decoration: none; font-size: .85rem; font-weight: 600;
+    border: 1px solid rgba(255, 255, 255, .28); border-radius: 8px; transition: background-color .15s ease;
+}
+.spui-header-intranet img { width: .9rem; height: .9rem; filter: invert(1); opacity: .85; }
+.spui-header-intranet:hover { background: rgba(255, 255, 255, .12); color: #fff; }
+
+.spui-usuario-btn {
+    display: inline-flex; align-items: center; gap: .5rem; height: 40px; padding: 0 .55rem 0 .3rem;
+    background: rgba(255, 255, 255, .1); border: 1px solid rgba(255, 255, 255, .18); border-radius: 2rem;
+    color: #fff; cursor: pointer; transition: background-color .15s ease; max-width: 16rem;
+}
+.spui-usuario-btn:hover, .spui-usuario-btn[aria-expanded="true"] { background: rgba(255, 255, 255, .2); }
+.spui-avatar {
+    width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: var(--unraf-amarillo); color: #2b3a4a; font-weight: 800; font-size: .8rem; letter-spacing: .02em;
+}
+.spui-avatar-grande { width: 40px; height: 40px; font-size: .95rem; }
+.spui-usuario-nombre { font-size: .85rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.spui-usuario-flecha { width: .75rem; height: .75rem; filter: invert(1); opacity: .8; transition: transform .2s ease; }
+.spui-usuario-btn[aria-expanded="true"] .spui-usuario-flecha { transform: rotate(180deg); }
+/* El menú abre hacia la izquierda, alineado al borde derecho del botón. */
+.spui-usuario-menu { left: auto; right: 0; min-width: 16rem; padding: .35rem; }
+.spui-usuario-cab { display: flex; align-items: center; gap: .65rem; padding: .55rem .55rem .7rem; border-bottom: 1px solid #eef1f4; margin-bottom: .3rem; }
+.spui-usuario-cab strong { display: block; color: #2b3a4a; }
+.spui-usuario-cab small { display: block; color: #6c757d; font-size: .78rem; overflow-wrap: anywhere; }
+.spui-usuario-menu .spui-desp-lista > li { padding: 0; }
+.spui-usuario-menu .spui-desp-lista > li + li { border-top: 0; }
+.spui-usuario-icono { width: .95rem; height: .95rem; opacity: .65; }
+.spui-usuario-salir { color: #b3142a; }
+.spui-usuario-salir:hover { color: #b3142a; background: #fff1f3; }
+
+@media (max-width: 768px) {
+    .spui-header { padding: 0 .75rem; }
+    .spui-header-intranet span, .spui-usuario-nombre, .spui-usuario-flecha { display: none; }
+    .spui-header-intranet { padding: 0 .6rem; }
+    .spui-usuario-btn { padding: 0 .25rem; height: 40px; background: none; border: 0; }
+}
+@media (max-width: 400px) {
+    .spui-header-titulo small, .spui-header-divisor { display: none; }
+    .spui-header-logo { height: 30px; }
+}

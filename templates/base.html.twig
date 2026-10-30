@@ -24,24 +24,53 @@
 <div class="unraf-dashboard">
 
     {# ── Header ── #}
-    <header class="unraf-header">
-        <div style="display:flex;align-items:center;gap:1rem;">
-            <button id="btnMenuToggle" class="unraf-menu-toggle" aria-label="Menú">
-                <img src="{{ asset('unraf-ui/icons/list.svg') }}" style="width:1.4rem;height:1.4rem;filter:invert(1)" alt="">
+    {# Encabezado (30/10/2026): la marca a la izquierda; a la derecha el acceso
+       a la Intranet y el menú del usuario (iniciales + nombre armado con el
+       email, que es el único dato que trae el usuario de la Intranet). El
+       menú es un desplegable (core/desplegable.js), como el resto del CMS. #}
+    {% set email = app.user ? app.user.userIdentifier : '' %}
+    {% set partes = (email|split('@')|first)|replace({'_': '.', '-': '.'})|split('.')|filter(p => p != '') %}
+    {% set nombre_usuario = partes|map(p => p|capitalize)|join(' ') %}
+    {% set iniciales = (partes|slice(0, 2)|map(p => p|first|upper)|join('')) ?: '?' %}
+    <header class="unraf-header spui-header">
+        <div class="spui-header-izq">
+            <button id="btnMenuToggle" class="unraf-menu-toggle" aria-label="Abrir el menú de secciones" aria-controls="spui-sidebar">
+                <img src="{{ asset('unraf-ui/icons/list.svg') }}" alt="">
             </button>
-            <a href="{{ path('spui_cms_dashboard') }}" class="unraf-brand unraf-brand-header">
-                <div class="brand-top">
-                    <img src="{{ asset('unraf-ui/icons/UNRaf-transparente.png') }}" alt="Logo UNRaf" class="brand-logo">
-                    <span class="brand-divisor"></span>
-                    <span class="brand-iniciales">SPUI</span>
-                </div>
-                <div class="brand-nombre">Sistema de Pantallas Digitales</div>
+            <a href="{{ path('spui_cms_dashboard') }}" class="spui-header-marca" aria-label="SPUI — ir al Dashboard">
+                <img src="{{ asset('unraf-ui/icons/UNRaf-transparente.png') }}" alt="UNRaf" class="spui-header-logo">
+                <span class="spui-header-divisor" aria-hidden="true"></span>
+                <span class="spui-header-titulo">
+                    <strong>SPUI</strong>
+                    <small>Sistema de Pantallas Digitales</small>
+                </span>
             </a>
         </div>
-        <a href="{{ path('sistemas') }}" class="d-none d-md-inline-flex align-items-center"
-           style="color:rgba(255,255,255,.8);font-size:.85rem;text-decoration:none;border:1px solid rgba(255,255,255,.3);padding:.4rem .8rem;border-radius:4px;">
-            ← Volver a Intranet
-        </a>
+        <div class="spui-header-der">
+            <a href="{{ path('sistemas') }}" class="spui-header-intranet">
+                <img src="{{ asset('unraf-ui/icons/arrow-left.svg') }}" alt=""> <span>Intranet</span>
+            </a>
+            {% if app.user %}
+                <span class="spui-desp spui-usuario">
+                    <button type="button" class="spui-usuario-btn" data-spui-desp aria-expanded="false" aria-controls="spui-menu-usuario"
+                            aria-label="Cuenta de {{ nombre_usuario ?: email }}">
+                        <span class="spui-avatar" aria-hidden="true">{{ iniciales }}</span>
+                        <span class="spui-usuario-nombre">{{ nombre_usuario ?: email }}</span>
+                        <img src="{{ asset('unraf-ui/icons/caret-down.svg') }}" class="spui-usuario-flecha" alt="">
+                    </button>
+                    <div id="spui-menu-usuario" class="spui-desp-panel spui-usuario-menu" role="region" aria-label="Cuenta">
+                        <div class="spui-usuario-cab">
+                            <span class="spui-avatar spui-avatar-grande" aria-hidden="true">{{ iniciales }}</span>
+                            <span class="min-w-0"><strong>{{ nombre_usuario ?: email }}</strong><small>{{ email }}</small></span>
+                        </div>
+                        <ul class="spui-desp-lista">
+                            <li><a class="spui-selector-opcion" href="{{ path('sistemas') }}"><img src="{{ asset('unraf-ui/icons/arrow-left.svg') }}" alt="" class="spui-usuario-icono"> Volver a la Intranet</a></li>
+                            <li><a class="spui-selector-opcion spui-usuario-salir" href="{{ path('app_logout') }}"><img src="{{ asset('unraf-ui/icons/sign-out.svg') }}" alt="" class="spui-usuario-icono"> Cerrar sesión</a></li>
+                        </ul>
+                    </div>
+                </span>
+            {% endif %}
+        </div>
     </header>
 
     <div class="unraf-body-wrapper">

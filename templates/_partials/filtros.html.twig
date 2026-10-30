@@ -1,28 +1,44 @@
-{# Chips de filtro de un listado (SPUI\Service\FiltroListado).
+{# Filtros de un listado (SPUI\Service\FiltroListado), 30/10/2026: un chip por
+   grupo con la opción elegida; tocarlo abre las demás (core/desplegable.js).
+   Antes eran todas las opciones a la vista, y con varios grupos la barra se
+   iba a dos o tres renglones.
 
    Uso: {{ include('@SPUI/_partials/filtros.html.twig', {grupos: filtros, que: 'edificios'}) }}
 
-   Cada chip es un enlace (sirve el botón "atrás" y lo lee un buscador): suma
-   o cambia su parámetro y conserva el de los otros grupos. Al cambiar un
-   filtro se vuelve a la primera página. El elegido lleva aria-current. #}
+   Cada opción es un enlace (sirve el botón "atrás" y lo lee un buscador):
+   suma o cambia su parámetro y conserva los de los otros grupos y la
+   búsqueda; al cambiar un filtro se vuelve a la primera página. Un chip con
+   una opción distinta de la de por defecto se marca (.is-activo). #}
 {% set ruta = app.request.attributes.get('_route') %}
 {% set base = app.request.attributes.get('_route_params')|merge(app.request.query.all) %}
 <nav class="spui-filtros" aria-label="Filtros de {{ que|default('la lista') }}">
     {% for g in grupos %}
-        <div class="spui-filtros-grupo" role="group" aria-label="{{ g.etiqueta }}">
-            <span class="spui-filtros-etiqueta">{{ g.etiqueta }}</span>
-            <ul class="spui-filtros-lista">
-                {% for o in g.opciones %}
-                    {% set params = base|filter((v, k) => k != 'pagina' and k != g.param) %}
-                    {% set params = o.valor ? params|merge({(g.param): o.valor}) : params %}
-                    <li>
-                        <a class="spui-filtro{{ o.valor == g.actual ? ' is-elegido' : '' }}" href="{{ path(ruta, params) }}"
-                           {% if o.valor == g.actual %}aria-current="true"{% endif %}>
-                            {{ o.etiqueta }}{% if o.cuenta is not null %}<span class="spui-filtro-cuenta">{{ o.cuenta }}</span>{% endif %}
-                        </a>
-                    </li>
-                {% endfor %}
-            </ul>
-        </div>
+        {% set elegida = g.opciones|filter(o => o.valor == g.actual)|first %}
+        <span class="spui-desp">
+            <button type="button" class="spui-selector{{ g.actual != '' ? ' is-activo' : '' }}" data-spui-desp
+                    aria-expanded="false" aria-controls="filtro-{{ g.param }}"
+                    aria-label="{{ g.etiqueta }}: {{ elegida.etiqueta }}{{ elegida.cuenta is not null ? ' (' ~ elegida.cuenta ~ ')' : '' }}. Cambiar">
+                <span class="spui-selector-etiqueta">{{ g.etiqueta }}</span>
+                <span class="spui-selector-valor">{{ elegida.etiqueta }}</span>
+                {% if elegida.cuenta is not null %}<span class="spui-filtro-cuenta">{{ elegida.cuenta }}</span>{% endif %}
+                <img src="{{ asset('unraf-ui/icons/caret-down.svg') }}" class="spui-selector-flecha" alt="">
+            </button>
+            <div id="filtro-{{ g.param }}" class="spui-desp-panel spui-selector-menu" role="region" aria-label="{{ g.etiqueta }}">
+                <ul class="spui-desp-lista">
+                    {% for o in g.opciones %}
+                        {% set params = base|filter((v, k) => k != 'pagina' and k != g.param) %}
+                        {% set params = o.valor ? params|merge({(g.param): o.valor}) : params %}
+                        <li>
+                            <a class="spui-selector-opcion{{ o.valor == g.actual ? ' is-elegida' : '' }}" href="{{ path(ruta, params) }}"
+                               {% if o.valor == g.actual %}aria-current="true"{% endif %}>
+                                <span class="spui-selector-check" aria-hidden="true">✓</span>
+                                <span class="spui-selector-texto">{{ o.etiqueta }}</span>
+                                {% if o.cuenta is not null %}<span class="spui-filtro-cuenta">{{ o.cuenta }}</span>{% endif %}
+                            </a>
+                        </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </span>
     {% endfor %}
 </nav>

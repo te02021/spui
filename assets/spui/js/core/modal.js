@@ -18,11 +18,26 @@
         var csrfMeta  = document.querySelector('meta[name="spui-csrf-token"]');
         var csrfToken = csrfMeta ? csrfMeta.content : '';
 
+        // Bloquear el scroll de la página saca la barra de la derecha y el
+        // contenido se ensanchaba de golpe. Se compensa con un padding del
+        // mismo ancho (lo que hace Bootstrap): la franja queda bajo el velo
+        // del modal y nada salta. (30/10/2026; antes se probó
+        // scrollbar-gutter: stable, que dejaba una franja blanca fija.)
+        function bloquearScroll() {
+            var barra = window.innerWidth - document.documentElement.clientWidth;
+            document.body.style.overflow = 'hidden';
+            if (barra > 0) document.body.style.paddingRight = barra + 'px';
+        }
+        function liberarScroll() {
+            document.body.style.overflow = '';
+            document.body.style.paddingRight = '';
+        }
+
         function openModal() {
             if (closeTimer !== null) { clearTimeout(closeTimer); closeTimer = null; }
             overlay.classList.add('is-open');
             overlay.setAttribute('aria-hidden', 'false');
-            document.body.style.overflow = 'hidden';
+            bloquearScroll();
             setTimeout(function () {
                 if (!bodyEl) return;
                 var el = bodyEl.querySelector('input:not([type=hidden]),select,textarea');
@@ -34,7 +49,7 @@
             if (closeTimer !== null) { clearTimeout(closeTimer); closeTimer = null; }
             overlay.classList.remove('is-open');
             overlay.setAttribute('aria-hidden', 'true');
-            document.body.style.overflow = '';
+            liberarScroll();
             nivel1Url = null;
             // Para quien haya postergado algo mientras el modal estaba abierto
             // (conexion-vivo.js no refresca la tabla de atrás con un modal
