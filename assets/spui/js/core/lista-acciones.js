@@ -16,8 +16,11 @@
         if (!cuerpo || !acciones) return;
         // Se mide sin la clase: con ella las acciones siempre ocupan su
         // propio renglón y la tarjeta quedaría apilada para siempre.
+        // Apiladas = empiezan debajo del final de los datos. Comparar sólo los
+        // bordes de arriba no sirve: la tarjeta centra en vertical, así que
+        // estando al lado los botones igual arrancan unos píxeles más abajo.
         item.classList.remove('is-apilada');
-        item.classList.toggle('is-apilada', acciones.offsetTop > cuerpo.offsetTop + 4);
+        item.classList.toggle('is-apilada', acciones.offsetTop >= cuerpo.offsetTop + cuerpo.offsetHeight - 2);
     }
 
     var observador = new ResizeObserver(function (entradas) {

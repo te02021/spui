@@ -404,7 +404,7 @@ textarea.is-invalid,
 /* Inactiva: sólo la franja y la etiqueta en gris. Nada atenuado: un gris
    parejo se lee como "deshabilitado", y además un opacity < 1 dejaba los
    desplegables de la tarjeta detrás de la siguiente. */
-.spui-item-cuerpo { flex: 1 1 24rem; min-width: 0; }
+.spui-item-cuerpo { flex: 1 1 18rem; min-width: 0; }
 .spui-item-cab { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
 .spui-item-titulo { font-weight: 700; font-size: 1.05rem; color: #2b3a4a; overflow-wrap: anywhere; margin: 0; font-family: var(--unraf-font-texto); }
 .spui-item-detalle {
@@ -2457,16 +2457,15 @@ button[type="submit"].unraf-btn:not(.unraf-btn-sm),
    ----------------------------------------------------------------------------
    Un único botón fixed: con el sidebar abierto queda a la derecha de
    "Principal" (el sidebar es sticky bajo el header, así que coinciden);
-   cerrado, flota arriba a la izquierda sobre el contenido. El contenido toma
-   todo el ancho y se centra con un ancho máximo, con margen a la izquierda
-   para no quedar debajo del botón.
+   cerrado, flota arriba a la izquierda sobre el contenido. El contenido
+   conserva su ancho y queda centrado (ver más abajo).
    ========================================================================== */
 .spui-sidebar-plegar {
     position: fixed; top: 76px; left: calc(250px - 2.6rem); z-index: 101;
     width: 30px; height: 30px; border-radius: 8px; padding: 0;
     display: inline-flex; align-items: center; justify-content: center;
     background: #fff; border: 1px solid #dfe5eb; cursor: pointer;
-    transition: left .25s ease, box-shadow .2s ease, background-color .2s ease;
+    transition: left .3s ease, box-shadow .2s ease, background-color .2s ease;
 }
 .spui-sidebar-plegar img { width: .95rem; height: .95rem; opacity: .7; }
 .spui-sidebar-plegar:hover { background: #eef4fa; border-color: #9fb6cc; }
@@ -2474,13 +2473,28 @@ button[type="submit"].unraf-btn:not(.unraf-btn-sm),
 html.spui-sidebar-plegado .spui-sidebar-plegar { left: 12px; box-shadow: 0 4px 14px rgba(20, 30, 45, .18); }
 /* Plegado, la flecha apunta hacia afuera: el mismo ícono girado (cambiarle
    el archivo no sirve, AssetMapper le pone un hash al nombre). */
-.spui-sidebar-plegar img { transition: transform .25s ease; }
+.spui-sidebar-plegar img { transition: transform .3s ease; }
 html.spui-sidebar-plegado .spui-sidebar-plegar img { transform: rotate(180deg); }
+/* El contenido NO cambia de ancho al plegar (pedido de Mateo, 30/10/2026):
+   el sidebar se desliza hacia afuera (margin-left −250 px) y el contenido
+   suma la mitad de esos 250 px a cada lado, con la misma duración y curva.
+   Lo que gana de ancho el contenedor lo absorben los márgenes, así que el
+   texto y los gráficos sólo se desplazan, suave, hasta quedar centrados.
+   --spui-pad es el padding propio de cada <main> (p-4 = 1.5rem; el
+   Dashboard no tiene). */
 @media (min-width: 769px) {
-    html.spui-sidebar-plegado .unraf-sidebar { display: none !important; }
+    .unraf-sidebar { transition: margin-left .3s ease, visibility 0s linear 0s; }
+    .unraf-main-content main { --spui-pad: 0px; transition: padding .3s ease; }
+    .unraf-main-content main.p-4 { --spui-pad: 1.5rem; }
+    html.spui-sidebar-plegado .unraf-sidebar {
+        margin-left: -250px;
+        /* Fuera de la pantalla tampoco se puede llegar con Tab; el retardo
+           deja que termine de deslizarse antes de ocultarlo. */
+        visibility: hidden; transition: margin-left .3s ease, visibility 0s linear .3s;
+    }
     html.spui-sidebar-plegado .unraf-main-content main {
-        width: 100%; max-width: 1320px; margin-inline: auto;
-        padding-left: 3.5rem !important; padding-right: 3.5rem !important;
+        padding-left: calc(125px + var(--spui-pad)) !important;
+        padding-right: calc(125px + var(--spui-pad)) !important;
     }
 }
 @media (max-width: 768px) { .spui-sidebar-plegar { display: none; } }

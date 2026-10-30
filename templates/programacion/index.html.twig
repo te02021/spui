@@ -4,7 +4,7 @@
 {% block descripcion %}Reglas que asignan playlists a las pantallas digitales de la UNRaf por horario, días y destino.{% endblock %}
 
 {% block body %}
-<div class="d-flex justify-content-between align-items-center mb-1 flex-wrap gap-2 spui-header-actions">
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2 spui-header-actions">
     <div>
         <h1 style="color:var(--unraf-azul);font-family:var(--unraf-font-principal);margin:0">Programación</h1>
         <p class="text-muted mb-0">Asignación de playlists a pantallas, sectores, edificios o todo el campus — con horarios y días específicos.</p>
@@ -28,7 +28,7 @@
 {% set MASCARAS = [1, 2, 4, 8, 16, 32, 64] %}
 <div id="spui-table-body">
 {{ include('@SPUI/_partials/filtros.html.twig', {grupos: filtros, que: 'reglas'}) }}
-<div class="spui-lista mt-4" id="spui-tabla-conexion" data-spui-refresh="push">
+<div class="spui-lista" id="spui-tabla-conexion" data-spui-refresh="push">
 {% for prog in programaciones %}
     {# Una regla puede apuntar a una pantalla, ubicación, edificio o ser
        global: el servicio resuelve los cuatro casos. #}

@@ -41,7 +41,9 @@ document.addEventListener('DOMContentLoaded', function () {
         var plegado = raiz.classList.toggle('spui-sidebar-plegado');
         try { localStorage.setItem('spui.sidebar.plegado', plegado ? '1' : '0'); } catch (e) { /* sin almacenamiento: dura hasta recargar */ }
         pintar();
-        window.dispatchEvent(new Event('resize'));
+        // El contenido no cambia de ancho, pero al terminar de deslizarse se
+        // avisa igual: si algo depende del ancho de la ventana, se acomoda.
+        setTimeout(function () { window.dispatchEvent(new Event('resize')); }, 320);
     });
     pintar();
 });
