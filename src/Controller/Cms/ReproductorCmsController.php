@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace SPUI\Controller\Cms;
 
+use SPUI\Service\BusquedaListado;
 use SPUI\Service\Paginador;
 use DateTimeImmutable;
 use Dompdf\Dompdf;
 use Dompdf\Options;
 use Doctrine\Persistence\ManagerRegistry;
+use SPUI\Entity\Pantalla;
 use SPUI\Entity\Reproductor;
 use SPUI\Form\ReproductorType;
 use SPUI\Repository\ReproductorRepository;
@@ -63,6 +65,7 @@ class ReproductorCmsController extends AbstractController
     public function index(
         Request $request,
         Paginador $paginador,
+        BusquedaListado $busqueda,
         #[Autowire('%env(int:default:spui_umbral_conexion_default:SPUI_UMBRAL_CONEXION_SEG)%')]
         int $umbralConexionSeg,
     ): Response {
@@ -77,10 +80,18 @@ class ReproductorCmsController extends AbstractController
             'desconectados' => ['Desconectados', 'r.ultimoHeartbeat <= :limite'],
             'sin-registrar' => ['Sin registrar', 'r.ultimoHeartbeat IS NULL'],
         ];
-        $consulta = function (?string $cond) use ($limite) {
+        // Buscador (?q=, a medida que se escribe: core/busqueda-lista.js): por
+        // nombre o por el de alguna de sus pantallas (EXISTS: un join a
+        // muchos repetiría filas).
+        $q = $busqueda->texto($request);
+        $consulta = function (?string $cond) use ($limite, $q) {
             $qb = $this->repo->createQueryBuilder('r');
+            if ($q !== '') {
+                $qb->andWhere('r.hostname LIKE :q OR EXISTS (SELECT 1 FROM ' . Pantalla::class . ' p WHERE p.reproductor = r AND p.nombre LIKE :q)')
+                   ->setParameter('q', '%' . addcslashes($q, '%_\\') . '%');
+            }
             if ($cond !== null) {
-                $qb->where($cond);
+                $qb->andWhere($cond);
                 if (str_contains($cond, ':limite')) {
                     $qb->setParameter('limite', $limite);
                 }
@@ -106,6 +117,7 @@ class ReproductorCmsController extends AbstractController
             'reproductores' => $paginacion['items'],
             'filtros'       => [$estado],
             'paginacion'     => $paginacion,
+            'busqueda'       => $q,
             // Se resuelve una sola vez por request: consultarlo por fila
             // dispararía la cadena completa de relaciones por cada reproductor.
             'ids_offline'   => $this->alcance->idsOfflineDeUnaVez(),

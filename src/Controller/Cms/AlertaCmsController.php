@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace SPUI\Controller\Cms;
 
 use SPUI\Service\FiltroListado;
+use SPUI\Service\BusquedaListado;
 use SPUI\Service\Paginador;
 use Doctrine\Persistence\ManagerRegistry;
 use SPUI\Entity\AlertaEmergencia;
@@ -150,12 +151,18 @@ class AlertaCmsController extends AbstractController
     }
 
     #[Route('', name: 'spui_cms_alertas_index', methods: ['GET'])]
-    public function index(Request $request, Paginador $paginador, FiltroListado $filtro): Response
+    public function index(Request $request, Paginador $paginador, FiltroListado $filtro, BusquedaListado $busqueda): Response
     {
+        // Buscador (?q=, a medida que se escribe: core/busqueda-lista.js), sobre
+        // e.titulo, e.mensaje.
+        $q      = $busqueda->texto($request);
+        $campos = ['e.titulo', 'e.mensaje'];
+        $joins  = [];
+        $contar = $busqueda->contador($this->repo, $q, $campos, $joins);
         // Chips de filtro (?estado=…) y de orden (?orden=…), que se combinan;
         // paginado en el servidor, de a Paginador::POR_PAGINA (?pagina=N).
         // Con "Todas", las activas siguen arriba de todo.
-        $estado = $filtro->grupo($this->repo, $request, 'estado', 'Estado', [
+        $estado = $filtro->grupo($contar, $request, 'estado', 'Estado', [
             ''          => ['Todas', []],
             'activas'   => ['Activas', ['activa' => true]],
             'inactivas' => ['Inactivas', ['activa' => false]],
@@ -164,12 +171,13 @@ class AlertaCmsController extends AbstractController
             ''      => ['Mayor prioridad primero', ['activa' => 'DESC', 'prioridad' => 'DESC', 'creadaEn' => 'DESC']],
             'menor' => ['Menor prioridad primero', ['activa' => 'DESC', 'prioridad' => 'ASC', 'creadaEn' => 'DESC']],
         ]);
-        $paginacion = $paginador->paginar($this->repo, $estado['criterio'], $orden['orden'], $request);
+        $paginacion = $paginador->paginarConsulta($busqueda->consulta($this->repo, $estado['criterio'], $q, $campos, $joins, $orden['orden']), $request);
 
         return $this->render('@SPUI/alertas/index.html.twig', [
             'alertas'     => $paginacion['items'],
             'filtros'     => [$estado, $orden],
             'paginacion'  => $paginacion,
+            'busqueda'    => $q,
             'ids_offline' => $this->alcance->idsOfflineDeUnaVez(),
         ]);
     }

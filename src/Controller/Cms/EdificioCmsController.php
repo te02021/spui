@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace SPUI\Controller\Cms;
 
 use SPUI\Service\FiltroListado;
+use SPUI\Service\BusquedaListado;
 use SPUI\Service\Paginador;
 use Doctrine\Persistence\ManagerRegistry;
 use SPUI\Entity\Edificio;
@@ -31,21 +32,28 @@ class EdificioCmsController extends AbstractController
     }
 
     #[Route('', name: 'spui_cms_edificios_index', methods: ['GET'])]
-    public function index(Request $request, Paginador $paginador, FiltroListado $filtro): Response
+    public function index(Request $request, Paginador $paginador, FiltroListado $filtro, BusquedaListado $busqueda): Response
     {
+        // Buscador (?q=, a medida que se escribe: core/busqueda-lista.js), sobre
+        // e.nombre, e.descripcion.
+        $q      = $busqueda->texto($request);
+        $campos = ['e.nombre', 'e.descripcion'];
+        $joins  = [];
+        $contar = $busqueda->contador($this->repo, $q, $campos, $joins);
         // Chips de filtro (?estado=…) y paginado en el servidor, de a
         // Paginador::POR_PAGINA (?pagina=N).
-        $estado = $filtro->grupo($this->repo, $request, 'estado', 'Estado', [
+        $estado = $filtro->grupo($contar, $request, 'estado', 'Estado', [
             ''          => ['Todos', []],
             'activos'   => ['Activos', ['activo' => true]],
             'inactivos' => ['Inactivos', ['activo' => false]],
         ]);
-        $paginacion = $paginador->paginar($this->repo, $estado['criterio'], ['nombre' => 'ASC'], $request);
+        $paginacion = $paginador->paginarConsulta($busqueda->consulta($this->repo, $estado['criterio'], $q, $campos, $joins, ['nombre' => 'ASC']), $request);
 
         return $this->render('@SPUI/edificios/index.html.twig', [
             'edificios' => $paginacion['items'],
             'filtros'    => [$estado],
             'paginacion' => $paginacion,
+            'busqueda'   => $q,
         ]);
     }
 

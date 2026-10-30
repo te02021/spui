@@ -22,11 +22,13 @@ final class FiltroListado
 {
     /**
      * @param array<string, array{0: string, 1: array<string, mixed>}> $opciones valor => [etiqueta, criterio]; '' = Todos
+     * @param ObjectRepository|callable(array<string, mixed>): int $contar el repositorio, o
+     *        BusquedaListado::contador() para que las cantidades respeten la búsqueda
      * @param array<string, mixed> $criterioOtros lo que ya eligieron los otros grupos, para las cantidades
      * @return array{param: string, etiqueta: string, actual: string, criterio: array<string, mixed>,
      *               opciones: list<array{valor: string, etiqueta: string, cuenta: int|null}>}
      */
-    public function grupo(ObjectRepository $repo, Request $request, string $param, string $etiqueta, array $opciones, array $criterioOtros = []): array
+    public function grupo(ObjectRepository|callable $contar, Request $request, string $param, string $etiqueta, array $opciones, array $criterioOtros = []): array
     {
         $actual = $request->query->getString($param);
         if (!isset($opciones[$actual])) {
@@ -38,7 +40,7 @@ final class FiltroListado
             $lista[] = [
                 'valor'    => (string) $valor,
                 'etiqueta' => $texto,
-                'cuenta'   => $repo->count($criterio + $criterioOtros),
+                'cuenta'   => is_callable($contar) ? $contar($criterio + $criterioOtros) : $contar->count($criterio + $criterioOtros),
             ];
         }
 

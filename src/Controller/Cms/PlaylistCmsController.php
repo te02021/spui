@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace SPUI\Controller\Cms;
 
+use SPUI\Service\BusquedaListado;
 use SPUI\Service\Paginador;
 use Doctrine\Persistence\ManagerRegistry;
 use SPUI\Entity\Playlist;
@@ -45,14 +46,21 @@ class PlaylistCmsController extends AbstractController
     }
 
     #[Route('', name: 'spui_cms_playlists_index', methods: ['GET'])]
-    public function index(Request $request, Paginador $paginador): Response
+    public function index(Request $request, Paginador $paginador, BusquedaListado $busqueda): Response
     {
+        // Buscador (?q=, a medida que se escribe: core/busqueda-lista.js), sobre
+        // e.nombre, e.descripcion.
+        $q      = $busqueda->texto($request);
+        $campos = ['e.nombre', 'e.descripcion'];
+        $joins  = [];
         // Paginado en el servidor, de a Paginador::POR_PAGINA (?pagina=N).
-        $paginacion = $paginador->paginar($this->repo, [], ['nombre' => 'ASC'], $request);
+        $paginacion = $paginador->paginarConsulta($busqueda->consulta($this->repo, [], $q, $campos, $joins, ['nombre' => 'ASC']), $request);
 
         return $this->render('@SPUI/playlists/index.html.twig', [
             'playlists'   => $paginacion['items'],
             'paginacion' => $paginacion,
+            'busqueda'   => $q,
+            'filtros'    => [],
             'ids_offline' => $this->alcance->idsOfflineDeUnaVez(),
         ]);
     }

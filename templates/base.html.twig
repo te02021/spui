@@ -121,14 +121,45 @@
     </div>
 </div>
 
-<footer class="unraf-footer">
-    <div class="unraf-footer-content">
-        <div class="unraf-footer-section">
-            <h4>Universidad Nacional de Rafaela</h4>
-            <p>SPUI — Sistema de Pantallas de Información Universitaria</p>
+{# Pie (30/10/2026): marca, accesos a las secciones y la universidad; abajo,
+   los créditos. Tres columnas en escritorio, apiladas en celular. #}
+<footer class="unraf-footer spui-footer">
+    <div class="spui-footer-cuerpo">
+        <div class="spui-footer-marca">
+            <a href="{{ path('spui_cms_dashboard') }}" class="spui-footer-logo" aria-label="SPUI — ir al Dashboard">
+                <img src="{{ asset('unraf-ui/icons/UNRaf-transparente.png') }}" alt="" width="40" height="40">
+                <span>
+                    <strong>SPUI</strong>
+                    <small>Sistema de Pantallas Informativas Universitarias</small>
+                </span>
+            </a>
+            <p>Gestión de la cartelería digital del campus: contenidos, programación, alertas de emergencia y estado de cada pantalla, en tiempo real.</p>
+        </div>
+
+        <nav class="spui-footer-col" aria-labelledby="pie-secciones">
+            <h2 id="pie-secciones">Secciones</h2>
+            <ul>
+                <li><a href="{{ path('spui_cms_dashboard') }}">Dashboard</a></li>
+                <li><a href="{{ path('spui_cms_pantallas_index') }}">Pantallas</a></li>
+                <li><a href="{{ path('spui_cms_contenidos_index') }}">Contenidos</a></li>
+                <li><a href="{{ path('spui_cms_programacion_index') }}">Programación</a></li>
+                <li><a href="{{ path('spui_cms_alertas_index') }}">Alertas</a></li>
+            </ul>
+        </nav>
+
+        <div class="spui-footer-col">
+            <h2>Universidad</h2>
+            <ul>
+                <li><a href="https://www.unraf.edu.ar" target="_blank" rel="noopener">Universidad Nacional de Rafaela <img src="{{ asset('unraf-ui/icons/arrow-square-out.svg') }}" alt="(se abre en otra pestaña)" class="spui-footer-externo"></a></li>
+                <li><a href="{{ path('sistemas') }}">Volver a la Intranet</a></li>
+                <li><span>Departamento de Desarrollo</span></li>
+            </ul>
         </div>
     </div>
-    <div class="unraf-footer-bottom">&copy; {{ "now"|date("Y") }} UNRaf — Departamento de Desarrollo</div>
+    <div class="spui-footer-base">
+        <span>&copy; {{ "now"|date("Y") }} Universidad Nacional de Rafaela</span>
+        <span>SPUI · Departamento de Desarrollo</span>
+    </div>
 </footer>
 
 {# ── Modal ABM unificado ── #}
@@ -193,6 +224,7 @@
 <script src="{{ asset('spui/js/core/auto-refresh.js') }}"></script>
 <script src="{{ asset('spui/js/core/desplegable.js') }}"></script>
 <script src="{{ asset('spui/js/core/lista-acciones.js') }}"></script>
+<script src="{{ asset('spui/js/core/busqueda-lista.js') }}"></script>
 
 {# SortableJS + la lista de ítems de playlist. Van acá y no en la página del
    listado porque la lista vive dentro de un modal, que se abre desde cualquier

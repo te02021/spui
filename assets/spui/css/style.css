@@ -2498,3 +2498,79 @@ html.spui-sidebar-plegado .spui-sidebar-plegar img { transform: rotate(180deg); 
     }
 }
 @media (max-width: 768px) { .spui-sidebar-plegar { display: none; } }
+
+/* Barra de un listado: buscador a la izquierda, chips a la derecha
+   (_partials/barra_lista.html.twig). Si no entran juntos, los chips bajan
+   alineados a la derecha. */
+.spui-barra-lista { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .75rem 1.5rem; margin-bottom: 1rem; }
+.spui-buscador {
+    position: relative; display: flex; align-items: center; gap: .5rem;
+    flex: 1 1 16rem; max-width: 24rem; min-height: 34px;
+    border-bottom: 2px solid #cfd8e0; transition: border-color .2s ease;
+}
+.spui-buscador:focus-within { border-bottom-color: var(--unraf-azul); }
+.spui-buscador-lupa { width: 1rem; height: 1rem; opacity: .55; flex-shrink: 0; }
+.spui-buscador:focus-within .spui-buscador-lupa { opacity: .85; }
+.spui-buscador-campo {
+    flex: 1; min-width: 0; border: 0; outline: 0; background: transparent;
+    padding: .35rem 1.9rem .35rem 0; font-size: .92rem; color: #2b3a4a;
+}
+.spui-buscador-campo::placeholder { color: #8a96a3; }
+/* La X nativa de type=search se oculta: va la propia, igual en todos los navegadores. */
+.spui-buscador-campo::-webkit-search-cancel-button { -webkit-appearance: none; display: none; }
+.spui-buscador-limpiar {
+    position: absolute; right: 0; top: 50%; transform: translateY(-50%);
+    width: 24px; height: 24px; border-radius: 50%; border: 0; padding: 0;
+    background: #e9edf1; color: #495057; font-size: 1rem; line-height: 1; cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center;
+}
+.spui-buscador-limpiar[hidden] { display: none; }
+.spui-buscador-limpiar:hover { background: #dbe2e8; color: #2b3a4a; }
+.spui-buscador-limpiar:focus-visible { outline: 3px solid rgba(51, 135, 239, .4); }
+.spui-barra-filtros { margin-left: auto; display: flex; justify-content: flex-end; min-width: 0; max-width: 100%; }
+.spui-barra-filtros:empty { display: none; }
+.spui-barra-filtros .spui-filtros { margin-bottom: 0; justify-content: flex-end; }
+@media (max-width: 575.98px) {
+    .spui-buscador { flex-basis: 100%; max-width: none; }
+    /* En celular, desde la izquierda: un contenedor que se desplaza y alinea
+       a la derecha deja inalcanzable lo que se sale por la izquierda (los
+       primeros chips quedaban cortados). */
+    .spui-barra-filtros { width: 100%; justify-content: flex-start; }
+    .spui-barra-filtros .spui-filtros { justify-content: flex-start; width: 100%; }
+    .spui-filtros-grupo { flex: 1 1 100%; }
+}
+
+/* ============================================================================
+   Pie (30/10/2026): marca a la izquierda, dos columnas de enlaces y una barra
+   inferior con los créditos. Pisa el .unraf-footer de unraf-ui.
+   ========================================================================== */
+.spui-footer { background: #24384c; color: #c9d4df; padding: 0; margin-top: 0; font-size: .88rem; }
+.spui-footer-cuerpo {
+    max-width: 1200px; margin: 0 auto; padding: 2.25rem 1.5rem 1.75rem;
+    display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr); gap: 2rem 3rem;
+}
+.spui-footer-logo { display: inline-flex; align-items: center; gap: .75rem; text-decoration: none; color: #fff; }
+.spui-footer-logo img { width: 40px; height: 40px; object-fit: contain; }
+.spui-footer-logo strong { display: block; font-family: var(--unraf-font-principal); font-size: 1.3rem; letter-spacing: .04em; line-height: 1.1; }
+.spui-footer-logo small { display: block; color: #9fb2c4; font-size: .78rem; }
+.spui-footer-marca p { margin: .85rem 0 0; max-width: 30rem; line-height: 1.55; color: #aebdcb; }
+.spui-footer-col h2 {
+    margin: 0 0 .7rem; font-family: var(--unraf-font-texto); font-size: .72rem; font-weight: 700;
+    letter-spacing: .08em; text-transform: uppercase; color: var(--unraf-amarillo);
+}
+.spui-footer-col ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .45rem; }
+.spui-footer-col a { color: #dbe4ec; text-decoration: none; display: inline-flex; align-items: center; gap: .35rem; }
+.spui-footer-col a:hover { color: #fff; text-decoration: underline; text-underline-offset: 3px; }
+.spui-footer-col a:focus-visible, .spui-footer-logo:focus-visible { outline: 2px solid var(--unraf-amarillo); outline-offset: 3px; border-radius: 2px; }
+.spui-footer-externo { width: .8rem; height: .8rem; filter: invert(1); opacity: .7; }
+.spui-footer-base {
+    border-top: 1px solid rgba(255, 255, 255, .1);
+    max-width: 1200px; margin: 0 auto; padding: .9rem 1.5rem;
+    display: flex; justify-content: space-between; flex-wrap: wrap; gap: .25rem 1rem;
+    font-size: .78rem; color: #8ea2b5;
+}
+@media (max-width: 767.98px) {
+    .spui-footer-cuerpo { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 1.5rem; padding: 1.75rem 1rem 1.25rem; }
+    .spui-footer-marca { grid-column: 1 / -1; }
+    .spui-footer-base { justify-content: center; text-align: center; padding: .8rem 1rem; }
+}

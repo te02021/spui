@@ -22,7 +22,8 @@
    (conexion-vivo.js): destraba o traba los botones si un reproductor vuelve
    o se cae. #}
 {% import '@SPUI/_macros/texto.html.twig' as texto %}
-<div id="spui-table-body">
+{{ include('@SPUI/_partials/barra_lista.html.twig', {filtros: filtros, que: 'playlists', placeholder: 'Buscar por nombre o descripción'}) }}
+<div id="spui-table-body" data-spui-busqueda-zona>
 <div class="spui-lista" id="spui-tabla-conexion" data-spui-refresh="push">
 {% for pl in playlists %}
     {% set motivo = spui_alcance.motivoParaEntidad(pl, ids_offline|default({})) %}
@@ -84,7 +85,10 @@
         </div>
     </article>
 {% else %}
-    <div class="unraf-card p-4 text-center text-muted">No hay playlists creadas.</div>
+    <div class="unraf-card p-4 text-center text-muted">
+        {% if busqueda|default('') %}No hay playlists que coincidan con «{{ busqueda }}». <a href="{{ path(app.request.attributes.get('_route')) }}">Ver todas</a>
+        {% else %}No hay playlists creadas.{% endif %}
+    </div>
 {% endfor %}
 </div>
 {{ include('@SPUI/_partials/paginacion.html.twig', {pag: paginacion, que: 'playlists'}) }}

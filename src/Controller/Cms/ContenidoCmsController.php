@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace SPUI\Controller\Cms;
 
 use SPUI\Service\FiltroListado;
+use SPUI\Service\BusquedaListado;
 use SPUI\Service\Paginador;
 use DateTimeImmutable;
 use Doctrine\Persistence\ManagerRegistry;
@@ -367,8 +368,14 @@ class ContenidoCmsController extends AbstractController
     }
 
     #[Route('', name: 'spui_cms_contenidos_index', methods: ['GET'])]
-    public function index(Request $request, Paginador $paginador, FiltroListado $filtro): Response
+    public function index(Request $request, Paginador $paginador, FiltroListado $filtro, BusquedaListado $busqueda): Response
     {
+        // Buscador (?q=, a medida que se escribe: core/busqueda-lista.js), sobre
+        // e.titulo, e.contenidoTexto.
+        $q      = $busqueda->texto($request);
+        $campos = ['e.titulo', 'e.contenidoTexto'];
+        $joins  = [];
+        $contar = $busqueda->contador($this->repo, $q, $campos, $joins);
         $this->sincronizarQr();
 
         // Chips de filtro (?estado=… y ?tipo=…, se combinan) y paginado en el
@@ -384,9 +391,9 @@ class ContenidoCmsController extends AbstractController
             'archivados'  => ['Archivados', ['estado' => EstadoContenido::Archivado]],
         ];
         $elegidoTipo   = $tipos[$request->query->getString('tipo')][1] ?? [];
-        $estado        = $filtro->grupo($this->repo, $request, 'estado', 'Estado', $estados, $elegidoTipo);
-        $tipo          = $filtro->grupo($this->repo, $request, 'tipo', 'Tipo', $tipos, $estado['criterio']);
-        $paginacion    = $paginador->paginar($this->repo, $estado['criterio'] + $tipo['criterio'], ['titulo' => 'ASC'], $request);
+        $estado        = $filtro->grupo($contar, $request, 'estado', 'Estado', $estados, $elegidoTipo);
+        $tipo          = $filtro->grupo($contar, $request, 'tipo', 'Tipo', $tipos, $estado['criterio']);
+        $paginacion    = $paginador->paginarConsulta($busqueda->consulta($this->repo, $estado['criterio'] + $tipo['criterio'], $q, $campos, $joins, ['titulo' => 'ASC']), $request);
 
         // El aviso que antes daba el comando: si la dirección que va a quedar
         // adentro del PNG sólo resuelve desde este equipo, los códigos no los
@@ -398,6 +405,7 @@ class ContenidoCmsController extends AbstractController
             'contenidos'    => $paginacion['items'],
             'filtros'       => [$estado, $tipo],
             'paginacion'    => $paginacion,
+            'busqueda'      => $q,
             'ids_offline'   => $this->alcance->idsOfflineDeUnaVez(),
             'hay_qr'        => $hayQr,
             'qr_inalcanzable' => $hayQr && !$this->qrGenerator->urlRedirectEsAlcanzable(),

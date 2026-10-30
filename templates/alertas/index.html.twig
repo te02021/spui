@@ -20,8 +20,8 @@
    adjunto quedaban en tres renglones y los botones en dos filas.
    El estado depende del reloj (una alerta con vencimiento caduca sola), por
    eso todo el listado está en la zona que refresca auto-refresh.js. #}
-<div id="spui-table-body" data-spui-refresh>
-{{ include('@SPUI/_partials/filtros.html.twig', {grupos: filtros, que: 'alertas'}) }}
+{{ include('@SPUI/_partials/barra_lista.html.twig', {filtros: filtros, que: 'alertas', placeholder: 'Buscar por título o mensaje'}) }}
+<div id="spui-table-body" data-spui-refresh data-spui-busqueda-zona>
 <div class="spui-lista">
 {% for alerta in alertas %}
     {% set motivo = spui_alcance.motivoParaEntidad(alerta, ids_offline|default({})) %}
@@ -122,9 +122,9 @@
         </div>
     </div>
 {% else %}
-    {% set filtrado = filtros|filter(g => g.actual != '' and g.opciones[0].cuenta is not null)|length > 0 %}
+    {% set filtrado = busqueda|default('') != '' or filtros|filter(g => g.actual != '' and g.opciones[0].cuenta is not null)|length > 0 %}
     <div class="unraf-card p-4 text-center text-muted">
-        {% if filtrado %}No hay alertas con este filtro. <a href="{{ path(app.request.attributes.get('_route')) }}">Ver todos</a>
+        {% if filtrado %}No hay alertas que coincidan{% if busqueda|default('') %} con «{{ busqueda }}»{% endif %}. <a href="{{ path(app.request.attributes.get('_route')) }}">Ver todos</a>
         {% else %}<p class="mb-1">No hay alertas creadas.</p>
         <small>Creá una para poder interrumpir las pantallas ante una emergencia.</small>{% endif %}
     </div>

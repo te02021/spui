@@ -32,8 +32,8 @@
    El diagnóstico ya no es una columna: es el botón-ícono de cada tarjeta, que
    abre lo que informa el equipo (core/desplegable.js), ámbar si hay
    problemas y verde si no. #}
-<div id="spui-table-body" data-spui-refresh>
-{{ include('@SPUI/_partials/filtros.html.twig', {grupos: filtros, que: 'reproductores'}) }}
+{{ include('@SPUI/_partials/barra_lista.html.twig', {filtros: filtros, que: 'reproductores', placeholder: 'Buscar por nombre o pantalla', refrescar: true}) }}
+<div id="spui-table-body" data-spui-refresh data-spui-busqueda-zona>
 <div class="spui-lista">
 {% for r in reproductores %}
     {# Motivo de bloqueo de esta fila, resuelto una sola vez.
@@ -172,9 +172,9 @@
         </div>
     </article>
 {% else %}
-    {% set filtrado = filtros|filter(g => g.actual != '' and g.opciones[0].cuenta is not null)|length > 0 %}
+    {% set filtrado = busqueda|default('') != '' or filtros|filter(g => g.actual != '' and g.opciones[0].cuenta is not null)|length > 0 %}
     <div class="unraf-card p-4 text-center text-muted">
-        {% if filtrado %}No hay reproductores con este filtro. <a href="{{ path(app.request.attributes.get('_route')) }}">Ver todos</a>
+        {% if filtrado %}No hay reproductores que coincidan{% if busqueda|default('') %} con «{{ busqueda }}»{% endif %}. <a href="{{ path(app.request.attributes.get('_route')) }}">Ver todos</a>
         {% else %}No hay reproductores registrados.{% endif %}
     </div>
 {% endfor %}
