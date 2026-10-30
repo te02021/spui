@@ -389,17 +389,6 @@ textarea.is-invalid,
    Las acciones de una tarjeta apagada van a color pleno: si se atenuaran
    parecerían deshabilitadas.
    ========================================================================== */
-.spui-lista-resumen { display: flex; flex-wrap: wrap; gap: .5rem; }
-.spui-lista-cifra {
-    background: #fff; border: 1px solid #e0e0e0; border-radius: 2rem;
-    padding: .25rem .8rem; font-size: .85rem; color: #6c757d;
-}
-.spui-lista-cifra strong { color: #2b3a4a; margin-right: .15rem; }
-.spui-lista-cifra.is-grave { border-color: #ffc2cb; background: #fff1f3; color: #b3142a; }
-.spui-lista-cifra.is-grave strong { color: #b3142a; }
-.spui-lista-cifra.is-ok { border-color: #cfe5c6; background: #f1f8ee; color: #2f6d1c; }
-.spui-lista-cifra.is-ok strong { color: #2f6d1c; }
-
 .spui-lista { display: flex; flex-direction: column; gap: .75rem; }
 .spui-lista > .unraf-card { margin-bottom: 0; }
 .spui-item {
@@ -412,7 +401,9 @@ textarea.is-invalid,
 .spui-item.is-grave { border-left-color: #FF223D; background: #fff7f8; border-color: #ffd3da; border-left-color: #FF223D; }
 .spui-item.is-aviso { border-left-color: #C77F0A; }
 .spui-item.is-apagado { border-left-color: #ced4da; }
-.spui-item.is-apagado .spui-item-cuerpo { opacity: .7; }
+/* Inactiva: sólo la franja y la etiqueta en gris. Nada atenuado: un gris
+   parejo se lee como "deshabilitado", y además un opacity < 1 dejaba los
+   desplegables de la tarjeta detrás de la siguiente. */
 .spui-item-cuerpo { flex: 1 1 24rem; min-width: 0; }
 .spui-item-cab { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
 .spui-item-titulo { font-weight: 700; font-size: 1.05rem; color: #2b3a4a; overflow-wrap: anywhere; margin: 0; font-family: var(--unraf-font-texto); }
@@ -422,10 +413,16 @@ textarea.is-invalid,
 }
 .spui-item-detalle:empty { display: none; }
 .spui-item-cab + .spui-chips { margin-top: .5rem; }
-.spui-item-acciones { flex: 0 0 auto; justify-content: flex-end; }
+/* Se puede achicar: si no entran al lado de los datos, flex-wrap las reparte
+   en más renglones en vez de desbordar la tarjeta (pasaba entre 769 y 800 px,
+   con el sidebar abierto). Cuando bajan debajo de los datos se centran:
+   lista-acciones.js marca la tarjeta con .is-apilada. */
+.spui-item-acciones { flex: 0 1 auto; max-width: 100%; justify-content: flex-end; }
+.spui-item.is-apilada .spui-item-acciones { flex-basis: 100%; justify-content: center; }
+/* Con un desplegable abierto, la tarjeta se pinta sobre las siguientes. */
+.spui-item:has([data-spui-desp][aria-expanded="true"]) { z-index: 20; }
 @media (max-width: 768px) {
     .spui-item { padding: .85rem 1rem; }
-    .spui-item-acciones { flex: 1 1 100%; justify-content: flex-start; }
 }
 
 .spui-etiqueta {
@@ -928,12 +925,12 @@ a.spui-paginacion-btn:hover { background: #eef4fa; border-color: #9fb6cc; color:
      · Las tres acciones comunes a todos los ABM van SÓLIDAS, y son las únicas
        que usan estos tres colores — así se reconocen de un vistazo:
            Ver / Crear  azul       Editar  amarillo       Eliminar  rojo
-     · El resto va en OUTLINE, con un color propio que no se repite. El relleno
-       queda reservado a las tres de arriba, que son las que mandan la jerarquía.
+     · El resto, también relleno (desde el 30/10/2026), con un color propio que
+       no se repite. Al hover, todos oscurecen su color.
 
-   Al hover los outline se rellenan con su color y el ícono se invierte a blanco
-   (ver .spui-action-icon más abajo): por eso los templates NO deben llevar
-   style="filter:invert(1)" inline, que era lo que se hacía antes.
+   El ícono va en blanco sobre cualquier relleno oscuro (ver .spui-action-icon
+   más abajo): por eso los templates NO deben llevar style="filter:invert(1)"
+   inline, que era lo que se hacía antes.
    -------------------------------------------------------------------------- */
 
 /* ----- Acciones comunes: sólidas ----- */
@@ -972,7 +969,10 @@ a.spui-paginacion-btn:hover { background: #eef4fa; border-color: #9fb6cc; color:
     color: #fff;
 }
 
-/* ----- Acciones secundarias: outline, un color único cada una ----- */
+/* ----- Acciones secundarias: rellenas, un color único cada una -----
+   Desde el 30/10/2026 van rellenas como Ver/Editar/Eliminar (antes outline,
+   que en blanco parecían de otra familia). Cada una define su --btn; el
+   hover oscurece ese mismo color. */
 .spui-btn-activar,
 .spui-btn-desactivar,
 .spui-btn-publicar,
@@ -985,7 +985,7 @@ a.spui-paginacion-btn:hover { background: #eef4fa; border-color: #9fb6cc; color:
 .spui-btn-energia,
 .spui-btn-items,
 .spui-btn-copiar {
-    background: transparent;
+    background-color: var(--btn); border: 1px solid var(--btn); color: #fff;
 }
 .spui-btn-activar:hover,
 .spui-btn-desactivar:hover,
@@ -999,44 +999,22 @@ a.spui-paginacion-btn:hover { background: #eef4fa; border-color: #9fb6cc; color:
 .spui-btn-energia:hover,
 .spui-btn-items:hover,
 .spui-btn-copiar:hover {
+    background-color: color-mix(in srgb, var(--btn) 82%, #000);
+    border-color: color-mix(in srgb, var(--btn) 82%, #000);
     color: #fff;
 }
-
-.spui-btn-activar      { color: #6D3FBF; border: 1px solid #6D3FBF; }
-.spui-btn-activar:hover      { background-color: #6D3FBF; border-color: #6D3FBF; }
-
-.spui-btn-desactivar   { color: #727376; border: 1px solid #727376; }
-.spui-btn-desactivar:hover   { background-color: #727376; border-color: #727376; }
-
-.spui-btn-publicar     { color: #4A9930; border: 1px solid #4A9930; }
-.spui-btn-publicar:hover     { background-color: #4A9930; border-color: #4A9930; }
-
-.spui-btn-despublicar  { color: #A1662F; border: 1px solid #A1662F; }
-.spui-btn-despublicar:hover  { background-color: #A1662F; border-color: #A1662F; }
-
-.spui-btn-archivar     { color: #6B4E3D; border: 1px solid #6B4E3D; }
-.spui-btn-archivar:hover     { background-color: #6B4E3D; border-color: #6B4E3D; }
-
-.spui-btn-desarchivar  { color: #1CA1A7; border: 1px solid #1CA1A7; }
-.spui-btn-desarchivar:hover  { background-color: #1CA1A7; border-color: #1CA1A7; }
-
-.spui-btn-clave        { color: #3F51B5; border: 1px solid #3F51B5; }
-.spui-btn-clave:hover        { background-color: #3F51B5; border-color: #3F51B5; }
-
-.spui-btn-telemetria   { color: #0E7490; border: 1px solid #0E7490; }
-.spui-btn-telemetria:hover   { background-color: #0E7490; border-color: #0E7490; }
-
-.spui-btn-sincronizar   { color: #2E7D32; border: 1px solid #2E7D32; }
-.spui-btn-sincronizar:hover   { background-color: #2E7D32; border-color: #2E7D32; }
-
-.spui-btn-energia      { color: #D9601A; border: 1px solid #D9601A; }
-.spui-btn-energia:hover      { background-color: #D9601A; border-color: #D9601A; }
-
-.spui-btn-items        { color: #8E3A64; border: 1px solid #8E3A64; }
-.spui-btn-items:hover        { background-color: #8E3A64; border-color: #8E3A64; }
-
-.spui-btn-copiar       { color: #4A5A6A; border: 1px solid #4A5A6A; }
-.spui-btn-copiar:hover       { background-color: #4A5A6A; border-color: #4A5A6A; }
+.spui-btn-activar      { --btn: #6D3FBF; }
+.spui-btn-desactivar   { --btn: #727376; }
+.spui-btn-publicar     { --btn: #4A9930; }
+.spui-btn-despublicar  { --btn: #A1662F; }
+.spui-btn-archivar     { --btn: #6B4E3D; }
+.spui-btn-desarchivar  { --btn: #1CA1A7; }
+.spui-btn-clave        { --btn: #3F51B5; }
+.spui-btn-telemetria   { --btn: #0E7490; }
+.spui-btn-sincronizar  { --btn: #2E7D32; }
+.spui-btn-energia      { --btn: #D9601A; }
+.spui-btn-items        { --btn: #8E3A64; }
+.spui-btn-copiar       { --btn: #4A5A6A; }
 
 /* .unraf-btn-danger y .unraf-btn-success existían acá porque unraf-ui no las
    define. Ya no quedan usos en los templates: las reemplazó el sistema de
@@ -1062,20 +1040,19 @@ a.spui-paginacion-btn:hover { background: #eef4fa; border-color: #9fb6cc; color:
 }
 /* Editar es amarillo con texto oscuro: el ícono acompaña en oscuro. */
 
-/* Los outline arrancan con el ícono en su color y lo pasan a blanco al
-   rellenarse. El filtro que sigue lleva un SVG negro a blanco puro. */
-.spui-btn-activar:hover .spui-action-icon,
-.spui-btn-desactivar:hover .spui-action-icon,
-.spui-btn-publicar:hover .spui-action-icon,
-.spui-btn-despublicar:hover .spui-action-icon,
-.spui-btn-archivar:hover .spui-action-icon,
-.spui-btn-desarchivar:hover .spui-action-icon,
-.spui-btn-clave:hover .spui-action-icon,
-.spui-btn-telemetria:hover .spui-action-icon,
-.spui-btn-sincronizar:hover .spui-action-icon,
-.spui-btn-energia:hover .spui-action-icon,
-.spui-btn-items:hover .spui-action-icon,
-.spui-btn-copiar:hover .spui-action-icon {
+/* Las acciones secundarias también son rellenas: ícono blanco siempre. */
+.spui-btn-activar .spui-action-icon,
+.spui-btn-desactivar .spui-action-icon,
+.spui-btn-publicar .spui-action-icon,
+.spui-btn-despublicar .spui-action-icon,
+.spui-btn-archivar .spui-action-icon,
+.spui-btn-desarchivar .spui-action-icon,
+.spui-btn-clave .spui-action-icon,
+.spui-btn-telemetria .spui-action-icon,
+.spui-btn-sincronizar .spui-action-icon,
+.spui-btn-energia .spui-action-icon,
+.spui-btn-items .spui-action-icon,
+.spui-btn-copiar .spui-action-icon {
     filter: invert(1) brightness(2);
 }
 /* unraf-btn-icon solo define font-size, no dimensiona <img>; corregimos acá */
@@ -2450,7 +2427,60 @@ button[type="submit"].unraf-btn:not(.unraf-btn-sm),
 .spui-semana li.is-si { background: var(--unraf-turquesa); color: #fff; }
 .spui-semana li.is-no { background: #f1f3f5; color: #adb5bd; text-decoration: line-through; }
 
-/* Botón-ícono fijo arriba a la derecha de la tarjeta (diagnóstico de un
-   reproductor): a la altura de la fila, sin ocupar un renglón en celular. */
-.spui-item-esquina { position: absolute; top: .8rem; right: .9rem; }
-.spui-item:has(> .spui-item-esquina) .spui-item-cuerpo { padding-right: 2.8rem; }
+/* Chips de filtro de los listados (_partials/filtros.html.twig). En celular,
+   si un grupo no entra, se desplaza en horizontal en vez de apilarse. */
+.spui-filtros { display: flex; flex-wrap: wrap; gap: .5rem 1.5rem; margin-bottom: 1rem; }
+.spui-filtros-grupo { display: flex; align-items: center; gap: .5rem; min-width: 0; max-width: 100%; }
+.spui-filtros-etiqueta { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: #6c757d; flex-shrink: 0; }
+.spui-filtros-lista {
+    display: flex; gap: .35rem; list-style: none; margin: 0; padding: 2px 0; min-width: 0;
+    overflow-x: auto; scrollbar-width: thin;
+}
+.spui-filtro {
+    display: inline-flex; align-items: center; gap: .4rem; white-space: nowrap;
+    min-height: 32px; padding: .2rem .8rem; border-radius: 2rem;
+    border: 1px solid #dfe5eb; background: #fff; color: #2b3a4a;
+    font-size: .85rem; font-weight: 600; text-decoration: none;
+}
+.spui-filtro:hover { border-color: #9fb6cc; background: #f4f7fa; color: #2b3a4a; }
+.spui-filtro:focus-visible { outline: 3px solid rgba(51, 135, 239, .4); outline-offset: 1px; }
+.spui-filtro.is-elegido { background: var(--unraf-azul); border-color: var(--unraf-azul); color: #fff; }
+.spui-filtro-cuenta {
+    min-width: 1.35rem; height: 1.35rem; padding: 0 .35rem; border-radius: 1rem;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: .72rem; background: #eef1f4; color: #495057;
+}
+.spui-filtro.is-elegido .spui-filtro-cuenta { background: rgba(255, 255, 255, .22); color: #fff; }
+
+/* ============================================================================
+   Sidebar plegable (30/10/2026) — sólo escritorio (> 768 px)
+   ----------------------------------------------------------------------------
+   Un único botón fixed: con el sidebar abierto queda a la derecha de
+   "Principal" (el sidebar es sticky bajo el header, así que coinciden);
+   cerrado, flota arriba a la izquierda sobre el contenido. El contenido toma
+   todo el ancho y se centra con un ancho máximo, con margen a la izquierda
+   para no quedar debajo del botón.
+   ========================================================================== */
+.spui-sidebar-plegar {
+    position: fixed; top: 76px; left: calc(250px - 2.6rem); z-index: 101;
+    width: 30px; height: 30px; border-radius: 8px; padding: 0;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: #fff; border: 1px solid #dfe5eb; cursor: pointer;
+    transition: left .25s ease, box-shadow .2s ease, background-color .2s ease;
+}
+.spui-sidebar-plegar img { width: .95rem; height: .95rem; opacity: .7; }
+.spui-sidebar-plegar:hover { background: #eef4fa; border-color: #9fb6cc; }
+.spui-sidebar-plegar:focus-visible { outline: 3px solid rgba(51, 135, 239, .4); outline-offset: 2px; }
+html.spui-sidebar-plegado .spui-sidebar-plegar { left: 12px; box-shadow: 0 4px 14px rgba(20, 30, 45, .18); }
+/* Plegado, la flecha apunta hacia afuera: el mismo ícono girado (cambiarle
+   el archivo no sirve, AssetMapper le pone un hash al nombre). */
+.spui-sidebar-plegar img { transition: transform .25s ease; }
+html.spui-sidebar-plegado .spui-sidebar-plegar img { transform: rotate(180deg); }
+@media (min-width: 769px) {
+    html.spui-sidebar-plegado .unraf-sidebar { display: none !important; }
+    html.spui-sidebar-plegado .unraf-main-content main {
+        width: 100%; max-width: 1320px; margin-inline: auto;
+        padding-left: 3.5rem !important; padding-right: 3.5rem !important;
+    }
+}
+@media (max-width: 768px) { .spui-sidebar-plegar { display: none; } }

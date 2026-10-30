@@ -27,6 +27,7 @@
 {% set CORTOS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'] %}
 {% set MASCARAS = [1, 2, 4, 8, 16, 32, 64] %}
 <div id="spui-table-body">
+{{ include('@SPUI/_partials/filtros.html.twig', {grupos: filtros, que: 'reglas'}) }}
 <div class="spui-lista mt-4" id="spui-tabla-conexion" data-spui-refresh="push">
 {% for prog in programaciones %}
     {# Una regla puede apuntar a una pantalla, ubicación, edificio o ser
@@ -112,7 +113,11 @@
         </div>
     </article>
 {% else %}
-    <div class="unraf-card p-4 text-center text-muted">No hay reglas de programación.</div>
+    {% set filtrado = filtros|filter(g => g.actual != '' and g.opciones[0].cuenta is not null)|length > 0 %}
+    <div class="unraf-card p-4 text-center text-muted">
+        {% if filtrado %}No hay reglas con este filtro. <a href="{{ path(app.request.attributes.get('_route')) }}">Ver todos</a>
+        {% else %}No hay reglas de programación.{% endif %}
+    </div>
 {% endfor %}
 </div>
 {{ include('@SPUI/_partials/paginacion.html.twig', {pag: paginacion, que: 'reglas'}) }}

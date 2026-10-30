@@ -21,6 +21,7 @@
    El chip de sectores abre la lista de ubicaciones del edificio, y cada una
    abre su detalle. #}
 <div id="spui-table-body">
+{{ include('@SPUI/_partials/filtros.html.twig', {grupos: filtros, que: 'edificios'}) }}
 <div class="spui-lista">
 {% for e in edificios %}
     <article class="unraf-card spui-item {{ e.activo ? 'is-ok' : 'is-apagado' }}">
@@ -90,7 +91,11 @@
         </div>
     </article>
 {% else %}
-    <div class="unraf-card p-4 text-center text-muted">No hay edificios registrados.</div>
+    {% set filtrado = filtros|filter(g => g.actual != '' and g.opciones[0].cuenta is not null)|length > 0 %}
+    <div class="unraf-card p-4 text-center text-muted">
+        {% if filtrado %}No hay edificios con este filtro. <a href="{{ path(app.request.attributes.get('_route')) }}">Ver todos</a>
+        {% else %}No hay edificios registrados.{% endif %}
+    </div>
 {% endfor %}
 </div>
 {{ include('@SPUI/_partials/paginacion.html.twig', {pag: paginacion, que: 'edificios'}) }}

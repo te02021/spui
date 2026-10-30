@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace SPUI\Controller\Cms;
 
+use SPUI\Enum\EstadoPantalla;
+use SPUI\Service\FiltroListado;
 use SPUI\Service\Paginador;
 use Doctrine\Persistence\ManagerRegistry;
 use SPUI\Entity\Pantalla;
@@ -35,13 +37,20 @@ class PantallaCmsController extends AbstractController
     }
 
     #[Route('', name: 'spui_cms_pantallas_index', methods: ['GET'])]
-    public function index(Request $request, Paginador $paginador): Response
+    public function index(Request $request, Paginador $paginador, FiltroListado $filtro): Response
     {
-        // Paginado en el servidor, de a Paginador::POR_PAGINA (?pagina=N).
-        $paginacion = $paginador->paginar($this->repo, [], ['nombre' => 'ASC'], $request);
+        // Chips de filtro (?estado=…) y paginado en el servidor, de a
+        // Paginador::POR_PAGINA (?pagina=N).
+        $estado = $filtro->grupo($this->repo, $request, 'estado', 'Estado', [
+            ''          => ['Todos', []],
+            'activas'   => ['Activas', ['estado' => EstadoPantalla::Activo]],
+            'inactivas' => ['Inactivas', ['estado' => EstadoPantalla::Inactivo]],
+        ]);
+        $paginacion = $paginador->paginar($this->repo, $estado['criterio'], ['nombre' => 'ASC'], $request);
 
         return $this->render('@SPUI/pantallas/index.html.twig', [
             'pantallas'   => $paginacion['items'],
+            'filtros'    => [$estado],
             'paginacion' => $paginacion,
             // Una sola consulta por request: resolverlo por fila dispararía la
             // cadena de relaciones por cada pantalla.

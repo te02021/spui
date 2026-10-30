@@ -23,6 +23,7 @@
    MQTT (conexion-vivo.js), no por intervalo: destraba o traba los botones si
    un reproductor vuelve o se cae. #}
 <div id="spui-table-body">
+{{ include('@SPUI/_partials/filtros.html.twig', {grupos: filtros, que: 'pantallas'}) }}
 <div class="spui-lista" id="spui-tabla-conexion" data-spui-refresh="push">
 {% for p in pantallas %}
     {# null = el reproductor de esta pantalla responde. #}
@@ -95,7 +96,11 @@
         </div>
     </article>
 {% else %}
-    <div class="unraf-card p-4 text-center text-muted">No hay pantallas registradas.</div>
+    {% set filtrado = filtros|filter(g => g.actual != '' and g.opciones[0].cuenta is not null)|length > 0 %}
+    <div class="unraf-card p-4 text-center text-muted">
+        {% if filtrado %}No hay pantallas con este filtro. <a href="{{ path(app.request.attributes.get('_route')) }}">Ver todos</a>
+        {% else %}No hay pantallas registradas.{% endif %}
+    </div>
 {% endfor %}
 </div>
 {{ include('@SPUI/_partials/paginacion.html.twig', {pag: paginacion, que: 'pantallas'}) }}

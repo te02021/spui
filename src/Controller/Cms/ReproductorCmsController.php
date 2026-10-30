@@ -60,13 +60,51 @@ class ReproductorCmsController extends AbstractController
     }
 
     #[Route('', name: 'spui_cms_reproductores_index', methods: ['GET'])]
-    public function index(Request $request, Paginador $paginador): Response
-    {
+    public function index(
+        Request $request,
+        Paginador $paginador,
+        #[Autowire('%env(int:default:spui_umbral_conexion_default:SPUI_UMBRAL_CONEXION_SEG)%')]
+        int $umbralConexionSeg,
+    ): Response {
+        // Chips de filtro (?estado=…) por el estado CALCULADO, el mismo de
+        // Reproductor::estadoCalculado(): sin heartbeat = sin registrar; con
+        // uno más nuevo que el umbral = conectado; si no, desconectado. No se
+        // usa la columna estado_conexion, que depende del mantenimiento.
+        $limite = new \DateTimeImmutable(sprintf('-%d seconds', $umbralConexionSeg));
+        $condiciones = [
+            ''              => ['Todos', null],
+            'conectados'    => ['Conectados', 'r.ultimoHeartbeat > :limite'],
+            'desconectados' => ['Desconectados', 'r.ultimoHeartbeat <= :limite'],
+            'sin-registrar' => ['Sin registrar', 'r.ultimoHeartbeat IS NULL'],
+        ];
+        $consulta = function (?string $cond) use ($limite) {
+            $qb = $this->repo->createQueryBuilder('r');
+            if ($cond !== null) {
+                $qb->where($cond);
+                if (str_contains($cond, ':limite')) {
+                    $qb->setParameter('limite', $limite);
+                }
+            }
+            return $qb;
+        };
+        $actual = $request->query->getString('estado');
+        if (!isset($condiciones[$actual])) {
+            $actual = '';
+        }
+        $estado = ['param' => 'estado', 'etiqueta' => 'Estado', 'actual' => $actual, 'opciones' => []];
+        foreach ($condiciones as $valor => [$texto, $cond]) {
+            $estado['opciones'][] = [
+                'valor'    => $valor,
+                'etiqueta' => $texto,
+                'cuenta'   => (int) $consulta($cond)->select('COUNT(r.id)')->getQuery()->getSingleScalarResult(),
+            ];
+        }
         // Paginado en el servidor, de a Paginador::POR_PAGINA (?pagina=N).
-        $paginacion = $paginador->paginar($this->repo, [], ['hostname' => 'ASC'], $request);
+        $paginacion = $paginador->paginarConsulta($consulta($condiciones[$actual][1])->orderBy('r.hostname', 'ASC'), $request);
 
         return $this->render('@SPUI/reproductores/index.html.twig', [
             'reproductores' => $paginacion['items'],
+            'filtros'       => [$estado],
             'paginacion'     => $paginacion,
             // Se resuelve una sola vez por request: consultarlo por fila
             // dispararía la cadena completa de relaciones por cada reproductor.

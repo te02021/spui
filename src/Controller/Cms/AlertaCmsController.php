@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace SPUI\Controller\Cms;
 
+use SPUI\Service\FiltroListado;
 use SPUI\Service\Paginador;
 use Doctrine\Persistence\ManagerRegistry;
 use SPUI\Entity\AlertaEmergencia;
@@ -149,19 +150,26 @@ class AlertaCmsController extends AbstractController
     }
 
     #[Route('', name: 'spui_cms_alertas_index', methods: ['GET'])]
-    public function index(Request $request, Paginador $paginador): Response
+    public function index(Request $request, Paginador $paginador, FiltroListado $filtro): Response
     {
-        // Paginado en el servidor, de a Paginador::POR_PAGINA (?pagina=N).
-        $paginacion = $paginador->paginar($this->repo, [], ['activa' => 'DESC', 'prioridad' => 'DESC', 'creadaEn' => 'DESC'], $request);
+        // Chips de filtro (?estado=…) y de orden (?orden=…), que se combinan;
+        // paginado en el servidor, de a Paginador::POR_PAGINA (?pagina=N).
+        // Con "Todas", las activas siguen arriba de todo.
+        $estado = $filtro->grupo($this->repo, $request, 'estado', 'Estado', [
+            ''          => ['Todas', []],
+            'activas'   => ['Activas', ['activa' => true]],
+            'inactivas' => ['Inactivas', ['activa' => false]],
+        ]);
+        $orden = $filtro->orden($request, 'orden', 'Orden', [
+            ''      => ['Mayor prioridad primero', ['activa' => 'DESC', 'prioridad' => 'DESC', 'creadaEn' => 'DESC']],
+            'menor' => ['Menor prioridad primero', ['activa' => 'DESC', 'prioridad' => 'ASC', 'creadaEn' => 'DESC']],
+        ]);
+        $paginacion = $paginador->paginar($this->repo, $estado['criterio'], $orden['orden'], $request);
 
         return $this->render('@SPUI/alertas/index.html.twig', [
             'alertas'     => $paginacion['items'],
+            'filtros'     => [$estado, $orden],
             'paginacion'  => $paginacion,
-            // Los contadores de arriba son de toda la base, no de la página.
-            'cuenta'      => [
-                'activas'   => $this->repo->count(['activa' => true]),
-                'total'     => $this->repo->count([]),
-            ],
             'ids_offline' => $this->alcance->idsOfflineDeUnaVez(),
         ]);
     }

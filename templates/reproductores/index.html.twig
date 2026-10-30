@@ -33,6 +33,7 @@
    abre lo que informa el equipo (core/desplegable.js), ámbar si hay
    problemas y verde si no. #}
 <div id="spui-table-body" data-spui-refresh>
+{{ include('@SPUI/_partials/filtros.html.twig', {grupos: filtros, que: 'reproductores'}) }}
 <div class="spui-lista">
 {% for r in reproductores %}
     {# Motivo de bloqueo de esta fila, resuelto una sola vez.
@@ -57,7 +58,7 @@
                 {# tiempo-relativo.js recalcula el "hace…" y le pone .is-stale: el
                    heartbeat pasado el umbral de conexión; el sync pasado el doble
                    de su intervalo. Los umbrales del Twig replican los del JS. #}
-                <span class="spui-chip">Heartbeat
+                <span class="spui-chip" title="Último aviso de vida del equipo (cada 60 s)">Última señal
                     {% if r.ultimoHeartbeat %}
                         {% set seg = "now"|date("U") - r.ultimoHeartbeat|date("U") %}
                         <small title="{{ r.ultimoHeartbeat|date('d/m/Y H:i:s') }}"
@@ -73,7 +74,7 @@
                         <small>nunca</small>
                     {% endif %}
                 </span>
-                <span class="spui-chip">Sync
+                <span class="spui-chip" title="Última vez que bajó su programación y contenidos">Sincronizado
                     {% if r.ultimoSync %}
                         {% set segS = "now"|date("U") - r.ultimoSync|date("U") %}
                         <small title="{{ r.ultimoSync|date('d/m/Y H:i:s') }} · sincroniza cada {{ texto.duracion_minutos(r.intervaloSyncMin) }}"
@@ -90,31 +91,31 @@
                         <small>nunca</small>
                     {% endif %}
                 </span>
+                {# Diagnóstico: lo que informa el propio equipo en su último aviso,
+                   en la misma fila que el resto de sus datos. #}
+                <span class="spui-desp">
+                    <button type="button" class="spui-chip spui-chip-btn {{ r.tieneProblemas ? 'is-aviso' : 'is-ok' }}" data-spui-desp
+                            aria-expanded="false" aria-controls="repro-{{ r.id }}-diagnostico"
+                            data-spui-sync="aria-label"
+                            aria-label="Diagnóstico de {{ r.hostname }}: {{ r.tieneProblemas ? texto.plural(r.diagnostico|length, 'problema', 'problemas') : 'sin problemas' }}">
+                        <img src="{{ asset('unraf-ui/icons/' ~ (r.tieneProblemas ? 'stethoscope.svg' : 'heartbeat.svg')) }}" alt="" data-spui-sync="src">
+                        {{ r.tieneProblemas ? texto.plural(r.diagnostico|length, 'problema', 'problemas') : 'Diagnóstico' }}
+                    </button>
+                    <div id="repro-{{ r.id }}-diagnostico" class="spui-desp-panel" role="region" aria-label="Diagnóstico de {{ r.hostname }}">
+                        <p class="spui-desp-titulo">Diagnóstico de {{ r.hostname }}</p>
+                        <ul class="spui-desp-lista">
+                            {% for problema in r.diagnostico %}
+                                <li>{{ problema }}</li>
+                            {% else %}
+                                <li>{{ r.ultimoHeartbeat ? 'Sin problemas informados.' : 'Todavía no envió ningún reporte.' }}
+                                    {% if r.diagnosticoEn %}<small>Último reporte: {{ r.diagnosticoEn|date('d/m/Y H:i') }}</small>{% endif %}</li>
+                            {% endfor %}
+                            {% if r.diagnostico|length and r.diagnosticoEn %}<li><small>Informado el {{ r.diagnosticoEn|date('d/m/Y H:i') }}</small></li>{% endif %}
+                        </ul>
+                    </div>
+                </span>
             </div>
         </div>
-
-        {# Diagnóstico: lo que informa el propio equipo en su heartbeat. #}
-        <span class="spui-desp spui-item-esquina">
-            <button type="button" class="spui-item-icono{{ r.tieneProblemas ? '' : ' is-ok' }}" data-spui-desp
-                    aria-expanded="false" aria-controls="repro-{{ r.id }}-diagnostico"
-                    title="Diagnóstico" data-spui-sync="aria-label"
-                    aria-label="Diagnóstico de {{ r.hostname }}: {{ r.tieneProblemas ? texto.plural(r.diagnostico|length, 'problema', 'problemas') : 'sin problemas' }}">
-                <img src="{{ asset('unraf-ui/icons/' ~ (r.tieneProblemas ? 'stethoscope.svg' : 'heartbeat.svg')) }}" alt="" data-spui-sync="src">
-                {% if r.tieneProblemas %}<span class="spui-item-icono-cuenta">{{ r.diagnostico|length }}</span>{% endif %}
-            </button>
-            <div id="repro-{{ r.id }}-diagnostico" class="spui-desp-panel" role="region" aria-label="Diagnóstico de {{ r.hostname }}">
-                <p class="spui-desp-titulo">Diagnóstico de {{ r.hostname }}</p>
-                <ul class="spui-desp-lista">
-                    {% for problema in r.diagnostico %}
-                        <li>{{ problema }}</li>
-                    {% else %}
-                        <li>{{ r.ultimoHeartbeat ? 'Sin problemas informados.' : 'Todavía no envió ningún reporte.' }}
-                            {% if r.diagnosticoEn %}<small>Último reporte: {{ r.diagnosticoEn|date('d/m/Y H:i') }}</small>{% endif %}</li>
-                    {% endfor %}
-                    {% if r.diagnostico|length and r.diagnosticoEn %}<li><small>Informado el {{ r.diagnosticoEn|date('d/m/Y H:i') }}</small></li>{% endif %}
-                </ul>
-            </div>
-        </span>
 
         <div class="spui-acciones spui-item-acciones">
             <button type="button"
@@ -171,7 +172,11 @@
         </div>
     </article>
 {% else %}
-    <div class="unraf-card p-4 text-center text-muted">No hay reproductores registrados.</div>
+    {% set filtrado = filtros|filter(g => g.actual != '' and g.opciones[0].cuenta is not null)|length > 0 %}
+    <div class="unraf-card p-4 text-center text-muted">
+        {% if filtrado %}No hay reproductores con este filtro. <a href="{{ path(app.request.attributes.get('_route')) }}">Ver todos</a>
+        {% else %}No hay reproductores registrados.{% endif %}
+    </div>
 {% endfor %}
 </div>
 {{ include('@SPUI/_partials/paginacion.html.twig', {pag: paginacion, que: 'reproductores'}) }}

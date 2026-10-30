@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace SPUI\Controller\Cms;
 
+use SPUI\Service\FiltroListado;
 use SPUI\Service\Paginador;
 use Doctrine\Persistence\ManagerRegistry;
 use SPUI\Entity\Edificio;
@@ -30,13 +31,20 @@ class EdificioCmsController extends AbstractController
     }
 
     #[Route('', name: 'spui_cms_edificios_index', methods: ['GET'])]
-    public function index(Request $request, Paginador $paginador): Response
+    public function index(Request $request, Paginador $paginador, FiltroListado $filtro): Response
     {
-        // Paginado en el servidor, de a Paginador::POR_PAGINA (?pagina=N).
-        $paginacion = $paginador->paginar($this->repo, [], ['nombre' => 'ASC'], $request);
+        // Chips de filtro (?estado=…) y paginado en el servidor, de a
+        // Paginador::POR_PAGINA (?pagina=N).
+        $estado = $filtro->grupo($this->repo, $request, 'estado', 'Estado', [
+            ''          => ['Todos', []],
+            'activos'   => ['Activos', ['activo' => true]],
+            'inactivos' => ['Inactivos', ['activo' => false]],
+        ]);
+        $paginacion = $paginador->paginar($this->repo, $estado['criterio'], ['nombre' => 'ASC'], $request);
 
         return $this->render('@SPUI/edificios/index.html.twig', [
             'edificios' => $paginacion['items'],
+            'filtros'    => [$estado],
             'paginacion' => $paginacion,
         ]);
     }

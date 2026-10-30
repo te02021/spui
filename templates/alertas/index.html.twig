@@ -21,18 +21,7 @@
    El estado depende del reloj (una alerta con vencimiento caduca sola), por
    eso todo el listado está en la zona que refresca auto-refresh.js. #}
 <div id="spui-table-body" data-spui-refresh>
-{% set activas = alertas|filter(a => a.activa) %}
-{% set listas = alertas|filter(a => not a.activa and not a.haExpirado) %}
-{% set expiradas = alertas|filter(a => not a.activa and a.haExpirado) %}
-
-{% if alertas|length %}
-    <div class="spui-lista-resumen mb-3">
-        <span class="spui-lista-cifra is-grave"><strong>{{ activas|length }}</strong> {{ activas|length == 1 ? 'activa' : 'activas' }}</span>
-        <span class="spui-lista-cifra"><strong>{{ listas|length }}</strong> {{ listas|length == 1 ? 'lista para activar' : 'listas para activar' }}</span>
-        <span class="spui-lista-cifra"><strong>{{ expiradas|length }}</strong> {{ expiradas|length == 1 ? 'expirada' : 'expiradas' }}</span>
-    </div>
-{% endif %}
-
+{{ include('@SPUI/_partials/filtros.html.twig', {grupos: filtros, que: 'alertas'}) }}
 <div class="spui-lista">
 {% for alerta in alertas %}
     {% set motivo = spui_alcance.motivoParaEntidad(alerta, ids_offline|default({})) %}
@@ -133,9 +122,11 @@
         </div>
     </div>
 {% else %}
+    {% set filtrado = filtros|filter(g => g.actual != '' and g.opciones[0].cuenta is not null)|length > 0 %}
     <div class="unraf-card p-4 text-center text-muted">
-        <p class="mb-1">No hay alertas creadas.</p>
-        <small>Creá una para poder interrumpir las pantallas ante una emergencia.</small>
+        {% if filtrado %}No hay alertas con este filtro. <a href="{{ path(app.request.attributes.get('_route')) }}">Ver todos</a>
+        {% else %}<p class="mb-1">No hay alertas creadas.</p>
+        <small>Creá una para poder interrumpir las pantallas ante una emergencia.</small>{% endif %}
     </div>
 {% endfor %}
 </div>

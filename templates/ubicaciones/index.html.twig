@@ -19,6 +19,7 @@
 {# Tarjetas (30/10/2026). La descripción no va en el listado (está en Ver).
    El chip de pantallas abre la lista, y cada una abre su detalle. #}
 <div id="spui-table-body">
+{{ include('@SPUI/_partials/filtros.html.twig', {grupos: filtros, que: 'ubicaciones'}) }}
 <div class="spui-lista">
 {% for u in ubicaciones %}
     {% set nombre = u.edificio.nombre ~ (u.sector ? ' — ' ~ u.sector : '') %}
@@ -89,7 +90,11 @@
         </div>
     </article>
 {% else %}
-    <div class="unraf-card p-4 text-center text-muted">No hay ubicaciones registradas.</div>
+    {% set filtrado = filtros|filter(g => g.actual != '' and g.opciones[0].cuenta is not null)|length > 0 %}
+    <div class="unraf-card p-4 text-center text-muted">
+        {% if filtrado %}No hay ubicaciones con este filtro. <a href="{{ path(app.request.attributes.get('_route')) }}">Ver todos</a>
+        {% else %}No hay ubicaciones registradas.{% endif %}
+    </div>
 {% endfor %}
 </div>
 {{ include('@SPUI/_partials/paginacion.html.twig', {pag: paginacion, que: 'ubicaciones'}) }}

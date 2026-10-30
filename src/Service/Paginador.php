@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace SPUI\Service;
 
+use Doctrine\ORM\QueryBuilder;
+use Doctrine\ORM\Tools\Pagination\Paginator as DoctrinePaginator;
 use Doctrine\Persistence\ObjectRepository;
 use Symfony\Component\HttpFoundation\Request;
 
@@ -36,8 +38,36 @@ final class Paginador
         $pagina  = min($paginas, max(1, $request->query->getInt('pagina', 1)));
         $items   = $repo->findBy($criterio, $orden, $porPagina, ($pagina - 1) * $porPagina);
 
+        return $this->resultado(array_values($items), $pagina, $paginas, $total, $porPagina);
+    }
+
+    /**
+     * Lo mismo sobre una consulta armada a mano, para filtros que findBy() no
+     * puede expresar (p. ej. el estado calculado de un reproductor, que sale
+     * de comparar su último heartbeat con el umbral).
+     *
+     * @return array{items: list<object>, pagina: int, paginas: int, total: int, desde: int, hasta: int}
+     */
+    public function paginarConsulta(QueryBuilder $qb, Request $request, int $porPagina = self::POR_PAGINA): array
+    {
+        $total   = (int) (clone $qb)->select('COUNT(DISTINCT ' . $qb->getRootAliases()[0] . ')')->resetDQLPart('orderBy')->getQuery()->getSingleScalarResult();
+        $paginas = max(1, (int) ceil($total / $porPagina));
+        $pagina  = min($paginas, max(1, $request->query->getInt('pagina', 1)));
+        $items   = iterator_to_array(new DoctrinePaginator(
+            $qb->setFirstResult(($pagina - 1) * $porPagina)->setMaxResults($porPagina)->getQuery(),
+        ), false);
+
+        return $this->resultado($items, $pagina, $paginas, $total, $porPagina);
+    }
+
+    /**
+     * @param list<object> $items
+     * @return array{items: list<object>, pagina: int, paginas: int, total: int, desde: int, hasta: int}
+     */
+    private function resultado(array $items, int $pagina, int $paginas, int $total, int $porPagina): array
+    {
         return [
-            'items'   => array_values($items),
+            'items'   => $items,
             'pagina'  => $pagina,
             'paginas' => $paginas,
             'total'   => $total,

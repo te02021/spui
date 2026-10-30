@@ -19,3 +19,29 @@ document.addEventListener('DOMContentLoaded', function () {
     clone.addEventListener('click', toggle);
     if (overlay) overlay.addEventListener('click', toggle);
 });
+
+// Sidebar plegable en escritorio (30/10/2026). La clase va en <html> (el
+// <head> la pone antes de pintar si quedó plegado) y la elección se recuerda
+// entre secciones. Al cambiar el ancho del contenido se avisa con un resize:
+// los gráficos de ECharts (Dashboard, Telemetría) se acomodan solos.
+document.addEventListener('DOMContentLoaded', function () {
+    var btn = document.getElementById('spui-sidebar-plegar');
+    if (!btn) return;
+    var raiz = document.documentElement;
+
+    function pintar() {
+        var plegado = raiz.classList.contains('spui-sidebar-plegado');
+        var texto = plegado ? 'Mostrar menú' : 'Ocultar menú';
+        btn.setAttribute('aria-expanded', plegado ? 'false' : 'true');
+        btn.setAttribute('aria-label', texto);
+        btn.title = texto;
+    }
+
+    btn.addEventListener('click', function () {
+        var plegado = raiz.classList.toggle('spui-sidebar-plegado');
+        try { localStorage.setItem('spui.sidebar.plegado', plegado ? '1' : '0'); } catch (e) { /* sin almacenamiento: dura hasta recargar */ }
+        pintar();
+        window.dispatchEvent(new Event('resize'));
+    });
+    pintar();
+});

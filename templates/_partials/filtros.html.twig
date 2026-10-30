@@ -1,0 +1,28 @@
+{# Chips de filtro de un listado (SPUI\Service\FiltroListado).
+
+   Uso: {{ include('@SPUI/_partials/filtros.html.twig', {grupos: filtros, que: 'edificios'}) }}
+
+   Cada chip es un enlace (sirve el botón "atrás" y lo lee un buscador): suma
+   o cambia su parámetro y conserva el de los otros grupos. Al cambiar un
+   filtro se vuelve a la primera página. El elegido lleva aria-current. #}
+{% set ruta = app.request.attributes.get('_route') %}
+{% set base = app.request.attributes.get('_route_params')|merge(app.request.query.all) %}
+<nav class="spui-filtros" aria-label="Filtros de {{ que|default('la lista') }}">
+    {% for g in grupos %}
+        <div class="spui-filtros-grupo" role="group" aria-label="{{ g.etiqueta }}">
+            <span class="spui-filtros-etiqueta">{{ g.etiqueta }}</span>
+            <ul class="spui-filtros-lista">
+                {% for o in g.opciones %}
+                    {% set params = base|filter((v, k) => k != 'pagina' and k != g.param) %}
+                    {% set params = o.valor ? params|merge({(g.param): o.valor}) : params %}
+                    <li>
+                        <a class="spui-filtro{{ o.valor == g.actual ? ' is-elegido' : '' }}" href="{{ path(ruta, params) }}"
+                           {% if o.valor == g.actual %}aria-current="true"{% endif %}>
+                            {{ o.etiqueta }}{% if o.cuenta is not null %}<span class="spui-filtro-cuenta">{{ o.cuenta }}</span>{% endif %}
+                        </a>
+                    </li>
+                {% endfor %}
+            </ul>
+        </div>
+    {% endfor %}
+</nav>
