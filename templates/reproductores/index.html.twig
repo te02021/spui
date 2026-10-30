@@ -172,11 +172,7 @@
         </div>
     </article>
 {% else %}
-    {% set filtrado = busqueda|default('') != '' or filtros|filter(g => g.actual != '' and g.opciones[0].cuenta is not null)|length > 0 %}
-    <div class="unraf-card p-4 text-center text-muted">
-        {% if filtrado %}No hay reproductores que coincidan{% if busqueda|default('') %} con «{{ busqueda }}»{% endif %}. <a href="{{ path(app.request.attributes.get('_route')) }}">Ver todos</a>
-        {% else %}No hay reproductores registrados.{% endif %}
-    </div>
+    {{ include('@SPUI/_partials/vacio.html.twig', {que: 'reproductores', icono: 'cpu.svg', mensaje: 'Registrá una Raspberry Pi con «Nuevo reproductor» para obtener su clave.'}) }}
 {% endfor %}
 </div>
 {{ include('@SPUI/_partials/paginacion.html.twig', {pag: paginacion, que: 'reproductores'}) }}

@@ -90,11 +90,7 @@
         </div>
     </article>
 {% else %}
-    {% set filtrado = busqueda|default('') != '' or filtros|filter(g => g.actual != '' and g.opciones[0].cuenta is not null)|length > 0 %}
-    <div class="unraf-card p-4 text-center text-muted">
-        {% if filtrado %}No hay ubicaciones que coincidan{% if busqueda|default('') %} con «{{ busqueda }}»{% endif %}. <a href="{{ path(app.request.attributes.get('_route')) }}">Ver todos</a>
-        {% else %}No hay ubicaciones registradas.{% endif %}
-    </div>
+    {{ include('@SPUI/_partials/vacio.html.twig', {que: 'ubicaciones', icono: 'map-pin.svg', mensaje: 'Cada ubicación es un sector de un edificio: creala con «Nueva ubicación».'}) }}
 {% endfor %}
 </div>
 {{ include('@SPUI/_partials/paginacion.html.twig', {pag: paginacion, que: 'ubicaciones'}) }}

@@ -1,0 +1,35 @@
+{# Listado vacío (30/10/2026): distingue "no hay nada cargado" de "no hay nada
+   con esta búsqueda o estos filtros", y en el segundo caso ofrece salir con
+   un clic (Limpiar búsqueda conserva los filtros; Quitar filtros conserva la
+   búsqueda). Son enlaces: andan sin JS y cargan la lista entera.
+
+   Uso: {{ include('@SPUI/_partials/vacio.html.twig', {que: 'edificios',
+            mensaje: 'Cargá el primero con «Nuevo edificio».'}) }}
+   Toma busqueda y filtros del contexto del listado. #}
+{% set q = busqueda|default('') %}
+{% set con_filtros = filtros|default([])|filter(g => g.actual != '' and g.opciones[0].cuenta is not null)|length > 0 %}
+{% set ruta = app.request.attributes.get('_route') %}
+<div class="unraf-card spui-vacio" role="status">
+    {% if q or con_filtros %}
+        <span class="spui-vacio-icono" aria-hidden="true"><img src="{{ asset('unraf-ui/icons/magnifying-glass.svg') }}" alt=""></span>
+        <h2 class="spui-vacio-titulo">Sin resultados</h2>
+        <p class="spui-vacio-texto">
+            No encontramos {{ que }}
+            {%- if q %} que coincidan con «<strong>{{ q }}</strong>»{% endif %}
+            {%- if con_filtros %}{{ q ? ' y' : '' }} con los filtros elegidos{% endif %}.
+        </p>
+        {% if q %}<p class="spui-vacio-ayuda">Revisá cómo está escrito o probá con una parte del nombre.</p>{% endif %}
+        <div class="spui-vacio-acciones">
+            {% if q %}
+                <a class="unraf-btn unraf-btn-sm spui-btn-ver" href="{{ path(ruta, app.request.query.all|filter((v, k) => k not in ['q', 'pagina'])) }}">Limpiar búsqueda</a>
+            {% endif %}
+            {% if con_filtros %}
+                <a class="unraf-btn unraf-btn-sm spui-btn-desactivar" href="{{ path(ruta, q ? {q: q} : {}) }}">Quitar filtros</a>
+            {% endif %}
+        </div>
+    {% else %}
+        <span class="spui-vacio-icono" aria-hidden="true"><img src="{{ asset('unraf-ui/icons/' ~ icono|default('stack.svg')) }}" alt=""></span>
+        <h2 class="spui-vacio-titulo">Todavía no hay {{ que }}</h2>
+        {% if mensaje is defined %}<p class="spui-vacio-texto">{{ mensaje }}</p>{% endif %}
+    {% endif %}
+</div>

@@ -96,11 +96,7 @@
         </div>
     </article>
 {% else %}
-    {% set filtrado = busqueda|default('') != '' or filtros|filter(g => g.actual != '' and g.opciones[0].cuenta is not null)|length > 0 %}
-    <div class="unraf-card p-4 text-center text-muted">
-        {% if filtrado %}No hay pantallas que coincidan{% if busqueda|default('') %} con «{{ busqueda }}»{% endif %}. <a href="{{ path(app.request.attributes.get('_route')) }}">Ver todos</a>
-        {% else %}No hay pantallas registradas.{% endif %}
-    </div>
+    {{ include('@SPUI/_partials/vacio.html.twig', {que: 'pantallas', icono: 'monitor.svg', mensaje: 'Creá una con «Nueva pantalla» y asignale su reproductor.'}) }}
 {% endfor %}
 </div>
 {{ include('@SPUI/_partials/paginacion.html.twig', {pag: paginacion, que: 'pantallas'}) }}

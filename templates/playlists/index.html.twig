@@ -46,7 +46,27 @@
                             <p class="spui-desp-titulo">En orden de reproducción</p>
                             <ol class="spui-desp-lista">
                                 {% for it in pl.items %}
-                                    <li><strong>{{ it.contenido.titulo }}</strong><small>{{ it.contenido.tipo.etiqueta }} · {{ it.etiquetaDuracion }}</small></li>
+                                    {# Ver sin salir del listado: una imagen, un video o un QR en el
+                                       visor de media (core/media-viewer.js); un texto o un
+                                       cronograma, en su detalle. #}
+                                    {% set c = it.contenido %}
+                                    <li class="spui-desp-item">
+                                        <span class="spui-desp-item-texto"><strong>{{ c.titulo }}</strong><small>{{ c.tipo.etiqueta }} · {{ it.etiquetaDuracion }}</small></span>
+                                        {% if c.rutaArchivo and c.tipo.value in ['imagen', 'video', 'qr'] %}
+                                            <button type="button" class="spui-desp-ver" title="Ver" aria-label="Ver «{{ c.titulo }}»"
+                                                    data-spui-preview-url="{{ path('spui_cms_contenidos_archivo_preview', {id: c.id}) }}"
+                                                    data-spui-preview-tipo="{{ c.tipo.value }}"
+                                                    data-spui-preview-nombre="{{ c.titulo }}">
+                                                <img src="{{ asset('unraf-ui/icons/eye.svg') }}" alt="">
+                                            </button>
+                                        {% else %}
+                                            <button type="button" class="spui-desp-ver" title="Ver detalle" aria-label="Ver «{{ c.titulo }}»"
+                                                    data-spui-form="{{ path('spui_cms_contenidos_ver', {id: c.id}) }}"
+                                                    data-spui-title="{{ c.titulo }}">
+                                                <img src="{{ asset('unraf-ui/icons/eye.svg') }}" alt="">
+                                            </button>
+                                        {% endif %}
+                                    </li>
                                 {% endfor %}
                             </ol>
                         </div>
@@ -85,10 +105,7 @@
         </div>
     </article>
 {% else %}
-    <div class="unraf-card p-4 text-center text-muted">
-        {% if busqueda|default('') %}No hay playlists que coincidan con «{{ busqueda }}». <a href="{{ path(app.request.attributes.get('_route')) }}">Ver todas</a>
-        {% else %}No hay playlists creadas.{% endif %}
-    </div>
+    {{ include('@SPUI/_partials/vacio.html.twig', {que: 'playlists', icono: 'playlist.svg', mensaje: 'Armá una con «Nueva playlist» y sumale contenidos.'}) }}
 {% endfor %}
 </div>
 {{ include('@SPUI/_partials/paginacion.html.twig', {pag: paginacion, que: 'playlists'}) }}

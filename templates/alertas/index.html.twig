@@ -122,13 +122,9 @@
         </div>
     </div>
 {% else %}
-    {% set filtrado = busqueda|default('') != '' or filtros|filter(g => g.actual != '' and g.opciones[0].cuenta is not null)|length > 0 %}
-    <div class="unraf-card p-4 text-center text-muted">
-        {% if filtrado %}No hay alertas que coincidan{% if busqueda|default('') %} con «{{ busqueda }}»{% endif %}. <a href="{{ path(app.request.attributes.get('_route')) }}">Ver todos</a>
-        {% else %}<p class="mb-1">No hay alertas creadas.</p>
-        <small>Creá una para poder interrumpir las pantallas ante una emergencia.</small>{% endif %}
-    </div>
+    {{ include('@SPUI/_partials/vacio.html.twig', {que: 'alertas', icono: 'warning.svg', mensaje: 'Creá una para poder interrumpir las pantallas ante una emergencia.'}) }}
 {% endfor %}
 </div>
+{{ include('@SPUI/_partials/paginacion.html.twig', {pag: paginacion, que: 'alertas'}) }}
 </div>
 {% endblock %}

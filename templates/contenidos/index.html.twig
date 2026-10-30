@@ -125,11 +125,7 @@
         </div>
     </article>
 {% else %}
-    {% set filtrado = busqueda|default('') != '' or filtros|filter(g => g.actual != '' and g.opciones[0].cuenta is not null)|length > 0 %}
-    <div class="unraf-card p-4 text-center text-muted">
-        {% if filtrado %}No hay contenidos que coincidan{% if busqueda|default('') %} con «{{ busqueda }}»{% endif %}. <a href="{{ path(app.request.attributes.get('_route')) }}">Ver todos</a>
-        {% else %}No hay contenidos cargados.{% endif %}
-    </div>
+    {{ include('@SPUI/_partials/vacio.html.twig', {que: 'contenidos', icono: 'image.svg', mensaje: 'Subí una imagen, un video o escribí un texto con «Nuevo contenido».'}) }}
 {% endfor %}
 </div>
 {{ include('@SPUI/_partials/paginacion.html.twig', {pag: paginacion, que: 'contenidos'}) }}

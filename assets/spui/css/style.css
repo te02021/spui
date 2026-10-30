@@ -2574,3 +2574,34 @@ html.spui-sidebar-plegado .spui-sidebar-plegar img { transform: rotate(180deg); 
     .spui-footer-marca { grid-column: 1 / -1; }
     .spui-footer-base { justify-content: center; text-align: center; padding: .8rem 1rem; }
 }
+
+/* Listado vacío (_partials/vacio.html.twig). */
+.spui-vacio { padding: 2.5rem 1.5rem; text-align: center; display: flex; flex-direction: column; align-items: center; }
+.spui-vacio-icono {
+    width: 3.5rem; height: 3.5rem; border-radius: 50%; background: #eef3f8; margin-bottom: .9rem;
+    display: inline-flex; align-items: center; justify-content: center;
+}
+.spui-vacio-icono img { width: 1.6rem; height: 1.6rem; opacity: .55; }
+.spui-vacio-titulo { font-family: var(--unraf-font-principal); font-size: 1.15rem; color: #2b3a4a; margin: 0 0 .35rem; }
+.spui-vacio-texto { color: #5b6b7f; margin: 0; max-width: 32rem; overflow-wrap: anywhere; }
+.spui-vacio-ayuda { color: #8a96a3; font-size: .85rem; margin: .35rem 0 0; }
+.spui-vacio-acciones { display: flex; gap: .5rem; flex-wrap: wrap; justify-content: center; margin-top: 1.1rem; }
+.spui-vacio-acciones:empty { display: none; }
+
+/* La barra de scroll ocupa siempre su lugar: al abrir un modal (que bloquea
+   el scroll de la página) ya no desaparece, así que el contenido no salta
+   de ancho de golpe. */
+html { scrollbar-gutter: stable; }
+
+/* Ítem de un desplegable con botón propio (los de una playlist). */
+.spui-desp-lista > li.spui-desp-item { display: flex; align-items: center; gap: .6rem; }
+.spui-desp-item-texto { flex: 1; min-width: 0; }
+.spui-desp-item-texto strong { display: block; overflow-wrap: anywhere; }
+.spui-desp-ver {
+    width: 30px; height: 30px; border-radius: 8px; flex-shrink: 0; padding: 0; cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: var(--unraf-azul); border: 0;
+}
+.spui-desp-ver img { width: .95rem; height: .95rem; filter: invert(1); }
+.spui-desp-ver:hover { background: #35506b; }
+.spui-desp-ver:focus-visible { outline: 3px solid rgba(51, 135, 239, .4); outline-offset: 1px; }
