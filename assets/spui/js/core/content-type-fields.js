@@ -37,6 +37,11 @@
         var campoDuracion = document.getElementById('campoDuracion');
         var notaVideo     = document.getElementById('notaDuracionVideo');
         if (campoDuracion) campoDuracion.hidden = tipo === 'video';
+        // Las ayudas van debajo de la fila título/tipo/duración (30/10/2026).
+        var ayuda = document.getElementById('ayudaDuracion');
+        var ayudaVideo = document.getElementById('ayudaDuracionVideo');
+        if (ayuda) ayuda.hidden = tipo === 'video';
+        if (ayudaVideo) ayudaVideo.hidden = tipo !== 'video';
         if (notaVideo)     notaVideo.hidden     = tipo !== 'video';
         if (archivoInput)    archivoInput.required = esArchivo;
         if (textarea)        textarea.required     = esTexto;

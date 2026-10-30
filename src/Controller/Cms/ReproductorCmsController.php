@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace SPUI\Controller\Cms;
 
+use SPUI\Service\Paginador;
 use DateTimeImmutable;
 use Dompdf\Dompdf;
 use Dompdf\Options;
@@ -59,10 +60,14 @@ class ReproductorCmsController extends AbstractController
     }
 
     #[Route('', name: 'spui_cms_reproductores_index', methods: ['GET'])]
-    public function index(): Response
+    public function index(Request $request, Paginador $paginador): Response
     {
+        // Paginado en el servidor, de a Paginador::POR_PAGINA (?pagina=N).
+        $paginacion = $paginador->paginar($this->repo, [], ['hostname' => 'ASC'], $request);
+
         return $this->render('@SPUI/reproductores/index.html.twig', [
-            'reproductores' => $this->repo->findBy([], ['hostname' => 'ASC']),
+            'reproductores' => $paginacion['items'],
+            'paginacion'     => $paginacion,
             // Se resuelve una sola vez por request: consultarlo por fila
             // dispararía la cadena completa de relaciones por cada reproductor.
             'ids_offline'   => $this->alcance->idsOfflineDeUnaVez(),

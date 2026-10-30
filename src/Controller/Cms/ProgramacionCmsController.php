@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace SPUI\Controller\Cms;
 
+use SPUI\Service\Paginador;
 use Doctrine\Persistence\ManagerRegistry;
 use SPUI\Entity\Programacion;
 use SPUI\Form\ProgramacionType;
@@ -36,10 +37,14 @@ class ProgramacionCmsController extends AbstractController
     }
 
     #[Route('', name: 'spui_cms_programacion_index', methods: ['GET'])]
-    public function index(): Response
+    public function index(Request $request, Paginador $paginador): Response
     {
+        // Paginado en el servidor, de a Paginador::POR_PAGINA (?pagina=N).
+        $paginacion = $paginador->paginar($this->repo, [], ['prioridad' => 'DESC', 'creadoEn' => 'DESC'], $request);
+
         return $this->render('@SPUI/programacion/index.html.twig', [
-            'programaciones' => $this->repo->findBy([], ['prioridad' => 'DESC', 'creadoEn' => 'DESC']),
+            'programaciones' => $paginacion['items'],
+            'paginacion'      => $paginacion,
             'dias'           => ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'],
             'ids_offline'    => $this->alcance->idsOfflineDeUnaVez(),
         ]);

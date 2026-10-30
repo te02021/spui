@@ -376,56 +376,149 @@ textarea.is-invalid,
 .spui-aviso-problemas ul { margin: .35rem 0 0; padding-left: 1.1rem; }
 .spui-aviso-problemas li + li { margin-top: .25rem; }
 
-/* Listado de alertas (tarjetas, 29/10/2026). El estado se lee por la franja
-   izquierda y la etiqueta; la expirada se atenúa salvo sus botones, que
-   siguen disponibles (Ver, Eliminar) y no deben parecer deshabilitados. */
-.spui-alertas-resumen { display: flex; flex-wrap: wrap; gap: .5rem; }
-.spui-alertas-cifra {
+/* ============================================================================
+   Listados en tarjetas — todas las secciones del CMS (30/10/2026)
+   ----------------------------------------------------------------------------
+   Nació en Alertas y se generalizó. Cada registro es una tarjeta con:
+     · franja izquierda por estado (is-ok verde, is-grave rojo, is-aviso ámbar,
+       is-neutro gris, is-apagado gris y atenuado);
+     · cabecera: etiqueta de estado + título;
+     · detalle de hasta dos renglones (el completo, en Ver);
+     · chips con los datos (algunos son botones con desplegable, .spui-desp);
+     · acciones a la derecha, abajo en celular.
+   Las acciones de una tarjeta apagada van a color pleno: si se atenuaran
+   parecerían deshabilitadas.
+   ========================================================================== */
+.spui-lista-resumen { display: flex; flex-wrap: wrap; gap: .5rem; }
+.spui-lista-cifra {
     background: #fff; border: 1px solid #e0e0e0; border-radius: 2rem;
     padding: .25rem .8rem; font-size: .85rem; color: #6c757d;
 }
-.spui-alertas-cifra strong { color: #2b3a4a; margin-right: .15rem; }
-.spui-alertas-cifra.is-activa { border-color: #ffc2cb; background: #fff1f3; color: #b3142a; }
-.spui-alertas-cifra.is-activa strong { color: #b3142a; }
-.spui-alertas-lista { display: flex; flex-direction: column; gap: .75rem; }
-.spui-alertas-lista > .unraf-card { margin-bottom: 0; }
-.spui-alerta-item {
-    display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;
-    padding: 1rem 1.25rem; border-left: 4px solid #adb5bd;
+.spui-lista-cifra strong { color: #2b3a4a; margin-right: .15rem; }
+.spui-lista-cifra.is-grave { border-color: #ffc2cb; background: #fff1f3; color: #b3142a; }
+.spui-lista-cifra.is-grave strong { color: #b3142a; }
+.spui-lista-cifra.is-ok { border-color: #cfe5c6; background: #f1f8ee; color: #2f6d1c; }
+.spui-lista-cifra.is-ok strong { color: #2f6d1c; }
+
+.spui-lista { display: flex; flex-direction: column; gap: .75rem; }
+.spui-lista > .unraf-card { margin-bottom: 0; }
+.spui-item {
+    display: flex; align-items: center; gap: .5rem 1rem; flex-wrap: wrap;
+    padding: .9rem 1.25rem; border-left: 4px solid #adb5bd;
+    /* Los desplegables de los chips salen de la tarjeta: unraf-card los cortaría. */
+    overflow: visible; position: relative;
 }
-.spui-alerta-item.is-activa { border-left-color: #FF223D; background: #fff7f8; border-color: #ffd3da; border-left-color: #FF223D; }
-.spui-alerta-item.is-expirada { border-left-color: #ced4da; }
-.spui-alerta-item.is-expirada .spui-alerta-item-cuerpo { opacity: .7; }
-.spui-alerta-item-cuerpo { flex: 1 1 26rem; min-width: 0; }
-.spui-alerta-item-titulo { font-weight: 700; font-size: 1.05rem; color: #2b3a4a; overflow-wrap: anywhere; }
-.spui-alerta-item-mensaje {
-    margin: .3rem 0 .55rem; color: #5b6b7f; font-size: .9rem; overflow-wrap: anywhere;
+.spui-item.is-ok { border-left-color: #4A9930; }
+.spui-item.is-grave { border-left-color: #FF223D; background: #fff7f8; border-color: #ffd3da; border-left-color: #FF223D; }
+.spui-item.is-aviso { border-left-color: #C77F0A; }
+.spui-item.is-apagado { border-left-color: #ced4da; }
+.spui-item.is-apagado .spui-item-cuerpo { opacity: .7; }
+.spui-item-cuerpo { flex: 1 1 24rem; min-width: 0; }
+.spui-item-cab { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
+.spui-item-titulo { font-weight: 700; font-size: 1.05rem; color: #2b3a4a; overflow-wrap: anywhere; margin: 0; font-family: var(--unraf-font-texto); }
+.spui-item-detalle {
+    margin: .25rem 0 .5rem; color: #5b6b7f; font-size: .88rem; overflow-wrap: anywhere;
     display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
-.spui-alerta-estado {
-    display: inline-flex; align-items: center; gap: .35rem;
-    font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
+.spui-item-detalle:empty { display: none; }
+.spui-item-cab + .spui-chips { margin-top: .5rem; }
+.spui-item-acciones { flex: 0 0 auto; justify-content: flex-end; }
+@media (max-width: 768px) {
+    .spui-item { padding: .85rem 1rem; }
+    .spui-item-acciones { flex: 1 1 100%; justify-content: flex-start; }
+}
+
+.spui-etiqueta {
+    display: inline-flex; align-items: center; gap: .35rem; flex-shrink: 0;
+    font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
     padding: .18rem .55rem; border-radius: 1rem; background: #f1f3f5; color: #6c757d;
 }
-.spui-alerta-estado.is-activa { background: #FF223D; color: #fff; }
-.spui-alerta-latido {
-    width: .45rem; height: .45rem; border-radius: 50%; background: #fff;
-    animation: spui-alerta-latido 1.4s ease-out infinite;
+.spui-etiqueta.is-ok { background: #eaf5e5; color: #2f6d1c; }
+.spui-etiqueta.is-aviso { background: #fff4de; color: #8a5806; }
+.spui-etiqueta.is-grave { background: #FF223D; color: #fff; }
+.spui-etiqueta-latido {
+    width: .45rem; height: .45rem; border-radius: 50%; background: currentColor;
+    animation: spui-etiqueta-latido 1.4s ease-out infinite;
 }
-@keyframes spui-alerta-latido {
+@keyframes spui-etiqueta-latido {
     0% { box-shadow: 0 0 0 0 rgba(255, 255, 255, .8); }
     100% { box-shadow: 0 0 0 .45rem rgba(255, 255, 255, 0); }
 }
-.spui-alerta-chips { display: flex; flex-wrap: wrap; gap: .35rem; }
-.spui-alerta-chip {
+@media (prefers-reduced-motion: reduce) { .spui-etiqueta-latido { animation: none; } }
+
+.spui-chips { display: flex; flex-wrap: wrap; gap: .35rem; align-items: center; }
+.spui-chip {
     display: inline-flex; align-items: center; gap: .3rem; max-width: 100%;
-    font-size: .78rem; color: #4a5a6b; background: #f4f6f8; border-radius: 4px; padding: .15rem .5rem;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    font-size: .78rem; color: #4a5a6b; background: #f4f6f8; border-radius: 6px; padding: .18rem .55rem;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border: 1px solid transparent;
 }
-.spui-alerta-chip img { width: .85rem; height: .85rem; opacity: .65; flex-shrink: 0; }
-.spui-alerta-item-acciones { flex: 0 0 auto; justify-content: flex-end; }
-@media (max-width: 768px) {
-    .spui-alerta-item-acciones { flex: 1 1 100%; justify-content: flex-start; }
+.spui-chip img { width: .85rem; height: .85rem; opacity: .65; flex-shrink: 0; }
+.spui-chip.is-ok { background: #eaf5e5; color: #2f6d1c; }
+.spui-chip.is-grave { background: #fff1f3; color: #b3142a; }
+.spui-chip.is-aviso { background: #fff4de; color: #8a5806; }
+code.spui-chip { font-family: var(--bs-font-monospace, monospace); }
+
+/* Chip que abre un desplegable (core/desplegable.js). */
+.spui-desp { position: relative; display: inline-flex; max-width: 100%; }
+.spui-chip-btn { cursor: pointer; border-color: #dfe5eb; background: #fff; font-family: inherit; }
+.spui-chip-btn::after { content: '▾'; font-size: .7rem; opacity: .6; margin-left: .1rem; }
+.spui-chip-btn:hover { border-color: #9fb6cc; background: #f4f7fa; }
+.spui-chip-btn[aria-expanded="true"] { border-color: var(--unraf-azul); background: #eef4fa; color: #2b3a4a; }
+.spui-chip-btn:focus-visible { outline: 3px solid rgba(51, 135, 239, .4); outline-offset: 1px; }
+.spui-desp-panel {
+    display: none; position: absolute; top: calc(100% + .35rem); left: 0; z-index: 1030;
+    min-width: 14rem; width: max-content; max-width: min(22rem, calc(100vw - 32px)); max-height: 18rem; overflow-y: auto;
+    background: #fff; border: 1px solid #e0e4e8; border-radius: 10px; box-shadow: 0 12px 30px rgba(20, 30, 45, .16);
+    padding: .35rem; text-align: left; white-space: normal;
+}
+[data-spui-desp][aria-expanded="true"] + .spui-desp-panel { display: block; animation: spui-dash-desplegar .15s ease-out; }
+.spui-desp-titulo { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: #6c757d; padding: .35rem .5rem .25rem; margin: 0; }
+.spui-desp-lista { list-style: none; margin: 0; padding: 0; }
+.spui-desp-lista > li { padding: .4rem .5rem; border-radius: 6px; font-size: .85rem; color: #2b3a4a; overflow-wrap: anywhere; }
+.spui-desp-lista > li + li { border-top: 1px solid #f1f3f5; }
+.spui-desp-lista small { display: block; color: #6c757d; font-size: .76rem; }
+.spui-desp-lista .spui-desp-accion {
+    display: flex; flex-direction: column; width: 100%; text-align: left; background: none; border: 0; padding: 0;
+    color: inherit; font: inherit; cursor: pointer;
+}
+.spui-desp-lista > li:has(.spui-desp-accion):hover { background: #f4f7fa; }
+.spui-desp-accion strong::after { content: ' →'; color: var(--unraf-azul); font-weight: 400; }
+
+/* Botón-ícono de una tarjeta (p. ej. el diagnóstico de un reproductor). */
+.spui-item-icono {
+    width: 34px; height: 34px; border-radius: 8px; flex-shrink: 0; cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: #fff8eb; border: 1px solid #f0d49c; padding: 0;
+}
+.spui-item-icono img { width: 1.05rem; height: 1.05rem; }
+.spui-item-icono.is-ok { background: #f1f8ee; border-color: #cfe5c6; }
+.spui-item-icono::after { content: none; }
+.spui-item-icono { position: relative; }
+.spui-item-icono-cuenta {
+    position: absolute; top: -6px; right: -6px; min-width: 1.1rem; height: 1.1rem; padding: 0 .25rem;
+    border-radius: 1rem; background: #C77F0A; color: #fff; font-size: .65rem; font-weight: 700;
+    display: inline-flex; align-items: center; justify-content: center;
+}
+.spui-chip small { font-size: inherit; }
+.spui-chip small.is-stale { color: #b3142a; font-weight: 600; }
+
+/* Paginación (_partials/paginacion.html.twig) */
+.spui-paginacion { display: flex; justify-content: space-between; align-items: center; gap: .75rem; flex-wrap: wrap; margin-top: 1rem; }
+.spui-paginacion-resumen { color: #6c757d; font-size: .85rem; }
+.spui-paginacion-lista { display: flex; gap: .3rem; list-style: none; margin: 0; padding: 0; flex-wrap: wrap; }
+.spui-paginacion-btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: .25rem;
+    min-width: 34px; height: 34px; padding: 0 .6rem; border-radius: 8px;
+    border: 1px solid #dfe5eb; background: #fff; color: var(--unraf-azul);
+    font-weight: 600; font-size: .85rem; text-decoration: none;
+}
+a.spui-paginacion-btn:hover { background: #eef4fa; border-color: #9fb6cc; color: var(--unraf-azul); }
+.spui-paginacion-btn.is-actual { background: var(--unraf-azul); border-color: var(--unraf-azul); color: #fff; }
+.spui-paginacion-btn.is-off { color: #adb5bd; background: #f8f9fa; }
+.spui-paginacion-btn.is-hueco { border-color: transparent; background: none; color: #6c757d; min-width: 1.2rem; padding: 0; }
+@media (max-width: 575.98px) {
+    .spui-paginacion { justify-content: center; }
+    .spui-paginacion-txt { display: none; }
 }
 
 /* Vista previa de la alerta tal como la dibuja el reproductor
@@ -2312,3 +2405,52 @@ textarea.is-invalid,
 .spui-dash-barra { height: 5px; border-radius: 3px; background: #edf0f3; overflow: hidden; }
 .spui-dash-barra > div { height: 100%; border-radius: 3px; transition: width .4s ease; }
 .spui-dash-repro-pie { margin-top: auto; padding-top: .9rem; display: flex; justify-content: flex-end; }
+
+/* ============================================================================
+   Botones unificados (30/10/2026): radio de 8 px y dos tamaños.
+     · de fila / secundarios: 34 px de alto;
+     · principales (Nuevo…, los del pie de los modales): 40 px.
+   Van al final para pisar los radios y alturas sueltos de más arriba.
+   ========================================================================== */
+.unraf-btn { border-radius: 8px; }
+.unraf-btn-sm,
+.spui-acciones .unraf-btn,
+.spui-acciones a.unraf-btn,
+.spui-dash-actualizar,
+.spui-dash-avisos-btn {
+    min-height: 34px; padding: .3rem .75rem; font-size: .85rem; border-radius: 8px;
+    display: inline-flex; align-items: center; justify-content: center; gap: .35rem;
+}
+.spui-btn-crear,
+.spui-header-actions > .unraf-btn,
+.spui-header-actions > div > .unraf-btn,
+.spui-btn-back,
+button[type="submit"].unraf-btn:not(.unraf-btn-sm),
+[data-spui-close].unraf-btn {
+    min-height: 40px; padding: .45rem 1.05rem; font-size: .95rem; border-radius: 8px;
+    display: inline-flex; align-items: center; justify-content: center; gap: .4rem;
+}
+.spui-tel-herramientas button { border-radius: 8px; }
+
+/* Valor que no se edita dentro de un formulario (el tipo de un contenido, la
+   duración de un video): con la altura de un input, para que la fila de
+   campos quede pareja. */
+.spui-campo-fijo {
+    display: flex; align-items: center; min-height: calc(1.5em + 1.2rem + 2px);
+    padding: .3rem .75rem; border-radius: 4px; background: #f4f6f8; color: #2b3a4a;
+    font-weight: 600; font-size: .95rem;
+}
+
+/* Semana de una regla de programación (desplegable del chip de días). */
+.spui-semana { display: grid; grid-template-columns: repeat(7, 2.4rem); gap: .3rem; list-style: none; margin: 0; padding: .25rem .4rem .4rem; }
+.spui-semana li {
+    height: 2.4rem; border-radius: 8px; display: flex; align-items: center; justify-content: center;
+    font-size: .78rem; font-weight: 700;
+}
+.spui-semana li.is-si { background: var(--unraf-turquesa); color: #fff; }
+.spui-semana li.is-no { background: #f1f3f5; color: #adb5bd; text-decoration: line-through; }
+
+/* Botón-ícono fijo arriba a la derecha de la tarjeta (diagnóstico de un
+   reproductor): a la altura de la fila, sin ocupar un renglón en celular. */
+.spui-item-esquina { position: absolute; top: .8rem; right: .9rem; }
+.spui-item:has(> .spui-item-esquina) .spui-item-cuerpo { padding-right: 2.8rem; }

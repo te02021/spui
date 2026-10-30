@@ -52,7 +52,7 @@ $tipos = [
         ['nombre' => 'N', 'horaInicio' => '08:00', 'horaFin' => '09:00', 'diasSemana' => ['0'], 'orden' => '1']],
     'Edificio'       => [F\EdificioType::class, fn() => new E\Edificio(), ['nombre' => 'E']],
     'Pantalla'       => [F\PantallaType::class, fn() => new E\Pantalla(),
-        ['nombre' => 'P', 'ubicacion' => $id(E\Ubicacion::class), 'resolucionAncho' => '1920', 'resolucionAlto' => '1080']],
+        ['nombre' => 'P', 'ubicacion' => $id(E\Ubicacion::class)]],
     'Energia'        => [F\ProgramacionEnergeticaType::class, fn() => new E\ProgramacionEnergetica(),
         ['horaEncendido' => '08:00', 'horaApagado' => '20:00', 'nivelBrillo' => '80']],
     'Programacion'   => [F\ProgramacionType::class, fn() => new E\Programacion(),

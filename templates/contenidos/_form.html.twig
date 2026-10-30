@@ -11,39 +11,44 @@
     <div class="alert alert-danger mb-3">{{ e.message }}</div>
 {% endfor %}
 
-<div class="row g-2 mb-3">
-    <div class="col">
+{# Título, tipo y duración en una fila (30/10/2026): en escritorio, título a
+   la mitad y tipo y duración a un cuarto cada uno; en celular, el título
+   arriba y los otros dos lado a lado. #}
+<div class="row g-2 mb-1 align-items-start">
+    <div class="col-12 col-md-6">
         {{ form_label(form.titulo) }}
         {{ form_widget(form.titulo) }}
         {% for e in form.titulo.vars.errors %}
             <p class="spui-campo-error">{{ e.message }}</p>
         {% endfor %}
     </div>
-    <div class="col-12 col-sm-auto" style="min-width:160px">
+    <div class="col-6 col-md-3">
         {{ form_label(form.tipo) }}
         {{ form_widget(form.tipo) }}
         {% for e in form.tipo.vars.errors %}
             <p class="spui-campo-error">{{ e.message }}</p>
         {% endfor %}
     </div>
-</div>
-
-{# content-type-fields.js oculta este campo en un video: su duración la lee el
-   CMS del archivo al guardarlo, y se muestra la nota de abajo en su lugar. #}
-<div class="mb-3" id="campoDuracion">
-    {{ form_label(form.duracionSegundos) }}
-    <div class="spui-input-with-addon">
-        {{ form_widget(form.duracionSegundos) }}
-        <span class="spui-input-addon">seg <small class="text-muted">(vacío = permanente)</small></span>
+    <div class="col-6 col-md-3">
+        {# content-type-fields.js oculta el campo en un video: su duración la lee
+           el CMS del archivo al guardarlo, y se muestra la nota en su lugar. #}
+        <div id="campoDuracion">
+            {{ form_label(form.duracionSegundos) }}
+            {# La etiqueta ya dice "(segundos)": sin sufijo, que en la columna angosta no entraba. #}
+            {{ form_widget(form.duracionSegundos) }}
+            {% for e in form.duracionSegundos.vars.errors %}
+                <p class="spui-campo-error">{{ e.message }}</p>
+            {% endfor %}
+        </div>
+        <div id="notaDuracionVideo" hidden>
+            <span class="unraf-form-label d-block">Duración</span>
+            <span class="spui-campo-fijo">La del archivo</span>
+        </div>
     </div>
-    {% for e in form.duracionSegundos.vars.errors %}
-        <p class="spui-campo-error">{{ e.message }}</p>
-    {% endfor %}
-    <small class="text-muted d-block mt-1">{{ include('@SPUI/contenidos/_ayuda_duracion.html.twig') }}</small>
 </div>
-<div class="mb-3" id="notaDuracionVideo" hidden>
-    <span class="unraf-form-label d-block">Duración</span>
-    <small class="text-muted d-block">Un video dura lo que dura el archivo: el CMS la lee al guardarlo y la playlist lo muestra completo.</small>
+<div class="mb-3">
+    <small class="text-muted d-block" id="ayudaDuracion">{{ include('@SPUI/contenidos/_ayuda_duracion.html.twig') }}</small>
+    <small class="text-muted d-block" id="ayudaDuracionVideo" hidden>Un video dura lo que dura el archivo: el CMS la lee al guardarlo y la playlist lo muestra completo.</small>
 </div>
 
 {# data-spui-campo: los errores del archivo (del servidor y de validacion-vivo.js,

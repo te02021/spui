@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace SPUI\Controller\Cms;
 
+use SPUI\Service\Paginador;
 use Doctrine\Persistence\ManagerRegistry;
 use SPUI\Entity\Playlist;
 use SPUI\Entity\PlaylistItem;
@@ -44,10 +45,14 @@ class PlaylistCmsController extends AbstractController
     }
 
     #[Route('', name: 'spui_cms_playlists_index', methods: ['GET'])]
-    public function index(): Response
+    public function index(Request $request, Paginador $paginador): Response
     {
+        // Paginado en el servidor, de a Paginador::POR_PAGINA (?pagina=N).
+        $paginacion = $paginador->paginar($this->repo, [], ['nombre' => 'ASC'], $request);
+
         return $this->render('@SPUI/playlists/index.html.twig', [
-            'playlists'   => $this->repo->findBy([], ['nombre' => 'ASC']),
+            'playlists'   => $paginacion['items'],
+            'paginacion' => $paginacion,
             'ids_offline' => $this->alcance->idsOfflineDeUnaVez(),
         ]);
     }

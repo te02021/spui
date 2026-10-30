@@ -21,7 +21,8 @@ use SPUI\Repository\CronogramaItemRepository;
 use SPUI\Repository\ProgramacionEnergeticaRepository;
 use SPUI\Repository\ProgramacionRepository;
 use SPUI\Service\ConexionPublisherService;
-use SPUI\Service\MediaStorageService;
+use SPUI\Service\MediaStorageService;
+
 use SPUI\Service\MqttSecurityService;
 use SPUI\Service\ReproductorAuthService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -126,8 +127,6 @@ class SyncController extends AbstractController
             $pantallasData[] = [
                 'id'                  => $pantalla->getId(),
                 'nombre'              => $pantalla->getNombre(),
-                'resolucion_ancho'    => $pantalla->getResolucionAncho(),
-                'resolucion_alto'     => $pantalla->getResolucionAlto(),
                 'programacion_activa' => $progActiva !== null ? $this->serializeProgMeta($progActiva) : null,
                 'playlist'            => $playlistData,
                 // CU-11: horario energético semanal. Lista vacía = sin gestión de

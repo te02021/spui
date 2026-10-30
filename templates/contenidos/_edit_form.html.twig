@@ -18,47 +18,39 @@
     {# Errores por campo (name → mensaje): cada uno va debajo de su input. #}
     {% set err = errores|default({}) %}
 
-    <div class="row g-3 mb-3 align-items-start">
-        <div class="col">
+    {# Título, tipo y duración en una fila, como en el alta (30/10/2026). #}
+    <div class="row g-2 mb-1 align-items-start">
+        <div class="col-12 col-md-6">
             <label class="unraf-form-label" for="ed_titulo">Título <span class="text-danger">*</span></label>
             <input type="text" id="ed_titulo" name="titulo" class="unraf-form-control{{ err.titulo is defined ? ' is-invalid' }}"
                    value="{{ contenido.titulo }}" maxlength="200" required>
             {% if err.titulo is defined %}<p class="spui-campo-error">{{ err.titulo }}</p>{% endif %}
         </div>
-        <div class="col-auto d-flex flex-column">
-            <label class="unraf-form-label mb-2">Tipo</label>
-            {% if contenido.tipo.value == 'cronograma' %}
-                <span class="unraf-badge-turquesa">{{ contenido.tipo.etiqueta }}</span>
-            {% elseif contenido.tipo.value in ['imagen', 'qr'] %}
-                <span class="unraf-badge-info">{{ contenido.tipo.etiqueta }}</span>
-            {% elseif contenido.tipo.value == 'video' %}
-                <span class="unraf-badge-azul">{{ contenido.tipo.etiqueta }}</span>
+        <div class="col-6 col-md-3">
+            {# El tipo no se cambia después de crear: se muestra fijo. #}
+            <span class="unraf-form-label d-block">Tipo</span>
+            <span class="spui-campo-fijo">{{ contenido.tipo.etiqueta }}</span>
+        </div>
+        <div class="col-6 col-md-3">
+            {% if contenido.esVideo %}
+                {# La duración de un video no se escribe: es la del archivo, que
+                   el CMS lee al subirlo (y de nuevo si se reemplaza). #}
+                <span class="unraf-form-label d-block">Duración</span>
+                <span class="spui-campo-fijo">{{ contenido.etiquetaDuracion }}</span>
             {% else %}
-                <span class="unraf-badge-turquesa">{{ contenido.tipo.etiqueta }}</span>
+                <label class="unraf-form-label" for="ed_duracion">Duración (segundos)</label>
+                <input type="number" id="ed_duracion" name="duracion_segundos" class="unraf-form-control"
+                       value="{{ contenido.duracionSegundos ?? '' }}" min="1" max="3600" placeholder="Permanente">
             {% endif %}
         </div>
     </div>
-
-    {% if contenido.esVideo %}
-        {# La duración de un video no se escribe: es la del archivo, que el CMS
-           lee al subirlo (y de nuevo si se reemplaza). #}
-        <div class="mb-4">
-            <span class="unraf-form-label d-block">Duración</span>
-            <strong>{{ contenido.etiquetaDuracion }}</strong>
-            <small class="text-muted d-block mt-1">La del archivo de video: la playlist lo muestra completo. Si reemplazás el archivo, se vuelve a leer.</small>
-        </div>
-    {% else %}
-        <div class="mb-4">
-            <label class="unraf-form-label" for="ed_duracion">Duración</label>
-            <div class="spui-input-with-addon" style="max-width:16rem">
-                <input type="number" id="ed_duracion" name="duracion_segundos" class="unraf-form-control"
-                       value="{{ contenido.duracionSegundos ?? '' }}" min="1" max="3600"
-                       placeholder="Vacío = permanente">
-                <span class="spui-input-addon">segundos</span>
-            </div>
-            <small class="text-muted d-block mt-1">{{ include('@SPUI/contenidos/_ayuda_duracion.html.twig') }}</small>
-        </div>
-    {% endif %}
+    <div class="mb-4">
+        {% if contenido.esVideo %}
+            <small class="text-muted d-block">La del archivo de video: la playlist lo muestra completo. Si reemplazás el archivo, se vuelve a leer.</small>
+        {% else %}
+            <small class="text-muted d-block">{{ include('@SPUI/contenidos/_ayuda_duracion.html.twig') }}</small>
+        {% endif %}
+    </div>
 
     {# ── Lo que carga cada tipo ── #}
     {% if contenido.tipo.value == 'texto' %}

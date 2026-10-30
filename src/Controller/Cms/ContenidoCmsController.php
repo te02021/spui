@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace SPUI\Controller\Cms;
 
+use SPUI\Service\Paginador;
 use DateTimeImmutable;
 use Doctrine\Persistence\ManagerRegistry;
 use Psr\Cache\CacheItemPoolInterface;
@@ -365,22 +366,22 @@ class ContenidoCmsController extends AbstractController
     }
 
     #[Route('', name: 'spui_cms_contenidos_index', methods: ['GET'])]
-    public function index(): Response
+    public function index(Request $request, Paginador $paginador): Response
     {
         $this->sincronizarQr();
 
-        $contenidos = $this->repo->findBy([], ['titulo' => 'ASC']);
+        // Paginado en el servidor, de a Paginador::POR_PAGINA (?pagina=N).
+        $paginacion = $paginador->paginar($this->repo, [], ['titulo' => 'ASC'], $request);
 
         // El aviso que antes daba el comando: si la dirección que va a quedar
         // adentro del PNG sólo resuelve desde este equipo, los códigos no los
-        // abre ningún celular. Sólo molesta si hay algún QR que mostrar.
-        $hayQr = false;
-        foreach ($contenidos as $c) {
-            if ($c->getTipo() === TipoContenido::Qr) { $hayQr = true; break; }
-        }
+        // abre ningún celular. Sólo molesta si hay algún QR que mostrar (en
+        // toda la base, no sólo en esta página).
+        $hayQr = $this->repo->count(['tipo' => TipoContenido::Qr]) > 0;
 
         return $this->render('@SPUI/contenidos/index.html.twig', [
-            'contenidos'    => $contenidos,
+            'contenidos'    => $paginacion['items'],
+            'paginacion'    => $paginacion,
             'ids_offline'   => $this->alcance->idsOfflineDeUnaVez(),
             'hay_qr'        => $hayQr,
             'qr_inalcanzable' => $hayQr && !$this->qrGenerator->urlRedirectEsAlcanzable(),

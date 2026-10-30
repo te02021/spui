@@ -48,7 +48,7 @@ class ContenidoType extends AbstractType
                     'min'         => 1,
                     'max'         => 3600,
                     'style'       => 'max-width:8rem',
-                    'placeholder' => 'Vacío = permanente',
+                    'placeholder' => 'Permanente',
                 ],
                 'constraints' => [new Range(notInRangeMessage: 'La duración debe estar entre {{ min }} y {{ max }} segundos.', min: 1, max: 3600)],
             ]);

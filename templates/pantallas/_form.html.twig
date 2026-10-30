@@ -53,40 +53,6 @@
     </div>
 </div>
 
-<div class="row g-2 mb-3">
-    <div class="col">
-        {{ form_label(form.macAddress) }}
-        {{ form_widget(form.macAddress) }}
-        {% for e in form.macAddress.vars.errors %}
-            <p class="spui-campo-error">{{ e.message }}</p>
-        {% endfor %}
-    </div>
-    <div class="col">
-        {{ form_label(form.ipAddress) }}
-        {{ form_widget(form.ipAddress) }}
-        {% for e in form.ipAddress.vars.errors %}
-            <p class="spui-campo-error">{{ e.message }}</p>
-        {% endfor %}
-    </div>
-</div>
-
-<div class="row g-2 mb-4 justify-content-center">
-    <div class="col-auto">
-        {{ form_label(form.resolucionAncho) }}
-        {{ form_widget(form.resolucionAncho) }}
-        {% for e in form.resolucionAncho.vars.errors %}
-            <p class="spui-campo-error">{{ e.message }}</p>
-        {% endfor %}
-    </div>
-    <div class="col-auto">
-        {{ form_label(form.resolucionAlto) }}
-        {{ form_widget(form.resolucionAlto) }}
-        {% for e in form.resolucionAlto.vars.errors %}
-            <p class="spui-campo-error">{{ e.message }}</p>
-        {% endfor %}
-    </div>
-</div>
-
 <div class="d-flex justify-content-end gap-2 pt-3 border-top">
     <button type="button" class="unraf-btn spui-btn-back" data-spui-close>Cancelar</button>
     <button type="submit" class="unraf-btn {{ pantalla is defined and pantalla.id ? 'spui-btn-editar' : 'spui-btn-crear' }}">

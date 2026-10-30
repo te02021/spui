@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace SPUI\Controller\Cms;
 
+use SPUI\Service\Paginador;
 use Doctrine\Persistence\ManagerRegistry;
 use SPUI\Entity\Pantalla;
 use SPUI\Form\PantallaType;
@@ -34,10 +35,14 @@ class PantallaCmsController extends AbstractController
     }
 
     #[Route('', name: 'spui_cms_pantallas_index', methods: ['GET'])]
-    public function index(): Response
+    public function index(Request $request, Paginador $paginador): Response
     {
+        // Paginado en el servidor, de a Paginador::POR_PAGINA (?pagina=N).
+        $paginacion = $paginador->paginar($this->repo, [], ['nombre' => 'ASC'], $request);
+
         return $this->render('@SPUI/pantallas/index.html.twig', [
-            'pantallas'   => $this->repo->findBy([], ['nombre' => 'ASC']),
+            'pantallas'   => $paginacion['items'],
+            'paginacion' => $paginacion,
             // Una sola consulta por request: resolverlo por fila dispararía la
             // cadena de relaciones por cada pantalla.
             'ids_offline' => $this->alcance->idsOfflineDeUnaVez(),

@@ -60,7 +60,8 @@ La temperatura se pinta en ámbar a partir del 85 % del umbral y en rojo al supe
 
 Lo más general: un edificio o área del campus.
 
-- **Crear:** nombre (ej. "Edificio Central") y descripción opcional.
+- **Crear:** nombre (ej. "Edificio Central") y descripción opcional (se ve en **Ver**, no en el listado).
+- **Sectores:** el chip "N sectores" de cada edificio abre la lista de sus ubicaciones; tocar una abre su detalle.
 - **Activar/desactivar:** un edificio inactivo no desactiva sus pantallas; sirve como filtro.
 - **Eliminar:** solo si no tiene ubicaciones.
 
@@ -70,6 +71,7 @@ Un sector dentro de un edificio.
 
 - **Crear:** se elige el edificio y se pone el sector (ej. "Hall de entrada", "Pasillo PB"). El sector es opcional: si la ubicación abarca todo el edificio, se deja vacío.
 - **Eliminar:** solo si no tiene pantallas.
+- **Pantallas:** el chip "N pantallas" abre la lista; tocar una abre su detalle. La descripción se ve en **Ver**.
 
 **Por qué importa:** al programar una playlist se puede elegir una ubicación como destino, y la regla aplica automáticamente a todas sus pantallas. Una sola regla en vez de una por pantalla.
 
@@ -77,12 +79,12 @@ Un sector dentro de un edificio.
 
 El monitor físico.
 
-- **Crear:** nombre y ubicación (obligatorios), resolución y estado. MAC e IP son **opcionales** y solo informativas para diagnóstico — ver nota abajo.
+- **Crear:** nombre y ubicación (obligatorios) y estado.
 - **Reproductor:** acá se asigna qué Raspberry Pi maneja esta pantalla. **La asignación se hace desde este formulario, no desde el de Reproductores.**
 
-> **Sobre el campo MAC:** es opcional y **no lo usa ninguna función del sistema** (sync, heartbeat y telemetría identifican al equipo por su API key, no por MAC). Viene del diseño original, cuando `pantalla` representaba al dispositivo; con el refactor a `Reproductor` (migración `Version20260702133532`) dejó de ser obligatoria y se quitó su índice único. Si querés completarla, lo útil es poner la MAC de la Raspberry Pi que maneja la pantalla, para pedir reservas DHCP e identificarla en la red.
+> **IP, MAC y resolución ya no existen** (30/10/2026, migración `Version20261030120000`). Se cargaban a mano y nada los usaba: el reproductor se identifica por su API key, reproduce a pantalla completa en lo que detecta por HDMI e informa su propia red.
 
-- **Estados:** *Activo*, *Inactivo*, *Mantenimiento*.
+- **Estado:** *Activa* o *Inactiva* (switch en el formulario).
 - **Playlist de respaldo:** qué se reproduce cuando ninguna programación aplica en ese momento. Sin esto, la pantalla queda en espera.
 - **Botón Energía:** abre la grilla de horarios de esa pantalla en una ventana emergente (ver 4.2).
 - **Eliminar:** solo si no tiene reproductor asignado.
@@ -318,7 +320,11 @@ Los datos se agrupan por hora: con una lectura por minuto, 7 días serían unos 
 
 ## 6. Cosas que conviene saber
 
-**El panel funciona en celular.** Por debajo de 768 px el menú pasa a hamburguesa y las tablas se convierten en tarjetas apiladas.
+**Todos los listados son tarjetas** (desde el 30/10/2026, el estilo que estrenó Alertas): una por registro, con una franja de color por estado (verde activo/conectado, rojo desconectado o alerta en curso, ámbar algo a revisar, gris inactivo), el título, los datos en chips y las acciones a la derecha. Algunos chips se tocan y abren una lista corta encima (los sectores de un edificio, las pantallas de una ubicación, los ítems de una playlist, los días de una regla); se cierra tocando afuera o con Esc. En **Reproductores**, el ícono de arriba a la derecha de cada tarjeta abre su diagnóstico (ámbar con la cantidad de problemas, verde si no hay). En **Programación**, el chip de días resume la semana ("Lun a vie", "Todos los días") y al tocarlo la muestra completa.
+
+**Paginación:** cada listado muestra 10 por página; con más, aparece abajo "1–10 de N" y los botones de página. La página va en la dirección (`?pagina=2`), así que el refresco automático y los avisos en vivo no te mueven de ella.
+
+**El panel funciona en celular.** Por debajo de 768 px el menú pasa a hamburguesa y las acciones de cada tarjeta bajan debajo de sus datos.
 
 **Casi todo se hace en ventanas emergentes** sin salir del listado, incluidos los ítems de una playlist, los ítems de un cronograma y la grilla de energía. La única excepción es el histórico de telemetría, que necesita la pantalla entera para los gráficos.
 

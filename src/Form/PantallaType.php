@@ -11,12 +11,10 @@ use SPUI\Entity\Ubicacion;
 use Symfony\Bridge\Doctrine\Form\Type\EntityType;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\Extension\Core\Type\CheckboxType;
-use Symfony\Component\Form\Extension\Core\Type\IntegerType;
 use Symfony\Component\Form\Extension\Core\Type\TextType;
 use Symfony\Component\Form\FormBuilderInterface;
 use Symfony\Component\OptionsResolver\OptionsResolver;
 use Symfony\Component\Validator\Constraints\NotBlank;
-use Symfony\Component\Validator\Constraints\Range;
 
 class PantallaType extends AbstractType
 {
@@ -58,36 +56,6 @@ class PantallaType extends AbstractType
                 'placeholder'  => '— sin fallback (pantalla en negro) —',
                 'required'     => false,
                 'attr'         => ['class' => 'unraf-form-select'],
-            ])
-            ->add('macAddress', TextType::class, [
-                'label'      => 'Dirección MAC',
-                'label_attr' => ['class' => 'unraf-form-label'],
-                'required'   => false,
-                'attr'       => ['class' => 'unraf-form-control', 'maxlength' => 17, 'placeholder' => 'aa:bb:cc:dd:ee:ff'],
-            ])
-            ->add('ipAddress', TextType::class, [
-                'label'      => 'Dirección IP (opcional)',
-                'label_attr' => ['class' => 'unraf-form-label'],
-                'required'   => false,
-                'attr'       => ['class' => 'unraf-form-control', 'maxlength' => 45, 'placeholder' => '192.168.1.x'],
-            ])
-            ->add('resolucionAncho', IntegerType::class, [
-                'label'      => 'Ancho (px)',
-                'label_attr' => ['class' => 'unraf-form-label'],
-                'attr'       => ['class' => 'unraf-form-control', 'style' => 'max-width:9rem'],
-                'constraints' => [
-                    new NotBlank(message: 'El ancho es obligatorio.'),
-                    new Range(notInRangeMessage: 'El ancho debe estar entre {{ min }} y {{ max }} píxeles.', min: 320, max: 7680),
-                ],
-            ])
-            ->add('resolucionAlto', IntegerType::class, [
-                'label'      => 'Alto (px)',
-                'label_attr' => ['class' => 'unraf-form-label'],
-                'attr'       => ['class' => 'unraf-form-control', 'style' => 'max-width:9rem'],
-                'constraints' => [
-                    new NotBlank(message: 'El alto es obligatorio.'),
-                    new Range(notInRangeMessage: 'El alto debe estar entre {{ min }} y {{ max }} píxeles.', min: 240, max: 4320),
-                ],
             ])
             // Switch Activa/Inactiva, como el resto del CMS (antes, un selector
             // con un tercer valor "mantenimiento" que no hacía nada distinto).
