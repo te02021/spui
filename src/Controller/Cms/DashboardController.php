@@ -107,7 +107,7 @@ class DashboardController extends AbstractController
             // Lavada de cara del 29/10/2026: el resto de la red de un vistazo
             // y la temperatura de cada equipo en las últimas 24 h.
             'resumen_red'        => $this->resumenRed(),
-            'series_temp'        => $this->seriesTemperatura($reproductores),
+            'series_temp'        => $this->seriesTemperatura($reproductores, $telemetria),
         ];
 
         // El refresco automático pide esta misma ruta cada 20 s y sólo usa el
@@ -175,15 +175,25 @@ class DashboardController extends AbstractController
      * gráfico de toda la red. Sale de la telemetría cruda (incluye la hora en
      * curso), una consulta por equipo; son pocos.
      *
+     * El promedio de cada hora se dibuja al inicio de esa hora, así que la
+     * hora en curso quedaba en "las 9:00" hasta las 10:00. Se le suma como
+     * último punto la lectura más reciente de cada equipo (llega cada 60 s),
+     * para que la línea llegue hasta ahora.
+     *
      * @param Reproductor[] $reproductores
+     * @param array<int, \SPUI\Entity\Telemetria|null> $ultima
      * @return list<array{nombre: string, puntos: list<array{0: string, 1: float}>}>
      */
-    private function seriesTemperatura(array $reproductores): array
+    private function seriesTemperatura(array $reproductores, array $ultima): array
     {
         $desde = new DateTimeImmutable('-24 hours');
         $series = [];
         foreach ($reproductores as $r) {
             $puntos = array_map(static fn(array $p) => [$p['periodo'], $p['temp_prom']], $this->telemetriaRepo->findSeriePorHora($r, $desde));
+            $t = $ultima[$r->getId()] ?? null;
+            if ($puntos !== [] && $t !== null && $t->getRegistradoEn() > $desde) {
+                $puntos[] = [$t->getRegistradoEn()->format('Y-m-d H:i:s'), $t->getTemperaturaSocCelsius()];
+            }
             if ($puntos !== []) {
                 $series[] = ['nombre' => $r->getHostname(), 'puntos' => $puntos];
             }

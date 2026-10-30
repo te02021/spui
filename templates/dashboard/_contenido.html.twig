@@ -11,24 +11,124 @@
 {% set total = reproductores|length %}
 {% set con_problemas = reproductores|filter(r => r.tieneProblemas) %}
 {% set caidos = reproductores|filter(r => r.estadoCalculado(spui_umbral_conexion).value == 'desconectado') %}
-{% set avisos = caidos|length + (sobrecalentados|length > 0 ? 1 : 0) + con_problemas|length
+{% set avisos = caidos|length + sobrecalentados|length + con_problemas|length
               + (intentos_fallidos|length > 0 ? 1 : 0) + (scheduler_desactualizado ? 1 : 0) %}
+{% set avisos_graves = caidos|length + sobrecalentados|length + (scheduler_desactualizado ? 1 : 0) %}
 {% set COLORES_ESTADO = {conectado: '#4A9930', desconectado: '#FF223D', sin_registrar: '#adb5bd'} %}
 {% set COLORES_TIPO = {texto: '#5B6B7F', imagen: '#3387EF', video: '#7A5AF8', qr: '#1CA1A7', cronograma: '#C77F0A'} %}
 
 <div class="spui-dash p-3 p-md-4">
-    <header class="d-flex justify-content-between align-items-start mb-4 gap-2 flex-wrap">
-        <div>
+    <header class="spui-dash-cabecera mb-4">
+        <div class="min-w-0">
             <h1 class="spui-dash-h1">Dashboard</h1>
             <p class="text-muted mb-0">Estado de la red de pantallas digitales, en tiempo real.</p>
         </div>
-        {# data-spui-refresh-btn lo asocia auto-refresh.js: fuerza un refresco
-           inmediato sin esperar el ciclo de 20 s. #}
-        <button type="button" id="btnActualizarDashboard" data-spui-refresh-btn
-                class="unraf-btn unraf-btn-light d-flex align-items-center gap-1 spui-dash-actualizar"
-                title="Actualizar datos">
-            <img src="{{ asset('unraf-ui/icons/arrows-clockwise.svg') }}" alt=""> Actualizar
-        </button>
+        <div class="spui-dash-acciones">
+            {# Avisos (30/10/2026): un botón con el contador y un desplegable con
+               la lista, en vez de recuadros sueltos en la página, que con muchos
+               reproductores caídos ocupaban la pantalla entera. El desplegable
+               se abre con aria-expanded, que auto-refresh.js no toca: sigue
+               abierto mientras su contenido se actualiza solo. #}
+            <div class="spui-dash-avisos">
+                <button type="button" id="dash-avisos-btn"
+                        class="spui-dash-avisos-btn{{ avisos ? (avisos_graves ? ' is-grave' : ' is-hay') : ' is-ok' }}"
+                        aria-expanded="false" aria-controls="dash-avisos-panel" data-dash-avisos-btn data-spui-sync="aria-label"
+                        aria-label="{{ avisos ? texto.plural(avisos, 'aviso que requiere atención', 'avisos que requieren atención') : 'Sin avisos: todo en orden' }}">
+                    <img src="{{ asset('unraf-ui/icons/' ~ (avisos ? 'bell-ringing.svg' : 'bell.svg')) }}" alt="" data-spui-sync="src">
+                    <span>Avisos</span>
+                    <span class="spui-dash-avisos-cuenta">{{ avisos ?: '✓' }}</span>
+                </button>
+                <section id="dash-avisos-panel" class="spui-dash-avisos-panel" aria-labelledby="dash-avisos-titulo">
+                    <div class="spui-dash-avisos-cab">
+                        <h2 id="dash-avisos-titulo" class="spui-dash-h2">{{ avisos ? texto.plural(avisos, 'aviso', 'avisos') ~ ' que requieren atención' : 'Todo en orden' }}</h2>
+                        <button type="button" class="spui-dash-globo-cerrar" data-dash-avisos-cerrar aria-label="Cerrar avisos">×</button>
+                    </div>
+                    {% if not avisos %}
+                        <p class="spui-dash-avisos-ok">
+                            <span class="spui-dash-enorden-icono" aria-hidden="true">✓</span>
+                            Todos los reproductores dan señal, sin sobrecalentamiento, problemas informados, intentos de acceso inválidos ni tareas automáticas detenidas.
+                        </p>
+                    {% else %}
+                        <ul class="spui-dash-avisos-lista">
+                            {# Un reproductor sin señal: su pantalla puede seguir mostrando
+                               lo último que tenía en caché, pero no recibe cambios. #}
+                            {% for r in caidos %}
+                                <li class="spui-dash-aviso is-grave">
+                                    <span class="spui-dash-aviso-icono" aria-hidden="true">!</span>
+                                    <div class="min-w-0">
+                                        <div class="spui-dash-aviso-titulo"><strong>{{ r.hostname }}</strong> está desconectado</div>
+                                        <div class="spui-dash-aviso-detalle">
+                                            {%- if r.ultimoHeartbeat %}Sin señal desde las {{ r.ultimoHeartbeat|date('H:i') }} del {{ r.ultimoHeartbeat|date('d/m') }}{% else %}Nunca dio señal{% endif %}
+                                            {%- if r.pantallas|length %} · {{ r.pantallas|map(p => p.nombre)|join(', ') }}{% endif -%}
+                                        </div>
+                                        <div class="spui-dash-aviso-ayuda">Revisá que esté encendido y con red: mientras tanto no recibe cambios.</div>
+                                    </div>
+                                </li>
+                            {% endfor %}
+
+                            {% for r in reproductores|filter(r => sobrecalentados[r.id] is defined) %}
+                                <li class="spui-dash-aviso is-grave">
+                                    <span class="spui-dash-aviso-icono" aria-hidden="true">!</span>
+                                    <div class="min-w-0">
+                                        <div class="spui-dash-aviso-titulo"><strong>{{ r.hostname }}</strong> a {{ sobrecalentados[r.id]|number_format(1, ',') }} °C</div>
+                                        <div class="spui-dash-aviso-detalle">Por encima del umbral de {{ temp_umbral|number_format(0) }} °C: la Raspberry Pi se frena.</div>
+                                        <div class="spui-dash-aviso-ayuda">Revisá ventilación y disipador.</div>
+                                    </div>
+                                </li>
+                            {% endfor %}
+
+                            {# Problemas que los propios reproductores informan en su
+                               heartbeat: un equipo puede figurar conectado y no estar
+                               mostrando nada. #}
+                            {% for r in con_problemas %}
+                                <li class="spui-dash-aviso">
+                                    <span class="spui-dash-aviso-icono" aria-hidden="true">!</span>
+                                    <div class="min-w-0">
+                                        <div class="spui-dash-aviso-titulo"><strong>{{ r.hostname }}</strong> informa un problema</div>
+                                        {% for problema in r.diagnostico %}<div class="spui-dash-aviso-detalle">{{ problema }}</div>{% endfor %}
+                                    </div>
+                                </li>
+                            {% endfor %}
+
+                            {# Intentos con API key inválida: si alguno es la clave ANTERIOR
+                               de un reproductor (regenerada hace poco), se lo nombra. #}
+                            {% if intentos_fallidos|length > 0 %}
+                                <li class="spui-dash-aviso">
+                                    <span class="spui-dash-aviso-icono" aria-hidden="true">!</span>
+                                    <div class="min-w-0">
+                                        <div class="spui-dash-aviso-titulo"><strong>{{ texto.plural(intentos_fallidos|length, 'intento', 'intentos') }}</strong> con API key inválida en la última hora</div>
+                                        {% for hostname in hostnames_clave_vieja %}
+                                            <div class="spui-dash-aviso-detalle"><strong>{{ hostname }}</strong> usa la clave anterior: copiá la nueva a su <code>spui.env</code> y reiniciá el servicio.</div>
+                                        {% endfor %}
+                                        <div class="spui-dash-aviso-ayuda">Últimos orígenes: {{ intentos_fallidos|slice(-5)|map(i => i.ip)|join(', ') }}</div>
+                                    </div>
+                                </li>
+                            {% endif %}
+
+                            {# Mantenimiento y rollup corren dentro de spui:mqtt:subscribe; si
+                               se cae, nada más lo detecta (TelemetriaRollupService::estaDesactualizado). #}
+                            {% if scheduler_desactualizado %}
+                                <li class="spui-dash-aviso is-grave">
+                                    <span class="spui-dash-aviso-icono" aria-hidden="true">!</span>
+                                    <div class="min-w-0">
+                                        <div class="spui-dash-aviso-titulo"><strong>Las tareas automáticas</strong> no están corriendo</div>
+                                        <div class="spui-dash-aviso-detalle">Hace más de dos horas que el servidor no marca los reproductores caídos, ni vence alertas, ni resume la telemetría.</div>
+                                        <div class="spui-dash-aviso-ayuda">Pedile a quien administra el servidor que reinicie el servicio <strong>spui-telemetria</strong>.</div>
+                                    </div>
+                                </li>
+                            {% endif %}
+                        </ul>
+                    {% endif %}
+                </section>
+            </div>
+            {# data-spui-refresh-btn lo asocia auto-refresh.js: fuerza un refresco
+               inmediato sin esperar el ciclo de 20 s. #}
+            <button type="button" id="btnActualizarDashboard" data-spui-refresh-btn
+                    class="unraf-btn unraf-btn-light d-flex align-items-center gap-1 spui-dash-actualizar"
+                    title="Actualizar datos">
+                <img src="{{ asset('unraf-ui/icons/arrows-clockwise.svg') }}" alt=""> Actualizar
+            </button>
+        </div>
     </header>
 
     {# ── Alertas activas: lo primero que hay que ver ── #}
@@ -58,92 +158,6 @@
             </button>
         </section>
     {% endfor %}
-
-    {# ── Requiere atención (30/10/2026): un recuadro compacto por problema,
-       del ancho de lo que dice (no de toda la página), uno al lado del otro.
-       Si no hay nada, una franja verde de un renglón. ── #}
-    {% if not avisos %}
-        <section class="spui-dash-enorden mb-4" aria-label="Requiere atención">
-            <span class="spui-dash-enorden-icono" aria-hidden="true">✓</span>
-            <span><strong>Todo en orden.</strong><span class="d-none d-md-inline"> Todos los reproductores dan señal, sin sobrecalentamiento, problemas informados, intentos de acceso inválidos ni tareas automáticas detenidas.</span></span>
-        </section>
-    {% else %}
-        <section class="spui-dash-avisos mb-4" aria-labelledby="dash-atencion-titulo">
-            <h2 id="dash-atencion-titulo" class="visually-hidden">Requiere atención</h2>
-
-            {# Un reproductor sin señal: su pantalla puede seguir mostrando lo
-               último que tenía en caché, pero ya no recibe cambios ni alertas
-               por HTTP. Uno por recuadro, para nombrarlo con todo su detalle. #}
-            {% for r in caidos %}
-                <div class="spui-dash-aviso is-grave" role="status">
-                    <span class="spui-dash-aviso-icono" aria-hidden="true">!</span>
-                    <div class="min-w-0">
-                        <div class="spui-dash-aviso-titulo"><strong>{{ r.hostname }}</strong> está desconectado</div>
-                        <div class="spui-dash-aviso-detalle">
-                            {%- if r.ultimoHeartbeat %}Sin señal desde las {{ r.ultimoHeartbeat|date('H:i') }} del {{ r.ultimoHeartbeat|date('d/m') }}{% else %}Nunca dio señal{% endif %}
-                            {%- if r.pantallas|length %} · {{ r.pantallas|map(p => p.nombre)|join(', ') }}{% endif -%}
-                        </div>
-                        <div class="spui-dash-aviso-ayuda">Revisá que esté encendido y con red: mientras tanto no recibe cambios.</div>
-                    </div>
-                </div>
-            {% endfor %}
-
-            {% if sobrecalentados|length > 0 %}
-                <div class="spui-dash-aviso is-grave" role="status">
-                    <span class="spui-dash-aviso-icono" aria-hidden="true">!</span>
-                    <div class="min-w-0">
-                        <div class="spui-dash-aviso-titulo"><strong>{{ texto.plural(sobrecalentados|length, 'reproductor', 'reproductores') }}</strong> por encima de {{ temp_umbral|number_format(0) }} °C</div>
-                        <div class="spui-dash-aviso-detalle">
-                            {%- for r in reproductores|filter(r => sobrecalentados[r.id] is defined) -%}
-                                {{ r.hostname }}: {{ sobrecalentados[r.id]|number_format(1, ',') }} °C{% if not loop.last %} · {% endif %}
-                            {%- endfor -%}
-                        </div>
-                        <div class="spui-dash-aviso-ayuda">A esta temperatura la Raspberry Pi se frena. Revisá ventilación y disipador.</div>
-                    </div>
-                </div>
-            {% endif %}
-
-            {# Problemas que los propios reproductores informan en su heartbeat:
-               un equipo puede figurar conectado y no estar mostrando nada. #}
-            {% for r in con_problemas %}
-                <div class="spui-dash-aviso" role="status">
-                    <span class="spui-dash-aviso-icono" aria-hidden="true">!</span>
-                    <div class="min-w-0">
-                        <div class="spui-dash-aviso-titulo"><strong>{{ r.hostname }}</strong> informa un problema</div>
-                        {% for problema in r.diagnostico %}<div class="spui-dash-aviso-detalle">{{ problema }}</div>{% endfor %}
-                    </div>
-                </div>
-            {% endfor %}
-
-            {# Intentos con API key inválida: si alguno es la clave ANTERIOR de un
-               reproductor (regenerada hace poco), se lo nombra. #}
-            {% if intentos_fallidos|length > 0 %}
-                <div class="spui-dash-aviso" role="status">
-                    <span class="spui-dash-aviso-icono" aria-hidden="true">!</span>
-                    <div class="min-w-0">
-                        <div class="spui-dash-aviso-titulo"><strong>{{ texto.plural(intentos_fallidos|length, 'intento', 'intentos') }}</strong> con API key inválida en la última hora</div>
-                        {% for hostname in hostnames_clave_vieja %}
-                            <div class="spui-dash-aviso-detalle"><strong>{{ hostname }}</strong> usa la clave anterior: copiá la nueva a su <code>spui.env</code> y reiniciá el servicio.</div>
-                        {% endfor %}
-                        <div class="spui-dash-aviso-ayuda">Últimos orígenes: {{ intentos_fallidos|slice(-5)|map(i => i.ip)|join(', ') }}</div>
-                    </div>
-                </div>
-            {% endif %}
-
-            {# Mantenimiento y rollup corren dentro de spui:mqtt:subscribe; si se
-               cae, nada más lo detecta (TelemetriaRollupService::estaDesactualizado). #}
-            {% if scheduler_desactualizado %}
-                <div class="spui-dash-aviso is-grave" role="status">
-                    <span class="spui-dash-aviso-icono" aria-hidden="true">!</span>
-                    <div class="min-w-0">
-                        <div class="spui-dash-aviso-titulo"><strong>Las tareas automáticas</strong> no están corriendo</div>
-                        <div class="spui-dash-aviso-detalle">Hace más de dos horas que el servidor no marca los reproductores caídos, ni vence alertas, ni resume la telemetría.</div>
-                        <div class="spui-dash-aviso-ayuda">Pedile a quien administra el servidor que reinicie el servicio <strong>spui-telemetria</strong>.</div>
-                    </div>
-                </div>
-            {% endif %}
-        </section>
-    {% endif %}
 
     {# ── Cuatro tarjetas idénticas: cifra principal, una barra que la pone en
        contexto y una línea de detalle. Cada una responde una pregunta. ── #}

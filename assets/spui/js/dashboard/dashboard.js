@@ -180,7 +180,29 @@
     }
 
     // Leyenda: la misma acción con teclado o tocando la fila.
+    // ── Desplegable de avisos ───────────────────────────────────────────────
+    // Abierto o cerrado según aria-expanded del botón, que auto-refresh.js no
+    // toca; si un refresco reemplaza la cabecera entera, aplicarAvisos() lo
+    // vuelve a dejar como estaba.
+    var avisosAbierto = false;
+    function aplicarAvisos() {
+        var b = document.querySelector('[data-dash-avisos-btn]');
+        if (b) { b.setAttribute('aria-expanded', avisosAbierto ? 'true' : 'false'); }
+    }
+    function abrirAvisos(abrir, conFoco) {
+        avisosAbierto = abrir;
+        aplicarAvisos();
+        if (abrir) { cerrarGlobo(); }
+        if (!conFoco) { return; }
+        var destino = abrir ? document.querySelector('[data-dash-avisos-cerrar]') : document.querySelector('[data-dash-avisos-btn]');
+        if (destino) { destino.focus(); }
+    }
+
     document.addEventListener('click', function (e) {
+        if (e.target.closest('[data-dash-avisos-btn]')) { abrirAvisos(!avisosAbierto, e.detail === 0); return; }
+        if (e.target.closest('[data-dash-avisos-cerrar]')) { abrirAvisos(false, true); return; }
+        if (avisosAbierto && !e.target.closest('.spui-dash-avisos')) { abrirAvisos(false); }
+
         var b = e.target.closest('[data-dash-estado]');
         if (b) {
             var r = b.getBoundingClientRect();
@@ -193,7 +215,11 @@
             cerrarGlobo();
         }
     });
-    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') { cerrarGlobo(true); } });
+    document.addEventListener('keydown', function (e) {
+        if (e.key !== 'Escape') { return; }
+        if (avisosAbierto) { abrirAvisos(false, true); }
+        cerrarGlobo(true);
+    });
 
     // ── Temperatura ─────────────────────────────────────────────────────────
     function limitesTemp() { var a = Date.now(); return { min: a - VENTANA, max: a }; }
@@ -233,9 +259,16 @@
                 vistaTemp.irA(l2.min, l2.max, 450);
             }, function () { return 'dashboard-temperatura'; });
         } else if (firma !== firmaTemp) {
-            // Llegó una hora nueva: sólo los datos, sin tocar el zoom que haya puesto el usuario.
+            // Llegó una lectura nueva (cada minuto, el último punto de cada
+            // equipo): datos y eje hasta "ahora". Si se estaba mirando el final,
+            // la vista acompaña; si el usuario se había ido para atrás o hecho
+            // zoom, se queda donde estaba.
+            var antes = vistaTemp.objetivo || vistaTemp.leer();
+            var alFinal = antes.e >= vistaTemp.limites().max - 5 * 60e3;
             var l3 = limitesTemp();
             temp.setOption({ xAxis: { min: l3.min, max: l3.max }, yAxis: { max: maxTemp(), interval: maxTemp() / 5 }, series: seriesTemp() });
+            vistaTemp.aplicar(antes);
+            if (alFinal) { vistaTemp.irA(l3.max - (antes.e - antes.s), l3.max, 600); }
         }
         firmaTemp = firma;
     }
@@ -244,6 +277,7 @@
     function dibujar() {
         datos = leerDatos();
         if (!datos) { return; }
+        aplicarAvisos();
         dibujarDona();
         dibujarTemp();
         // Si el globo está abierto, que muestre lo que acaba de llegar.

@@ -2099,43 +2099,80 @@ textarea.is-invalid,
     100% { box-shadow: 0 0 0 .9rem rgba(255, 255, 255, 0); }
 }
 
-/* Requiere atención: una franja de un renglón cuando no hay nada... */
-.spui-dash-enorden {
-    display: flex; align-items: center; gap: .6rem;
-    padding: .55rem .9rem; border-radius: 8px; font-size: .88rem; color: #2f6d1c;
-    background: #f1f8ee; border: 1px solid #d3e9cb;
+/* Cabecera: título a la izquierda; Avisos y Actualizar a la derecha (debajo
+   del título en celular). */
+.spui-dash-cabecera { display: flex; justify-content: space-between; align-items: flex-start; gap: .75rem 1rem; flex-wrap: wrap; }
+.spui-dash-acciones { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
+
+/* Botón de avisos: verde sin nada, ámbar con avisos, rojo si alguno es grave. */
+.spui-dash-avisos { position: relative; }
+.spui-dash-avisos-btn {
+    display: inline-flex; align-items: center; gap: .4rem;
+    font-family: var(--unraf-font-principal); font-weight: 600; font-size: .8rem;
+    padding: .3rem .45rem .3rem .6rem; border-radius: 4px; cursor: pointer;
+    background: #f1f8ee; color: #2f6d1c; border: 1px solid #cfe5c6;
 }
+.spui-dash-avisos-btn img { width: .95rem; height: .95rem; }
+.spui-dash-avisos-btn:focus-visible { outline: 3px solid rgba(51, 135, 239, .4); outline-offset: 2px; }
+.spui-dash-avisos-cuenta {
+    min-width: 1.3rem; height: 1.3rem; border-radius: 1rem; padding: 0 .35rem;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: .72rem; font-weight: 700; background: #4A9930; color: #fff;
+}
+.spui-dash-avisos-btn.is-hay { background: #fff8eb; color: #8a5806; border-color: #f0d49c; }
+.spui-dash-avisos-btn.is-hay .spui-dash-avisos-cuenta { background: #C77F0A; }
+.spui-dash-avisos-btn.is-grave { background: #fff1f3; color: #b3142a; border-color: #ffc2cb; }
+.spui-dash-avisos-btn.is-grave .spui-dash-avisos-cuenta { background: #FF223D; animation: spui-dash-aviso-latido 1.8s ease-out infinite; }
+.spui-dash-avisos-btn:hover { filter: brightness(.97); }
+@keyframes spui-dash-aviso-latido {
+    0% { box-shadow: 0 0 0 0 rgba(255, 34, 61, .45); }
+    100% { box-shadow: 0 0 0 .45rem rgba(255, 34, 61, 0); }
+}
+@media (prefers-reduced-motion: reduce) { .spui-dash-avisos-btn.is-grave .spui-dash-avisos-cuenta { animation: none; } }
+
+/* Desplegable: flota debajo del botón, alineado a su derecha; con muchos
+   avisos se desplaza por dentro, nunca estira la página. */
+.spui-dash-avisos-panel {
+    display: none; position: absolute; top: calc(100% + .5rem); right: 0; z-index: 1040;
+    width: min(26rem, calc(100vw - 32px)); max-height: min(70vh, 32rem);
+    flex-direction: column; background: #fff; border: 1px solid #e0e4e8; border-radius: 10px;
+    box-shadow: 0 14px 34px rgba(20, 30, 45, .18); overflow: hidden;
+}
+.spui-dash-avisos-btn[aria-expanded="true"] + .spui-dash-avisos-panel { display: flex; animation: spui-dash-desplegar .15s ease-out; }
+@keyframes spui-dash-desplegar { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+.spui-dash-avisos-cab { display: flex; align-items: center; gap: .5rem; padding: .6rem .5rem .55rem .9rem; border-bottom: 1px solid #eef1f4; flex-shrink: 0; }
+.spui-dash-avisos-cab .spui-dash-h2 { font-size: .92rem; }
+.spui-dash-avisos-lista { list-style: none; margin: 0; padding: .4rem; overflow-y: auto; display: flex; flex-direction: column; gap: .35rem; }
+.spui-dash-avisos-ok { display: flex; gap: .6rem; align-items: center; margin: 0; padding: .8rem .9rem; color: #2f6d1c; font-size: .85rem; }
 .spui-dash-enorden-icono {
     width: 1.5rem; height: 1.5rem; border-radius: 50%; flex-shrink: 0;
     background: #4A9930; color: #fff; font-weight: 700; font-size: .85rem;
     display: inline-flex; align-items: center; justify-content: center;
 }
-/* ...y un recuadro compacto por problema cuando sí: del ancho de lo que dice
-   (no de toda la página), uno al lado del otro y, si no entran, abajo. */
-.spui-dash-avisos { display: flex; flex-wrap: wrap; gap: .6rem; align-items: stretch; }
+/* En celular la cabecera se apila: el desplegable se abre desde la izquierda,
+   que es donde queda el botón. */
+@media (max-width: 575.98px) {
+    .spui-dash-cabecera { position: relative; }
+    .spui-dash-avisos { position: static; }
+    .spui-dash-avisos-panel { left: 0; right: 0; width: auto; top: 100%; margin-top: .5rem; }
+}
+
+/* Cada aviso de la lista. */
 .spui-dash-aviso {
-    display: flex; gap: .7rem; align-items: flex-start;
-    flex: 0 1 auto; max-width: min(100%, 34rem);
-    padding: .65rem .9rem .65rem .75rem; border-radius: 8px;
-    background: #fff8eb; border: 1px solid #f3dcae; border-left: 4px solid #C77F0A;
-    box-shadow: 0 2px 8px rgba(199, 127, 10, .12); overflow-wrap: anywhere;
+    display: flex; gap: .65rem; align-items: flex-start;
+    padding: .55rem .7rem; border-radius: 7px; overflow-wrap: anywhere;
+    background: #fff8eb; border-left: 4px solid #C77F0A;
 }
 .spui-dash-aviso-icono {
-    width: 1.6rem; height: 1.6rem; border-radius: 50%; flex-shrink: 0; margin-top: .05rem;
-    background: #C77F0A; color: #fff; font-weight: 800; font-size: .95rem;
+    width: 1.4rem; height: 1.4rem; border-radius: 50%; flex-shrink: 0; margin-top: .05rem;
+    background: #C77F0A; color: #fff; font-weight: 800; font-size: .85rem;
     display: inline-flex; align-items: center; justify-content: center;
 }
-.spui-dash-aviso.is-grave { background: #fff1f3; border-color: #ffc9d1; border-left-color: #FF223D; box-shadow: 0 2px 10px rgba(255, 34, 61, .15); }
-.spui-dash-aviso.is-grave .spui-dash-aviso-icono { background: #FF223D; animation: spui-dash-aviso-latido 1.8s ease-out infinite; }
-@keyframes spui-dash-aviso-latido {
-    0% { box-shadow: 0 0 0 0 rgba(255, 34, 61, .45); }
-    100% { box-shadow: 0 0 0 .55rem rgba(255, 34, 61, 0); }
-}
-@media (prefers-reduced-motion: reduce) { .spui-dash-aviso.is-grave .spui-dash-aviso-icono { animation: none; } }
-.spui-dash-aviso-titulo { color: #2b3a4a; font-size: .92rem; line-height: 1.3; }
-.spui-dash-aviso-detalle { color: #495057; font-size: .82rem; margin-top: .1rem; }
-.spui-dash-aviso-ayuda { color: #6c757d; font-size: .76rem; margin-top: .2rem; }
-@media (max-width: 575.98px) { .spui-dash-aviso { flex-basis: 100%; max-width: 100%; } }
+.spui-dash-aviso.is-grave { background: #fff1f3; border-left-color: #FF223D; }
+.spui-dash-aviso.is-grave .spui-dash-aviso-icono { background: #FF223D; }
+.spui-dash-aviso-titulo { color: #2b3a4a; font-size: .88rem; line-height: 1.3; }
+.spui-dash-aviso-detalle { color: #495057; font-size: .8rem; margin-top: .1rem; }
+.spui-dash-aviso-ayuda { color: #6c757d; font-size: .74rem; margin-top: .15rem; }
 
 /* Cuatro tarjetas idénticas: misma grilla, misma altura (la fila se estira
    a la más alta) y las mismas cuatro partes en el mismo orden. */
