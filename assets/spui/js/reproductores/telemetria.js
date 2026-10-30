@@ -281,6 +281,17 @@
         var pausado = false, renovar = null, sinDatos = null, ultimaMuestra = 0;
         var puntos = { temp: [], ram: [] };
 
+        // Estado de conexión (30/10/2026): con el reproductor desconectado no
+        // se le pide nada. Que volvió (o que se cayó) llega por el mismo aviso
+        // MQTT que usa el resto del panel, spui/cms/conexion/{id}; mientras
+        // tanto no hay ningún reintento.
+        var conectado = raiz.dataset.conectado === '1';
+        var topicConexion = raiz.dataset.mqttTopicConexion || null;
+        var sinRespuesta = false;
+        var TXT_DESCONECTADO = 'El reproductor está desconectado. Los datos en vivo arrancan solos cuando vuelva a conectarse.';
+        var TXT_SIN_RESPUESTA = 'El reproductor no está mandando datos en vivo. Se vuelve a intentar solo cuando se reconecte; para probar ahora, tocá «Sin datos en vivo».';
+        var TXT_ESPERANDO = 'Esperando los datos del reproductor…';
+
         var limitesDe = function (lista) {
             var ult = lista.length ? lista[lista.length - 1][0] : Date.now();
             var pri = lista.length ? lista[0][0] : ult - VIVO_VENTANA;
@@ -386,14 +397,22 @@
             sinDatos = setTimeout(function () {
                 if (Date.now() - ultimaMuestra > SIN_DATOS_VIVO_MS) {
                     vivoActivo = false;
+                    sinRespuesta = true;
+                    frenar();
                     estado('Sin datos en vivo', 'is-sin-datos');
-                    btnVivo.title = 'El reproductor no está mandando datos en vivo: puede estar apagado o desconectado. Se sigue intentando.';
-                    if (puntos.temp.length < 2 && puntos.ram.length < 2) mostrarEspera('El reproductor no está mandando datos en vivo: puede estar apagado o desconectado. Se sigue intentando.', false);
+                    btnVivo.title = TXT_SIN_RESPUESTA;
+                    if (puntos.temp.length < 2 && puntos.ram.length < 2) mostrarEspera(TXT_SIN_RESPUESTA, false);
                 }
             }, SIN_DATOS_VIVO_MS);
         };
         var empezar = function () {
-            if (pausado || document.hidden || renovar) return;
+            if (pausado || document.hidden || renovar || sinRespuesta) return;
+            if (!conectado) {
+                estado('Desconectado', 'is-sin-datos');
+                btnVivo.title = TXT_DESCONECTADO;
+                mostrarEspera(TXT_DESCONECTADO, false);
+                return;
+            }
             pedirVivo();
             renovar = setInterval(pedirVivo, VIVO_SEG * 500);
         };
@@ -407,14 +426,40 @@
             clientId: 'spui-web-tel-' + Math.random().toString(16).slice(2, 10),
             connectTimeout: 5000, reconnectPeriod: 5000
         });
+        /** Vacía los gráficos en vivo: lo de antes de un corte no se mezcla con lo de después. */
+        var reiniciarVivo = function () {
+            puntos = { temp: [], ram: [] };
+            vivoActivo = false;
+            vivos.forEach(function (g) { g.siguiendo = true; g.c.setOption({ series: [{ data: [] }] }); });
+        };
+        /** Aviso del CMS: el reproductor cambió de estado de conexión. */
+        var cambioDeConexion = function (estadoNuevo) {
+            if (estadoNuevo === 'conectado' && !conectado) {
+                conectado = true;
+                sinRespuesta = false;
+                reiniciarVivo();
+                if (!pausado) { estado('Esperando datos…'); mostrarEspera(TXT_ESPERANDO, true); empezar(); }
+            } else if (estadoNuevo === 'desconectado' && conectado) {
+                conectado = false;
+                frenar();
+                reiniciarVivo();
+                if (!pausado) empezar();   // muestra que está desconectado, sin pedir nada
+            }
+        };
+
         cliente.on('connect', function () {
-            cliente.subscribe(raiz.dataset.mqttTopic);
-            if (!pausado) { estado('Esperando datos…'); empezar(); }
+            cliente.subscribe(topicConexion ? [raiz.dataset.mqttTopic, topicConexion] : raiz.dataset.mqttTopic);
+            if (!pausado) { if (conectado) estado('Esperando datos…'); empezar(); }
         });
-        cliente.on('message', function (_t, mensaje) {
-            if (pausado) return;
+        cliente.on('message', function (topico, mensaje) {
             var m;
             try { m = JSON.parse(mensaje.toString()); } catch (e) { return; }
+            if (topico === topicConexion) { cambioDeConexion(m.estado); return; }
+            if (pausado) return;
+            // Llegó un dato: el equipo está vivo, diga lo que diga el estado; si
+            // se había frenado el pedido por un aviso de desconexión, se retoma.
+            sinRespuesta = false;
+            if (!conectado) { conectado = true; empezar(); }
             ultimaMuestra = Date.now();
             vivoActivo = true;
             estado('En vivo', 'is-vivo');
@@ -435,6 +480,14 @@
         cliente.on('offline', function () { if (!pausado) estado('Reconectando…', 'is-sin-datos'); });
 
         btnVivo.addEventListener('click', function () {
+            // Sin respuesta: el botón reintenta en vez de pausar.
+            if (sinRespuesta && !pausado) {
+                sinRespuesta = false;
+                estado('Esperando datos…');
+                mostrarEspera(TXT_ESPERANDO, true);
+                empezar();
+                return;
+            }
             pausado = !pausado;
             btnVivo.setAttribute('aria-pressed', pausado ? 'false' : 'true');
             if (pausado) {

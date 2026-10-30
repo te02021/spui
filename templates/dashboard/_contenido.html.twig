@@ -11,7 +11,7 @@
 {% set total = reproductores|length %}
 {% set con_problemas = reproductores|filter(r => r.tieneProblemas) %}
 {% set caidos = reproductores|filter(r => r.estadoCalculado(spui_umbral_conexion).value == 'desconectado') %}
-{% set avisos = (caidos|length > 0 ? 1 : 0) + (sobrecalentados|length > 0 ? 1 : 0) + (con_problemas|length > 0 ? 1 : 0)
+{% set avisos = caidos|length + (sobrecalentados|length > 0 ? 1 : 0) + con_problemas|length
               + (intentos_fallidos|length > 0 ? 1 : 0) + (scheduler_desactualizado ? 1 : 0) %}
 {% set COLORES_ESTADO = {conectado: '#4A9930', desconectado: '#FF223D', sin_registrar: '#adb5bd'} %}
 {% set COLORES_TIPO = {texto: '#5B6B7F', imagen: '#3387EF', video: '#7A5AF8', qr: '#1CA1A7', cronograma: '#C77F0A'} %}
@@ -59,87 +59,89 @@
         </section>
     {% endfor %}
 
-    {# ── Requiere atención: una franja fina si no hay nada; si hay, una
-       tarjeta con cada aviso. Se ajusta a lo que tenga que decir. ── #}
+    {# ── Requiere atención (30/10/2026): un recuadro compacto por problema,
+       del ancho de lo que dice (no de toda la página), uno al lado del otro.
+       Si no hay nada, una franja verde de un renglón. ── #}
     {% if not avisos %}
         <section class="spui-dash-enorden mb-4" aria-label="Requiere atención">
             <span class="spui-dash-enorden-icono" aria-hidden="true">✓</span>
             <span><strong>Todo en orden.</strong><span class="d-none d-md-inline"> Todos los reproductores dan señal, sin sobrecalentamiento, problemas informados, intentos de acceso inválidos ni tareas automáticas detenidas.</span></span>
         </section>
     {% else %}
-        <section class="unraf-card spui-dash-atencion mb-4" aria-labelledby="dash-atencion-titulo">
-            <div class="spui-dash-atencion-cab">
-                <h2 id="dash-atencion-titulo" class="spui-dash-h2">Requiere atención</h2>
-                <span class="spui-dash-contador" aria-label="{{ texto.plural(avisos, 'aviso', 'avisos') }}">{{ avisos }}</span>
-            </div>
-            <div class="spui-dash-avisos">
-                {# Un reproductor sin señal: su pantalla puede seguir mostrando lo
-                   último que tenía en caché, pero ya no recibe cambios ni alertas
-                   por HTTP. #}
-                {% if caidos|length > 0 %}
-                    <div class="spui-dash-aviso is-grave">
-                        <strong>{{ texto.plural(caidos|length, 'reproductor desconectado', 'reproductores desconectados') }}</strong>
-                        {% for r in caidos %}
-                            <div class="small mt-1"><strong>{{ r.hostname }}</strong>
-                                {%- if r.ultimoHeartbeat %} · sin señal desde las {{ r.ultimoHeartbeat|date('H:i') }} del {{ r.ultimoHeartbeat|date('d/m') }}{% endif %}
-                                {%- if r.pantallas|length %} · {{ r.pantallas|map(p => p.nombre)|join(', ') }}{% endif %}
-                            </div>
-                        {% endfor %}
-                        <div class="small text-muted mt-1">Revisá que esté encendido y con red. Mientras tanto no recibe cambios de programación.</div>
-                    </div>
-                {% endif %}
+        <section class="spui-dash-avisos mb-4" aria-labelledby="dash-atencion-titulo">
+            <h2 id="dash-atencion-titulo" class="visually-hidden">Requiere atención</h2>
 
-                {% if sobrecalentados|length > 0 %}
-                    <div class="spui-dash-aviso is-grave">
-                        <strong>{{ texto.plural(sobrecalentados|length, 'reproductor', 'reproductores') }} por encima de {{ temp_umbral|number_format(0) }} °C</strong>
-                        <div class="small">
-                            {% for r in reproductores|filter(r => sobrecalentados[r.id] is defined) %}
-                                <span class="d-inline-block me-2">{{ r.hostname }}: <strong>{{ sobrecalentados[r.id]|number_format(1, ',') }} °C</strong></span>
-                            {% endfor %}
+            {# Un reproductor sin señal: su pantalla puede seguir mostrando lo
+               último que tenía en caché, pero ya no recibe cambios ni alertas
+               por HTTP. Uno por recuadro, para nombrarlo con todo su detalle. #}
+            {% for r in caidos %}
+                <div class="spui-dash-aviso is-grave" role="status">
+                    <span class="spui-dash-aviso-icono" aria-hidden="true">!</span>
+                    <div class="min-w-0">
+                        <div class="spui-dash-aviso-titulo"><strong>{{ r.hostname }}</strong> está desconectado</div>
+                        <div class="spui-dash-aviso-detalle">
+                            {%- if r.ultimoHeartbeat %}Sin señal desde las {{ r.ultimoHeartbeat|date('H:i') }} del {{ r.ultimoHeartbeat|date('d/m') }}{% else %}Nunca dio señal{% endif %}
+                            {%- if r.pantallas|length %} · {{ r.pantallas|map(p => p.nombre)|join(', ') }}{% endif -%}
                         </div>
-                        <div class="small text-muted">A esta temperatura la Raspberry Pi reduce su velocidad. Revisá ventilación y disipador.</div>
+                        <div class="spui-dash-aviso-ayuda">Revisá que esté encendido y con red: mientras tanto no recibe cambios.</div>
                     </div>
-                {% endif %}
+                </div>
+            {% endfor %}
 
-                {# Problemas que los propios reproductores informan en su heartbeat:
-                   un equipo puede figurar conectado y no estar mostrando nada. #}
-                {% if con_problemas|length > 0 %}
-                    <div class="spui-dash-aviso">
-                        <strong>{{ texto.plural(con_problemas|length, 'reproductor', 'reproductores') }} con problemas informados</strong>
-                        {% for r in con_problemas %}
-                            <div class="small mt-1"><strong>{{ r.hostname }}</strong>
-                                <ul class="mb-0 ps-3">{% for problema in r.diagnostico %}<li>{{ problema }}</li>{% endfor %}</ul>
-                            </div>
-                        {% endfor %}
+            {% if sobrecalentados|length > 0 %}
+                <div class="spui-dash-aviso is-grave" role="status">
+                    <span class="spui-dash-aviso-icono" aria-hidden="true">!</span>
+                    <div class="min-w-0">
+                        <div class="spui-dash-aviso-titulo"><strong>{{ texto.plural(sobrecalentados|length, 'reproductor', 'reproductores') }}</strong> por encima de {{ temp_umbral|number_format(0) }} °C</div>
+                        <div class="spui-dash-aviso-detalle">
+                            {%- for r in reproductores|filter(r => sobrecalentados[r.id] is defined) -%}
+                                {{ r.hostname }}: {{ sobrecalentados[r.id]|number_format(1, ',') }} °C{% if not loop.last %} · {% endif %}
+                            {%- endfor -%}
+                        </div>
+                        <div class="spui-dash-aviso-ayuda">A esta temperatura la Raspberry Pi se frena. Revisá ventilación y disipador.</div>
                     </div>
-                {% endif %}
+                </div>
+            {% endif %}
 
-                {# Intentos con API key inválida: si alguno es la clave ANTERIOR de un
-                   reproductor (regenerada hace poco), se lo nombra. #}
-                {% if intentos_fallidos|length > 0 %}
-                    <div class="spui-dash-aviso">
-                        <strong>{{ texto.plural(intentos_fallidos|length, 'intento', 'intentos') }} con API key inválida en la última hora</strong>
+            {# Problemas que los propios reproductores informan en su heartbeat:
+               un equipo puede figurar conectado y no estar mostrando nada. #}
+            {% for r in con_problemas %}
+                <div class="spui-dash-aviso" role="status">
+                    <span class="spui-dash-aviso-icono" aria-hidden="true">!</span>
+                    <div class="min-w-0">
+                        <div class="spui-dash-aviso-titulo"><strong>{{ r.hostname }}</strong> informa un problema</div>
+                        {% for problema in r.diagnostico %}<div class="spui-dash-aviso-detalle">{{ problema }}</div>{% endfor %}
+                    </div>
+                </div>
+            {% endfor %}
+
+            {# Intentos con API key inválida: si alguno es la clave ANTERIOR de un
+               reproductor (regenerada hace poco), se lo nombra. #}
+            {% if intentos_fallidos|length > 0 %}
+                <div class="spui-dash-aviso" role="status">
+                    <span class="spui-dash-aviso-icono" aria-hidden="true">!</span>
+                    <div class="min-w-0">
+                        <div class="spui-dash-aviso-titulo"><strong>{{ texto.plural(intentos_fallidos|length, 'intento', 'intentos') }}</strong> con API key inválida en la última hora</div>
                         {% for hostname in hostnames_clave_vieja %}
-                            <div class="small mt-1"><strong>{{ hostname }}</strong> sigue usando la clave anterior a su última regeneración: copiá la clave nueva a su <code>spui.env</code> y reiniciá el servicio.</div>
+                            <div class="spui-dash-aviso-detalle"><strong>{{ hostname }}</strong> usa la clave anterior: copiá la nueva a su <code>spui.env</code> y reiniciá el servicio.</div>
                         {% endfor %}
-                        <div class="small text-muted mt-1">Últimos orígenes: {{ intentos_fallidos|slice(-5)|map(i => i.ip)|join(', ') }}</div>
+                        <div class="spui-dash-aviso-ayuda">Últimos orígenes: {{ intentos_fallidos|slice(-5)|map(i => i.ip)|join(', ') }}</div>
                     </div>
-                {% endif %}
+                </div>
+            {% endif %}
 
-                {# Mantenimiento y rollup corren dentro de spui:mqtt:subscribe; si se
-                   cae, nada más lo detecta (TelemetriaRollupService::estaDesactualizado). #}
-                {% if scheduler_desactualizado %}
-                    <div class="spui-dash-aviso is-grave">
-                        <strong>Las tareas automáticas del sistema no están corriendo</strong>
-                        <div class="small text-muted">
-                            El servidor tiene un proceso que, cada minuto, marca como desconectados los
-                            reproductores que dejan de responder y desactiva las alertas vencidas, y cada hora
-                            resume la telemetría. Hace más de dos horas que no lo hace: avisale a quien
-                            administra el servidor que reinicie el servicio <strong>spui-telemetria</strong>.
-                        </div>
+            {# Mantenimiento y rollup corren dentro de spui:mqtt:subscribe; si se
+               cae, nada más lo detecta (TelemetriaRollupService::estaDesactualizado). #}
+            {% if scheduler_desactualizado %}
+                <div class="spui-dash-aviso is-grave" role="status">
+                    <span class="spui-dash-aviso-icono" aria-hidden="true">!</span>
+                    <div class="min-w-0">
+                        <div class="spui-dash-aviso-titulo"><strong>Las tareas automáticas</strong> no están corriendo</div>
+                        <div class="spui-dash-aviso-detalle">Hace más de dos horas que el servidor no marca los reproductores caídos, ni vence alertas, ni resume la telemetría.</div>
+                        <div class="spui-dash-aviso-ayuda">Pedile a quien administra el servidor que reinicie el servicio <strong>spui-telemetria</strong>.</div>
                     </div>
-                {% endif %}
-            </div>
+                </div>
+            {% endif %}
         </section>
     {% endif %}
 
@@ -156,9 +158,9 @@
                 <span class="spui-dash-kpi-cifra"><strong>{{ resumen_red.pantallas_en_linea }}</strong> de {{ resumen_red.pantallas_activas }} en línea</span>
                 <span class="spui-dash-kpi-barra" aria-hidden="true">
                     {% if resumen_red.pantallas %}
-                        <span style="flex:{{ resumen_red.pantallas_en_linea }};background:#4A9930"></span>
-                        <span style="flex:{{ p_offline }};background:#FF223D"></span>
-                        <span style="flex:{{ p_inactivas }};background:#ced4da"></span>
+                        <span data-spui-sync="style" style="flex:{{ resumen_red.pantallas_en_linea }};background:#4A9930"></span>
+                        <span data-spui-sync="style" style="flex:{{ p_offline }};background:#FF223D"></span>
+                        <span data-spui-sync="style" style="flex:{{ p_inactivas }};background:#ced4da"></span>
                     {% endif %}
                 </span>
                 <span class="spui-dash-kpi-pie">
@@ -174,7 +176,7 @@
                 <span class="spui-dash-kpi-cifra"><strong>{{ resumen_red.contenidos }}</strong> {{ resumen_red.contenidos == 1 ? 'disponible' : 'disponibles' }}</span>
                 <span class="spui-dash-kpi-barra" aria-hidden="true">
                     {% for t in resumen_red.contenidos_tipo|filter(t => t.cantidad > 0) %}
-                        <span style="flex:{{ t.cantidad }};background:{{ COLORES_TIPO[t.tipo]|default('#adb5bd') }}" title="{{ t.etiqueta }}: {{ t.cantidad }}"></span>
+                        <span data-spui-sync="style" style="flex:{{ t.cantidad }};background:{{ COLORES_TIPO[t.tipo]|default('#adb5bd') }}" title="{{ t.etiqueta }}: {{ t.cantidad }}"></span>
                     {% endfor %}
                 </span>
                 {% set tipos_txt = resumen_red.contenidos_tipo|filter(t => t.cantidad > 0)|map(t => t.etiqueta ~ ' ' ~ t.cantidad)|join(' · ') %}
@@ -193,8 +195,8 @@
                 <span class="spui-dash-kpi-cifra"><strong>{{ resumen_red.reglas_activas }}</strong> de {{ resumen_red.reglas }} {{ resumen_red.reglas == 1 ? 'regla activa' : 'reglas activas' }}</span>
                 <span class="spui-dash-kpi-barra" aria-hidden="true">
                     {% if resumen_red.reglas %}
-                        <span style="flex:{{ resumen_red.reglas_activas }};background:#1CA1A7"></span>
-                        <span style="flex:{{ resumen_red.reglas - resumen_red.reglas_activas }};background:#ced4da"></span>
+                        <span data-spui-sync="style" style="flex:{{ resumen_red.reglas_activas }};background:#1CA1A7"></span>
+                        <span data-spui-sync="style" style="flex:{{ resumen_red.reglas - resumen_red.reglas_activas }};background:#ced4da"></span>
                     {% endif %}
                 </span>
                 <span class="spui-dash-kpi-pie">
@@ -205,13 +207,13 @@
 
             {# Alertas: ¿hay una emergencia en curso? #}
             {% set en_curso = alertas_activas|length %}
-            <a href="{{ path('spui_cms_alertas_index') }}" class="unraf-card spui-dash-kpi{{ en_curso ? ' is-alerta' : '' }}" style="--kpi:{{ en_curso ? '#FF223D' : '#6c757d' }}">
+            <a href="{{ path('spui_cms_alertas_index') }}" class="unraf-card spui-dash-kpi{{ en_curso ? ' is-alerta' : '' }}" data-spui-sync="style" style="--kpi:{{ en_curso ? '#FF223D' : '#6c757d' }}">
                 <span class="spui-dash-kpi-cab"><span class="spui-dash-kpi-icono"><img src="{{ asset('unraf-ui/icons/warning.svg') }}" alt=""></span>Alertas</span>
                 <span class="spui-dash-kpi-cifra"><strong>{{ en_curso }}</strong> en curso · {{ resumen_red.alertas }} {{ resumen_red.alertas == 1 ? 'creada' : 'creadas' }}</span>
                 <span class="spui-dash-kpi-barra" aria-hidden="true">
                     {% if resumen_red.alertas %}
-                        <span style="flex:{{ en_curso }};background:#FF223D"></span>
-                        <span style="flex:{{ resumen_red.alertas - en_curso }};background:#ced4da"></span>
+                        <span data-spui-sync="style" style="flex:{{ en_curso }};background:#FF223D"></span>
+                        <span data-spui-sync="style" style="flex:{{ resumen_red.alertas - en_curso }};background:#ced4da"></span>
                     {% endif %}
                 </span>
                 <span class="spui-dash-kpi-pie">
@@ -239,7 +241,7 @@
                     <ul class="spui-dash-leyenda list-unstyled mb-0">
                         {% for clave, etiqueta in {conectado: 'Conectados', desconectado: 'Desconectados', sin_registrar: 'Sin registrar'} %}
                             <li>
-                                <button type="button" class="spui-dash-leyenda-btn" data-dash-estado="{{ clave }}" {{ conteo[clave] ? '' : 'disabled' }}>
+                                <button type="button" class="spui-dash-leyenda-btn" data-dash-estado="{{ clave }}" data-spui-sync="disabled" {{ conteo[clave] ? '' : 'disabled' }}>
                                     <span class="spui-dash-punto" style="background:{{ COLORES_ESTADO[clave] }}"></span>
                                     <span class="flex-grow-1 text-start">{{ etiqueta }}</span>
                                     <strong>{{ conteo[clave] }}</strong>
@@ -324,18 +326,18 @@
                                 <div class="spui-dash-metrica">
                                     <span>Temperatura</span>
                                     <strong class="{{ temp >= temp_umbral ? 'text-danger' : (temp >= temp_umbral * 0.85 ? 'text-warning' : '') }}">{{ temp|number_format(1, ',') }} °C</strong>
-                                    <div class="spui-dash-barra"><div style="width:{{ min(100, temp) }}%;background:{{ temp >= temp_umbral ? '#FF223D' : (temp >= temp_umbral * 0.85 ? '#C77F0A' : '#4A9930') }}"></div></div>
+                                    <div class="spui-dash-barra"><div data-spui-sync="style" style="width:{{ min(100, temp) }}%;background:{{ temp >= temp_umbral ? '#FF223D' : (temp >= temp_umbral * 0.85 ? '#C77F0A' : '#4A9930') }}"></div></div>
                                 </div>
                                 <div class="spui-dash-metrica">
                                     <span>RAM</span>
                                     <strong>{{ ram|number_format(1, ',') }} %</strong>
-                                    <div class="spui-dash-barra"><div style="width:{{ min(100, ram) }}%;background:{{ ram >= 90 ? '#FF223D' : (ram >= 75 ? '#C77F0A' : '#3387EF') }}"></div></div>
+                                    <div class="spui-dash-barra"><div data-spui-sync="style" style="width:{{ min(100, ram) }}%;background:{{ ram >= 90 ? '#FF223D' : (ram >= 75 ? '#C77F0A' : '#3387EF') }}"></div></div>
                                 </div>
                                 <div class="spui-dash-metrica">
                                     {% if disco_uso is not null %}
                                         <span>Disco</span>
                                         <strong>{{ disco_uso|number_format(0) }} % <small class="text-muted fw-normal">en uso</small></strong>
-                                        <div class="spui-dash-barra"><div style="width:{{ min(100, disco_uso) }}%;background:{{ disco_uso >= 90 ? '#FF223D' : (disco_uso >= 75 ? '#C77F0A' : '#7A5AF8') }}"></div></div>
+                                        <div class="spui-dash-barra"><div data-spui-sync="style" style="width:{{ min(100, disco_uso) }}%;background:{{ disco_uso >= 90 ? '#FF223D' : (disco_uso >= 75 ? '#C77F0A' : '#7A5AF8') }}"></div></div>
                                     {% else %}
                                         <span>Disco libre</span>
                                         <strong>{{ (tel.espacioDiscoLibreMb / 1024)|number_format(1, ',') }} GB</strong>

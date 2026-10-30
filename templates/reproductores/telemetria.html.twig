@@ -33,6 +33,10 @@
      data-umbral="{{ temp_umbral }}"
      data-vivo-seg="{{ vivo_seg }}"
      data-hostname="{{ reproductor.hostname }}"
+     {# Con el reproductor desconectado, el modo en vivo no le pide nada: espera
+        el aviso de que volvió (spui/cms/conexion/{id}, ConexionPublisherService). #}
+     data-conectado="{{ reproductor.estadoCalculado(spui_umbral_conexion).value == 'conectado' ? '1' : '0' }}"
+     data-mqtt-topic-conexion="{{ constant('SPUI\\Service\\ConexionPublisherService::TOPIC_BASE') ~ reproductor.id }}"
      {% if cfg_vivo %}
      data-mqtt-url="{{ cfg_vivo.url }}"
      data-mqtt-usuario="{{ cfg_vivo.usuario }}"

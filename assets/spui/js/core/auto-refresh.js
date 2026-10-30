@@ -182,6 +182,21 @@
             }
         }
 
+        // Atributos extra que el servidor decide y que hay que seguir, pedidos
+        // por el elemento en data-spui-sync="style disabled ...": el ancho de
+        // una barra, un botón que se habilita. No se sincronizan siempre
+        // porque JS también los toca en otros lados (animaciones, inputs).
+        var extra = (nuevo.getAttribute('data-spui-sync') || '').split(/\s+/);
+        for (var x = 0; x < extra.length; x++) {
+            var n = extra[x];
+            if (!n) continue;
+            if (nuevo.hasAttribute(n)) {
+                if (viejo.getAttribute(n) !== nuevo.getAttribute(n)) viejo.setAttribute(n, nuevo.getAttribute(n));
+            } else if (viejo.hasAttribute(n)) {
+                viejo.removeAttribute(n);
+            }
+        }
+
         var aSacar = [];
         for (var j = 0; j < viejo.attributes.length; j++) {
             var a = viejo.attributes[j];

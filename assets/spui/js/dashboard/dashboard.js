@@ -25,7 +25,7 @@
     var ETIQUETAS = { conectado: 'Conectados', desconectado: 'Desconectados', sin_registrar: 'Sin registrar' };
 
     var datos = null;
-    var dona = null, temp = null, vistaTemp = null, firmaTemp = null;
+    var dona = null, firmaDona = null, temp = null, vistaTemp = null, firmaTemp = null;
 
     function leerDatos() {
         var nodo = document.querySelector('[data-dash-datos]');
@@ -51,7 +51,14 @@
                 if (p.data && p.data.estado) { abrirGlobo(p.data.estado, p.event.event.clientX, p.event.event.clientY); }
             });
         }
+        // Sólo se redibuja si cambió algún número: cada refresco (20 s o un
+        // aviso MQTT) trae los mismos datos casi siempre, y redibujar con la
+        // animación de entrada hacía que la dona "se recargara" a cada rato.
         var e = datos.estado, vacio = e.total === 0;
+        var firma = [e.conectado, e.desconectado, e.sin_registrar].join('/');
+        if (!nueva && firma === firmaDona) { return; }
+        firmaDona = firma;
+        el.setAttribute('aria-label', e.conectado + ' conectados, ' + e.desconectado + ' desconectados, ' + e.sin_registrar + ' sin registrar');
         dona.setOption({
             animationDuration: 600,
             tooltip: {
