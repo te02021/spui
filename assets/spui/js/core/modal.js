@@ -873,9 +873,31 @@
                 b.insertBefore(img, b.firstChild);
             });
         }
+        // ── Acciones de cada fila dentro de un modal: sólo el ícono ──
+        // Un modal no ocupa toda la pantalla, así que las acciones de las filas
+        // (los ítems de un cronograma, la grilla de energía, el catálogo de una
+        // playlist) van como íconos cuadrados, y al pasar el mouse o llegar
+        // con el teclado aparece su nombre (CSS .spui-solo-icono, con
+        // data-spui-tip). El title nativo se saca: se verían los dos carteles.
+        // Si el botón está bloqueado, el cartel dice por qué.
+        var ACCIONES_DE_FILA = '.spui-acciones .unraf-btn, [data-spui-item-agregar], [data-spui-item-quitar]';
+        function soloIconos(raiz) {
+            raiz.querySelectorAll(ACCIONES_DE_FILA).forEach(function (b) {
+                if (b.classList.contains('spui-solo-icono') || !b.querySelector('img')) return;
+                var nombre = b.textContent.trim() || b.getAttribute('title') || '';
+                var titulo = b.getAttribute('title') || '';
+                b.classList.add('spui-solo-icono');
+                b.setAttribute('aria-label', nombre);
+                // Un title distinto del nombre es el motivo de un bloqueo:
+                // ése es el que hay que leer.
+                b.setAttribute('data-spui-tip', titulo && titulo !== nombre && titulo.length > nombre.length + 12 ? titulo : nombre);
+                b.removeAttribute('title');
+            });
+        }
+
         [bodyEl, bodyEl2].forEach(function (cuerpo) {
             if (!cuerpo || typeof MutationObserver === 'undefined') return;
-            new MutationObserver(function () { decorarBotones(cuerpo); })
+            new MutationObserver(function () { decorarBotones(cuerpo); soloIconos(cuerpo); })
                 .observe(cuerpo, { childList: true, subtree: true });
         });
 

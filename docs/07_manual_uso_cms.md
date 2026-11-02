@@ -230,6 +230,12 @@ Sus ítems se administran en una **ventana emergente**, como el resto del panel:
   - **Hora de inicio y fin**, y **estado**.
 - **Se guarda al guardarlo:** al terminar se cierra esa ventana y el listado se actualiza solo. Las pantallas que muestran el cronograma reciben el cambio en segundos.
 - Si alguna pantalla que lo muestra tiene su reproductor desconectado, las tres acciones quedan bloqueadas (ver 6); el listado se puede mirar igual.
+- **Buscar y filtrar:** arriba de la lista hay un buscador por materia, aula o docente (no importan tildes ni mayúsculas) y tres selectores que se combinan:
+  - **Día:** lo de ese día de la semana. Un evento especial aparece en el día en que cae su fecha.
+  - **Fecha:** lo que se da un día puntual: las clases de ese día de la semana y los eventos de esa fecha.
+  - **Hora:** lo que está en curso a esa hora.
+  - Cada opción dice cuántos ítems quedarían, y la lista dice "Mostrando N de M".
+  - Lo elegido se mantiene al volver de agregar o editar un ítem.
 
 La Pi recibe **solo los ítems del día actual**, ya filtrados: las clases por su día de la semana y los eventos por su fecha. Se ordenan por hora de inicio, igual que en el CMS.
 
@@ -421,6 +427,14 @@ Los datos se agrupan por hora: con una lectura por minuto, 7 días serían unos 
 **Filtros:** al lado del buscador (salvo en Playlists), un chip por grupo con la opción elegida y su cantidad (por defecto **Todos**); tocarlo abre las demás opciones, con su cantidad y una tilde en la elegida. Si hay un filtro puesto, el chip queda en azul. Cuando el buscador y los chips no entran en una fila, se centran. Edificios, Ubicaciones y Pantallas: activos / inactivos. Reproductores: conectados / desconectados / sin registrar (por la última señal, en el momento). Contenidos: disponibles / archivados y, aparte, un chip por tipo; los dos grupos se combinan. Programación y Alertas: activas / inactivas y, aparte, el orden por prioridad (mayor primero, por defecto, o menor primero); en Alertas, las activas van siempre arriba. El filtro va en la dirección (`?estado=activos`), así que se puede compartir o volver con "atrás".
 
 **Botones:** todos rellenos, cada acción con su color (Ver azul, Editar amarillo, Eliminar rojo, y el resto con uno propio); al pasar el mouse se oscurecen. Si no entran al lado de los datos de la tarjeta bajan a otro renglón, centrados.
+
+**Ventanas (modales):**
+
+- **Ancho:** todas las que muestran información (formularios, vistas, listas de ítems, importar) tienen el mismo ancho y aprovechan los costados. Las confirmaciones ("¿Eliminar…?") son angostas.
+- **Botones del pie:** Guardar y Cancelar llevan ícono y texto; el botón que confirma una acción lleva el mismo ícono que el que la abrió.
+- **Acciones de cada fila dentro de una ventana** (los ítems de un cronograma, la grilla de energía, el catálogo de una playlist): sólo el ícono; al pasar el mouse aparece su nombre, o por qué está bloqueada.
+- **En celular:** los botones son un poco más chicos y Guardar y Cancelar se reparten el ancho.
+- **Al elegir el tipo de un contenido nuevo,** sus campos aparecen desplegándose de a poco.
 
 **Encabezado:** a la derecha, el círculo con tus iniciales abre tu cuenta (nombre, email y **Volver a la Intranet**). El CMS no tiene cierre de sesión propio: la sesión es la de la Intranet.
 

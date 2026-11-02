@@ -160,16 +160,31 @@
             .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
             .then(function (d) {
                 if (cont._spuiPedido !== pedido) return;   // llegó tarde: hay uno más nuevo
+                var antes = cont.hidden ? 0 : cont.offsetHeight;
                 cont.innerHTML = d.html || '';
                 cont.hidden = !d.html;
                 if (form) archivoLocal(form, cont);
                 iniciar(cont);
+                crecerSuave(cont, antes);
             })
             .catch(function () {
                 if (cont._spuiPedido !== pedido) return;
                 cont.innerHTML = '<p class="spui-tv-leyenda">No se pudo armar la vista previa. Probá de nuevo en un momento.</p>';
             })
             .then(function () { cont.classList.remove('is-cargando'); });
+    }
+
+    // Cuando la vista aparece o cambia de alto (otro tipo de contenido), la
+    // caja pasa del alto anterior al nuevo de a poco, en vez de saltar.
+    function crecerSuave(cont, antes) {
+        var despues = cont.offsetHeight;
+        if (!cont.animate || Math.abs(despues - antes) < 4
+            || (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)) return;
+        cont.style.overflow = 'hidden';
+        cont.animate(
+            [{ height: antes + 'px', opacity: antes ? 1 : 0 }, { height: despues + 'px', opacity: 1 }],
+            { duration: 480, easing: 'cubic-bezier(.22, .61, .36, 1)' }
+        ).onfinish = function () { cont.style.overflow = ''; };
     }
 
     // Un archivo recién elegido todavía no está en el servidor: se muestra

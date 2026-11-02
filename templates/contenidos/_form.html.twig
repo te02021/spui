@@ -58,7 +58,7 @@
 
 {# data-spui-campo: los errores del archivo (del servidor y de validacion-vivo.js,
    que avisa apenas se elige uno demasiado pesado) van al final de este bloque. #}
-<div id="campoArchivo" class="mb-3" style="display:none" data-spui-campo>
+<div id="campoArchivo" class="mb-3" hidden data-spui-campo>
     <label class="unraf-form-label" for="archivoInput">Archivo <span class="text-danger">*</span></label>
     {# Formatos según el tipo elegido: content-type-fields.js toma de
        data-spui-formatos-por-tipo el accept, las extensiones que valida
@@ -71,13 +71,13 @@
     {% if err.archivo is defined %}<p class="spui-campo-error">{{ err.archivo }}</p>{% endif %}
 </div>
 
-<div id="campoTexto" class="mb-3" style="display:none">
+<div id="campoTexto" class="mb-3" hidden>
     <label class="unraf-form-label" id="labelTexto">Texto <span class="text-danger">*</span></label>
     <textarea name="contenido_texto" id="textareaTexto" class="unraf-form-control{{ err.contenido_texto is defined ? ' is-invalid' }}" rows="4" placeholder="Ingresá el texto a mostrar…">{{ contenido_texto|default('') }}</textarea>
     {% if err.contenido_texto is defined %}<p class="spui-campo-error">{{ err.contenido_texto }}</p>{% endif %}
 </div>
 
-<div id="campoCronograma" class="mb-3" style="display:none">
+<div id="campoCronograma" class="mb-3" hidden>
     <div class="p-3" style="background:#f0f7ff;border:1px solid #b8d4ec;border-radius:.5rem">
         <strong style="color:var(--unraf-azul)">Cronograma de actividades</strong><br>
         <small class="text-muted">Al guardar se abre el listado de ítems, donde se cargan los horarios, materias y eventos.</small>
@@ -86,7 +86,7 @@
 
 {# El código QR se carga acá mismo: no hay que crearlo antes en ningún otro
    lado. La etiqueta del código la toma del título del contenido. #}
-<div id="campoQr" style="display:none">
+<div id="campoQr" hidden>
     <div class="mb-3">
         <label class="unraf-form-label" for="qrUrlDestino">URL destino <span class="text-danger">*</span></label>
         <input type="url" name="qr_url_destino" id="qrUrlDestino" class="unraf-form-control{{ err.qr_url_destino is defined ? ' is-invalid' }}"

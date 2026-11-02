@@ -2441,10 +2441,14 @@ button[type="submit"].unraf-btn:not(.unraf-btn-sm),
    duración de un video): con la altura de un input, para que la fila de
    campos quede pareja. */
 .spui-campo-fijo {
-    display: flex; align-items: center; min-height: calc(1.5em + 1.2rem + 2px);
+    display: flex; align-items: center; min-height: 45px;
     padding: .3rem .75rem; border-radius: 4px; background: #f4f6f8; color: #2b3a4a;
     font-weight: 600; font-size: .95rem;
 }
+/* El título de un valor fijo es un <span> (no hay input al que apuntar): sin
+   esto le faltaba el margen de abajo de un <label> y la caja quedaba 8 px más
+   arriba que los inputs de al lado (alta de contenido, 02/11/2026). */
+span.unraf-form-label.d-block { margin-bottom: .5rem; }
 
 /* Semana de una regla de programación (desplegable del chip de días). */
 .spui-semana { display: grid; grid-template-columns: repeat(7, 2.4rem); gap: .3rem; list-style: none; margin: 0; padding: .25rem .4rem .4rem; }
@@ -2759,6 +2763,16 @@ html.spui-sidebar-plegado .spui-sidebar-plegar img { transform: rotate(180deg); 
 .spui-importar-evento-nombre span { font-size: .8rem; color: #6c7a89; }
 .spui-importar-evento .unraf-form-select { width: auto; min-width: 12rem; }
 
+/* Buscador y filtros de la ventana de ítems (cronograma-items.js). */
+.spui-items-filtros { margin-bottom: .5rem; }
+.spui-items-filtros .spui-selector-menu { min-width: 12rem; }
+.spui-items-fecha { display: flex; flex-direction: column; gap: .35rem; padding: .4rem; }
+.spui-items-vacio {
+    display: flex; flex-direction: column; align-items: center; gap: .35rem; padding: 2rem 1rem;
+    text-align: center; color: #6c7a89; border: 1px dashed #d6dde4; border-radius: 10px;
+}
+.spui-items-vacio strong { color: #2b3a4a; }
+
 /* Ítems de un cronograma que no son una clase (cronograma/_items). */
 .spui-item-tipo { display: inline-block; margin-left: .4rem; padding: .1rem .5rem; border-radius: 1rem; font-size: .72rem; font-weight: 700; vertical-align: .1rem; }
 .spui-item-tipo-actividad { background: #e7f6f6; color: #137277; }
@@ -2781,6 +2795,33 @@ html.spui-sidebar-plegado .spui-sidebar-plegar img { transform: rotate(180deg); 
 .spui-btn-back .spui-action-icon { opacity: .75; }
 .spui-btn-back:hover .spui-action-icon { filter: invert(1); opacity: 1; }
 .unraf-btn-institucion .spui-action-icon { filter: invert(1); }
+
+/* Acciones de cada fila dentro de un modal (modal.js, soloIconos): sólo el
+   ícono, en un cuadrado; el nombre aparece en un cartel arriba al pasar el
+   mouse o al llegar con el teclado. font-size 0 oculta el texto sin tocar el
+   ícono, y el texto sigue ahí para los lectores de pantalla (aria-label). */
+.spui-abm-modal-body .unraf-btn.spui-solo-icono,
+.spui-abm-modal-body .spui-acciones .unraf-btn.spui-solo-icono {
+    position: relative; font-size: 0; gap: 0; width: 34px; min-width: 34px; min-height: 34px; height: 34px; padding: 0;
+    display: inline-flex; align-items: center; justify-content: center;
+}
+.spui-solo-icono .spui-action-icon, .spui-solo-icono .unraf-icon-svg { width: 1.05rem; height: 1.05rem; }
+.spui-solo-icono:not(.spui-btn-submitting)::after {
+    content: attr(data-spui-tip);
+    position: absolute; bottom: calc(100% + 7px); left: 50%; z-index: 20;
+    width: max-content; max-width: 16rem; padding: .3rem .55rem; border-radius: 6px;
+    background: #24394f; color: #fff; font-size: .75rem; font-weight: 600; line-height: 1.3; text-align: center; white-space: normal;
+    box-shadow: 0 4px 12px rgba(20, 35, 55, .25);
+    opacity: 0; pointer-events: none; transform: translate(-50%, 3px); transition: opacity .12s ease, transform .12s ease;
+}
+.spui-solo-icono:not(.spui-btn-submitting):hover::after, .spui-solo-icono:not(.spui-btn-submitting):focus-visible::after { opacity: 1; transform: translate(-50%, 0); }
+/* La flechita del cartel. */
+.spui-solo-icono:not(.spui-btn-submitting)::before {
+    content: ''; position: absolute; bottom: calc(100% + 2px); left: 50%; z-index: 20;
+    border: 5px solid transparent; border-top-color: #24394f; transform: translateX(-50%);
+    opacity: 0; pointer-events: none; transition: opacity .12s ease;
+}
+.spui-solo-icono:not(.spui-btn-submitting):hover::before, .spui-solo-icono:not(.spui-btn-submitting):focus-visible::before { opacity: 1; }
 
 /* Vistas con una vista previa (Ver de una alerta o de un contenido): con el
    modal ancho, la previa a la izquierda y los datos a la derecha, en vez de
@@ -2832,14 +2873,6 @@ html.spui-sidebar-plegado .spui-sidebar-plegar img { transform: rotate(180deg); 
     /* El pie de un modal (Cancelar / Guardar, o Cancelar / la acción): los
        botones se reparten el ancho en partes iguales. */
     .spui-abm-modal-body .border-top.justify-content-end > .unraf-btn { flex: 1 1 0; }
-
-    /* Las acciones de cada fila dentro de un modal (ítems de un cronograma,
-       de una playlist…): sólo el ícono, cuadrado; el nombre queda en el
-       title/aria-label. font-size 0 oculta el texto sin tocar el ícono. */
-    .spui-abm-modal-body .spui-acciones .unraf-btn:has(.spui-action-icon) {
-        font-size: 0; gap: 0; width: 36px; min-height: 36px; padding: 0;
-    }
-    .spui-abm-modal-body .spui-acciones .unraf-btn:has(.spui-action-icon) .spui-action-icon { width: 1.05rem; height: 1.05rem; }
 
     /* Las acciones de la cabecera de una sección (Importar / Nuevo): una
        debajo de la otra, a todo el ancho. Lado a lado, "Importar cronograma"
