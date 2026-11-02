@@ -101,7 +101,17 @@ sudo "$INSTALL_DIR/venv/bin/pip" install --quiet -r "$(dirname "$0")/requirement
 # 3. Copiar cliente
 echo "[3/5] Copiando cliente a $INSTALL_DIR..."
 sudo mkdir -p "$INSTALL_DIR"
+# /opt/spui queda igual a lo que se copia: copiar encima dejaba los archivos
+# que ya no existen (pasó con spui/youtube.py, 02/11/2026). Se borra todo
+# menos el venv, que tarda en armarse y ya está al día del paso 2.
+case "$INSTALL_DIR" in
+    /opt/*) sudo find "$INSTALL_DIR" -mindepth 1 -maxdepth 1 ! -name venv -exec rm -rf {} + ;;
+esac
 sudo cp -r "$(dirname "$0")"/* "$INSTALL_DIR/"
+# Ni el caché de desarrollo de la PC (pi-client/cache, el de verdad está en
+# /var/cache/spui) ni el bytecode viejo: Python lo regenera.
+sudo rm -rf "$INSTALL_DIR/cache"
+sudo find "$INSTALL_DIR" -path "$INSTALL_DIR/venv" -prune -o -name __pycache__ -type d -exec rm -rf {} +
 sudo chown -R "$RUN_USER:$RUN_GROUP" "$INSTALL_DIR"
 
 # 4. Crear archivo de entorno

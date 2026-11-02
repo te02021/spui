@@ -557,7 +557,7 @@ chmod +x install.sh
 El script:
 1. Instala VLC, Python 3 y venv vía `apt`
 2. Crea el entorno virtual e instala `requirements.txt` (entre otros, `pygame-ce`: la ventana donde se dibujan las plantillas y el cronograma; trae su propio SDL2, no necesita nada de `apt`)
-3. Copia el cliente a `/opt/spui`
+3. Copia el cliente a `/opt/spui`, dejándolo igual a la carpeta copiada: borra lo que ya no existe (salvo el `venv`), el caché de desarrollo `cache/` y los `__pycache__`
 4. Crea `/etc/spui/spui.env` con placeholders
 5. Instala y habilita el servicio `spui.service`
 

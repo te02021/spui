@@ -36,3 +36,7 @@ docs/Plan de Proyecto - Rivero Mateo.docx
 
 # Bytecode de Python (el simulador y los tests lo generan al correr)
 __pycache__/
+
+# El Excel del cronograma (tiene nombres de docentes): se importa desde el CMS, no se versiona.
+docs/*.xlsx
+docs/~$*
