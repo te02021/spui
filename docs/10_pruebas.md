@@ -258,6 +258,60 @@ El último vector manda un mensaje sin `retain` con una marca propia. Si la ACL 
 
 **Necesita la pantalla.** El log muestra la decisión (`Fuera de horario: pantalla apagada, sin reproducir.`), pero el caso prueba el efecto: que el monitor o el TV se apague y vuelva. Se ejecuta con el monitor DDC/CI y después con el Smart TV (CEC), según `06` §7.
 
+### Complementaria R1 — Arranque con la hora atrasada y sin el CMS (por wifi o por cable)
+
+**Qué prueba** (resiliencia de noviembre 2026, `docs/06` §5 "La hora, el TV y los datos viejos"):
+
+- **Con la hora dudosa:** el cliente no apaga la pantalla por horario y muestra lo del caché.
+- **Al volver el CMS:** corrige la hora sin tocar el reloj del sistema.
+
+**Por qué así y no desenchufando.** Por wifi o por Tailscale, apagar la red deja sin SSH, y la Pi no vuelve sola. Esta prueba simula lo mismo sin perder la conexión:
+
+- **La hora vieja:** se le saca NTP al sistema y se lo atrasa dos días. Es lo que pasa al arrancar sin internet, porque la Pi no tiene reloj con pila.
+- **El CMS caído:** se bloquean sólo el CMS y el broker con `pruebas/red.sh`, igual que en CP05.
+- **El arranque:** se reinicia el servicio y no la Pi. Un reinicio de la Pi borraría el corte.
+
+**Antes:** que la playlist tenga un cronograma. Si se quiere probar también el horario energético, poné una regla para hoy que, con la hora atrasada, mande apagar.
+
+```bash
+# 1. Sin NTP y con la hora dos días atrás
+sudo timedatectl set-ntp false
+sudo date -s "$(date -d '-2 days' '+%Y-%m-%d %H:%M:%S')"
+
+# 2. Cortar el CMS y el broker (vuelve solo a los 10 minutos)
+source /opt/spui/pruebas/red.sh && cortar reject 600
+
+# 3. Arrancar el cliente de cero y mirar el log
+sudo systemctl restart spui
+journalctl -u spui -f
+```
+
+**Qué tiene que pasar:**
+
+- **Sin red:** el log dice `Usando caché de sync` y no aparece `Hora confirmada con el CMS`. La pantalla no se apaga aunque la regla lo mande.
+- **El cronograma:** se ve el del caché, con la fecha de dos días atrás en la cabecera. Es la limitación conocida: hasta que el CMS confirme la hora, la Pi no sabe qué día es.
+
+```bash
+# 4. Volver a dar el CMS (o esperar los 10 minutos)
+restaurar
+```
+
+**Después de restaurar:**
+
+- **El log:** en menos de un minuto aparecen `Sync OK`, `El reloj de la Pi difiere 2 días 0 h 0 min de la hora del CMS: se usa la del CMS.` y `Hora confirmada…`.
+- **El cronograma:** al volver a su primera página muestra el día correcto.
+- **El horario energético:** vuelve a regir.
+
+```bash
+# 5. Devolverle NTP al sistema (corrige su reloj solo)
+sudo timedatectl set-ntp true
+timedatectl   # "System clock synchronized: yes"
+```
+
+| Fecha | Sin red: pantalla encendida y caché | Al volver: hora del CMS y día correcto | Observaciones |
+|---|---|---|---|
+| | | | |
+
 ### CP11 y CP12 — Carga y alerta simultánea
 
 Los corre el simulador (`tools/simulador/simulador.py carga` y `alerta`), y cada corrida deja su informe en `pruebas/`.
