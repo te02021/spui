@@ -32,9 +32,10 @@
             <span class="spui-campo-fijo">{{ contenido.tipo.etiqueta }}</span>
         </div>
         <div class="col-6 col-md-3">
-            {% if contenido.esVideo %}
+            {% if contenido.esVideo or contenido.esCronograma %}
                 {# La duración de un video no se escribe: es la del archivo, que
-                   el CMS lee al subirlo (y de nuevo si se reemplaza). #}
+                   el CMS lee al subirlo (y de nuevo si se reemplaza). La de un
+                   cronograma, tampoco: la dan sus páginas. #}
                 <span class="unraf-form-label d-block">Duración</span>
                 <span class="spui-campo-fijo">{{ contenido.etiquetaDuracion }}</span>
             {% else %}
@@ -47,6 +48,8 @@
     <div class="mb-4">
         {% if contenido.esVideo %}
             <small class="text-muted d-block">La del archivo de video: la playlist lo muestra completo. Si reemplazás el archivo, se vuelve a leer.</small>
+        {% elseif contenido.esCronograma %}
+            <small class="text-muted d-block">Un cronograma dura lo que tardan en pasar sus páginas, que depende de cuántas actividades quedan en el día.</small>
         {% else %}
             <small class="text-muted d-block">{{ include('@SPUI/contenidos/_ayuda_duracion.html.twig') }}</small>
         {% endif %}
@@ -159,7 +162,8 @@
         </div>
 
     {% elseif contenido.tipo.value == 'cronograma' %}
-        <div class="mb-3">
+        {# Uno "del edificio de la pantalla" no tiene ítems propios. #}
+        <div class="mb-3" data-spui-si-origen="propio">
             <label class="unraf-form-label">Ítems del cronograma</label>
             <p class="text-muted small mb-2">
                 Las actividades se cargan en el listado de ítems del cronograma. Lo que no hayas
@@ -174,6 +178,8 @@
             </button>
         </div>
     {% endif %}
+
+    {{ include('@SPUI/contenidos/_presentacion.html.twig', {pv: presentacion, err: err, edificios: edificios, tipo_fijo: contenido.tipo.value}) }}
 
     <div class="d-flex justify-content-end gap-2 pt-3 border-top">
         <button type="button" class="unraf-btn spui-btn-back" data-spui-close>Cancelar</button>

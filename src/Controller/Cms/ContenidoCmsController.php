@@ -13,6 +13,7 @@ use Psr\Cache\CacheItemPoolInterface;
 use SPUI\Entity\CodigoQr;
 use SPUI\Entity\Contenido;
 use SPUI\Enum\EstadoContenido;
+use SPUI\Enum\OrigenCronograma;
 use SPUI\Enum\TipoContenido;
 use SPUI\Form\ContenidoType;
 use SPUI\Repository\ContenidoRepository;
@@ -22,6 +23,7 @@ use SPUI\Service\ContenidoQrService;
 use SPUI\Service\ImagenNormalizerService;
 use SPUI\Service\MediaStorageService;
 use SPUI\Service\MqttSecurityService;
+use SPUI\Service\PresentacionContenidoService;
 use SPUI\Service\QrEscaneoPublisherService;
 use SPUI\Service\QrGeneratorService;
 use SPUI\Service\UsuarioResolverService;
@@ -58,6 +60,7 @@ class ContenidoCmsController extends AbstractController
         private readonly UsuarioResolverService $usuarios,
         private readonly VideoInspectorService $videos,
         private readonly ImagenNormalizerService $imagenes,
+        private readonly PresentacionContenidoService $presentacion,
     ) {}
 
     private function em()
@@ -269,6 +272,8 @@ class ContenidoCmsController extends AbstractController
             'qr_url_destino'    => $request->request->get('qr_url_destino'),
             'qr_expira_en'      => $request->request->get('qr_expira_en'),
             'contenido_texto'   => $request->request->get('contenido_texto'),
+            'presentacion'      => $this->presentacion->valores(null, $request),
+            'edificios'         => $this->presentacion->edificios(),
         ]);
     }
 
@@ -278,12 +283,15 @@ class ContenidoCmsController extends AbstractController
      * @param array<string, string> $errores name del campo → mensaje; cada uno
      *        se muestra debajo de su input.
      */
-    private function vistaEdicion(Contenido $c, array $errores = []): string
+    private function vistaEdicion(Contenido $c, array $errores = [], ?Request $request = null): string
     {
         return $this->renderView('@SPUI/contenidos/_edit_form.html.twig', [
             'contenido'         => $c,
             'errores'           => $errores,
             'max_bytes_archivo' => $this->limiteArchivoBytes(MediaStorageService::TAMANIO_MAXIMO),
+            // Con el request, lo recién enviado (al volver por un error).
+            'presentacion'      => $this->presentacion->valores($c, $request),
+            'edificios'         => $this->presentacion->edificios(),
         ]);
     }
 
@@ -295,7 +303,7 @@ class ContenidoCmsController extends AbstractController
     private function errorEdicion(Request $request, Contenido $c, string $campo, string $mensaje): Response
     {
         if ($request->isXmlHttpRequest()) {
-            return $this->json(['success' => false, 'html' => $this->vistaEdicion($c, [$campo => $mensaje])]);
+            return $this->json(['success' => false, 'html' => $this->vistaEdicion($c, [$campo => $mensaje], $request)]);
         }
 
         $this->addFlash('error', $mensaje);
@@ -468,10 +476,15 @@ class ContenidoCmsController extends AbstractController
                 $contenido->setContenidoTexto($texto);
             }
 
+            if ($errPres = $this->presentacion->aplicar($contenido, $request)) {
+                return $this->errorAlta($request, $form, $errPres[0], $errPres[1]);
+            }
+
             $this->em()->persist($contenido);
             $this->em()->flush();
 
-            if ($tipo === TipoContenido::Cronograma) {
+            // Uno "del edificio de la pantalla" no tiene ítems que cargar.
+            if ($tipo === TipoContenido::Cronograma && $contenido->getCronogramaOrigen() === OrigenCronograma::Propio) {
                 // Recién creado está vacío: se sigue directo en el listado de
                 // sus ítems, en el mismo modal (modal.js, data.abrir).
                 $msg = 'Cronograma "' . $contenido->getTitulo() . '" creado. Ahora agregá los ítems.';
@@ -573,6 +586,10 @@ class ContenidoCmsController extends AbstractController
                     // queda sin ningún archivo.
                     $this->media->borrar($this->guardarArchivo($preparado, $c));
                 }
+            }
+
+            if ($errPres = $this->presentacion->aplicar($c, $request)) {
+                return $this->errorEdicion($request, $c, $errPres[0], $errPres[1]);
             }
 
             $this->em()->flush();

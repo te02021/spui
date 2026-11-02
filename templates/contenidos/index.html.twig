@@ -76,10 +76,11 @@
                 <img src="{{ asset('unraf-ui/icons/pencil.svg') }}" class="spui-action-icon" alt=""> Editar
             </button>
 
-            {% if c.tipo.value == 'cronograma' %}
+            {% if c.tieneItemsPropios %}
                 {# Abre el listado de ítems en un modal (agregar/editar/eliminar
                    encima). Se puede abrir siempre: lo que se bloquea con un
-                   reproductor caído son las acciones de adentro. #}
+                   reproductor caído son las acciones de adentro. Uno "del
+                   edificio de la pantalla" no tiene ítems propios. #}
                 <button type="button" class="unraf-btn spui-btn-items unraf-btn-sm"
                         data-spui-form="{{ path('spui_cms_cronograma_items', {id: c.id}) }}"
                         data-spui-title="Ítems de «{{ c.titulo }}»"

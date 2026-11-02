@@ -9,6 +9,9 @@ use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 use SPUI\Enum\EstadoContenido;
+use SPUI\Enum\OrigenCronograma;
+use SPUI\Enum\PlantillaPantalla;
+use SPUI\Enum\TemaPantalla;
 use SPUI\Enum\TipoContenido;
 use SPUI\Repository\ContenidoRepository;
 
@@ -56,6 +59,43 @@ class Contenido
 
     #[ORM\Column(enumType: EstadoContenido::class)]
     private EstadoContenido $estado = EstadoContenido::Disponible;
+
+    // ── Presentación en el TV (noviembre 2026) ─────────────────────────────
+    // Al crear un contenido el CMS pone la plantilla que corresponde a su
+    // tipo (PlantillaPantalla::porDefecto); este default sólo cubre la tabla.
+
+    #[ORM\Column(length: 20, enumType: PlantillaPantalla::class, options: ['default' => 'institucional'])]
+    private PlantillaPantalla $plantilla = PlantillaPantalla::Institucional;
+
+    #[ORM\Column(length: 20, enumType: TemaPantalla::class, options: ['default' => 'automatico'])]
+    private TemaPantalla $tema = TemaPantalla::Automatico;
+
+    /** El molino chico en una esquina. Sólo se usa sin plantilla: la institucional ya lleva el logo. */
+    #[ORM\Column(options: ['default' => false])]
+    private bool $marcaAgua = false;
+
+    // ── Sólo cronogramas ───────────────────────────────────────────────────
+
+    #[ORM\Column(length: 20, nullable: true, enumType: OrigenCronograma::class)]
+    private ?OrigenCronograma $cronogramaOrigen = null;
+
+    /**
+     * A qué edificio pertenece un cronograma propio. Opcional: hace falta para
+     * que lo encuentren los cronogramas "del edificio de la pantalla".
+     */
+    #[ORM\ManyToOne(targetEntity: Edificio::class)]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    private ?Edificio $cronogramaEdificio = null;
+
+    #[ORM\Column(type: 'date_immutable', nullable: true)]
+    private ?DateTimeImmutable $vigenciaDesde = null;
+
+    #[ORM\Column(type: 'date_immutable', nullable: true)]
+    private ?DateTimeImmutable $vigenciaHasta = null;
+
+    /** Cuánto queda cada página de la tabla antes de deslizarse a la siguiente. */
+    #[ORM\Column(type: 'smallint', nullable: true, options: ['unsigned' => true])]
+    private ?int $segundosPorPagina = null;
 
     /** Referencia cross-DB a Intranet.user — sin FK Doctrine */
     #[ORM\Column(type: 'integer', options: ['unsigned' => true])]
@@ -118,6 +158,11 @@ class Contenido
     /** La duración propia del contenido, para listados y para el catálogo de la playlist. */
     public function etiquetaDuracion(): string
     {
+        // Un cronograma dura lo que tardan en pasar sus páginas, y eso lo
+        // sabe la Pi (depende de cuántas actividades quedan en el día).
+        if ($this->esCronograma()) {
+            return 'Según sus páginas';
+        }
         if ($this->duracionSegundos !== null) {
             return self::duracionLegible($this->duracionSegundos);
         }
@@ -130,6 +175,49 @@ class Contenido
     public function esVideo(): bool
     {
         return $this->tipo === TipoContenido::Video;
+    }
+
+    public function esCronograma(): bool
+    {
+        return $this->tipo === TipoContenido::Cronograma;
+    }
+
+    /** Un cronograma con clases cargadas (no uno "del edificio de la pantalla"). */
+    public function tieneItemsPropios(): bool
+    {
+        return $this->esCronograma() && $this->cronogramaOrigen !== OrigenCronograma::Edificio;
+    }
+
+    public function getPlantilla(): PlantillaPantalla { return $this->plantilla; }
+    public function setPlantilla(PlantillaPantalla $plantilla): static { $this->plantilla = $plantilla; return $this; }
+
+    public function getTema(): TemaPantalla { return $this->tema; }
+    public function setTema(TemaPantalla $tema): static { $this->tema = $tema; return $this; }
+
+    public function isMarcaAgua(): bool { return $this->marcaAgua; }
+    public function setMarcaAgua(bool $marcaAgua): static { $this->marcaAgua = $marcaAgua; return $this; }
+
+    public function getCronogramaOrigen(): ?OrigenCronograma { return $this->cronogramaOrigen; }
+    public function setCronogramaOrigen(?OrigenCronograma $origen): static { $this->cronogramaOrigen = $origen; return $this; }
+
+    public function getCronogramaEdificio(): ?Edificio { return $this->cronogramaEdificio; }
+    public function setCronogramaEdificio(?Edificio $edificio): static { $this->cronogramaEdificio = $edificio; return $this; }
+
+    public function getVigenciaDesde(): ?DateTimeImmutable { return $this->vigenciaDesde; }
+    public function setVigenciaDesde(?DateTimeImmutable $d): static { $this->vigenciaDesde = $d; return $this; }
+
+    public function getVigenciaHasta(): ?DateTimeImmutable { return $this->vigenciaHasta; }
+    public function setVigenciaHasta(?DateTimeImmutable $d): static { $this->vigenciaHasta = $d; return $this; }
+
+    public function getSegundosPorPagina(): ?int { return $this->segundosPorPagina; }
+    public function setSegundosPorPagina(?int $s): static { $this->segundosPorPagina = $s; return $this; }
+
+    /** Si el cronograma rige en esa fecha (sin vigencia cargada, siempre). */
+    public function vigenteEl(DateTimeImmutable $dia): bool
+    {
+        $d = $dia->format('Y-m-d');
+        return ($this->vigenciaDesde === null || $this->vigenciaDesde->format('Y-m-d') <= $d)
+            && ($this->vigenciaHasta === null || $this->vigenciaHasta->format('Y-m-d') >= $d);
     }
 
     public function getHashArchivo(): ?string { return $this->hashArchivo; }

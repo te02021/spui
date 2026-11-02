@@ -81,6 +81,14 @@ parameters:
     # Ver SPUI\Service\MediaStorageService.
     spui_storage_driver_default: 's3'
 
+    # Tema "Automático" de las plantillas de pantalla (noviembre 2026): claro
+    # de día, oscuro a la noche. Horas locales (SPUI_TIMEZONE), "HH:MM".
+    # Decisión de Mateo: el cambio a oscuro, a las 19 h. Lo lee el CMS para la
+    # vista previa y se le manda a la Pi en el sync.
+    # Se pueden pisar por entorno con SPUI_TEMA_CLARO_DESDE / SPUI_TEMA_OSCURO_DESDE.
+    spui_tema_claro_desde_default: '07:00'
+    spui_tema_oscuro_desde_default: '19:00'
+
 services:
     _defaults:
         autowire: true

@@ -48,8 +48,8 @@ $tipos = [
         ['titulo' => 'T', 'mensaje' => 'M', 'prioridad' => '10']],
     'Contenido'      => [F\ContenidoType::class, fn() => new E\Contenido(),
         ['titulo' => 'T', 'tipo' => 'texto', 'duracionSegundos' => '10']],
-    'CronogramaItem' => [F\CronogramaItemType::class, fn() => new E\CronogramaItem(),
-        ['nombre' => 'N', 'horaInicio' => '08:00', 'horaFin' => '09:00', 'diasSemana' => ['0'], 'orden' => '1']],
+    // El ítem del cronograma ya no tiene FormType (02/11/2026): es un
+    // formulario manual que valida CronogramaCmsController::validarItem().
     'Edificio'       => [F\EdificioType::class, fn() => new E\Edificio(), ['nombre' => 'E']],
     'Pantalla'       => [F\PantallaType::class, fn() => new E\Pantalla(),
         ['nombre' => 'P', 'ubicacion' => $id(E\Ubicacion::class)]],

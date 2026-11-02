@@ -1,23 +1,70 @@
 // Muestra/oculta campos del form de contenido según el tipo seleccionado.
-// Cubre la página `contenidos/new` y el modal `contenidos/_form` (con cronograma).
+// Cubre el alta (contenidos/_form, el tipo sale del <select>) y la edición
+// (contenidos/_edit_form, el tipo es fijo y viene en data-spui-tipo-fijo).
+//
+// Desde noviembre 2026 también maneja la parte "Cómo se ve en pantalla"
+// (contenidos/_presentacion), con atributos genéricos:
+//   data-spui-solo-tipos="a b"   visible sólo con esos tipos de contenido
+//   data-spui-si-plantilla="x"   visible sólo con esa plantilla elegida
+//   data-spui-si-origen="x"      visible sólo con ese origen de cronograma
+// y, en el ítem de un cronograma, data-spui-si-tipo-item (días o fecha).
 (function () {
     // El select lo renderiza Symfony con su propio id (contenido_tipo), así que
     // el gancho estable es el data-* que declara ContenidoType.
     var SELECTOR_TIPO = '[data-spui-tipo-contenido]';
 
-    function actualizarCampos() {
-        var tipoSelect = document.querySelector(SELECTOR_TIPO);
-        if (!tipoSelect) return;
+    // La plantilla con la que arranca cada tipo (PlantillaPantalla::porDefecto).
+    var PLANTILLA_POR_TIPO = { imagen: 'ninguna', video: 'ninguna' };
 
-        var tipo            = tipoSelect.value;
-        var campoArchivo    = document.getElementById('campoArchivo');
-        var campoTexto      = document.getElementById('campoTexto');
-        var campoCronograma = document.getElementById('campoCronograma');
-        var campoQr         = document.getElementById('campoQr');
-        var labelTexto      = document.getElementById('labelTexto');
-        var textarea        = document.getElementById('textareaTexto');
-        var archivoInput    = document.getElementById('archivoInput');
-        var qrUrl           = document.getElementById('qrUrlDestino');
+    function tipoDe(form) {
+        var select = form.querySelector(SELECTOR_TIPO);
+        if (select) return select.value;
+        var fijo = form.querySelector('[data-spui-tipo-fijo]');
+        return fijo ? fijo.getAttribute('data-spui-tipo-fijo') : '';
+    }
+
+    function elegido(form, name) {
+        var r = form.querySelector('input[name="' + name + '"]:checked');
+        return r ? r.value : '';
+    }
+
+    function alternar(form, atributo, valor) {
+        form.querySelectorAll('[' + atributo + ']').forEach(function (el) {
+            el.hidden = el.getAttribute(atributo).split(' ').indexOf(valor) === -1;
+        });
+    }
+
+    // Al cambiar de tipo en el alta, la plantilla pasa a la de ese tipo,
+    // salvo que la persona ya haya elegido una a mano.
+    function plantillaPorDefecto(form, tipo) {
+        var radios = form.querySelectorAll('input[name="plantilla"]');
+        if (!radios.length || form.dataset.spuiPlantillaElegida === '1') return;
+        var valor = PLANTILLA_POR_TIPO[tipo] || 'institucional';
+        radios.forEach(function (r) { r.checked = r.value === valor; });
+    }
+
+    function actualizarPresentacion(form, tipo) {
+        alternar(form, 'data-spui-solo-tipos', tipo);
+        // Un video va siempre sin plantilla (y así lo manda el servidor).
+        alternar(form, 'data-spui-si-plantilla', tipo === 'video' ? 'ninguna' : elegido(form, 'plantilla'));
+        alternar(form, 'data-spui-si-origen', elegido(form, 'cronograma_origen') || 'propio');
+    }
+
+    function actualizarCampos(form) {
+        var tipo = tipoDe(form);
+        if (form.querySelector(SELECTOR_TIPO)) actualizarAlta(form, tipo);
+        actualizarPresentacion(form, tipo);
+    }
+
+    function actualizarAlta(form, tipo) {
+        var campoArchivo    = form.querySelector('#campoArchivo');
+        var campoTexto      = form.querySelector('#campoTexto');
+        var campoCronograma = form.querySelector('#campoCronograma');
+        var campoQr         = form.querySelector('#campoQr');
+        var labelTexto      = form.querySelector('#labelTexto');
+        var textarea        = form.querySelector('#textareaTexto');
+        var archivoInput    = form.querySelector('#archivoInput');
+        var qrUrl           = form.querySelector('#qrUrlDestino');
 
         var esArchivo    = tipo === 'imagen' || tipo === 'video';
         // El QR no se carga como texto: se cargan acá mismo el destino y el
@@ -32,17 +79,21 @@
         if (campoCronograma) campoCronograma.style.display = esCronograma ? '' : 'none';
         if (campoQr)         campoQr.style.display         = esQr         ? '' : 'none';
 
-        // Un video dura lo que dura su archivo (lo lee el CMS al guardar): no
-        // se pide la duración, se explica de dónde sale.
-        var campoDuracion = document.getElementById('campoDuracion');
-        var notaVideo     = document.getElementById('notaDuracionVideo');
-        if (campoDuracion) campoDuracion.hidden = tipo === 'video';
+        // Un video dura lo que dura su archivo (lo lee el CMS al guardar) y un
+        // cronograma lo que tardan sus páginas (lo calcula la Pi): en los dos
+        // no se pide la duración, se explica de dónde sale.
+        var fija = { video: 'Video', cronograma: 'Cronograma' }[tipo];
+        var campoDuracion = form.querySelector('#campoDuracion');
+        if (campoDuracion) campoDuracion.hidden = !!fija;
+        ['Video', 'Cronograma'].forEach(function (t) {
+            var nota = form.querySelector('#notaDuracion' + t);
+            var ayudaTipo = form.querySelector('#ayudaDuracion' + t);
+            if (nota) nota.hidden = fija !== t;
+            if (ayudaTipo) ayudaTipo.hidden = fija !== t;
+        });
         // Las ayudas van debajo de la fila título/tipo/duración (30/10/2026).
-        var ayuda = document.getElementById('ayudaDuracion');
-        var ayudaVideo = document.getElementById('ayudaDuracionVideo');
-        if (ayuda) ayuda.hidden = tipo === 'video';
-        if (ayudaVideo) ayudaVideo.hidden = tipo !== 'video';
-        if (notaVideo)     notaVideo.hidden     = tipo !== 'video';
+        var ayuda = form.querySelector('#ayudaDuracion');
+        if (ayuda) ayuda.hidden = !!fija;
         if (archivoInput)    archivoInput.required = esArchivo;
         if (textarea)        textarea.required     = esTexto;
         if (qrUrl)           qrUrl.required        = esQr;
@@ -58,8 +109,8 @@
                 archivoInput.accept = f.accept;
                 archivoInput.dataset.spuiFormatos = f.extensiones;
                 archivoInput.dataset.spuiFormatosTexto = f.texto;
-                var ayuda = document.getElementById('archivoAyuda');
-                if (ayuda) ayuda.textContent = (tipo === 'imagen' ? 'Imágenes' : 'Videos') + ': ' + f.texto + '.';
+                var ayudaArchivo = form.querySelector('#archivoAyuda');
+                if (ayudaArchivo) ayudaArchivo.textContent = (tipo === 'imagen' ? 'Imágenes' : 'Videos') + ': ' + f.texto + '.';
                 // Si ya había un archivo elegido (de otro tipo), revisarlo de nuevo.
                 if (archivoInput.files && archivoInput.files.length) {
                     archivoInput.dispatchEvent(new Event('change', { bubbles: true }));
@@ -72,12 +123,37 @@
         }
     }
 
-    // Estado inicial: al cargar la página y tras inyectar el form en el modal.
-    document.addEventListener('DOMContentLoaded', actualizarCampos);
-    document.addEventListener('spui:modal:loaded', actualizarCampos);
+    // Ítem de un cronograma (cronograma/_item_form): días de la semana para
+    // una clase o actividad, fecha para un evento especial.
+    function actualizarItem(form) {
+        alternar(form, 'data-spui-si-tipo-item', elegido(form, 'tipo_item') || 'clase');
+    }
 
-    // Cambios por interacción (delegación; cubre el select inyectado en el modal).
+    // Estado inicial: al cargar la página y tras inyectar el form en el modal.
+    function inicializar() {
+        document.querySelectorAll('form[data-spui-item-cronograma]').forEach(actualizarItem);
+        document.querySelectorAll('form').forEach(function (form) {
+            if (!form.querySelector(SELECTOR_TIPO + ', [data-spui-tipo-fijo]')) return;
+            // Un alta sin plantilla todavía (recién abierta) toma la del tipo.
+            if (!elegido(form, 'plantilla')) plantillaPorDefecto(form, tipoDe(form));
+            actualizarCampos(form);
+        });
+    }
+    document.addEventListener('DOMContentLoaded', inicializar);
+    document.addEventListener('spui:modal:loaded', inicializar);
+
+    // Cambios por interacción (delegación; cubre el form inyectado en el modal).
     document.addEventListener('change', function (e) {
-        if (e.target && e.target.matches && e.target.matches(SELECTOR_TIPO)) actualizarCampos();
+        var t = e.target;
+        if (!t || !t.form) return;
+        if (t.matches(SELECTOR_TIPO)) {
+            plantillaPorDefecto(t.form, t.value);
+            actualizarCampos(t.form);
+        } else if (t.name === 'tipo_item') {
+            actualizarItem(t.form);
+        } else if (t.name === 'plantilla' || t.name === 'cronograma_origen') {
+            if (t.name === 'plantilla') t.form.dataset.spuiPlantillaElegida = '1';
+            actualizarCampos(t.form);
+        }
     });
 }());

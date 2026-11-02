@@ -316,8 +316,7 @@ class SyncController extends AbstractController
 
         $cronogramaItems = null;
         if ($c->getTipo() === TipoContenido::Cronograma) {
-            $bit  = (int)(new DateTimeImmutable())->format('N') - 1; // 0=Lun … 6=Dom
-            $mask = 1 << $bit;
+            // Los del día: clases por día de la semana, eventos por su fecha.
             $cronogramaItems = array_values(array_map(
                 fn(CronogramaItem $ci) => [
                     'nombre'      => $ci->getNombre(),
@@ -327,7 +326,7 @@ class SyncController extends AbstractController
                 ],
                 array_filter(
                     $this->cronogramaItemRepo->findByContenidoOrdenado($c),
-                    fn(CronogramaItem $ci) => (bool)($ci->getDiasSemana() & $mask),
+                    fn(CronogramaItem $ci) => $ci->aplicaHoy(),
                 ),
             ));
         }

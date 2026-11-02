@@ -2664,3 +2664,43 @@ html.spui-sidebar-plegado .spui-sidebar-plegar img { transform: rotate(180deg); 
     .spui-header-titulo small, .spui-header-divisor { display: none; }
     .spui-header-logo { height: 30px; }
 }
+
+/* ============================================================================
+   "Cómo se ve en pantalla" del formulario de contenidos (02/11/2026,
+   contenidos/_presentacion.html.twig): plantilla, tema y datos del cronograma.
+   ========================================================================== */
+.spui-presentacion {
+    border: 1px solid #e3e8ee; border-radius: 10px; padding: 1rem 1rem 1.1rem; background: #fafbfc;
+}
+/* El float del reboot de Bootstrap (y el clear de lo que sigue) es lo que
+   saca a la leyenda del borde y la deja adentro del recuadro. */
+.spui-presentacion-titulo {
+    float: left; width: 100%; margin: 0 0 .75rem; padding: 0;
+    font-size: .78rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #6c7a89;
+}
+.spui-presentacion-crono { padding-top: 1rem; border-top: 1px solid #e3e8ee; }
+
+/* Opciones excluyentes como un control segmentado: radios reales (teclado y
+   lectores de pantalla), con la etiqueta como botón. */
+.spui-opciones { display: inline-flex; flex-wrap: wrap; border: 1px solid #cfd8e1; border-radius: 8px; overflow: hidden; background: #fff; max-width: 100%; }
+.spui-opcion-input { position: absolute; opacity: 0; width: 1px; height: 1px; pointer-events: none; }
+.spui-opcion {
+    margin: 0; padding: .45rem .9rem; font-size: .9rem; font-weight: 600; color: #2b3a4a; cursor: pointer;
+    border-left: 1px solid #cfd8e1; transition: background-color .15s ease, color .15s ease; user-select: none;
+}
+.spui-opcion-input:first-child + .spui-opcion { border-left: 0; }
+.spui-opcion:hover { background: #f1f5f9; }
+.spui-opcion-input:checked + .spui-opcion { background: var(--unraf-azul); color: #fff; }
+.spui-opcion-input:focus-visible + .spui-opcion { outline: 3px solid rgba(51, 135, 239, .45); outline-offset: -3px; }
+
+/* Ítems de un cronograma que no son una clase (cronograma/_items). */
+.spui-item-tipo { display: inline-block; margin-left: .4rem; padding: .1rem .5rem; border-radius: 1rem; font-size: .72rem; font-weight: 700; vertical-align: .1rem; }
+.spui-item-tipo-actividad { background: #e7f6f6; color: #137277; }
+.spui-item-tipo-evento { background: #fff1d6; color: #8a5a00; }
+.spui-fecha-badge { display: inline-block; padding: .2rem .6rem; border-radius: 1rem; background: #446687; color: #fff; font-size: .78rem; font-weight: 700; white-space: nowrap; }
+
+@media (max-width: 576px) {
+    /* En celular las opciones se reparten el ancho en vez de cortarse. */
+    .spui-opciones { display: flex; }
+    .spui-opcion { flex: 1 1 auto; text-align: center; padding: .5rem .5rem; }
+}

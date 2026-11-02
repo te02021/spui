@@ -44,11 +44,16 @@
             <span class="unraf-form-label d-block">Duración</span>
             <span class="spui-campo-fijo">La del archivo</span>
         </div>
+        <div id="notaDuracionCronograma" hidden>
+            <span class="unraf-form-label d-block">Duración</span>
+            <span class="spui-campo-fijo">Según sus páginas</span>
+        </div>
     </div>
 </div>
 <div class="mb-3">
     <small class="text-muted d-block" id="ayudaDuracion">{{ include('@SPUI/contenidos/_ayuda_duracion.html.twig') }}</small>
     <small class="text-muted d-block" id="ayudaDuracionVideo" hidden>Un video dura lo que dura el archivo: el CMS la lee al guardarlo y la playlist lo muestra completo.</small>
+    <small class="text-muted d-block" id="ayudaDuracionCronograma" hidden>Un cronograma dura lo que tardan en pasar sus páginas, que depende de cuántas actividades quedan en el día.</small>
 </div>
 
 {# data-spui-campo: los errores del archivo (del servidor y de validacion-vivo.js,
@@ -100,6 +105,11 @@
         {% if err.qr_expira_en is defined %}<p class="spui-campo-error">{{ err.qr_expira_en }}</p>{% endif %}
         <small class="text-muted d-block mt-1">Pasada esa fecha el código deja de redirigir. Vacío = sin vencimiento.</small>
     </div>
+</div>
+
+{# Hasta elegir un tipo no hay nada que presentar. #}
+<div data-spui-solo-tipos="texto imagen video qr cronograma" hidden>
+    {{ include('@SPUI/contenidos/_presentacion.html.twig', {pv: presentacion, err: err, edificios: edificios}) }}
 </div>
 
 <div class="d-flex justify-content-end gap-2 pt-3 border-top">

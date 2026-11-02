@@ -71,7 +71,7 @@ Cadena: `Edificio → Ubicacion → Pantalla → Reproductor`.
 | Entidad | Qué representa |
 |---|---|
 | **Contenido** | Una pieza a mostrar. Cinco tipos: `texto`, `imagen`, `video`, `qr`, `cronograma` (hubo un `youtube` hasta el 28/10/2026, ver §5) |
-| **CronogramaItem** | Las filas de un contenido tipo cronograma (materia, aula, horario, días) |
+| **CronogramaItem** | Las filas de un contenido tipo cronograma: clase, actividad o evento especial (materia, aula, carrera, año, docente, horario y días de la semana, o la fecha si es un evento) |
 | **CodigoQr** | Un QR dinámico con URL destino, vencimiento y contador de escaneos. Pertenece al `Contenido` de tipo `qr` que lo muestra: se crea, se edita y se borra desde ahí, no desde una sección propia |
 | **Playlist** | Una lista ordenada de contenidos |
 | **PlaylistItem** | Una aparición de un contenido dentro de una playlist, con su orden. Un mismo contenido puede tener varias en la misma playlist (más frecuencia en el loop). La duración no es del ítem: la define el contenido, igual en todas las playlists. Lo que sí depende de la playlist es qué pasa con un contenido sin duración, y lo resuelve `PlaylistItem::getDuracionEfectiva()` (ver §5) |

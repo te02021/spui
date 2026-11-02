@@ -146,6 +146,21 @@ Además se define **título** y **duración en segundos**:
 
 - **Vacío = permanente:** si es el único contenido de la playlist queda fijo; si comparte playlist, se muestra 10 segundos.
 - **Un video no pide duración:** dura lo que dura el archivo. El CMS la lee al guardarlo y la muestra al editarlo; la playlist lo muestra completo.
+- **Un cronograma tampoco:** dura lo que tardan en pasar sus páginas (ver §3.2).
+
+**Cómo se ve en pantalla** (desde noviembre 2026), en el mismo formulario de alta y de edición:
+
+- **Plantilla:**
+  - **Institucional:** arriba una franja blanca con el logo de la UNRaf y la fecha; abajo, el nombre del sistema y el lugar. El contenido ocupa el resto.
+  - **Sin plantilla:** el contenido de borde a borde.
+  - Al elegir el tipo se propone la que corresponde: institucional para texto, QR y cronograma; sin plantilla para imagen y video. Se puede cambiar.
+  - **Un video va siempre sin plantilla:** ocupa toda la pantalla.
+- **Tema:**
+  - **Claro** u **Oscuro**.
+  - **Automático** (el que viene elegido): claro de 07:00 a 19:00 y oscuro el resto del día.
+- **Marca de agua:** sólo sin plantilla. Muestra el molino de la UNRaf chico en una esquina.
+
+El modal **Ver** del contenido muestra lo elegido.
 
 **Estados:** sólo dos.
 
@@ -164,12 +179,39 @@ Hasta el 29/10/2026 había además **Borrador** y **Publicar/Despublicar**: un c
 
 ### 3.2 Cronogramas
 
-Un contenido tipo cronograma es una tabla de horarios (materias, aulas). Sus ítems se administran en una **ventana emergente**, como el resto del panel: se abre con el botón **Ítems** del listado de Contenidos, con **Ver ítems** desde el detalle o la edición del contenido, y sola apenas se crea un cronograma.
+Un contenido tipo cronograma es una tabla de horarios (materias, aulas, docentes). Se carga **una vez por semana**, como el Excel de horarios: cada clase lleva los días en que se dicta, y cada pantalla muestra sólo lo del día.
 
-- **Agregar ítem**, **Editar** y **Eliminar** se abren encima del listado. Cada ítem pide nombre, aula (opcional), hora de inicio y fin, días (al menos uno) y estado, y **se guarda al guardarlo**: al terminar se cierra esa ventana y el listado se actualiza solo. Las pantallas que muestran el cronograma reciben el cambio en segundos.
+**Qué cronograma muestra** (al crearlo o editarlo):
+
+- **Propio:**
+  - Tiene sus clases, cargadas a mano o desde el Excel.
+  - Opcionalmente, un **edificio** y una **vigencia** (desde / hasta, por ejemplo el cuatrimestre).
+  - El edificio hace falta para que lo encuentren los cronogramas "del edificio de la pantalla". Sin vigencia, rige siempre.
+- **Del edificio de la pantalla:**
+  - No tiene clases propias.
+  - En cada pantalla muestra el cronograma propio vigente del edificio donde está ubicada.
+  - Si una pantalla se muda de edificio (se le cambia la Ubicación), cambia de cronograma sola.
+- **Segundos por página:**
+  - Cada página muestra 7 actividades y pasa a la siguiente deslizándose. Por defecto 10 segundos, de 5 a 60.
+  - La duración del cronograma en la playlist se calcula sola: páginas × segundos.
+
+Sus ítems se administran en una **ventana emergente**, como el resto del panel:
+
+- **Cómo se abre:**
+  - con el botón **Ítems** del listado de Contenidos;
+  - con **Ver ítems** desde el detalle o la edición del contenido;
+  - sola, apenas se crea un cronograma propio.
+- **Agregar ítem**, **Editar** y **Eliminar** se abren encima del listado. Agregar y Editar son el mismo formulario. Cada ítem pide:
+  - **Tipo:**
+    - **Clase** o **Actividad** se repiten los días marcados (al menos uno).
+    - **Evento especial** ocurre una sola vez, en su **fecha**, y ese día aparece junto con las clases.
+  - **Materia o actividad**.
+  - **Aula**, **carrera**, **año** y **docente o responsable**, todos opcionales.
+  - **Hora de inicio y fin**, y **estado**.
+- **Se guarda al guardarlo:** al terminar se cierra esa ventana y el listado se actualiza solo. Las pantallas que muestran el cronograma reciben el cambio en segundos.
 - Si alguna pantalla que lo muestra tiene su reproductor desconectado, las tres acciones quedan bloqueadas (ver 6); el listado se puede mirar igual.
 
-La Pi recibe **solo los ítems del día actual**, ya filtrados. Se ordenan por hora de inicio, igual que en el CMS.
+La Pi recibe **solo los ítems del día actual**, ya filtrados: las clases por su día de la semana y los eventos por su fecha. Se ordenan por hora de inicio, igual que en el CMS.
 
 ### 3.3 Códigos QR — dentro de Contenidos
 

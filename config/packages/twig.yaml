@@ -18,3 +18,8 @@ twig:
         # Credenciales de sólo lectura para que el navegador escuche el broker
         # (avisos de conexión de los listados). Ver _partials/conexion_vivo.html.twig.
         spui_mqtt_web: '@SPUI\Service\MqttSecurityService'
+
+        # Horario del tema "Automático" de las plantillas (services.yaml), para
+        # explicarlo en el formulario de contenidos.
+        spui_tema_claro_desde: '%env(default:spui_tema_claro_desde_default:SPUI_TEMA_CLARO_DESDE)%'
+        spui_tema_oscuro_desde: '%env(default:spui_tema_oscuro_desde_default:SPUI_TEMA_OSCURO_DESDE)%'

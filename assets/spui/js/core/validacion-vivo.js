@@ -15,7 +15,9 @@
 //
 //   data-spui-validar-posterior="#id-del-otro"   el valor tiene que ser mayor
 //   data-spui-validar-mensaje="..."               que el del otro campo (horas
-//                                                 HH:MM, se comparan como texto)
+//                                                 HH:MM o fechas Y-m-d, se
+//                                                 comparan como texto)
+//   data-spui-permitir-igual                      (opcional) también vale igual
 //
 //   data-spui-max-bytes="N"                       el archivo elegido no puede
 //                                                 pesar más de N bytes
@@ -121,7 +123,10 @@
         // la regla de obligatorio, no ésta.
         if (!otro || !campo.value || !otro.value) return true;
 
-        if (campo.value <= otro.value) {
+        // data-spui-permitir-igual: el mismo valor también vale (una vigencia
+        // de un solo día), sólo uno anterior es error.
+        var igualOk = campo.hasAttribute('data-spui-permitir-igual');
+        if (igualOk ? campo.value < otro.value : campo.value <= otro.value) {
             mostrar(campo, campo.dataset.spuiValidarMensaje || 'Tiene que ser posterior.');
             return false;
         }
@@ -326,6 +331,9 @@
             .filter(function (c) { return activo(c) || c.type === 'file'; });
         var malos = campos.filter(function (c) { return !revisar(c, true); });
         Array.from(e.target.querySelectorAll('[data-spui-requiere-alguno]')).forEach(function (g) {
+            // Un grupo oculto no se pide (los días de un evento especial, que
+            // usa una fecha): mismo criterio que con los campos sueltos.
+            if (g.closest('[hidden]')) return;
             if (!validarGrupo(g)) malos.push(g.querySelector('input[type="checkbox"]'));
         });
         if (malos.length) {
