@@ -211,10 +211,15 @@ class Dibujante:
         lugar: Optional[str] = None,
         horario_tema: Optional[dict] = None,
         archivo: Optional[str] = None,
+        actualizado: Optional[datetime] = None,
     ) -> Lamina:
         """
         La pantalla de un contenido (texto, imagen, qr o cronograma) a esta
         hora. `archivo` es la imagen ya descargada (imagen o el PNG del QR).
+
+        `actualizado`: cuándo se bajó del CMS, sólo si hace mucho (la Pi lleva
+        más de un día sin conexión). En un cronograma con plantilla, el pie lo
+        dice en lugar del lugar: lo que se ve puede haber cambiado.
         """
         tipo = contenido.get('tipo') or ''
         pres = contenido.get('presentacion') or {}
@@ -226,6 +231,8 @@ class Dibujante:
         cr = cronograma_de(contenido) if tipo == 'cronograma' else None
         if cr is not None:
             lugar = cr.get('edificio') or lugar
+            if actualizado is not None:
+                lugar = f'Actualizado el {actualizado:%d/%m} a las {actualizado:%H:%M}'
 
         lienzo = self._fondo(tema, tipo == 'imagen' and not institucional)
         if institucional:

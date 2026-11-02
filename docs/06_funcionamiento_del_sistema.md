@@ -222,6 +222,24 @@ Tres mecanismos combinados:
 - **Prefetch** — al sincronizar se descargan *todos* los archivos de la playlist, no solo el que toca ahora. Cuando se corte la red, ya están.
 - **Nunca falla en silencio** — si no hay red ni caché, muestra una pantalla de espera institucional, no un error.
 
+### La hora, el TV y los datos viejos (noviembre 2026)
+
+Decisiones de Mateo del 02/11/2026:
+
+- **La hora la da el CMS** (`spui/reloj.py`).
+  - **Por qué hace falta.** La Pi no tiene reloj con pila: al arrancar vuelve a la hora con la que se apagó hasta que NTP la corrige, y sin internet eso puede no pasar.
+  - **Cómo se corrige.** El CMS manda su hora y su zona en cada sync y cada heartbeat (`servidor_ts`). El cliente guarda la diferencia y la usa para el cronograma, el tema automático y el horario energético.
+  - **Sin tocar el sistema.** El reloj del sistema no se cambia (no hace falta root), así que el journal puede seguir con la hora vieja hasta que NTP la arregle.
+  - **Mientras la hora sea dudosa** (el CMS todavía no la confirmó y `timedatectl` no dice `NTPSynchronized=yes`), el horario energético no apaga la pantalla.
+- **El TV apagado con el control** se respeta (`spui/cec.py`).
+  - **Cómo se entera.** Si el TV responde a HDMI-CEC, queda corriendo un `cec-client` que escucha lo que avisa el TV. Nunca le pregunta nada.
+  - **Qué hace.** Si el TV avisa que pasó a reposo en pleno horario, y no es el eco de una orden nuestra de apagar, queda apagado hasta el próximo encendido del horario o hasta que lo enciendan con el control. En el panel aparece en el diagnóstico del reproductor.
+  - **La excepción.** Una alerta lo enciende igual.
+  - **Sin CEC** (como el monitor Philips de banco) no hay forma de saberlo sin consultar, así que no se hace nada.
+  - **Un solo cliente CEC.** Mientras el `cec-client` corre, las órdenes de encender y apagar salen por él: dos clientes a la vez se disputan el adaptador.
+- **Encender por CEC es "a mejor esfuerzo":** se manda al arrancar y en cada encendido del horario o por una alerta, con dos reintentos a los 10 y a los 20 s por si el TV tarda en despertar. Si ya estaba encendido, la ignora.
+- **Un cronograma con más de 24 h sin sincronizar** lo avisa en el pie de la plantilla institucional: "Actualizado el 31/10 a las 18:40" en lugar del edificio. Se calcula con la hora del CMS que vino en ese sync, y no se muestra mientras la hora sea dudosa.
+
 ---
 
 ## 6. La alerta

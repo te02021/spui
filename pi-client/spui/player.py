@@ -27,7 +27,7 @@ import struct
 import threading
 import time
 import wave
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional
 
 import config
@@ -108,8 +108,10 @@ class Player:
     #   gl/glx  → OpenGL; más rápidas pero dependen de drivers 3D bien configurados
     _VOUT_ALTERNATIVAS = ('xcb_x11', 'xcb_xv', 'gl', 'glx')
 
-    def __init__(self, media_dir: str, sync_client=None, guardia=None):
+    def __init__(self, media_dir: str, sync_client=None, guardia=None, reloj=None):
         self._media_dir = media_dir
+        # La hora corregida con la del CMS (spui/reloj.py) para el cronograma y el tema.
+        self._reloj = reloj
         # Saltea los contenidos que cerraron el reproductor (spui/guardia.py).
         self._guardia = guardia
         # Corta lo que se está mostrando para pasar al programa nuevo en el
@@ -155,6 +157,8 @@ class Player:
         self._incrustado = False
         # _momento_tv() de lo que quedó en pantalla (ver reproducir_playlist).
         self._momento_actual = ''
+        # La hora del CMS en el sync que se está mostrando (ver fijar_entorno).
+        self._actualizado: Optional[datetime] = None
 
         # La detección va acá y no en el import: durante el import todavía no
         # hay logging configurado y estos mensajes se perdían, dejando la
@@ -299,10 +303,19 @@ class Player:
         self._firma_actual = None
         self._mostrando_fallback = False
 
-    def fijar_entorno(self, lugar: Optional[str], horario_tema: Optional[dict]) -> None:
-        """Lo que manda el sync para dibujar: el lugar del pie y el horario del tema automático."""
+    def fijar_entorno(self, lugar: Optional[str], horario_tema: Optional[dict],
+                      actualizado: Optional[str] = None) -> None:
+        """
+        Lo que manda el sync para dibujar: el lugar del pie, el horario del
+        tema automático y la hora del CMS en ese sync (`servidor_ts`), que dice
+        de cuándo es lo que se muestra si viene del caché.
+        """
         self._lugar = lugar or None
         self._horario_tema = horario_tema if isinstance(horario_tema, dict) else None
+        try:
+            self._actualizado = datetime.fromisoformat(actualizado).replace(tzinfo=None) if actualizado else None
+        except (TypeError, ValueError):
+            self._actualizado = None
 
     # ── API pública ────────────────────────────────────────────────────────
 
@@ -417,10 +430,11 @@ class Player:
         """
         if _tv is None or not _tv.para_mostrar(contenido):
             return ''
-        ahora = datetime.now()
+        ahora = self._ahora()
         tema = _tv.tema_efectivo((contenido.get('presentacion') or {}).get('tema') or 'oscuro', ahora, self._horario_tema)
         formato = '%Y-%m-%d %H:%M' if contenido.get('tipo') == 'cronograma' else '%Y-%m-%d'
-        return f'{ahora.strftime(formato)}|{tema}|{self._lugar or ""}'
+        viejo = self._actualizado_viejo() if contenido.get('tipo') == 'cronograma' else None
+        return f'{ahora.strftime(formato)}|{tema}|{self._lugar or ""}|{viejo or ""}'
 
     def _resolver_duracion(self, item: dict, total_items: int) -> Optional[int]:
         """
@@ -1201,7 +1215,8 @@ class Player:
         lamina = self._laminas.get(clave)
         if lamina is None:
             inicio = time.monotonic()
-            lamina = self._dibujante.lamina(contenido, datetime.now(), self._lugar, self._horario_tema, archivo)
+            lamina = self._dibujante.lamina(contenido, self._ahora(), self._lugar, self._horario_tema, archivo,
+                                            actualizado=self._actualizado_viejo())
             lamina.clave = clave
             logger.debug('Lámina de "%s" dibujada en %.2f s (%d página/s).',
                          contenido.get('titulo') or '', time.monotonic() - inicio, lamina.cantidad)
@@ -1293,6 +1308,25 @@ class Player:
             self._video_activo = False
             self._parar_vlc()
             self._ventana.cubierta(False)
+
+    def _ahora(self) -> datetime:
+        reloj = getattr(self, '_reloj', None)
+        return reloj.ahora() if reloj is not None else datetime.now()
+
+    # Tras cuánto sin sincronizar el cronograma avisa de cuándo es lo que muestra.
+    _VIEJO_TRAS = timedelta(hours=24)
+
+    def _actualizado_viejo(self) -> Optional[datetime]:
+        """
+        Cuándo se bajó del CMS lo que se está mostrando, si fue hace más de
+        24 h (si no, None). Con la hora todavía dudosa no se dice nada: no se
+        sabe cuánto pasó.
+        """
+        actualizado = getattr(self, '_actualizado', None)
+        reloj = getattr(self, '_reloj', None)
+        if actualizado is None or (reloj is not None and not reloj.confiable()):
+            return None
+        return actualizado if self._ahora() - actualizado > self._VIEJO_TRAS else None
 
     def _cortado(self) -> bool:
         return self._tiene_alerta() or self._stop.is_set() or self._interrumpido.is_set()

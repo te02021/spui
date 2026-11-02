@@ -45,12 +45,14 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import config
 from spui.cache import Cache
+from spui.cec import ClienteCec
 from spui.guardia import GuardiaContenido
 from spui.energia import GestorEnergia
 from spui.heartbeat import HeartbeatSender
 from spui.mqtt_listener import MqttListener
 from spui.network import NetworkMonitor
 from spui.player import Player
+from spui.reloj import RELOJ
 from spui.reproduccion import APAGADO, ESPERA, PLAYLIST, Reproduccion
 from spui.sync import SyncClient, intervalo_desde_sync
 from spui.telemetria import TelemetriaPublisher
@@ -166,10 +168,11 @@ def main() -> None:
     signal.signal(signal.SIGINT, _manejar_senal)
 
     cache   = Cache(config.DB_PATH)
-    sync    = SyncClient(config.API_URL, config.API_KEY, config.MEDIA_DIR)
+    # La hora del CMS corrige la de la Pi, que no tiene reloj con pila (spui/reloj.py).
+    sync    = SyncClient(config.API_URL, config.API_KEY, config.MEDIA_DIR, reloj=RELOJ)
     sync.limpiar_parciales()  # descargas a medias de una ejecución anterior
     guardia = GuardiaContenido(config.CACHE_DIR, config.VERSION)
-    player  = Player(config.MEDIA_DIR, sync_client=sync, guardia=guardia)
+    player  = Player(config.MEDIA_DIR, sync_client=sync, guardia=guardia, reloj=RELOJ)
     reproduccion = Reproduccion(player, sync_client=sync)
     network = NetworkMonitor(config.API_URL)
     # El brillo de referencia de cada pantalla se guarda en el caché para
@@ -178,6 +181,8 @@ def main() -> None:
     energia = GestorEnergia(
         ruta_estado_brillo=os.path.join(config.CACHE_DIR, 'brillo.json'),
         brillo_software=player.ajustar_brillo,
+        # Escucha CEC: saber si apagaron el TV con el control (spui/cec.py).
+        crear_cec=ClienteCec,
     )
 
     def recolectar_diagnostico() -> list[str]:
@@ -394,13 +399,15 @@ def main() -> None:
             estaba_apagada = energia.esta_apagada()
             # Con el sync recién hecho, el cliente tiene la verdad del CMS: es el
             # momento de comparar el brillo de la pantalla con el de la regla.
-            energia.aplicar(hay_alerta=reproduccion.mostrando_alerta(), verificar_brillo=sync_ok)
+            energia.aplicar(ahora=RELOJ.ahora(), hay_alerta=reproduccion.mostrando_alerta(),
+                            verificar_brillo=sync_ok, hora_confiable=RELOJ.confiable())
             if estaba_apagada and not energia.esta_apagada():
                 player.forzar_recarga()
 
             # Para dibujar el TV: el lugar del pie de la plantilla y desde qué
             # hora el tema automático pasa a claro y a oscuro.
-            player.fijar_entorno(pantalla_data.get('lugar'), sync_data.get('tema_horario'))
+            player.fijar_entorno(pantalla_data.get('lugar'), sync_data.get('tema_horario'),
+                                 sync_data.get('servidor_ts'))
 
             # Qué mostrar cuando no hay alerta. Lo muestra el hilo de
             # reproducción: este ciclo nunca se queda esperando un contenido,
@@ -425,6 +432,7 @@ def main() -> None:
 
     # ── Cierre limpio ────────────────────────────────────────────────────────
     reproduccion.detener()
+    energia.detener()
     heartbeat.detener()
     mqtt.detener()
     telemetria.detener()
