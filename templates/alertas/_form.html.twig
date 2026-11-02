@@ -6,12 +6,31 @@
     <div class="alert alert-danger mb-3">{{ e.message }}</div>
 {% endfor %}
 
-<div class="mb-3">
-    {{ form_label(form.titulo) }}
-    {{ form_widget(form.titulo) }}
-    {% for e in form.titulo.vars.errors %}
-        <p class="spui-campo-error">{{ e.message }}</p>
-    {% endfor %}
+{# Con el modal ancho (02/11/2026): título, prioridad y vencimiento en una
+   fila; contenido y sonido lado a lado. En celular, uno debajo del otro. #}
+<div class="row g-3 mb-3">
+    <div class="col-12 col-md-6">
+        {{ form_label(form.titulo) }}
+        {{ form_widget(form.titulo) }}
+        {% for e in form.titulo.vars.errors %}
+            <p class="spui-campo-error">{{ e.message }}</p>
+        {% endfor %}
+    </div>
+    <div class="col-5 col-md-2">
+        {{ form_label(form.prioridad) }}
+        {{ form_widget(form.prioridad) }}
+        {% for e in form.prioridad.vars.errors %}
+            <p class="spui-campo-error">{{ e.message }}</p>
+        {% endfor %}
+    </div>
+    <div class="col-7 col-md-4">
+        {{ form_label(form.expiraEn) }}
+        {{ form_widget(form.expiraEn) }}
+        {% for e in form.expiraEn.vars.errors %}
+            <p class="spui-campo-error">{{ e.message }}</p>
+        {% endfor %}
+    </div>
+    <div class="col-12 mt-1"><small class="text-muted">Prioridad: mayor número = mayor prioridad.</small></div>
 </div>
 
 <div class="mb-3">
@@ -22,25 +41,8 @@
     {% endfor %}
 </div>
 
-<div class="row g-3 mb-3 justify-content-center">
-    <div class="col-auto spui-hora-field">
-        {{ form_label(form.prioridad) }}
-        {{ form_widget(form.prioridad) }}
-        {% for e in form.prioridad.vars.errors %}
-            <p class="spui-campo-error">{{ e.message }}</p>
-        {% endfor %}
-        <small class="text-muted mt-1 d-block text-center">Mayor número = mayor prioridad.</small>
-    </div>
-    <div class="col-auto spui-hora-field">
-        {{ form_label(form.expiraEn) }}
-        {{ form_widget(form.expiraEn) }}
-        {% for e in form.expiraEn.vars.errors %}
-            <p class="spui-campo-error">{{ e.message }}</p>
-        {% endfor %}
-    </div>
-</div>
-
-<div class="mb-4">
+<div class="row g-3 mb-1">
+<div class="col-12 col-md-6 mb-3">
     {{ form_label(form.contenido) }}
     {{ form_widget(form.contenido) }}
     {% for e in form.contenido.vars.errors %}
@@ -57,7 +59,7 @@
 {% set tieneSonido = alerta is defined and alerta.sonidoArchivo %}
 {# data-spui-campo: los errores del sonido (del servidor y de validacion-vivo.js)
    van al final de este bloque, debajo del archivo elegido. #}
-<div class="mb-4 spui-sonido-field" data-spui-sonido-field data-spui-campo>
+<div class="col-12 col-md-6 mb-3 spui-sonido-field" data-spui-sonido-field data-spui-campo>
     <div class="spui-sonido-field-header">
         <label class="unraf-form-label">Sonido de alerta (opcional)</label>
         <label class="unraf-btn spui-btn-back unraf-btn-icon spui-file-trigger" title="Elegir archivo de sonido">
@@ -82,6 +84,7 @@
         MP3 o WAV, hasta 5 MB. Si no se sube ninguno, el reproductor emite un tono generado automáticamente.
     </small>
     {% if error_sonido is defined and error_sonido %}<p class="spui-campo-error">{{ error_sonido }}</p>{% endif %}
+</div>
 </div>
 
 <div class="mb-4">

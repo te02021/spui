@@ -40,35 +40,33 @@
     <small class="text-muted d-block">Pantalla &gt; Ubicación &gt; Edificio &gt; Global (en orden de prioridad).</small>
 </div>
 
-{# Horas y fechas en dos columnas parejas, con la etiqueta a la izquierda como
-   el resto del formulario. Antes iban centradas (spui-hora-field) y el
-   formulario mezclaba dos alineaciones (pedido de Mateo, 28/10/2026). #}
+{# Horas y fechas en columnas parejas, con la etiqueta a la izquierda como el
+   resto del formulario. Antes iban centradas (spui-hora-field) y el
+   formulario mezclaba dos alineaciones (pedido de Mateo, 28/10/2026). Con el
+   modal ancho (02/11/2026), las cuatro en una fila; dos y dos en celular. #}
 <div class="row g-3 mb-3">
-    <div class="col-6 spui-fecha-field">
+    <div class="col-6 col-lg-3 spui-fecha-field">
         {{ form_label(form.horaInicio) }}
         {{ form_widget(form.horaInicio) }}
         {% for e in form.horaInicio.vars.errors %}
             <p class="spui-campo-error">{{ e.message }}</p>
         {% endfor %}
     </div>
-    <div class="col-6 spui-fecha-field">
+    <div class="col-6 col-lg-3 spui-fecha-field">
         {{ form_label(form.horaFin) }}
         {{ form_widget(form.horaFin) }}
         {% for e in form.horaFin.vars.errors %}
             <p class="spui-campo-error">{{ e.message }}</p>
         {% endfor %}
     </div>
-</div>
-
-<div class="row g-3 mb-3">
-    <div class="col-6 spui-fecha-field">
+    <div class="col-6 col-lg-3 spui-fecha-field">
         {{ form_label(form.fechaInicio) }}
         {{ form_widget(form.fechaInicio) }}
         {% for e in form.fechaInicio.vars.errors %}
             <p class="spui-campo-error">{{ e.message }}</p>
         {% endfor %}
     </div>
-    <div class="col-6 spui-fecha-field">
+    <div class="col-6 col-lg-3 spui-fecha-field">
         {{ form_label(form.fechaFin) }}
         {{ form_widget(form.fechaFin) }}
         {% for e in form.fechaFin.vars.errors %}

@@ -327,7 +327,7 @@
         // reload=true fuerza recarga completa en vez de refrescar sólo la tabla.
         // Necesario en pantallas donde la acción cambia contenido fuera de
         // #spui-table-body (ej: el banner de alerta activa del dashboard).
-        function openActionModal(url, title, message, variant, reload, confirmLabel) {
+        function openActionModal(url, title, message, variant, reload, confirmLabel, icono) {
             modal.className = 'spui-abm-modal modal-sm';
             setTitle(title || 'Confirmar acción');
             // data-spui-variant nombra la ACCIÓN (activar, publicar, archivar…),
@@ -342,7 +342,10 @@
                 '<p class="mb-0 text-secondary" style="font-size:.95rem">' + window.spui.escHtml(message) + '</p>' +
                 '<div class="d-flex justify-content-end gap-2 pt-3 mt-3 border-top">' +
                 '<button type="button" class="unraf-btn spui-btn-back" data-spui-close>Cancelar</button>' +
-                '<button type="button" class="unraf-btn ' + btnCls + '" id="spuiAbmActionBtn">' + btnLabel + '</button>' +
+                // data-spui-icono: el mismo ícono del botón que abrió la
+                // confirmación (lo pone decorarBotones, ver más abajo).
+                '<button type="button" class="unraf-btn ' + btnCls + '" id="spuiAbmActionBtn"' +
+                (icono ? ' data-spui-icono="' + window.spui.escHtml(icono) + '"' : '') + '>' + btnLabel + '</button>' +
                 '</div>';
             bodyEl.querySelector('[data-spui-close]').addEventListener('click', closeModal);
             var actionBtn = document.getElementById('spuiAbmActionBtn');
@@ -423,7 +426,8 @@
                         btn.dataset.spuiMessage || '¿Confirmar esta acción?',
                         btn.dataset.spuiVariant,
                         btn.dataset.spuiReload !== undefined,
-                        btn.dataset.spuiConfirmLabel
+                        btn.dataset.spuiConfirmLabel,
+                        btn.querySelector('img') && btn.querySelector('img').getAttribute('src')
                     );
                 });
             });
@@ -750,7 +754,8 @@
                         btn.dataset.spuiTitle,
                         btn.dataset.spuiMessage || '¿Confirmar esta acción?',
                         btn.dataset.spuiVariant,
-                        btn.dataset.spuiConfirmLabel
+                        btn.dataset.spuiConfirmLabel,
+                        btn.querySelector('img') && btn.querySelector('img').getAttribute('src')
                     );
                 });
             });
@@ -764,10 +769,12 @@
          * aparece por encima de lo que se está mirando. Al aceptar, ejecuta y
          * refresca la capa de abajo con el resultado.
          */
-        function abrirConfirmacionNivel2(url, title, message, variant, confirmLabel) {
+        function abrirConfirmacionNivel2(url, title, message, variant, confirmLabel, icono) {
             baseUrl2 = baseTitle2 = baseSize2 = null;
             titleEl2.textContent = title || 'Confirmar';
-            modal2.className = 'spui-abm-modal';
+            // Una confirmación va angosta, como la del nivel 1: el ancho grande
+            // es para los modales con información.
+            modal2.className = 'spui-abm-modal modal-sm';
             openModal2();
 
             var btnCls = variant ? 'spui-btn-' + variant : 'spui-btn-eliminar';
@@ -775,7 +782,8 @@
                 '<p class="mb-0 text-secondary" style="font-size:.95rem">' + window.spui.escHtml(message) + '</p>' +
                 '<div class="d-flex justify-content-end gap-2 pt-3 mt-3 border-top">' +
                 '<button type="button" class="unraf-btn spui-btn-back" data-confirm-no>Cancelar</button>' +
-                '<button type="button" class="unraf-btn ' + btnCls + '" data-confirm-si>' +
+                '<button type="button" class="unraf-btn ' + btnCls + '" data-confirm-si' +
+                (icono ? ' data-spui-icono="' + window.spui.escHtml(icono) + '"' : '') + '>' +
                 window.spui.escHtml(confirmLabel || 'Confirmar') + '</button>' +
                 '</div>';
 
@@ -840,6 +848,35 @@
             // El de arriba primero: ESC cierra sólo la capa activa.
             if (overlay2 && overlay2.classList.contains('is-open')) { closeModal2(); return; }
             if (overlay.classList.contains('is-open')) closeModal();
+        });
+
+        // ── Ícono + texto en los botones de los modales (02/11/2026) ──
+        // Guardar lleva una tilde, Cancelar una cruz y el que confirma una
+        // acción, el ícono del botón que la abrió (data-spui-icono). Se agrega
+        // acá, apenas aparece cualquier contenido en un modal (formulario,
+        // confirmación, el mismo formulario que vuelve con errores), para que
+        // todos queden iguales sin tocar cada template. Un botón que ya trae
+        // su ícono no se toca.
+        function decorarBotones(raiz) {
+            var iconos = window.spui.iconos || {};
+            raiz.querySelectorAll('button.unraf-btn, a.unraf-btn').forEach(function (b) {
+                if (b.querySelector('img')) return;
+                var texto = b.textContent.trim();
+                var src = b.getAttribute('data-spui-icono')
+                    || (texto === 'Guardar' || texto === 'Listo' ? iconos.check : null)
+                    || (texto === 'Cancelar' ? iconos.x : null);
+                if (!src) return;
+                var img = document.createElement('img');
+                img.src = src;
+                img.alt = '';
+                img.className = 'spui-action-icon';
+                b.insertBefore(img, b.firstChild);
+            });
+        }
+        [bodyEl, bodyEl2].forEach(function (cuerpo) {
+            if (!cuerpo || typeof MutationObserver === 'undefined') return;
+            new MutationObserver(function () { decorarBotones(cuerpo); })
+                .observe(cuerpo, { childList: true, subtree: true });
         });
 
         bindTableButtons();

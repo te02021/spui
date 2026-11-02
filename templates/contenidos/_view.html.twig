@@ -18,9 +18,12 @@
 </div>
 
 {# Cómo se ve en el TV (noviembre 2026): la vista previa se pide sola
-   (core/vista-tv.js) y "Ampliar" la abre en el visor. #}
+   (core/vista-tv.js) y "Ampliar" la abre en el visor. Con el modal ancho, a
+   la izquierda de los detalles; en pantallas angostas, arriba. #}
+<div class="spui-view-dos">
 <div class="spui-vista-previa spui-vista-previa-ver" data-spui-vista-previa-url="{{ path('spui_cms_contenidos_pantalla', {id: contenido.id}) }}" aria-live="polite"></div>
 
+<div>
 <div class="spui-view-section">
     <p class="spui-view-section-title">Detalles</p>
     <div class="spui-view-row">
@@ -84,6 +87,8 @@
             <span class="spui-view-row-value">{{ contenido.segundosPorPagina ?? constant('SPUI\\Service\\PresentacionContenidoService::SEG_PAGINA_DEFECTO') }} s</span>
         </div>
     {% endif %}
+</div>
+</div>
 </div>
 
 {% if contenido.contenidoTexto or contenido.rutaArchivo %}

@@ -21,6 +21,9 @@
 {% set largo = alerta.mensaje|length %}
 {% set tam_mensaje = largo <= 60 ? 4.58 : (largo <= 140 ? 3.6 : (largo <= 260 ? 2.8 : 1.9)) %}
 {% set imagen = alerta.contenido and alerta.contenido.tipo.value == 'imagen' and alerta.contenido.rutaArchivo %}
+{# Con el modal ancho (02/11/2026): la vista previa y el estado lado a lado;
+   en pantallas angostas, uno debajo del otro. #}
+<div class="spui-view-dos">
 <div class="spui-view-section">
     <p class="spui-view-section-title">Así se ve en las pantallas</p>
     <div class="spui-alerta-pantalla" role="img" aria-label="Vista previa de la alerta en pantalla">
@@ -74,6 +77,7 @@
         <span class="spui-view-row-label">Creada por</span>
         <span class="spui-view-row-value">{{ creado_por_email|default('Usuario #' ~ alerta.creadoPorId) }}</span>
     </div>
+</div>
 </div>
 
 {% if not alerta.esGlobal %}

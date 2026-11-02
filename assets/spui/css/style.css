@@ -1149,7 +1149,11 @@ a.spui-paginacion-btn:hover { background: #eef4fa; border-color: #9fb6cc; color:
        resuelta (max-height de acá abajo, con scroll propio si hace falta) —
        lo que se amplía es el ancho, y de acá salen TODOS los modales sin
        .modal-sm/.modal-lg explícito, así quedan parejos entre sí. */
-    max-width: 720px;
+    /* Desde el 02/11/2026 TODO modal con información (formularios, vistas,
+       listados de ítems, importar) tiene el mismo ancho, más amplio: crecen
+       hacia los costados y no hacia abajo. Sólo las confirmaciones van
+       angostas (.modal-sm). .modal-lg queda como sinónimo. */
+    max-width: 1040px;
     max-height: calc(100dvh - 2.5rem);
     display: flex;
     flex-direction: column;
@@ -1165,7 +1169,7 @@ a.spui-paginacion-btn:hover { background: #eef4fa; border-color: #9fb6cc; color:
     transform: translateY(0) scale(1);
     opacity: 1;
 }
-.spui-abm-modal.modal-lg { max-width: 820px; }
+.spui-abm-modal.modal-lg { max-width: 1040px; }
 .spui-abm-modal.modal-sm { max-width: 460px; }
 
 /* ---- Segundo nivel de modal ----
@@ -2765,4 +2769,80 @@ html.spui-sidebar-plegado .spui-sidebar-plegar img { transform: rotate(180deg); 
     /* En celular las opciones se reparten el ancho en vez de cortarse. */
     .spui-opciones { display: flex; }
     .spui-opcion { flex: 1 1 auto; text-align: center; padding: .5rem .5rem; }
+}
+
+/* ============================================================================
+   Botones y modales según el tamaño de la pantalla (02/11/2026).
+   Ícono + texto en todo botón de acción (los de los modales los completa
+   modal.js); lo que cambia con el ancho es el tamaño y, en celular, que las
+   acciones de las filas dentro de un modal queden sólo con el ícono.
+   ========================================================================== */
+/* Cancelar (borde azul): el ícono acompaña el color, y en blanco al hover. */
+.spui-btn-back .spui-action-icon { opacity: .75; }
+.spui-btn-back:hover .spui-action-icon { filter: invert(1); opacity: 1; }
+.unraf-btn-institucion .spui-action-icon { filter: invert(1); }
+
+/* Vistas con una vista previa (Ver de una alerta o de un contenido): con el
+   modal ancho, la previa a la izquierda y los datos a la derecha, en vez de
+   una previa del ancho entero que hacía el modal más alto. Apiladas abajo
+   de 992 px. */
+.spui-view-dos { display: grid; gap: 0 1.75rem; }
+@media (min-width: 992px) {
+    .spui-view-dos { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); align-items: start; }
+    .spui-view-dos > .spui-vista-previa-ver { margin-bottom: 0; }
+}
+/* Pantallas de una alerta: en columnas, ahora que hay ancho. */
+.spui-alerta-destinos { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
+
+/* Pantallas bajas (una notebook de 768 px de alto): menos margen alrededor
+   del contenido del modal, para que entre más sin scroll. */
+@media (max-height: 820px) {
+    .spui-abm-overlay { padding: .75rem; }
+    .spui-abm-modal { max-height: calc(100dvh - 1.5rem); }
+    .spui-abm-modal-header { padding: .8rem 1.4rem .7rem; }
+    .spui-abm-modal-body { padding: 1.15rem 1.4rem; }
+}
+
+/* Tablet y celular: botones un escalón más chicos. */
+@media (max-width: 768px) {
+    .spui-btn-crear,
+    .spui-header-actions > .unraf-btn,
+    .spui-header-actions > div > .unraf-btn,
+    .spui-btn-back,
+    button[type="submit"].unraf-btn:not(.unraf-btn-sm),
+    [data-spui-close].unraf-btn,
+    .spui-cabecera-acciones .unraf-btn {
+        min-height: 38px; padding: .4rem .9rem; font-size: .9rem;
+    }
+}
+
+@media (max-width: 576px) {
+    .spui-abm-overlay { padding: .5rem; }
+    .spui-abm-modal { max-height: calc(100dvh - 1rem); border-radius: .75rem; }
+    .spui-abm-modal-header { padding: .8rem 1rem .65rem; }
+    .spui-abm-modal-title { font-size: .98rem; }
+    .spui-abm-modal-body { padding: 1rem; }
+
+    .unraf-btn-sm,
+    .spui-acciones .unraf-btn,
+    .spui-acciones a.unraf-btn {
+        min-height: 32px; padding: .25rem .6rem; font-size: .8rem;
+    }
+
+    /* El pie de un modal (Cancelar / Guardar, o Cancelar / la acción): los
+       botones se reparten el ancho en partes iguales. */
+    .spui-abm-modal-body .border-top.justify-content-end > .unraf-btn { flex: 1 1 0; }
+
+    /* Las acciones de cada fila dentro de un modal (ítems de un cronograma,
+       de una playlist…): sólo el ícono, cuadrado; el nombre queda en el
+       title/aria-label. font-size 0 oculta el texto sin tocar el ícono. */
+    .spui-abm-modal-body .spui-acciones .unraf-btn:has(.spui-action-icon) {
+        font-size: 0; gap: 0; width: 36px; min-height: 36px; padding: 0;
+    }
+    .spui-abm-modal-body .spui-acciones .unraf-btn:has(.spui-action-icon) .spui-action-icon { width: 1.05rem; height: 1.05rem; }
+
+    /* Las acciones de la cabecera de una sección (Importar / Nuevo): una
+       debajo de la otra, a todo el ancho. Lado a lado, "Importar cronograma"
+       no entra en media pantalla sin partirse en dos renglones. */
+    .spui-cabecera-acciones { width: 100%; flex-direction: column; }
 }
