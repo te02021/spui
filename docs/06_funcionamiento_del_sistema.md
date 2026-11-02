@@ -210,7 +210,7 @@ La migración `Version20261028190000` borró los contenidos de ese tipo que hab�
   - **Sin pygame, o si la ventana no abre:** cada página se guarda como PNG y la muestra VLC, sin animación.
   - **Sin VLC:** se ve todo menos los videos.
   - **A propósito:** `SPUI_VENTANA=false` fuerza el método anterior, para descartar un problema de la ventana en un equipo.
-- **Dibujo por software.** `SPUI_ACELERACION=1` le pide a SDL que presente la ventana con la GPU. Queda apagado porque en la Pi 4 lo basado en OpenGL ya dejó la pantalla en negro una vez (`09_instalacion_raspberry.md` §14.1). La velocidad real del deslizamiento queda en el registro: "Deslizamiento de páginas: N cuadros por segundo".
+- **Dibujo por software.** `SPUI_ACELERACION=1` le pide a SDL que presente la ventana con la GPU. Queda apagado porque en la Pi 4 lo basado en OpenGL ya dejó la pantalla en negro una vez (`09_instalacion_raspberry.md` §14.1). La velocidad real del deslizamiento queda en el registro: "Deslizamiento de páginas: N cuadros por segundo". En la Pi 4 de banco, con un monitor de 1920×1080, dio 58 por software (02/11/2026), así que la GPU no hace falta.
 
 Sin Pillow, el texto y el cronograma se dibujan como antes (`Player._imagen_de_texto()`): una imagen sobre fondo azul, que se muestra por VLC.
 
