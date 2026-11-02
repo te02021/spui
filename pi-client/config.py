@@ -158,6 +158,16 @@ ALERTA_SONIDO_PAUSA_SEG = max(0, _entero('SPUI_ALERTA_SONIDO_INTERVALO_SEG', 0))
 # en qué volumen haya quedado el equipo de una prueba anterior.
 ALERTA_SONIDO_VOLUMEN     = max(0, min(100, _entero('SPUI_ALERTA_SONIDO_VOLUMEN', 100)))
 
+# ── Ventana del TV (noviembre 2026) ───────────────────────────────────────────
+# Texto, imagen, QR y cronograma se dibujan con su plantilla en una ventana
+# propia (spui/ventana.py), con las páginas del cronograma deslizándose.
+# VENTANA=false vuelve al método anterior (cada contenido como imagen de VLC,
+# sin animación): sólo para descartar un problema de la ventana en un equipo.
+VENTANA     = _booleano('SPUI_VENTANA', True)
+# Presentar la ventana con la GPU. Apagado por defecto: en la Pi 4 lo basado
+# en OpenGL ya dejó la pantalla en negro una vez (ver spui/ventana.py).
+ACELERACION = _booleano('SPUI_ACELERACION', False)
+
 # ── Telemetría ────────────────────────────────────────────────────────────────
 # 80 °C: valor documentado en la tesis y punto donde la Pi 4 hace throttling.
 # Tiene que coincidir con spui_temp_alerta_default del CMS.

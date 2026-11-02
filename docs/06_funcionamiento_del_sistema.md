@@ -187,7 +187,32 @@ WebM y OGG se dejaron de aceptar: la Pi los decodifica por software. Los casos d
 
 La migración `Version20261028190000` borró los contenidos de ese tipo que había. Si una playlist vieja trae un tipo que el cliente no conoce, la Pi lo saltea en el acto y lo anota una sola vez en el registro.
 
-**Texto y cronograma** se dibujan como una imagen a pantalla completa con Pillow: fondo azul institucional, fuente Museo y el tamaño de letra que haga entrar todo el texto (`Player._imagen_de_texto()`). Se muestran por el mismo camino que una imagen fija, igual que la pantalla de espera y la alerta. Antes iban con el filtro marq de VLC sobre `blank://`, y en la Pi la pantalla quedaba en negro durante el turno del texto. Cada texto genera su imagen una vez (el nombre sale de un hash del texto) y se conservan las últimas 30.
+**Texto, imagen, QR y cronograma se ven como en la vista previa del CMS** (desde noviembre 2026):
+
+- **Plantilla y tema.** Cada uno se dibuja con su plantilla (institucional o sin plantilla, con la marca de agua opcional) y su tema (claro, oscuro o automático).
+  - Lo dibuja `spui/tv.py` con Pillow, con las medidas, colores y fuentes de `assets/spui/css/pantalla-tv.css`. Museo 300 y 700 y los logos van en `pi-client/assets/`. Si se cambia el CSS, hay que cambiar `tv.py`.
+  - El automático es claro de 07:00 a 19:00. El horario llega en el sync (`tema_horario`) y se ajusta con `SPUI_TEMA_CLARO_DESDE` / `SPUI_TEMA_OSCURO_DESDE` en el CMS.
+- **La ventana.** Lo muestra una ventana pygame (`spui/ventana.py`, paquete `pygame-ce`), siempre la misma: un contenido reemplaza al otro sin que se abra ni se cierre nada.
+  - VLC queda para el video y el sonido de las alertas, y dibuja el video **dentro** de esa ventana (`set_xwindow`).
+  - Una pantalla que no es 16:9 se ve entera, con franjas negras, sin deformarse.
+- **El cronograma.**
+  - Lo de hoy que no terminó, armado en páginas por altura. Nada se corta ni se achica: una materia larga baja de renglón.
+  - Cada página queda sus segundos y se desliza a la izquierda mientras entra la siguiente (1,4 s, la misma curva que el CSS). Se redibuja sólo la tabla.
+  - En una rotación pasa todas sus páginas una vez. Si está solo en la playlist, sigue girando y se vuelve a dibujar en cada vuelta: lo que terminó desaparece y lo que empezó pasa a "en curso".
+- **Por qué la semana entera.** El sync manda en `contenido.cronograma` las clases (con su máscara de días) y los eventos de hoy a 7 días, más la vigencia. La Pi elige el día y la hora con las mismas reglas que `PantallaTvService` (`tv.filas_del_dia()`).
+  - Así pasa sola de un día al otro.
+  - Sin conexión con el CMS sigue mostrando lo que corresponde con lo que tiene en caché.
+  - El "del edificio de la pantalla" se resuelve en el CMS con el edificio de cada pantalla.
+  - El campo anterior, `cronograma_items` (sólo lo de hoy), se sigue mandando para una Pi sin actualizar.
+- **Cuándo se redibuja.** Cada pantalla se dibuja una vez por momento: el día, el tema y, en el cronograma, el minuto. Un contenido permanente se redibuja solo cuando cambia la fecha de la cabecera o llegan las 19.
+- **El brillo por software** (pantallas sin DDC/CI) es un velo negro encima de la ventana. Se aplica al instante, sin recargar el contenido. Sobre un video sigue siendo el filtro `adjust` de VLC.
+- **Si algo falta,** se sigue viendo con el método anterior, y el motivo llega al panel en el diagnóstico del reproductor:
+  - **Sin pygame, o si la ventana no abre:** cada página se guarda como PNG y la muestra VLC, sin animación.
+  - **Sin VLC:** se ve todo menos los videos.
+  - **A propósito:** `SPUI_VENTANA=false` fuerza el método anterior, para descartar un problema de la ventana en un equipo.
+- **Dibujo por software.** `SPUI_ACELERACION=1` le pide a SDL que presente la ventana con la GPU. Queda apagado porque en la Pi 4 lo basado en OpenGL ya dejó la pantalla en negro una vez (`09_instalacion_raspberry.md` §14.1). La velocidad real del deslizamiento queda en el registro: "Deslizamiento de páginas: N cuadros por segundo".
+
+Sin Pillow, el texto y el cronograma se dibujan como antes (`Player._imagen_de_texto()`): una imagen sobre fondo azul, que se muestra por VLC.
 
 ### Por qué sigue andando sin red
 

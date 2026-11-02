@@ -72,7 +72,7 @@ class PlayerFalso:
     def mostrar_fallback(self):
         self.vistos.append('ESPERA')
 
-    def _parar_vlc(self):
+    def en_negro(self):
         self.paradas += 1
 
     def reintentar_pantalla(self):

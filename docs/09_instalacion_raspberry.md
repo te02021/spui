@@ -373,6 +373,16 @@ cat > ~/.config/openbox/rc.xml << 'EOF'
       <skip_taskbar>yes</skip_taskbar>
       <skip_pager>yes</skip_pager>
     </application>
+    <!-- La ventana del TV (noviembre 2026), donde se dibuja todo menos el
+         video: lo mismo que VLC. -->
+    <application class="spui">
+      <decor>no</decor>
+      <fullscreen>yes</fullscreen>
+      <maximized>yes</maximized>
+      <layer>above</layer>
+      <skip_taskbar>yes</skip_taskbar>
+      <skip_pager>yes</skip_pager>
+    </application>
   </applications>
 </openbox_config>
 EOF
@@ -546,7 +556,7 @@ chmod +x install.sh
 
 El script:
 1. Instala VLC, Python 3 y venv vía `apt`
-2. Crea el entorno virtual e instala `requirements.txt`
+2. Crea el entorno virtual e instala `requirements.txt` (entre otros, `pygame-ce`: la ventana donde se dibujan las plantillas y el cronograma; trae su propio SDL2, no necesita nada de `apt`)
 3. Copia el cliente a `/opt/spui`
 4. Crea `/etc/spui/spui.env` con placeholders
 5. Instala y habilita el servicio `spui.service`
@@ -747,6 +757,14 @@ El log dice cuál se está usando:
 ```
 VLC listo (salida de vídeo: xcb_x11) — el contenido se va a mostrar en pantalla.
 ```
+
+**Si lo negro es un texto, una imagen, un QR o el cronograma** (desde noviembre 2026 no los
+muestra VLC sino la ventana del TV, `spui/ventana.py`), buscá en el log
+`Ventana del TV abierta: 1920x1080`. Para descartar la ventana, agregá `SPUI_VENTANA=false`
+a `/etc/spui/spui.env` y reiniciá el servicio: vuelve al método anterior (cada pantalla
+como imagen de VLC, sin animación). Si con eso se ve, el problema es la ventana: avisar con
+el log. No actives `SPUI_ACELERACION=1` para probar: es justamente lo que puede dejarla en
+negro.
 
 > **Por qué pasa:** VLC trae más de veinte módulos de salida y, sin `--vout` explícito, elige
 > uno solo. En la Pi 4 elegía uno basado en OpenGL (`gl` / `egl_x11`) que crea la ventana pero

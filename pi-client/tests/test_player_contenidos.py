@@ -33,6 +33,9 @@ def _player(media_dir: str = '') -> Player:
     p._tiene_alerta = mock.Mock(return_value=False)
     p._interrumpido = threading.Event()
     p._guardia = None
+    p._ventana = None
+    p._video_activo = False
+    p._incrustado = False
     return p
 
 

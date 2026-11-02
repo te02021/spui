@@ -398,6 +398,10 @@ def main() -> None:
             if estaba_apagada and not energia.esta_apagada():
                 player.forzar_recarga()
 
+            # Para dibujar el TV: el lugar del pie de la plantilla y desde qué
+            # hora el tema automático pasa a claro y a oscuro.
+            player.fijar_entorno(pantalla_data.get('lugar'), sync_data.get('tema_horario'))
+
             # Qué mostrar cuando no hay alerta. Lo muestra el hilo de
             # reproducción: este ciclo nunca se queda esperando un contenido,
             # así un cambio en el CMS se aplica en el acto, haya alerta o no.

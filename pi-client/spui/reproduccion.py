@@ -164,7 +164,7 @@ class Reproduccion(threading.Thread):
             return
 
         if tipo == APAGADO:
-            self._player._parar_vlc()
+            self._player.en_negro()
             self._cambio.wait(60)
             return
 

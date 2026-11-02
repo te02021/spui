@@ -137,17 +137,9 @@ class PantallaTvService
             if (!$it->isActivo() || !$it->aplicaEl($ahora) || ($fin !== null && $fin <= $hora)) {
                 continue;
             }
-            $inicio  = $it->getHoraInicio()->format('H:i');
-            $filas[] = [
-                'inicio'  => $inicio,
-                'fin'     => $fin,
-                'nombre'  => $it->getNombre(),
-                'docente' => $it->getDocente(),
-                'meta'    => implode(' · ', array_filter([$it->getCarrera(), $it->getAnio()])),
-                'aula'    => $it->getAula(),
-                'evento'  => $it->getTipo()->tieneFecha(),
-                'curso'   => $inicio <= $hora,
-            ];
+            $fila = $this->fila($it);
+            $fila['curso'] = $fila['inicio'] <= $hora;
+            $filas[] = $fila;
         }
         usort($filas, fn($a, $b) => strcmp($a['inicio'], $b['inicio']) ?: strnatcasecmp((string) $a['aula'], (string) $b['aula']));
 
@@ -161,5 +153,77 @@ class PantallaTvService
         }
 
         return $base;
+    }
+
+    /** Una actividad tal como la dibuja el TV (la vista previa y la Pi). */
+    private function fila(CronogramaItem $it): array
+    {
+        return [
+            'inicio'  => $it->getHoraInicio()->format('H:i'),
+            // Sin hora de fin: un evento "desde las 18:00".
+            'fin'     => $it->getHoraFin()?->format('H:i'),
+            'nombre'  => $it->getNombre(),
+            'docente' => $it->getDocente(),
+            'meta'    => implode(' · ', array_filter([$it->getCarrera(), $it->getAnio()])),
+            'aula'    => $it->getAula(),
+            'evento'  => $it->getTipo()->tieneFecha(),
+        ];
+    }
+
+    /** Desde qué hora el tema automático es claro y desde cuál oscuro, para la Pi. */
+    public function horarioTema(): array
+    {
+        return ['claro_desde' => $this->claroDesde, 'oscuro_desde' => $this->oscuroDesde];
+    }
+
+    /**
+     * El cronograma que baja al reproductor (noviembre 2026): la semana
+     * entera y no sólo lo de hoy, para que la Pi elija el día y la hora por
+     * su cuenta. Así pasa sola de un día al otro, y sin conexión con el CMS
+     * sigue mostrando lo que corresponde con lo que quedó en su caché.
+     *
+     * Van las clases (con sus días de la semana, la misma máscara que
+     * CronogramaItem) y los eventos de hoy a una semana. La Pi aplica las
+     * mismas reglas que cronograma() de arriba: vigencia, día, lo que ya
+     * terminó no ocupa lugar y el orden por hora y aula.
+     *
+     * @param Edificio|null $edificio El de la pantalla, para uno "del
+     *        edificio de la pantalla".
+     * @return array<string, mixed>
+     */
+    public function cronogramaParaReproductor(Contenido $c, ?Edificio $edificio, DateTimeImmutable $ahora): array
+    {
+        $fuente = $c;
+        if ($c->getCronogramaOrigen() === OrigenCronograma::Edificio) {
+            $fuente = $edificio ? $this->contenidos->cronogramaVigenteDeEdificio($edificio, $ahora) : null;
+        } else {
+            $edificio = $c->getCronogramaEdificio();
+        }
+
+        $datos = [
+            'edificio'            => $edificio?->getNombre(),
+            'segundos_por_pagina' => $c->getSegundosPorPagina() ?? PresentacionContenidoService::SEG_PAGINA_DEFECTO,
+            'vigencia_desde'      => $fuente?->getVigenciaDesde()?->format('Y-m-d'),
+            'vigencia_hasta'      => $fuente?->getVigenciaHasta()?->format('Y-m-d'),
+            'items'               => [],
+            // Cuando no hay de dónde sacar actividades, lo que dice el TV.
+            'vacio'               => $fuente === null ? 'Este edificio no tiene un cronograma vigente.' : null,
+        ];
+        if ($fuente === null) {
+            return $datos;
+        }
+
+        $hoy   = $ahora->format('Y-m-d');
+        $hasta = $ahora->modify('+7 days')->format('Y-m-d');
+        foreach ($this->items->findByContenidoOrdenado($fuente) as $it) {
+            $fecha = $it->getTipo()->tieneFecha() ? $it->getFecha()?->format('Y-m-d') : null;
+            // Un evento ya pasado, o más allá de la semana, no hace falta.
+            if ($it->getTipo()->tieneFecha() && ($fecha === null || $fecha < $hoy || $fecha > $hasta)) {
+                continue;
+            }
+            $datos['items'][] = ['dias' => $it->getDiasSemana(), 'fecha' => $fecha] + $this->fila($it);
+        }
+
+        return $datos;
     }
 }

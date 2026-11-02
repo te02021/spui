@@ -21,8 +21,15 @@ python-vlc>=3.0.18121,<4
 # Telemetría — métricas del sistema (CPU temp, RAM, disco)
 psutil>=5.9.0
 
-# Imágenes — genera la pantalla de espera que se muestra cuando no hay
-# programación activa. Es opcional: sin Pillow el cliente cae al texto por
+# Imágenes — dibuja cada contenido con su plantilla y su tema (spui/tv.py), la
+# pantalla de espera y la de alerta. Sin Pillow el cliente cae al texto por
 # overlay, que funciona pero es menos confiable. Viene preinstalado en
-# Raspberry Pi OS.
-Pillow>=9.0.0
+# Raspberry Pi OS. 9.2 trae rounded_rectangle y getlength.
+Pillow>=9.2.0
+
+# Ventana del TV (spui/ventana.py, noviembre 2026): muestra lo que dibuja
+# spui/tv.py y desliza las páginas del cronograma; VLC dibuja el video dentro
+# de ella. pygame-ce y no pygame: es la rama mantenida, con ruedas para la Pi
+# (trae su propio SDL2, no hace falta nada de apt) y se importa igual
+# (`import pygame`). No instalar los dos juntos: se pisan.
+pygame-ce>=2.4

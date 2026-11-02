@@ -27,6 +27,7 @@ import struct
 import threading
 import time
 import wave
+from datetime import datetime
 from typing import Optional
 
 import config
@@ -46,6 +47,17 @@ except ImportError:
 from spui.x11 import buscar_display as _buscar_display  # noqa: E402
 from spui.x11 import buscar_xauthority as _buscar_xauthority  # noqa: E402
 
+# Desde noviembre 2026 el texto, la imagen, el QR y el cronograma se dibujan
+# con su plantilla y su tema (spui/tv.py) en una ventana propia
+# (spui/ventana.py); VLC queda para el video y el sonido. Si falta Pillow o
+# pygame, se sigue como antes: todo por VLC.
+try:
+    from spui import tv as _tv  # noqa: E402
+except Exception:   # sin Pillow
+    _tv = None
+from spui.ventana import PYGAME_DISPONIBLE as _PYGAME_DISPONIBLE  # noqa: E402
+from spui.ventana import Ventana  # noqa: E402
+
 
 def _detectar_video() -> tuple[bool, Optional[str], Optional[str]]:
     """
@@ -58,8 +70,8 @@ def _detectar_video() -> tuple[bool, Optional[str], Optional[str]]:
 
     Devuelve (puede_dibujar, display, motivo_si_no_puede).
     """
-    if not _VLC_IMPORTABLE:
-        return False, None, 'python-vlc no está instalado en la Raspberry Pi.'
+    if not _VLC_IMPORTABLE and not (_PYGAME_DISPONIBLE and _tv is not None and config.VENTANA):
+        return False, None, 'Ni python-vlc ni pygame están instalados en la Raspberry Pi.'
 
     display = _buscar_display()
     if display is None:
@@ -127,6 +139,22 @@ class Player:
         self._firma_actual: Optional[str] = None
         # Brillo por software (filtro adjust de VLC), 1.0 = sin oscurecer.
         self._brillo_sw = 1.0
+        # La ventana del TV (spui/ventana.py). La abre el hilo de reproducción
+        # (reintentar_pantalla), el único que la usa: SDL no admite dos hilos.
+        self._ventana: Optional[Ventana] = None
+        self._ventana_intentada = False
+        self._dibujante = _tv.Dibujante() if _tv is not None else None
+        # Láminas ya dibujadas, por clave (contenido + fecha + hora + tema).
+        self._laminas: dict = {}
+        # Dónde está la pantalla y el horario del tema automático (del sync).
+        self._lugar: Optional[str] = None
+        self._horario_tema: Optional[dict] = None
+        # VLC está mostrando un video dentro de la ventana del TV.
+        self._video_activo = False
+        # VLC dibuja dentro de la ventana del TV y no en una propia.
+        self._incrustado = False
+        # _momento_tv() de lo que quedó en pantalla (ver reproducir_playlist).
+        self._momento_actual = ''
 
         # La detección va acá y no en el import: durante el import todavía no
         # hay logging configurado y estos mensajes se perdían, dejando la
@@ -137,6 +165,12 @@ class Player:
 
         if not puede_dibujar:
             logger.warning('Modo SIMULACIÓN (sin salida de pantalla): %s', motivo)
+            return
+
+        if not _VLC_IMPORTABLE:
+            # Sin VLC igual se ve todo lo que dibuja la ventana del TV.
+            self.problema_pantalla = 'python-vlc no está instalado: no se pueden mostrar los videos.'
+            logger.warning('%s', self.problema_pantalla)
             return
 
         logger.info('Inicializando VLC (DISPLAY=%s)…', display)
@@ -218,9 +252,57 @@ class Player:
             # visible en el CMS con el motivo, en lugar de reiniciarse en bucle.
             self._vlc = None
             self._media_player = None
+            if self._puede_usar_ventana():
+                # La ventana del TV igual muestra todo menos los videos.
+                self.problema_pantalla = f'VLC no pudo inicializarse ({exc}): no se pueden mostrar los videos.'
+                logger.error('%s', self.problema_pantalla)
+                return
             self._simulacion = True
             self.motivo_simulacion = f'VLC no pudo inicializarse: {exc}'
             logger.error('VLC no pudo inicializarse (%s) — modo SIMULACIÓN.', exc)
+
+    # ── Ventana del TV ─────────────────────────────────────────────────────
+
+    def _puede_usar_ventana(self) -> bool:
+        return config.VENTANA and _PYGAME_DISPONIBLE and self._dibujante is not None
+
+    def _abrir_ventana(self) -> None:
+        """
+        Abre la ventana del TV la primera vez que se puede dibujar. Corre en el
+        hilo de reproducción. Si no abre, se sigue como antes (todo por VLC) y
+        se avisa al CMS: se ve, pero sin plantillas animadas.
+        """
+        if self._ventana_intentada or self._simulacion or not self._puede_usar_ventana():
+            return
+        self._ventana_intentada = True
+        ventana = Ventana(acelerada=config.ACELERACION)
+        if not ventana.abrir():
+            self.problema_pantalla = (ventana.motivo or 'No se pudo abrir la ventana del reproductor.') + \
+                ' Se muestra el contenido con el método anterior, sin animaciones.'
+            logger.error('%s', self.problema_pantalla)
+            return
+        self._ventana = ventana
+        ventana.brillo(self._brillo_sw)
+        # El video se dibuja dentro de esta ventana, no en una de VLC.
+        if self._media_player is not None:
+            ident = ventana.id_nativo()
+            try:
+                if ident and os.name == 'nt':
+                    self._media_player.set_hwnd(ident)
+                elif ident:
+                    self._media_player.set_xwindow(ident)
+                if ident:
+                    self._media_player.set_fullscreen(False)
+                    self._incrustado = True
+            except Exception as exc:
+                logger.warning('VLC no pudo dibujar dentro de la ventana del TV (%s): usa la suya.', exc)
+        self._firma_actual = None
+        self._mostrando_fallback = False
+
+    def fijar_entorno(self, lugar: Optional[str], horario_tema: Optional[dict]) -> None:
+        """Lo que manda el sync para dibujar: el lugar del pie y el horario del tema automático."""
+        self._lugar = lugar or None
+        self._horario_tema = horario_tema if isinstance(horario_tema, dict) else None
 
     # ── API pública ────────────────────────────────────────────────────────
 
@@ -264,15 +346,19 @@ class Player:
         firma = self._firma_playlist(items)
 
         # Único contenido permanente que ya está en pantalla: no tocar nada.
+        # Salvo que haya cambiado lo que dice por la hora (la fecha de la
+        # cabecera, el tema automático a las 19): ahí se vuelve a dibujar.
         if (
             len(items) == 1
             and self._resolver_duracion(items[0], 1) is None
             and firma == self._firma_actual
             and not self._mostrando_fallback
+            and self._momento_tv(items[0].get('contenido') or {}) == self._momento_actual
         ):
             return False
 
         self._firma_actual = firma
+        self._momento_actual = ''
         mostrados = 0
 
         for item in items:
@@ -290,9 +376,11 @@ class Player:
                 self._guardia.terminar(contenido)
             mostrados += 1
 
-            # Permanente: ya quedó en pantalla y ahí se queda.
+            # Permanente: ya quedó en pantalla y ahí se queda. Salvo un
+            # cronograma, que gira sus páginas: si se cortó (un cambio de
+            # brillo por VLC, la señal HDMI que vuelve), sigue en el acto.
             if duracion is None:
-                return False
+                return not self._simulacion and contenido.get('tipo') == 'cronograma'
 
         if mostrados == 0:
             # Todos salteados por la guardia: que no quede la pantalla vacía.
@@ -312,12 +400,27 @@ class Player:
         partes = []
         for item in items:
             c = item.get('contenido') or {}
-            partes.append('{}:{}:{}'.format(
+            partes.append('{}:{}:{}:{}'.format(
                 c.get('id'),
                 c.get('hash_archivo') or c.get('contenido_texto') or '',
                 item.get('duracion_efectiva_seg'),
+                # Plantilla, tema, título y las actividades del cronograma.
+                _tv.firma(c) if _tv is not None else '',
             ))
         return '|'.join(partes)
+
+    def _momento_tv(self, contenido: dict) -> str:
+        """
+        Lo que cambia con la hora en lo que dibuja el TV: el día (la fecha de
+        la cabecera), el tema si es automático y, en un cronograma, el minuto
+        (una clase que termina, otra que pasa a estar en curso).
+        """
+        if _tv is None or not _tv.para_mostrar(contenido):
+            return ''
+        ahora = datetime.now()
+        tema = _tv.tema_efectivo((contenido.get('presentacion') or {}).get('tema') or 'oscuro', ahora, self._horario_tema)
+        formato = '%Y-%m-%d %H:%M' if contenido.get('tipo') == 'cronograma' else '%Y-%m-%d'
+        return f'{ahora.strftime(formato)}|{tema}|{self._lugar or ""}'
 
     def _resolver_duracion(self, item: dict, total_items: int) -> Optional[int]:
         """
@@ -410,6 +513,9 @@ class Player:
             # fuera de alcance acá. Ese caso (y si Pillow no está disponible o
             # la composición falla) sigue el camino anterior, marq sobre VLC.
             imagen_alerta = None
+            if fondo_tipo == 'video' and self._vlc is None:
+                # Sin VLC el video no se puede mostrar: la alerta va sin fondo.
+                fondo_ruta, fondo_tipo = None, None
             if fondo_tipo != 'video':
                 imagen_alerta = self._generar_imagen_alerta(
                     titulo, mensaje, fondo_ruta if fondo_tipo == 'imagen' else None,
@@ -515,6 +621,12 @@ class Player:
             return
 
         logo = self._imagen_fallback()
+
+        if self._ventana is not None and logo:
+            logger.info('[FALLBACK] Sin programación — se muestra la pantalla de espera.')
+            self._poner(self._dibujante.de_imagen(logo))
+            self._mostrando_fallback = True
+            return
 
         if not self._simulacion and logo:
             logger.info('[FALLBACK] Sin programación — se muestra la pantalla de espera.')
@@ -859,6 +971,11 @@ class Player:
             self._esperar_alerta()
             return
 
+        if self._ventana is not None:
+            self._poner(self._dibujante.de_imagen(ruta))
+            self._esperar_alerta()
+            return
+
         media = self._vlc.media_new(ruta)
         media.add_option(':image-duration=-1')
         self._reproducir_media(media, es_imagen_fija=True)
@@ -875,10 +992,14 @@ class Player:
         siempre. Se llama desde el ciclo principal, así que se recupera solo en
         cuanto X aparece.
 
-        Devuelve True si a partir de ahora puede dibujar.
+        Devuelve True si a partir de ahora puede dibujar. Corre en el hilo de
+        reproducción, que es también el que abre la ventana del TV.
         """
-        if not self._simulacion or not _VLC_IMPORTABLE:
-            return not self._simulacion
+        if not self._simulacion:
+            self._abrir_ventana()
+            return True
+        if not _VLC_IMPORTABLE and not self._puede_usar_ventana():
+            return False
 
         display = _buscar_display()
         if display is None:
@@ -890,28 +1011,33 @@ class Player:
             os.environ['XAUTHORITY'] = cookie
 
         try:
-            # Sin --no-osd acá tampoco — ver el comentario en __init__ sobre
-            # por qué apagaba el texto de las alertas.
-            aout_device = os.environ.get('SPUI_AOUT_DEVICE', '').strip()
-            opciones_audio = ('--aout=alsa', f'--alsa-audio-device={aout_device}') if aout_device else ()
-            self._vlc = vlc.Instance(
-                '--autoscale', '--no-video-title-show',
-                '--mouse-hide-timeout=1000', '--quiet',
-                *opciones_audio,
-            )
-            if self._vlc is None:
-                raise RuntimeError('vlc.Instance() devolvió None')
-            self._media_player = self._vlc.media_player_new()
-            self._media_player.set_fullscreen(True)
+            if _VLC_IMPORTABLE:
+                # Sin --no-osd acá tampoco — ver el comentario en __init__ sobre
+                # por qué apagaba el texto de las alertas.
+                aout_device = os.environ.get('SPUI_AOUT_DEVICE', '').strip()
+                opciones_audio = ('--aout=alsa', f'--alsa-audio-device={aout_device}') if aout_device else ()
+                self._vlc = vlc.Instance(
+                    '--autoscale', '--no-video-title-show',
+                    '--mouse-hide-timeout=1000', '--quiet',
+                    *opciones_audio,
+                )
+                if self._vlc is None:
+                    raise RuntimeError('vlc.Instance() devolvió None')
+                self._media_player = self._vlc.media_player_new()
+                self._media_player.set_fullscreen(True)
         except Exception as exc:
-            logger.warning('Reintento de pantalla fallido: %s', exc)
-            return False
+            if not self._puede_usar_ventana():
+                logger.warning('Reintento de pantalla fallido: %s', exc)
+                return False
+            self._vlc = self._media_player = None
+            self.problema_pantalla = f'VLC no pudo inicializarse ({exc}): no se pueden mostrar los videos.'
 
         self._simulacion         = False
         self.motivo_simulacion   = None
         self._firma_actual       = None     # forzar recarga: hay que dibujar todo de nuevo
         self._mostrando_fallback = False
         logger.info('Entorno gráfico disponible (DISPLAY=%s) — reproductor activo.', display)
+        self._abrir_ventana()
         return True
 
     def esta_mostrando_alerta(self) -> bool:
@@ -928,8 +1054,13 @@ class Player:
         nuevo = max(0.0, min(1.0, float(fraccion)))
         if abs(nuevo - self._brillo_sw) < 0.005:
             return None
-        logger.info('Brillo por software (VLC): %d%%.', round(nuevo * 100))
         self._brillo_sw = nuevo
+        if self._ventana is not None and not self._video_activo:
+            # El velo de la ventana lo pone el hilo de reproducción en su
+            # próxima espera (_atender_ventana), sin cortar lo que se ve.
+            logger.info('Brillo por software: %d%%.', round(nuevo * 100))
+            return None
+        logger.info('Brillo por software (VLC): %d%%.', round(nuevo * 100))
         self.forzar_recarga()
         return None
 
@@ -943,6 +1074,16 @@ class Player:
         self._firma_actual = None
         self._mostrando_fallback = False
         self._interrumpido.set()
+
+    def en_negro(self) -> None:
+        """Fuera de horario: no se reproduce nada (lo llama el hilo de reproducción)."""
+        self._parar_vlc()
+        self._video_activo = False
+        if self._ventana is not None:
+            self._ventana.cubierta(False)
+            self._ventana.negro()
+        self._firma_actual = None
+        self._momento_actual = ''
 
     def detener(self) -> None:
         self._stop.set()
@@ -982,6 +1123,18 @@ class Player:
             cuanto = f'{duracion}s'
         logger.info('Reproduciendo [%s] "%s" (%s)', tipo, contenido.get('titulo') or '', cuanto)
 
+        # Todo menos el video, con su plantilla y su tema (spui/tv.py).
+        if _tv is not None and _tv.para_mostrar(contenido):
+            local = None
+            if tipo in ('imagen', 'qr'):
+                url_descarga = contenido.get('url_descarga') or ''
+                local = self._resolver_local(url_descarga, contenido, sync_client)
+                if not local:
+                    self._archivo_no_disponible(contenido, url_descarga)
+                    return
+            self._mostrar_tv(contenido, local, duracion)
+            return
+
         if tipo == 'texto':
             # contenido_texto es nullable en el CMS: un texto sin cuerpo llega
             # como null, y el default de .get() no lo cubre.
@@ -998,22 +1151,7 @@ class Player:
                 else:
                     self._reproducir_imagen(local, duracion)
             else:
-                # El archivo no está en el caché y no se pudo descargar. No se
-                # espera indefinidamente por algo que no se puede mostrar: se
-                # deja la pantalla de espera y se reintenta en el próximo ciclo,
-                # cuando el prefetch quizá ya lo haya traído.
-                logger.warning(
-                    'Archivo no disponible: %s — se muestra la pantalla de espera.',
-                    url_descarga or '(sin archivo)',
-                )
-                self.problema_pantalla = (
-                    f'No se pudo obtener el archivo de "{contenido.get("titulo") or "un contenido"}". '
-                    'Se está mostrando la pantalla de espera.'
-                )
-                self._mostrando_fallback = False   # forzar que se dibuje
-                self.mostrar_fallback()
-                # La firma se invalida para reintentar el contenido real luego.
-                self._firma_actual = None
+                self._archivo_no_disponible(contenido, url_descarga)
 
         elif tipo == 'cronograma':
             # El CMS ya filtró los items por el día de hoy y los ordenó por hora
@@ -1028,9 +1166,140 @@ class Player:
             logger.warning('Tipo desconocido: %s', tipo)
             self._esperar(duracion)
 
+    def _archivo_no_disponible(self, contenido: dict, url_descarga: str) -> None:
+        """
+        El archivo no está en el caché y no se pudo descargar. No se espera
+        indefinidamente por algo que no se puede mostrar: se deja la pantalla
+        de espera y se reintenta en el próximo ciclo, cuando el prefetch quizá
+        ya lo haya traído.
+        """
+        logger.warning(
+            'Archivo no disponible: %s — se muestra la pantalla de espera.',
+            url_descarga or '(sin archivo)',
+        )
+        self.problema_pantalla = (
+            f'No se pudo obtener el archivo de "{contenido.get("titulo") or "un contenido"}". '
+            'Se está mostrando la pantalla de espera.'
+        )
+        self._mostrando_fallback = False   # forzar que se dibuje
+        self.mostrar_fallback()
+        # La firma se invalida para reintentar el contenido real luego.
+        self._firma_actual = None
+
+    # ── El TV: plantilla, tema y páginas (noviembre 2026) ─────────────────
+
+    # Láminas dibujadas que se guardan (un cronograma de 4 páginas son ~30 MB).
+    _LAMINAS_GUARDADAS = 4
+
+    def _lamina(self, contenido: dict, archivo: Optional[str] = None):
+        """
+        La lámina del contenido a esta hora. Se dibuja una sola vez por
+        momento (_momento_tv: día, tema y, en un cronograma, minuto): en la
+        próxima vuelta de la playlist se reusa.
+        """
+        clave = f'{_tv.firma(contenido)}|{self._momento_tv(contenido)}|{archivo or ""}'
+        lamina = self._laminas.get(clave)
+        if lamina is None:
+            inicio = time.monotonic()
+            lamina = self._dibujante.lamina(contenido, datetime.now(), self._lugar, self._horario_tema, archivo)
+            lamina.clave = clave
+            logger.debug('Lámina de "%s" dibujada en %.2f s (%d página/s).',
+                         contenido.get('titulo') or '', time.monotonic() - inicio, lamina.cantidad)
+            self._laminas[clave] = lamina
+            while len(self._laminas) > self._LAMINAS_GUARDADAS:
+                self._laminas.pop(next(iter(self._laminas)))
+        return lamina
+
+    def _mostrar_tv(self, contenido: dict, archivo: Optional[str], duracion: Optional[int]) -> None:
+        """Texto, imagen, QR o cronograma, con su plantilla y su tema."""
+        if self._simulacion:
+            # Se dibuja igual: así un dato que llega mal se ve también en la PC.
+            lamina = self._lamina(contenido, archivo)
+            logger.info('[SIM] %s "%s": %d página/s', contenido.get('tipo'), contenido.get('titulo') or '', lamina.cantidad)
+            self._esperar_simulado(duracion)
+            return
+
+        if contenido.get('tipo') == 'cronograma':
+            self._mostrar_cronograma(contenido, duracion)
+            return
+
+        self._poner(self._lamina(contenido, archivo))
+        self._momento_actual = self._momento_tv(contenido)
+        # Permanente: queda en pantalla. Si cambia el día o el tema, la
+        # próxima vuelta lo nota (reproducir_playlist) y lo vuelve a dibujar.
+        if duracion is not None:
+            self._esperar(duracion)
+
+    def _mostrar_cronograma(self, contenido: dict, duracion: Optional[int]) -> None:
+        """
+        Cada página queda sus segundos y se desliza a la izquierda mientras
+        entra la siguiente. En una rotación se pasan todas una vez (por eso en
+        el CMS su duración dice "Según sus páginas"); solo en la playlist,
+        siguen girando. Al volver a la primera se dibuja de nuevo: lo que ya
+        terminó deja de ocupar lugar y lo que empezó pasa a "en curso".
+        """
+        lamina, i = self._lamina(contenido), 0
+        self._poner(lamina)
+        while True:
+            self._esperar(lamina.segundos)
+            if self._cortado():
+                return
+            if i + 1 < lamina.cantidad:
+                nueva, j = lamina, i + 1
+            elif duracion is not None:
+                return   # una vuelta por las páginas, y sigue la playlist
+            else:
+                nueva, j = self._lamina(contenido), 0
+            if nueva is lamina and j == i:
+                continue   # una sola página y nada cambió
+            if lamina.cantidad == 1 and nueva.cantidad == 1:
+                self._poner(nueva)   # una sola página: se reemplaza, no se desliza
+            else:
+                self._deslizar(lamina, i, nueva, j)
+            lamina, i = nueva, j
+
+    def _poner(self, lamina, pagina: int = 0) -> None:
+        """Muestra una lámina: en la ventana del TV o, si no hay, por VLC como imagen."""
+        if self._ventana is not None:
+            # Si había un video, la ventana de VLC queda encima: se saca
+            # recién ahora, con lo nuevo listo, para que no haya negro.
+            if self._video_activo:
+                self._video_activo = False
+                self._parar_vlc()
+                self._ventana.cubierta(False)
+            self._ventana.mostrar(lamina, pagina)
+            return
+        self._reproducir_imagen(self._lamina_png(lamina, pagina), None)
+
+    def _deslizar(self, sale, i_sale: int, entra, i_entra: int) -> None:
+        if self._ventana is not None and not self._video_activo:
+            self._ventana.deslizar(sale, i_sale, entra, i_entra, self._cortado)
+        else:
+            self._poner(entra, i_entra)   # por VLC: de una página a la otra, sin animación
+
+    def _lamina_png(self, lamina, pagina: int) -> str:
+        """La página como PNG en el caché, para mostrarla por VLC (sin la ventana del TV)."""
+        nombre = hashlib.sha1(lamina.clave.encode('utf-8')).hexdigest()[:12]
+        ruta = os.path.join(self._media_dir, f'{self._TEXTO_PREFIJO}tv_{nombre}_{pagina}.png')
+        if not os.path.exists(ruta):
+            os.makedirs(self._media_dir, exist_ok=True)
+            lamina.plana(pagina).save(ruta)
+            self._podar_imagenes_de_texto()
+        return ruta
+
+    def _soltar_ventana(self) -> None:
+        """VLC no llegó a mostrar nada: la ventana del TV vuelve a estar a la vista."""
+        if self._ventana is not None and self._video_activo:
+            self._video_activo = False
+            self._parar_vlc()
+            self._ventana.cubierta(False)
+
+    def _cortado(self) -> bool:
+        return self._tiene_alerta() or self._stop.is_set() or self._interrumpido.is_set()
+
     def _reproducir_cronograma(self, titulo: str, items: list[dict], duracion: Optional[int]) -> None:
         """
-        Renderiza un cronograma como texto tabulado.
+        Renderiza un cronograma como texto tabulado (sólo sin Pillow).
 
         items llega ya filtrado por día y ordenado por hora desde el CMS; cada
         entrada tiene nombre, aula, hora_inicio y hora_fin. Una lista vacía
@@ -1102,6 +1371,9 @@ class Player:
             media.add_option(':video-filter=adjust')
             media.add_option(f':brightness={self._brillo_sw:.2f}')
 
+        if self._ventana is not None:
+            self._ventana.cubierta(True)
+            self._video_activo = True
         self._media_player.set_media(media)
 
         # play() devuelve -1 si no pudo arrancar. Ignorar ese valor era la razón
@@ -1114,10 +1386,13 @@ class Player:
             logger.error('%s', self.problema_pantalla)
             return False
 
-        try:
-            self._media_player.set_fullscreen(True)
-        except Exception as exc:
-            logger.warning('No se pudo forzar pantalla completa: %s', exc)
+        # Dentro de la ventana del TV ya ocupa toda la pantalla: pedirle
+        # pantalla completa a VLC lo sacaría de ahí.
+        if not self._incrustado:
+            try:
+                self._media_player.set_fullscreen(True)
+            except Exception as exc:
+                logger.warning('No se pudo forzar pantalla completa: %s', exc)
 
         # Confirmar que efectivamente está dibujando. VLC tarda un instante en
         # abrir la salida de vídeo, así que se le da un margen antes de juzgar.
@@ -1152,6 +1427,10 @@ class Player:
             )
             logger.error('%s', self.problema_pantalla)
             return False
+
+        if self._incrustado:
+            self.problema_pantalla = None
+            return True
 
         # Reproduce bien: se comprueba el fullscreen. Si el gestor de ventanas
         # ignora el pedido, el contenido se ve enmarcado — algo que sólo se nota
@@ -1196,6 +1475,10 @@ class Player:
             logger.info('[SIM] video: %s', os.path.basename(path))
             self._esperar_simulado(duracion)
             return
+        if self._vlc is None:
+            # Hay ventana del TV pero no VLC (ver __init__): el video se saltea.
+            logger.warning('Video salteado: VLC no está disponible (%s).', os.path.basename(path))
+            return
 
         media = self._vlc.media_new(path)
         # Un video permanente se repite en bucle en vez de quedarse en el último
@@ -1204,6 +1487,7 @@ class Player:
             media.add_option(':input-repeat=65535')
 
         if not self._reproducir_media(media):
+            self._soltar_ventana()
             return
 
         if duracion is not None:
@@ -1226,6 +1510,7 @@ class Player:
             estado = self._media_player.get_state()
             if estado in (vlc.State.Ended, vlc.State.Error, vlc.State.Stopped):
                 return
+            self._atender_ventana()
             time.sleep(0.25)
 
     def _reproducir_texto(
@@ -1328,7 +1613,19 @@ class Player:
         while time.monotonic() < deadline:
             if self._tiene_alerta() or self._stop.is_set() or self._interrumpido.is_set():
                 return
+            self._atender_ventana()
             time.sleep(0.2)
+
+    def _atender_ventana(self) -> None:
+        """Mientras se espera: avisos de la ventana del TV y el brillo por software."""
+        ventana = getattr(self, '_ventana', None)
+        if ventana is None:
+            return
+        try:
+            ventana.brillo(self._brillo_sw)
+            ventana.atender()
+        except Exception as exc:
+            logger.warning('Error atendiendo la ventana del TV: %s', exc)
 
     def _esperar_alerta(self) -> None:
         """
@@ -1379,6 +1676,7 @@ class Player:
                         sonido_resuelto = True
                     self._reproducir_sonido(ruta_sonido)
                     sonando = ruta_sonido is not None
+            self._atender_ventana()
             time.sleep(0.3)
 
     def _esperar_simulado(self, duracion: Optional[int]) -> None:
