@@ -131,13 +131,16 @@ class PantallaTvService
         $hora  = $ahora->format('H:i');
         $filas = [];
         foreach ($items ?? $this->items->findByContenidoOrdenado($fuente) as $it) {
-            if (!$it->isActivo() || !$it->aplicaEl($ahora) || $it->getHoraFin()->format('H:i') <= $hora) {
+            // Sin hora de fin (un evento "desde las 18:00"): sigue hasta que
+            // termina el día.
+            $fin = $it->getHoraFin()?->format('H:i');
+            if (!$it->isActivo() || !$it->aplicaEl($ahora) || ($fin !== null && $fin <= $hora)) {
                 continue;
             }
             $inicio  = $it->getHoraInicio()->format('H:i');
             $filas[] = [
                 'inicio'  => $inicio,
-                'fin'     => $it->getHoraFin()->format('H:i'),
+                'fin'     => $fin,
                 'nombre'  => $it->getNombre(),
                 'docente' => $it->getDocente(),
                 'meta'    => implode(' · ', array_filter([$it->getCarrera(), $it->getAnio()])),

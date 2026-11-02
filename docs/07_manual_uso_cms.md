@@ -233,6 +233,38 @@ Sus ítems se administran en una **ventana emergente**, como el resto del panel:
 
 La Pi recibe **solo los ítems del día actual**, ya filtrados: las clases por su día de la semana y los eventos por su fecha. Se ordenan por hora de inicio, igual que en el CMS.
 
+Un evento especial puede no tener **hora de fin**: en la pantalla dice "Desde las 18:00" y sigue hasta que termina el día. Una clase o actividad la tiene siempre.
+
+#### Importar el Excel de horarios
+
+**Contenidos → Importar cronograma** carga los horarios de todo el cuatrimestre desde el Excel (`.xlsx`) o un `.csv`, sin cargar clase por clase.
+
+1. **Elegir el archivo.** Se lee apenas se elige.
+   - Una hoja por edificio, con los títulos Día, Aula, Horario, Carrera, Año, Materia y Docente. El día y el aula pueden ir en celdas combinadas.
+   - Opcional, una hoja **Eventos especiales** con Edificio, Fecha, Hora inicio, Hora final, Aula, Evento a realizar y Responsable.
+   - Las columnas se reconocen por su título, no por su posición.
+2. **Revisar.** Antes de guardar nada se ve, por cada hoja:
+   - **Qué se leyó:** cuántas actividades y cuántas por día. Una misma clase que se dicta varios días queda como una sola actividad con todos sus días.
+   - **Qué se corrigió solo**, con el número de fila:
+     - carrera y año invertidos;
+     - años escritos de distintas formas ("1 ERO", "2DO/4TO" → "1.º", "2.º y 4.º");
+     - horarios como "18:00 20:00" o "18.30 a 22:30";
+     - aulas ("6A" → "6 A", sin la capacidad entre paréntesis).
+   - **Qué no se pudo leer y por qué.** Nada se descarta sin avisar.
+   - **A dónde va:** un cronograma nuevo (con su título), reemplazar las clases de uno existente (avisa cuántas actividades y eventos se pierden) o no importar esa hoja.
+   - **Edificio:** se propone por nombre.
+   - **Vigencia:** la del cuatrimestre, desde y hasta. Una sola para todo el archivo.
+   - **Eventos especiales:**
+     - Se agrupan por su columna Edificio, y cada grupo se suma a la hoja que se elija. Por ejemplo, "Campus E1" va con Campus LAB.
+     - Los eventos que ya pasaron no se importan.
+     - El responsable pasa a ser el docente. La cantidad de personas y los elementos adicionales no se importan.
+     - Las horas escritas con punto se leen como hora y minutos (9.3 = 9:30).
+3. **Guardar.**
+   - Se guarda todo junto: si algo falla, no cambia nada.
+   - Las pantallas que muestran esos cronogramas reciben el cambio en segundos. Las desconectadas lo reciben al reconectarse: la importación no se bloquea por un reproductor apagado, y la vista previa lo avisa.
+
+Volver a importar el mismo Excel con correcciones, eligiendo "reemplazar", deja cada cronograma igual al Excel, sin duplicar nada.
+
 ### 3.3 Códigos QR — dentro de Contenidos
 
 **No hay una sección aparte de códigos QR.** Un QR es un tipo de contenido más y se administra

@@ -61,13 +61,14 @@
                 <div class="tv-pagina" data-spui-tv-origen>
                     {% for f in cr.filas %}
                         <div class="tv-fila{{ f.curso ? ' is-curso' }}{{ f.evento ? ' is-evento' }}">
-                            <div class="tv-c-hora">{{ f.inicio }}<i>–</i>{{ f.fin }}</div>
+                            <div class="tv-c-hora">{% if f.fin %}{{ f.inicio }}<i>–</i>{{ f.fin }}{% else %}Desde las {{ f.inicio }}{% endif %}</div>
                             <div class="tv-c-mat">
                                 <div class="tv-mat">{{ f.nombre }}{% if f.evento %}<span class="tv-et">Evento especial</span>{% endif %}</div>
                                 {% if f.docente %}<div class="tv-doc">{{ f.docente }}</div>{% endif %}
                             </div>
-                            <div class="tv-c-car">{{ f.meta }}</div>
-                            <div class="tv-c-aula">{{ f.aula }}</div>
+                            {# <wbr> después de cada "/": "AGRO/BIO/IC" puede bajar de renglón ahí. #}
+                            <div class="tv-c-car">{{ f.meta|e|replace({'/': '/<wbr>'})|raw }}</div>
+                            <div class="tv-c-aula">{{ f.aula|e|replace({'/': '/<wbr>'})|raw }}</div>
                         </div>
                     {% endfor %}
                 </div>

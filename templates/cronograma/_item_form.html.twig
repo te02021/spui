@@ -68,12 +68,16 @@
             {% if err.hora_inicio is defined %}<p class="spui-campo-error">{{ err.hora_inicio }}</p>{% endif %}
         </div>
         <div class="col-6 spui-hora-field">
-            <label class="unraf-form-label" for="ci_hf">Hora fin <span class="text-danger">*</span></label>
+            {# Sin required: en un evento puede quedar vacía (lo valida el servidor). #}
+            <label class="unraf-form-label" for="ci_hf">Hora fin <span class="text-danger" data-spui-si-tipo-item="clase actividad" {{ tipo == 'evento' ? 'hidden' }}>*</span></label>
             <input type="time" id="ci_hf" name="hora_fin" class="unraf-form-control{{ err.hora_fin is defined ? ' is-invalid' }}"
-                   value="{{ v.hora_fin ?? '' }}" required
+                   value="{{ v.hora_fin ?? '' }}"
                    data-spui-validar-posterior="#ci_hi"
                    data-spui-validar-mensaje="{{ constant('SPUI\\Controller\\Cms\\CronogramaCmsController::MSG_FIN_POSTERIOR') }}">
             {% if err.hora_fin is defined %}<p class="spui-campo-error">{{ err.hora_fin }}</p>{% endif %}
+            <small class="text-muted d-block mt-1" data-spui-si-tipo-item="evento" {{ tipo != 'evento' ? 'hidden' }}>
+                En un evento puede quedar vacía: se muestra "Desde las…".
+            </small>
         </div>
     </div>
 

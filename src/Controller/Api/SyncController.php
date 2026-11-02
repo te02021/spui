@@ -322,7 +322,8 @@ class SyncController extends AbstractController
                     'nombre'      => $ci->getNombre(),
                     'aula'        => $ci->getAula(),
                     'hora_inicio' => $ci->getHoraInicio()->format('H:i'),
-                    'hora_fin'    => $ci->getHoraFin()->format('H:i'),
+                    // Un evento puede no tener hora de fin: va vacía.
+                    'hora_fin'    => $ci->getHoraFin()?->format('H:i') ?? '',
                 ],
                 array_filter(
                     $this->cronogramaItemRepo->findByContenidoOrdenado($c),

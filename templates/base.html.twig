@@ -230,6 +230,8 @@
    de inválido del anterior antes de que validacion-vivo.js revise el campo. #}
 <script src="{{ asset('spui/js/core/video-archivo.js') }}"></script>
 <script src="{{ asset('spui/js/core/validacion-vivo.js') }}"></script>
+{# Después de validacion-vivo.js: el archivo se envía sólo si pasó sus reglas. #}
+<script src="{{ asset('spui/js/core/importar-cronograma.js') }}"></script>
 {# AssetMapper versiona los .svg con un hash: media-viewer.js no puede
    armar esas URLs por su cuenta, así que se las pasamos acá. #}
 <script>

@@ -95,7 +95,7 @@ foreach ($router->getRouteCollection()->all() as $nombre => $ruta) {
 
     // Las páginas se piden como navegación; las acciones que existen para un
     // modal (ver, nuevo, editar, ítems, energía) se piden también como XHR.
-    $esModal = (bool) preg_match('#/(ver|nuevo|nueva|nueva-regla|editar|items|cronograma|energia|agregar|pantalla)(/|$)#', $ruta->getPath())
+    $esModal = (bool) preg_match('#/(ver|nuevo|nueva|nueva-regla|editar|items|cronograma|energia|agregar|pantalla|importar)(/|$)#', $ruta->getPath())
         || str_contains($nombre, '_items') || str_contains($nombre, '_energia_') || str_contains($nombre, '_cronograma_');
 
     foreach ($esModal ? [true] : [false] as $xhr) {

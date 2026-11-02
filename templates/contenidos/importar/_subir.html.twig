@@ -1,0 +1,36 @@
+{# Importar cronograma, paso 1: elegir el archivo (noviembre 2026). Se lee
+   apenas se elige (core/importar-cronograma.js): no hace falta otro botón. #}
+<form method="post" action="{{ path('spui_cms_contenidos_importar') }}" data-spui-ajax="1" enctype="multipart/form-data" novalidate>
+    <input type="hidden" name="_token" value="{{ csrf_token('spui_action') }}">
+
+    <p class="mb-3">
+        Elegí el Excel de horarios. Se lee apenas lo elegís y, antes de guardar nada, ves qué se va a cargar
+        en cada cronograma.
+    </p>
+
+    <div class="mb-3" data-spui-campo>
+        <label class="spui-importar-zona{{ error ? ' is-invalid' }}" for="imp_archivo">
+            <img src="{{ asset('unraf-ui/icons/file-arrow-up.svg') }}" alt="">
+            <strong>Elegir el archivo</strong>
+            <span>Excel (.xlsx) o CSV</span>
+            <span class="spui-importar-leyendo" data-spui-importar-leyendo hidden>Leyendo el archivo…</span>
+        </label>
+        <input type="file" id="imp_archivo" name="archivo" class="visually-hidden" accept=".xlsx,.csv"
+               data-spui-enviar-al-elegir data-spui-formatos="xlsx,csv" data-spui-formatos-texto="Excel (.xlsx) o CSV"
+               data-spui-max-bytes="{{ max_bytes }}">
+        {% if error %}<p class="spui-campo-error">{{ error }}</p>{% endif %}
+    </div>
+
+    <details class="spui-importar-ayuda mb-3">
+        <summary>Qué tiene que tener el archivo</summary>
+        <ul class="mb-0">
+            <li>Una hoja por edificio con los títulos <strong>Día, Aula, Horario, Carrera, Año, Materia y Docente</strong>, como el Excel de horarios. El día y el aula pueden ir en celdas combinadas.</li>
+            <li>Opcional, una hoja <strong>Eventos especiales</strong> con Edificio, Fecha, Hora inicio, Hora final, Aula, Evento a realizar y Responsable.</li>
+            <li>Los horarios pueden estar escritos como «16 a 18» o «13:30 a 15:30»; lo que venga distinto se corrige solo y se avisa.</li>
+        </ul>
+    </details>
+
+    <div class="d-flex justify-content-end gap-2 pt-3 border-top">
+        <button type="button" class="unraf-btn spui-btn-back" data-spui-close>Cancelar</button>
+    </div>
+</form>

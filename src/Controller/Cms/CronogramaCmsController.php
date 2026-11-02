@@ -149,7 +149,7 @@ class CronogramaCmsController extends AbstractController
             ->setAnio($v['anio'] ?: null)
             ->setDocente($v['docente'] ?: null)
             ->setHoraInicio(new DateTimeImmutable($v['hora_inicio']))
-            ->setHoraFin(new DateTimeImmutable($v['hora_fin']))
+            ->setHoraFin($v['hora_fin'] !== '' ? new DateTimeImmutable($v['hora_fin']) : null)
             // Un evento usa su fecha; una clase, sus días. El otro dato no se
             // borra del todo (los días quedan), pero no se usa.
             ->setFecha($tipo->tieneFecha() ? new DateTimeImmutable($v['fecha']) : null)
@@ -228,14 +228,20 @@ class CronogramaCmsController extends AbstractController
     private function validarItem(array $v): array
     {
         $errors = [];
+        $evento = TipoItemCronograma::from($v['tipo_item'])->tieneFecha();
         if ($v['nombre'] === '') { $errors['nombre'] = 'Indicá la materia o actividad.'; }
         if (!preg_match('/^\d{2}:\d{2}$/', $v['hora_inicio'])) { $errors['hora_inicio'] = 'La hora de inicio es requerida.'; }
-        if (!preg_match('/^\d{2}:\d{2}$/', $v['hora_fin'])) { $errors['hora_fin'] = 'La hora de fin es requerida.'; }
-        if (!isset($errors['hora_inicio']) && !isset($errors['hora_fin']) && $v['hora_fin'] <= $v['hora_inicio']) {
+        // Un evento puede no tener hora de fin: se muestra "Desde las 18:00".
+        if ($v['hora_fin'] === '' && !$evento) {
+            $errors['hora_fin'] = 'La hora de fin es requerida.';
+        } elseif ($v['hora_fin'] !== '' && !preg_match('/^\d{2}:\d{2}$/', $v['hora_fin'])) {
+            $errors['hora_fin'] = 'La hora no es válida.';
+        }
+        if (!isset($errors['hora_inicio']) && !isset($errors['hora_fin']) && $v['hora_fin'] !== '' && $v['hora_fin'] <= $v['hora_inicio']) {
             $errors['hora_fin'] = self::MSG_FIN_POSTERIOR;
         }
 
-        if (TipoItemCronograma::from($v['tipo_item'])->tieneFecha()) {
+        if ($evento) {
             $fecha = DateTimeImmutable::createFromFormat('!Y-m-d', $v['fecha']);
             if (!$fecha || $fecha->format('Y-m-d') !== $v['fecha']) {
                 $errors['fecha'] = 'Indicá la fecha del evento.';

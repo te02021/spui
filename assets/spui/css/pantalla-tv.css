@@ -75,7 +75,7 @@
    larga baja a otro renglón y la fila crece hacia abajo; el docente va
    debajo del título completo. Márgenes chicos dentro de la fila y columnas
    fijas justas, para que la materia tenga el mayor ancho posible. */
-.tv-fila { display: grid; grid-template-columns: 280px minmax(0, 1fr) 230px 210px; align-items: center; column-gap: 16px; padding: 0 12px; text-align: center; }
+.tv-fila { display: grid; grid-template-columns: 280px minmax(0, 1fr) 200px 290px; align-items: center; column-gap: 16px; padding: 0 12px; text-align: center; }
 .tv-tcab { font-size: 22px; text-transform: uppercase; letter-spacing: .1em; font-weight: 700; opacity: .55; padding-bottom: 10px; }
 .tv-vista { position: relative; overflow: hidden; flex: 1; min-height: 0; }
 .tv-pagina { position: absolute; inset: 0 0 auto 0; display: flex; flex-direction: column; gap: 8px; will-change: transform; }
@@ -91,8 +91,11 @@
 .tv-c-mat { min-width: 0; }
 .tv-mat { font-weight: 700; font-size: 32px; line-height: 1.15; overflow-wrap: anywhere; }
 .tv-doc { font-size: 23px; opacity: .7; margin-top: 4px; line-height: 1.2; overflow-wrap: anywhere; }
-.tv-c-car { font-size: 27px; font-weight: 700; opacity: .8; line-height: 1.2; overflow-wrap: anywhere; }
-.tv-c-aula { font-weight: 700; font-size: 44px; line-height: 1.1; overflow-wrap: anywhere; }
+/* Carrera y aula bajan de renglón entre palabras, nunca en el medio de una
+   ("Sala de Reuniones Sur" no puede quedar "Reunione / s"). La barra de
+   "AGRO/BIO/IC" también es un lugar donde cortar. */
+.tv-c-car { font-size: 27px; font-weight: 700; opacity: .8; line-height: 1.2; overflow-wrap: break-word; }
+.tv-c-aula { font-weight: 700; font-size: 44px; line-height: 1.1; overflow-wrap: break-word; }
 .spui-tv--clara .tv-c-aula { color: var(--tv-azul); }
 .spui-tv--oscura .tv-c-aula { color: var(--tv-amarillo); }
 .tv-et { display: inline-block; font-size: 18px; text-transform: uppercase; letter-spacing: .08em; padding: 5px 12px; border-radius: 30px; margin-left: 14px;

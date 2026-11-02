@@ -52,7 +52,7 @@
                 <tr>
                     <td class="p-3 text-nowrap" data-label="Hora">
                         <strong>{{ item.horaInicio|date('H:i') }}</strong>
-                        <span class="text-muted"> – {{ item.horaFin|date('H:i') }}</span>
+                        {% if item.horaFin %}<span class="text-muted"> – {{ item.horaFin|date('H:i') }}</span>{% else %}<span class="text-muted"> en adelante</span>{% endif %}
                     </td>
                     <td class="p-3" data-label="Materia o actividad">
                         <strong>{{ item.nombre }}</strong>

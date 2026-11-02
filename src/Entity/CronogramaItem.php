@@ -32,7 +32,12 @@ class CronogramaItem
     #[ORM\Column(type: 'time_immutable')]
     private ?DateTimeImmutable $horaInicio = null;
 
-    #[ORM\Column(type: 'time_immutable')]
+    /**
+     * Sólo un evento especial puede no tenerla (el Excel trae eventos con
+     * "-"): en el TV dice "Desde las 18:00" y sigue en curso hasta que
+     * termina el día. Una clase o actividad la tiene siempre.
+     */
+    #[ORM\Column(type: 'time_immutable', nullable: true)]
     private ?DateTimeImmutable $horaFin = null;
 
     /**
