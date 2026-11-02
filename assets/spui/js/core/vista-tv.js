@@ -2,7 +2,8 @@
 //
 //   - Escala: el TV se dibuja a 1920 × 1080 y se achica al ancho disponible.
 //   - Texto: se achica la letra hasta que entra todo, como hace la Pi.
-//   - Cronograma: cada página queda sus segundos y se desliza a la izquierda
+//   - Cronograma: las filas se reparten en páginas por altura (las que
+//     entran); cada página queda sus segundos y se desliza a la izquierda
 //     mientras entra la siguiente desde la derecha (elección de Mateo).
 //   - Carga: los [data-spui-vista-previa-url] se llenan solos. Dentro de un
 //     formulario se manda lo que se está cargando (POST) y se vuelve a pedir
@@ -24,11 +25,12 @@
         var tv = escala.querySelector('.spui-tv');
         if (!tv || !escala.clientWidth) return;
         tv.style.transform = 'scale(' + (escala.clientWidth / ANCHO) + ')';
-        // El texto se ajusta recién cuando la vista se ve: oculta mide 0 de
-        // alto y la letra bajaría al mínimo.
+        // Texto y páginas se arman recién cuando la vista se ve: oculta mide 0
+        // de alto (la letra bajaría al mínimo y no entraría ninguna fila).
         if (!escala.dataset.spuiTvAjustado) {
             escala.dataset.spuiTvAjustado = '1';
             escala.querySelectorAll('[data-spui-tv-ajustar]').forEach(ajustarTexto);
+            paginar(escala);
         }
     }
 
@@ -43,10 +45,52 @@
         }
     }
 
+    // Reparte las filas del cronograma en páginas según lo que ocupa cada
+    // una: una materia larga baja a otro renglón (nunca se corta), así que no
+    // entra siempre la misma cantidad. La lista original queda oculta, como
+    // molde, y las páginas son copias.
+    function armarPaginas(escala) {
+        var origen = escala.querySelector('[data-spui-tv-origen]');
+        if (!origen) return [];
+        var alto = origen.parentElement.clientHeight;
+        var hueco = parseFloat(getComputedStyle(origen).rowGap) || 0;
+        var paginas = [[]], usado = 0;
+        Array.prototype.forEach.call(origen.children, function (fila) {
+            var h = fila.offsetHeight;
+            var pagina = paginas[paginas.length - 1];
+            if (pagina.length && usado + hueco + h > alto) {
+                paginas.push([]);
+                pagina = paginas[paginas.length - 1];
+                usado = 0;
+            }
+            usado += (pagina.length ? hueco : 0) + h;
+            pagina.push(fila);
+        });
+        if (paginas.length < 2) return [];
+
+        origen.hidden = true;
+        return paginas.map(function (filas, i) {
+            var p = document.createElement('div');
+            p.className = 'tv-pagina';
+            p.setAttribute('data-spui-tv-pagina', '');
+            p.hidden = i > 0;
+            filas.forEach(function (f) { p.appendChild(f.cloneNode(true)); });
+            origen.parentElement.appendChild(p);
+            return p;
+        });
+    }
+
     function paginar(escala) {
-        var paginas = Array.prototype.slice.call(escala.querySelectorAll('[data-spui-tv-pagina]'));
         var seg = parseInt(escala.getAttribute('data-spui-tv-segundos'), 10);
-        if (paginas.length < 2 || !seg) return;
+        if (!seg) return;
+        var paginas = armarPaginas(escala);
+        if (paginas.length < 2) return;
+        var avance = escala.querySelector('[data-spui-tv-avance]');
+        if (avance) {
+            avance.innerHTML = paginas.map(function (p, i) { return '<i class="' + (i ? '' : 'on') + '"></i>'; }).join('') +
+                '<em data-spui-tv-numero>1 / ' + paginas.length + '</em>';
+            avance.hidden = false;
+        }
         var puntos = escala.querySelectorAll('.tv-avance i');
         var numero = escala.querySelector('[data-spui-tv-numero]');
         var actual = 0;
@@ -87,7 +131,6 @@
             escala.dataset.spuiTvListo = '1';
             escalar(escala);
             if (escalador) escalador.observe(escala);
-            paginar(escala);
         });
     }
 
@@ -199,14 +242,11 @@
             delete e.dataset.spuiTvListo;
             delete e.dataset.spuiTvAjustado;
         });
-        clon.querySelectorAll('[data-spui-tv-pagina]').forEach(function (p, i) {
-            p.hidden = i > 0;
-            p.style.transform = '';
-            p.style.transition = '';
-        });
-        clon.querySelectorAll('.tv-avance i').forEach(function (p, i) { p.classList.toggle('on', i === 0); });
-        var n = clon.querySelector('[data-spui-tv-numero]');
-        if (n) n.textContent = n.textContent.replace(/^\d+/, '1');
+        // Las páginas se vuelven a armar en el visor (otro tamaño, otra
+        // animación): queda sólo la lista original.
+        clon.querySelectorAll('[data-spui-tv-pagina]').forEach(function (p) { p.remove(); });
+        clon.querySelectorAll('[data-spui-tv-origen]').forEach(function (o) { o.hidden = false; });
+        clon.querySelectorAll('[data-spui-tv-avance]').forEach(function (a) { a.innerHTML = ''; a.hidden = true; });
         clon.querySelectorAll('[data-spui-tv-ajustar]').forEach(function (e) { e.style.fontSize = ''; });
         return clon;
     }

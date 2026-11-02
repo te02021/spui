@@ -20,7 +20,7 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
 /**
  * Lo que muestra el TV para un contenido (noviembre 2026): con qué plantilla y
  * tema, la fecha del encabezado y, en un cronograma, las actividades del día
- * repartidas en páginas.
+ * que quedan (se reparten en páginas al dibujar, según lo que ocupa cada una).
  *
  * La vista previa del CMS (templates/pantalla/_tv.html.twig) se dibuja con
  * esto, así que lo que se ve en el panel sale de las mismas reglas que va a
@@ -28,9 +28,6 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
  */
 class PantallaTvService
 {
-    /** Actividades por página del cronograma (las que entran a 1080 px). */
-    public const FILAS_POR_PAGINA = 7;
-
     public function __construct(
         private readonly CronogramaItemRepository $items,
         private readonly ContenidoRepository $contenidos,
@@ -95,7 +92,7 @@ class PantallaTvService
     /**
      * Las actividades del día que todavía no terminaron (lo que ya pasó no
      * ocupa lugar), por hora de inicio y, a la misma hora, por aula en orden
-     * natural (el 2 antes que el 19), repartidas en páginas.
+     * natural (el 2 antes que el 19).
      *
      * @param list<CronogramaItem>|null $items
      * @return array<string, mixed>
@@ -114,7 +111,7 @@ class PantallaTvService
         $base = [
             'edificio'      => $edificio?->getNombre(),
             'segundos'      => $c->getSegundosPorPagina() ?? PresentacionContenidoService::SEG_PAGINA_DEFECTO,
-            'paginas'       => [],
+            'filas'         => [],
             'total'         => 0,
             // Por qué no hay nada que mostrar, en palabras del TV.
             'vacio'         => null,
@@ -151,8 +148,11 @@ class PantallaTvService
         }
         usort($filas, fn($a, $b) => strcmp($a['inicio'], $b['inicio']) ?: strnatcasecmp((string) $a['aula'], (string) $b['aula']));
 
-        $base['paginas'] = array_chunk($filas, self::FILAS_POR_PAGINA);
-        $base['total']   = count($filas);
+        // Las páginas se arman al dibujar, por altura: una materia larga ocupa
+        // más de un renglón (nunca se corta ni se achica la letra), así que
+        // no entra siempre la misma cantidad de filas.
+        $base['filas'] = $filas;
+        $base['total'] = count($filas);
         if (!$filas) {
             $base['vacio'] = 'No quedan actividades por hoy.';
         }

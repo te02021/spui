@@ -117,7 +117,8 @@
                    class="unraf-form-control{{ err.segundos_por_pagina is defined ? ' is-invalid' }}">
             {% if err.segundos_por_pagina is defined %}<p class="spui-campo-error">{{ err.segundos_por_pagina }}</p>{% endif %}
             <small class="text-muted d-block mt-1">
-                Cada página muestra 7 actividades y pasa a la siguiente deslizándose. La duración del
+                Cada página muestra las actividades que entran (una materia larga ocupa más de un renglón,
+                nunca se corta) y pasa a la siguiente deslizándose. La duración del
                 cronograma en la playlist se calcula sola: páginas × segundos.
             </small>
         </div>

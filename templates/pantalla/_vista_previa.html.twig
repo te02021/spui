@@ -12,7 +12,7 @@
     <p class="spui-tv-leyenda mb-0">
         Así se ve hoy a las {{ ahora|date('H:i') }}{% if tv.tema_auto %}, con el tema
         {{ tv.tema == 'clara' ? 'claro' : 'oscuro' }} (automático: claro de {{ spui_tema_claro_desde }} a {{ spui_tema_oscuro_desde }}){% endif %}.
-        {% if cr and cr.paginas|length > 1 %}Las páginas pasan cada {{ cr.segundos }} s.{% endif %}
+        {% if cr and cr.total %}Si no entra todo, las páginas pasan cada {{ cr.segundos }} s.{% endif %}
     </p>
     <div class="spui-vista-previa-acciones">
         {% if edificios %}

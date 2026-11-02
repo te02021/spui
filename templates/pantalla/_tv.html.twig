@@ -2,13 +2,13 @@
    va a ver un contenido en pantalla, con su plantilla y su tema.
 
    Lo arma PantallaTvService::vista() (tv) y lo achica y anima
-   core/vista-tv.js: escala, ajuste del texto y el cambio de página del
-   cronograma, deslizándose hacia la izquierda.
+   core/vista-tv.js: escala, ajuste del texto y, en el cronograma, las
+   páginas (las filas que entran a lo alto) y el cambio de una a otra,
+   deslizándose hacia la izquierda.
 
    Variables: tv; media_url (imagen, video o la imagen del QR, si ya hay una);
    leyenda (opcional, una línea debajo del TV). #}
 {% set cr = tv.cronograma|default(null) %}
-{% set paginas = cr ? cr.paginas|length : 0 %}
 
 {% macro contenido(tv, media_url) %}
     {% set cr = tv.cronograma|default(null) %}
@@ -54,22 +54,23 @@
         </div>
         {% if cr.total %}
             <div class="tv-fila tv-tcab"><span>Horario</span><span>Materia · Docente</span><span>Carrera · Año</span><span>Aula</span></div>
+            {# Todas las filas en una lista: vista-tv.js las reparte en páginas
+               según la altura de cada una (una materia larga baja a otro
+               renglón, nunca se corta). #}
             <div class="tv-vista">
-                {% for pagina in cr.paginas %}
-                    <div class="tv-pagina" data-spui-tv-pagina {{ not loop.first ? 'hidden' }}>
-                        {% for f in pagina %}
-                            <div class="tv-fila{{ f.curso ? ' is-curso' }}{{ f.evento ? ' is-evento' }}">
-                                <div class="tv-c-hora">{{ f.inicio }}<i>–</i>{{ f.fin }}</div>
-                                <div class="tv-c-mat">
-                                    <div class="tv-mat">{{ f.nombre }}{% if f.evento %}<span class="tv-et">Evento especial</span>{% endif %}</div>
-                                    {% if f.docente %}<div class="tv-doc">{{ f.docente }}</div>{% endif %}
-                                </div>
-                                <div class="tv-c-car">{{ f.meta }}</div>
-                                <div class="tv-c-aula">{{ f.aula }}</div>
+                <div class="tv-pagina" data-spui-tv-origen>
+                    {% for f in cr.filas %}
+                        <div class="tv-fila{{ f.curso ? ' is-curso' }}{{ f.evento ? ' is-evento' }}">
+                            <div class="tv-c-hora">{{ f.inicio }}<i>–</i>{{ f.fin }}</div>
+                            <div class="tv-c-mat">
+                                <div class="tv-mat">{{ f.nombre }}{% if f.evento %}<span class="tv-et">Evento especial</span>{% endif %}</div>
+                                {% if f.docente %}<div class="tv-doc">{{ f.docente }}</div>{% endif %}
                             </div>
-                        {% endfor %}
-                    </div>
-                {% endfor %}
+                            <div class="tv-c-car">{{ f.meta }}</div>
+                            <div class="tv-c-aula">{{ f.aula }}</div>
+                        </div>
+                    {% endfor %}
+                </div>
             </div>
         {% else %}
             <div class="tv-crono-vacio">{{ cr.vacio }}</div>
@@ -77,7 +78,7 @@
     {% endif %}
 {% endmacro %}
 
-<div class="spui-tv-escala" data-spui-tv {% if paginas > 1 %}data-spui-tv-segundos="{{ cr.segundos }}"{% endif %}>
+<div class="spui-tv-escala" data-spui-tv {% if cr and cr.total %}data-spui-tv-segundos="{{ cr.segundos }}"{% endif %}>
     <div class="spui-tv spui-tv--{{ tv.tema }} spui-tv--{{ tv.plantilla }} spui-tv--{{ tv.tipo }}">
         {% if tv.plantilla == 'institucional' %}
             <header class="tv-cab">
@@ -88,12 +89,8 @@
             <div class="tv-cuerpo">{{ _self.contenido(tv, media_url|default(null)) }}</div>
             <footer class="tv-pie">
                 <span><b>SPUI</b> · Sistema de Pantallas UNRaf</span>
-                {% if paginas > 1 %}
-                    <span class="tv-avance" aria-hidden="true">
-                        {% for i in 1..paginas %}<i class="{{ loop.first ? 'on' }}"></i>{% endfor %}
-                        <em data-spui-tv-numero>1 / {{ paginas }}</em>
-                    </span>
-                {% endif %}
+                {# Los puntos de cada página los pone vista-tv.js al armarlas. #}
+                {% if cr and cr.total %}<span class="tv-avance" data-spui-tv-avance aria-hidden="true" hidden></span>{% endif %}
                 <span>{{ tv.lugar ?: 'Lugar de la pantalla' }}</span>
             </footer>
         {% else %}

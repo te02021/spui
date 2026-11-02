@@ -211,7 +211,8 @@ Un contenido tipo cronograma es una tabla de horarios (materias, aulas, docentes
   - En cada pantalla muestra el cronograma propio vigente del edificio donde está ubicada.
   - Si una pantalla se muda de edificio (se le cambia la Ubicación), cambia de cronograma sola.
 - **Segundos por página:**
-  - Cada página muestra 7 actividades y pasa a la siguiente deslizándose. Por defecto 10 segundos, de 5 a 60.
+  - Cada página muestra las actividades que entran y pasa a la siguiente deslizándose. Por defecto 10 segundos, de 5 a 60.
+  - **No se corta ni se achica nada:** una materia larga ocupa más de un renglón y la fila crece hacia abajo; el docente va debajo del nombre completo. Por eso una página puede tener más o menos actividades que otra.
   - La duración del cronograma en la playlist se calcula sola: páginas × segundos.
 
 Sus ítems se administran en una **ventana emergente**, como el resto del panel:

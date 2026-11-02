@@ -62,7 +62,7 @@
 .tv-qr-pendiente { display: flex; align-items: center; justify-content: center; text-align: center; padding: 60px;
     border: 6px dashed #c9d3dd; border-radius: 12px; color: #6c7a89; font-size: 40px; font-weight: 700; }
 
-/* Cronograma: tabla centrada, 7 actividades por página */
+/* Cronograma: tabla centrada, las filas que entren por página */
 .tv-crono-tit { display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: 20px; }
 .tv-crono-tit small { font-size: 28px; text-transform: uppercase; letter-spacing: .12em; font-weight: 700; color: var(--tv-turquesa); }
 .tv-crono-tit h1 { font-size: 64px; line-height: 1; margin-top: 6px; }
@@ -71,11 +71,15 @@
 .tv-ref-curso::before { background: var(--tv-turquesa); }
 .tv-ref-evento::before { background: var(--tv-amarillo); }
 .tv-crono-cuenta { opacity: .65; }
-.tv-fila { display: grid; grid-template-columns: 330px 1fr 320px 200px; align-items: center; column-gap: 24px; padding: 0 28px; text-align: center; }
+/* Nada se corta ni se achica (decisión de Mateo, 02/11/2026): una materia
+   larga baja a otro renglón y la fila crece hacia abajo; el docente va
+   debajo del título completo. Márgenes chicos dentro de la fila y columnas
+   fijas justas, para que la materia tenga el mayor ancho posible. */
+.tv-fila { display: grid; grid-template-columns: 280px minmax(0, 1fr) 230px 210px; align-items: center; column-gap: 16px; padding: 0 12px; text-align: center; }
 .tv-tcab { font-size: 22px; text-transform: uppercase; letter-spacing: .1em; font-weight: 700; opacity: .55; padding-bottom: 10px; }
-.tv-vista { position: relative; overflow: hidden; height: 636px; flex: none; }
+.tv-vista { position: relative; overflow: hidden; flex: 1; min-height: 0; }
 .tv-pagina { position: absolute; inset: 0 0 auto 0; display: flex; flex-direction: column; gap: 8px; will-change: transform; }
-.tv-pagina .tv-fila { height: 84px; flex: none; border-radius: 14px; border-left: 10px solid transparent; }
+.tv-pagina .tv-fila { min-height: 84px; padding-top: 8px; padding-bottom: 8px; flex: none; border-radius: 14px; border-left: 10px solid transparent; }
 .spui-tv--clara .tv-pagina .tv-fila { background: #fff; box-shadow: 0 2px 6px rgba(20, 35, 55, .06); }
 .spui-tv--oscura .tv-pagina .tv-fila { background: rgba(255, 255, 255, .07); }
 .tv-fila.is-curso { border-left-color: var(--tv-turquesa); }
@@ -85,14 +89,14 @@
 .tv-c-hora { font-weight: 700; font-size: 38px; white-space: nowrap; }
 .tv-c-hora i { font-style: normal; opacity: .5; margin: 0 10px; }
 .tv-c-mat { min-width: 0; }
-.tv-mat { font-weight: 700; font-size: 32px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.tv-doc { font-size: 23px; opacity: .7; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
-.tv-c-car { font-size: 27px; font-weight: 700; opacity: .8; }
-.tv-c-aula { font-weight: 700; font-size: 44px; }
+.tv-mat { font-weight: 700; font-size: 32px; line-height: 1.15; overflow-wrap: anywhere; }
+.tv-doc { font-size: 23px; opacity: .7; margin-top: 4px; line-height: 1.2; overflow-wrap: anywhere; }
+.tv-c-car { font-size: 27px; font-weight: 700; opacity: .8; line-height: 1.2; overflow-wrap: anywhere; }
+.tv-c-aula { font-weight: 700; font-size: 44px; line-height: 1.1; overflow-wrap: anywhere; }
 .spui-tv--clara .tv-c-aula { color: var(--tv-azul); }
 .spui-tv--oscura .tv-c-aula { color: var(--tv-amarillo); }
-.tv-et { font-size: 18px; text-transform: uppercase; letter-spacing: .08em; padding: 5px 12px; border-radius: 30px; margin-left: 14px;
-    vertical-align: 5px; background: var(--tv-amarillo); color: #2b3a4a; }
+.tv-et { display: inline-block; font-size: 18px; text-transform: uppercase; letter-spacing: .08em; padding: 5px 12px; border-radius: 30px; margin-left: 14px;
+    vertical-align: 5px; line-height: 1.2; white-space: nowrap; background: var(--tv-amarillo); color: #2b3a4a; }
 .tv-crono-vacio { flex: 1; display: flex; align-items: center; justify-content: center; font-size: 48px; font-weight: 700; opacity: .6; text-align: center; }
 .tv-avance { display: flex; align-items: center; gap: 12px; }
 .tv-avance i { width: 14px; height: 14px; border-radius: 50%; background: currentColor; opacity: .3; transition: opacity .6s; }
