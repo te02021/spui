@@ -237,6 +237,8 @@ class VentanaTest(unittest.TestCase):
     def test_cortar_termina_en_el_acto(self):
         c = DibujoTest._cronograma(DibujoTest(), 30)
         lam = tv.Dibujante().lamina(c, LUNES_18)
+        # Convertir las páginas lleva su tiempo y no es lo que se mide acá.
+        self.v.mostrar(lam, 0)
         import time
         inicio = time.monotonic()
         self.v.deslizar(lam, 0, lam, 1, lambda: True)
