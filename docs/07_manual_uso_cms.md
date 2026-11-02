@@ -162,6 +162,25 @@ Además se define **título** y **duración en segundos**:
 
 El modal **Ver** del contenido muestra lo elegido.
 
+**Vista previa en el TV:**
+
+- **Formulario:** el alta y la edición muestran, debajo de esas opciones, un TV achicado con el contenido tal como se va a ver.
+  - Se actualiza solo con cada cambio: plantilla, tema, título, texto, segundos por página.
+  - Una imagen o un video recién elegido se ve antes de guardarlo.
+  - Así se puede comparar cada plantilla y tema antes de decidir.
+- **Modal Ver:** la misma vista, arriba de todo.
+- **Cronograma:**
+  - Se ve con las actividades de hoy que todavía no terminaron, y las páginas pasan deslizándose cada los segundos elegidos.
+  - Uno "del edificio de la pantalla" tiene un selector **Como en…** para elegir en qué edificio mirarlo.
+- **Debajo del TV:** una línea dice a qué hora corresponde lo que se ve y qué tema tomó el automático.
+- **Ampliar:** la abre en grande.
+
+**Visor:** el ojo de un archivo (imagen, video o QR) lo abre a pantalla completa, sobre fondo oscuro.
+
+- **Pestañas:** **Archivo** (lo que se subió, con su tamaño en píxeles o la duración del video) y **En pantalla** (cómo se ve en el TV).
+- **Herramientas:** en una imagen, zoom con los botones o la rueda del mouse; tocar el porcentaje vuelve al 100%. Descargar y cerrar (también con Esc o tocando afuera).
+- **Fondo a cuadros:** se ven las partes transparentes de una imagen.
+
 **Estados:** sólo dos.
 
 ```

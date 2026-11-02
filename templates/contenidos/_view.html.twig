@@ -17,6 +17,10 @@
     {% endif %}
 </div>
 
+{# Cómo se ve en el TV (noviembre 2026): la vista previa se pide sola
+   (core/vista-tv.js) y "Ampliar" la abre en el visor. #}
+<div class="spui-vista-previa spui-vista-previa-ver" data-spui-vista-previa-url="{{ path('spui_cms_contenidos_pantalla', {id: contenido.id}) }}" aria-live="polite"></div>
+
 <div class="spui-view-section">
     <p class="spui-view-section-title">Detalles</p>
     <div class="spui-view-row">
@@ -41,7 +45,6 @@
     </div>
 </div>
 
-{# Cómo se presenta en el TV (noviembre 2026). #}
 <div class="spui-view-section">
     <p class="spui-view-section-title">Cómo se ve en pantalla</p>
     <div class="spui-view-row">
@@ -101,7 +104,8 @@
             {{ contenido.rutaArchivo|split('/')|last }}
             <a href="#" class="unraf-btn spui-btn-back unraf-btn-icon" title="Vista previa"
                data-spui-preview-url="{{ path('spui_cms_contenidos_archivo_preview', {id: contenido.id}) }}"
-               data-spui-preview-tipo="{{ contenido.tipo.value }}"
+               data-spui-preview-pantalla-url="{{ path('spui_cms_contenidos_pantalla', {id: contenido.id}) }}"
+                   data-spui-preview-tipo="{{ contenido.tipo.value }}"
                data-spui-preview-nombre="{{ contenido.rutaArchivo|split('/')|last }}">
                 <img src="{{ asset('unraf-ui/icons/eye.svg') }}" class="spui-action-icon" alt="Vista previa">
             </a>

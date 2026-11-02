@@ -10,7 +10,7 @@
    En la edición el tipo no cambia: va fijo en data-spui-tipo-fijo.
 
    Variables: pv (PresentacionContenidoService::valores), err, edificios,
-   tipo_fijo (sólo en la edición). #}
+   tipo_fijo y vista_id (sólo en la edición). #}
 {% set err = err|default({}) %}
 {% set uid = tipo_fijo is defined ? 'ed' : 'al' %}
 
@@ -121,5 +121,13 @@
                 cronograma en la playlist se calcula sola: páginas × segundos.
             </small>
         </div>
+    </div>
+
+    {# Vista previa en vivo: se vuelve a pedir con cada cambio del formulario
+       (core/vista-tv.js), así se ve cada plantilla y tema antes de guardar. #}
+    <div class="spui-presentacion-previa">
+        <span class="unraf-form-label d-block">Vista previa</span>
+        <div class="spui-vista-previa" data-spui-vista-previa-url="{{ path('spui_cms_contenidos_vista_previa') }}"
+             {% if vista_id is defined %}data-spui-vista-id="{{ vista_id }}"{% endif %} aria-live="polite"></div>
     </div>
 </fieldset>

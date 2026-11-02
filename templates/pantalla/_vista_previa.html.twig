@@ -1,0 +1,29 @@
+{# Vista previa de un contenido en el TV, con lo que hace falta para leerla
+   (noviembre 2026). La devuelven VistaTvCmsController (guardado o formulario)
+   y la pinta core/vista-tv.js donde haya un [data-spui-vista-previa].
+
+   Variables: tv, media_url, ahora, edificios + edificio (sólo uno "del
+   edificio de la pantalla"), titulo (para el visor al ampliar). #}
+{% set cr = tv.cronograma|default(null) %}
+<div class="spui-vista-previa-tv" data-spui-tv-titulo="{{ titulo }}">
+    {{ include('@SPUI/pantalla/_tv.html.twig') }}
+</div>
+<div class="spui-vista-previa-pie">
+    <p class="spui-tv-leyenda mb-0">
+        Así se ve hoy a las {{ ahora|date('H:i') }}{% if tv.tema_auto %}, con el tema
+        {{ tv.tema == 'clara' ? 'claro' : 'oscuro' }} (automático: claro de {{ spui_tema_claro_desde }} a {{ spui_tema_oscuro_desde }}){% endif %}.
+        {% if cr and cr.paginas|length > 1 %}Las páginas pasan cada {{ cr.segundos }} s.{% endif %}
+    </p>
+    <div class="spui-vista-previa-acciones">
+        {% if edificios %}
+            <select class="unraf-form-select unraf-form-select-sm" data-spui-tv-edificio aria-label="Ver como en el edificio">
+                {% for e in edificios %}
+                    <option value="{{ e.id }}" {{ edificio and edificio.id == e.id ? 'selected' }}>Como en {{ e.nombre }}</option>
+                {% endfor %}
+            </select>
+        {% endif %}
+        <button type="button" class="unraf-btn spui-btn-back unraf-btn-sm" data-spui-tv-ampliar title="Ver la vista previa en grande">
+            <img src="{{ asset('unraf-ui/icons/arrows-out.svg') }}" class="spui-action-icon" alt=""> Ampliar
+        </button>
+    </div>
+</div>

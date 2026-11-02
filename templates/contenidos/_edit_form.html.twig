@@ -103,7 +103,8 @@
                     <span class="spui-archivo-nombre">{{ contenido.rutaArchivo|split('/')|last }}</span>
                     <a href="#" class="unraf-btn spui-btn-back unraf-btn-icon" title="Vista previa"
                        data-spui-preview-url="{{ path('spui_cms_contenidos_archivo_preview', {id: contenido.id}) }}"
-                       data-spui-preview-tipo="qr"
+                       data-spui-preview-pantalla-url="{{ path('spui_cms_contenidos_pantalla', {id: contenido.id}) }}"
+                   data-spui-preview-tipo="qr"
                        data-spui-preview-nombre="{{ contenido.rutaArchivo|split('/')|last }}">
                         <img src="{{ asset('unraf-ui/icons/eye.svg') }}" class="spui-action-icon" alt="Vista previa">
                     </a>
@@ -151,6 +152,7 @@
                 <a href="#" class="unraf-btn spui-btn-back unraf-btn-icon" title="Vista previa"
                    data-spui-archivo-preview-btn
                    data-spui-preview-nombre="{{ contenido.rutaArchivo ? contenido.rutaArchivo|split('/')|last : '' }}"
+                   data-spui-preview-pantalla-url="{{ path('spui_cms_contenidos_pantalla', {id: contenido.id}) }}"
                    data-spui-preview-tipo="{{ contenido.tipo.value }}"
                    {% if contenido.rutaArchivo %}data-spui-preview-url="{{ path('spui_cms_contenidos_archivo_preview', {id: contenido.id}) }}"{% endif %}>
                     <img src="{{ asset('unraf-ui/icons/eye.svg') }}" class="spui-action-icon" alt="Vista previa">
@@ -179,7 +181,7 @@
         </div>
     {% endif %}
 
-    {{ include('@SPUI/contenidos/_presentacion.html.twig', {pv: presentacion, err: err, edificios: edificios, tipo_fijo: contenido.tipo.value}) }}
+    {{ include('@SPUI/contenidos/_presentacion.html.twig', {pv: presentacion, err: err, edificios: edificios, tipo_fijo: contenido.tipo.value, vista_id: contenido.id}) }}
 
     <div class="d-flex justify-content-end gap-2 pt-3 border-top">
         <button type="button" class="unraf-btn spui-btn-back" data-spui-close>Cancelar</button>
