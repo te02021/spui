@@ -428,7 +428,8 @@ textarea.is-invalid,
 .spui-menu-acciones { position: relative; display: inline-flex; }
 .spui-btn-menu.unraf-btn { background: #fff; border: 1px solid #cfd8e0; color: #2b3a4a; }
 .spui-btn-menu.unraf-btn:hover, .spui-btn-menu[aria-expanded="true"] { background: #eef4fa; border-color: #9fb6cc; color: #2b3a4a; }
-.spui-menu-panel { left: auto; right: 0; min-width: 15rem; padding: .3rem; }
+/* Tan ancho como su opción más larga, no un ancho fijo con espacio de sobra. */
+.spui-desp-panel.spui-menu-panel { left: auto; right: 0; min-width: 0; width: max-content; padding: .3rem; }
 .spui-menu-panel .unraf-btn.unraf-btn {
     display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-start; gap: .15rem .65rem; width: 100%; margin: 0;
     padding: .55rem .65rem; border: 0; border-radius: 6px; box-shadow: none;
@@ -2906,7 +2907,8 @@ html.spui-sidebar-plegado .spui-sidebar-plegar img { transform: rotate(180deg); 
     .spui-abm-modal-body .border-top.justify-content-end > .unraf-btn { flex: 1 1 0; }
 
     /* Las acciones de la cabecera de una sección (Importar / Nuevo): una
-       debajo de la otra, a todo el ancho. Lado a lado, "Importar cronograma"
-       no entra en media pantalla sin partirse en dos renglones. */
-    .spui-cabecera-acciones { width: 100%; flex-direction: column; }
+       debajo de la otra (lado a lado, "Importar cronograma" no entra en media
+       pantalla sin partirse en dos renglones), del mismo ancho entre sí pero
+       sólo el que pide la más larga, no toda la pantalla (03/11/2026). */
+    .spui-cabecera-acciones { display: inline-flex; width: auto; flex-direction: column; align-items: stretch; }
 }
