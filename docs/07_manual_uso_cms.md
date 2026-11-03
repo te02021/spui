@@ -321,6 +321,7 @@ Listas ordenadas que se reproducen en loop.
 - **Si todos los contenidos de una playlist están archivados**, no hay nada que mostrar: una pantalla que la tenía por programación pasa a su playlist de respaldo, y si no tiene, a la pantalla de espera.
 - **No hay Activar/Desactivar** (se sacó el 29/10/2026: no frenaba la reproducción). Una playlist se muestra si está asignada a una pantalla como respaldo o a una regla de Programación vigente; para dejar de mostrarla, se la saca de ahí.
 - Desde **Ver** se consulta la lista de ítems en modo sólo lectura.
+- **Eliminar** borra la playlist con sus ítems; los contenidos se conservan (desde el 03/11/2026 no hace falta quitar los ítems antes). No se puede eliminar mientras la use una regla de Programación o sea la playlist de respaldo de una pantalla: el aviso dice cuáles, y primero hay que cambiar eso.
 - Si alguna pantalla que usa la playlist tiene su reproductor **desconectado**, editarla y eliminarla quedan bloqueados (ver 6).
 
 ---

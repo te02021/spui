@@ -175,18 +175,13 @@ class PlaylistCmsController extends AbstractController
         if (!$playlist) { throw $this->createNotFoundException(); }
         if ($r = $this->denegarSiCsrfInvalido($request)) { return $r; }
 
-        // Las tres cosas que referencian una playlist se comprueban antes de
-        // borrar. Sin esto, la base rechaza el DELETE por integridad
-        // referencial y el operador ve un error SQL crudo —
-        // "Cannot delete or update a parent row" — que no dice qué hacer.
+        // Sus ítems se borran con ella (cascade en Playlist::$items) y los
+        // contenidos quedan: desde el 03/11/2026 ya no hace falta quitarlos
+        // uno por uno antes (pedido de Mateo). Lo que sí bloquea es que un TV
+        // la esté usando, porque borrarla cambiaría lo que muestra: una regla
+        // de programación o ser la de respaldo de una pantalla. Sin este
+        // chequeo, además, la base rechaza el DELETE con un error SQL crudo.
         $bloqueos = [];
-
-        if ($playlist->getItems()->count() > 0) {
-            $bloqueos[] = sprintf(
-                'tiene %d ítem(s): quitalos desde "Ver ítems"',
-                $playlist->getItems()->count(),
-            );
-        }
 
         if ($playlist->getProgramaciones()->count() > 0) {
             $bloqueos[] = sprintf(

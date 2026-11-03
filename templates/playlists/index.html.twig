@@ -96,7 +96,7 @@
             <button type="button" class="unraf-btn spui-btn-eliminar unraf-btn-sm {{ bloqueo.clase(motivo) }}"
                     data-spui-action="{{ path('spui_cms_playlists_eliminar', {id: pl.id}) }}"
                     data-spui-title="Eliminar playlist"
-                    data-spui-message="¿Eliminar «{{ pl.nombre }}»? Esta acción no se puede deshacer."
+                    data-spui-message="¿Eliminar «{{ pl.nombre }}»?{% if pl.items|length %} Se quitan sus {{ pl.items|length }} ítem(s); los contenidos se conservan.{% endif %} Esta acción no se puede deshacer."
                     data-spui-variant="eliminar"
                     {% if motivo %}{{ bloqueo.attrs(motivo) }}{% else %}title="Eliminar"{% endif %}>
                 <img src="{{ asset('unraf-ui/icons/trash.svg') }}" class="spui-action-icon" alt=""> Eliminar
