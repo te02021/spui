@@ -2344,7 +2344,7 @@ a.spui-paginacion-btn:hover { background: #eef4fa; border-color: #9fb6cc; color:
 }
 
 /* Estado de los reproductores */
-.spui-dash-tarjeta { padding: 1rem; display: flex; flex-direction: column; gap: .5rem; }
+.spui-dash-tarjeta { padding: 1rem; display: flex; flex-direction: column; gap: .5rem; container-type: inline-size; }
 .spui-dash-estado-cuerpo { display: flex; align-items: center; gap: 1rem; flex: 1; }
 .spui-dash-dona { width: 150px; height: 150px; flex-shrink: 0; }
 /* Encabezado del gráfico: el título no se aprieta contra la barra de botones;
@@ -2355,14 +2355,18 @@ a.spui-paginacion-btn:hover { background: #eef4fa; border-color: #9fb6cc; color:
 .spui-dash-leyenda-btn {
     width: 100%; display: flex; align-items: center; gap: .5rem;
     background: none; border: 0; border-radius: 6px; padding: .4rem .5rem; color: #2b3a4a; font-size: .9rem;
-    white-space: nowrap;
+    white-space: nowrap; padding-right: .75rem;
 }
 .spui-dash-leyenda-btn:not(:disabled):hover { background: #f1f4f7; }
 .spui-dash-leyenda-btn:focus-visible { outline: 3px solid rgba(51, 135, 239, .4); }
 .spui-dash-leyenda-btn:disabled { color: #9aa4ae; cursor: default; }
-.spui-dash-leyenda-btn strong { font-size: 1.05rem; }
+.spui-dash-leyenda-btn strong { font-size: 1.05rem; min-width: 1.5rem; text-align: right; font-variant-numeric: tabular-nums; }
 .spui-dash-nota { color: #6c757d; font-size: .78rem; }
-@media (max-width: 459.98px) {
+/* Dona y leyenda lado a lado sólo si entran cómodas en la tarjeta (no en la
+   pantalla): entre 992 y 1400 px la tarjeta es angosta y el número de
+   "Desconectados" quedaba pegado al borde o afuera (03/11/2026). Si no
+   entran, la dona va arriba y la leyenda abajo. */
+@container (max-width: 25rem) {
     .spui-dash-estado-cuerpo { flex-direction: column; align-items: stretch; }
     .spui-dash-dona { margin: 0 auto; }
 }
