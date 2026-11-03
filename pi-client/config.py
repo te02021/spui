@@ -164,6 +164,11 @@ ALERTA_SONIDO_VOLUMEN     = max(0, min(100, _entero('SPUI_ALERTA_SONIDO_VOLUMEN'
 # VENTANA=false vuelve al método anterior (cada contenido como imagen de VLC,
 # sin animación): sólo para descartar un problema de la ventana en un equipo.
 VENTANA     = _booleano('SPUI_VENTANA', True)
+# Resolución que se impone a la pantalla ("1920x1080"), para un TV que no le
+# informa a la Pi sus resoluciones y arranca en 1024x768 con franjas negras
+# (spui/resolucion.py). Vacía: la que elija el sistema, como siempre.
+RESOLUCION_TEXTO = _texto('SPUI_RESOLUCION', '')
+
 # Presentar la ventana con la GPU. Apagado por defecto: en la Pi 4 lo basado
 # en OpenGL ya dejó la pantalla en negro una vez (ver spui/ventana.py).
 ACELERACION = _booleano('SPUI_ACELERACION', False)

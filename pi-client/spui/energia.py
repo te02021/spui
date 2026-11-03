@@ -59,6 +59,7 @@ from datetime import datetime, time
 from typing import Callable, Optional
 
 from spui.brillo import ControlBrillo
+from spui import resolucion as _resolucion
 from spui.cec import ClienteCec
 from spui.x11 import entorno_x
 
@@ -163,7 +164,9 @@ class GestorEnergia:
                  ruta_estado_brillo: str = '/var/cache/spui/brillo.json',
                  brillo_software: Optional[Callable[[float], Optional[str]]] = None,
                  crear_cec: Optional[Callable[[Callable[[str], None]], Optional[ClienteCec]]] = None,
-                 espera_reintento: float = _ENTRE_REINTENTOS_SEG) -> None:
+                 espera_reintento: float = _ENTRE_REINTENTOS_SEG,
+                 resolucion: Optional[tuple[int, int]] = None,
+                 al_cambiar_resolucion: Optional[Callable[[], None]] = None) -> None:
         self._ejecutar = ejecutar
         self._entorno = entorno
         self._hay = hay
@@ -188,6 +191,10 @@ class GestorEnergia:
         self._cancelar_reintentos = threading.Event()
         self._espera_reintento = espera_reintento
         self._ultima_hora: Optional[datetime] = None   # la de aplicar(), ya corregida
+        # SPUI_RESOLUCION (spui/resolucion.py): la que se impone, y a quién
+        # avisarle cuando cambia (la ventana del TV se rehace a ese tamaño).
+        self._resolucion = resolucion
+        self._al_cambiar_resolucion = al_cambiar_resolucion
 
         self.brillo = ControlBrillo(ejecutar, hay, ruta_backlight, ruta_estado_brillo, software=brillo_software)
         self.capacidades = Capacidades()
@@ -288,7 +295,49 @@ class GestorEnergia:
         self.capacidades = cap
         self._detectado_en = self._reloj()
         self._firma = self._firma_pantalla()
+        self.aplicar_resolucion()
         return cap
+
+    def aplicar_resolucion(self) -> None:
+        """
+        Deja la salida en SPUI_RESOLUCION si está configurada y no lo está ya.
+        Un TV que no informa sus resoluciones arranca en 1024×768: ver
+        spui/resolucion.py. Si no se puede, queda en el diagnóstico del CMS.
+        """
+        salida = self.capacidades.salida_hdmi
+        if not self._resolucion or not salida or self._senal_cortada:
+            return
+        env = self._entorno()
+        if env is None:
+            return
+        codigo, query = self._ejecutar(['xrandr', '--query'], None, 10, env)
+        if codigo != 0:
+            return
+        ancho, alto = self._resolucion
+        pasos, motivo = _resolucion.pasos(query, salida, ancho, alto, self._cvt)
+        if motivo:
+            self._fallas['resolucion'] = f'No se pudo poner la pantalla en {ancho}x{alto}: {motivo}.'
+            return
+        if not pasos:
+            self._fallas.pop('resolucion', None)
+            return
+        logger.info('Se pone la pantalla en %dx%d (SPUI_RESOLUCION): el TV no la elige solo.', ancho, alto)
+        for paso in pasos:
+            error = self._xrandr(paso)
+            # Un modo ya creado en esta sesión de X da error al volver a crearlo: no importa.
+            if error and paso[0] != '--newmode':
+                self._fallas['resolucion'] = f'No se pudo poner la pantalla en {ancho}x{alto} ({error}).'
+                return
+        self._fallas.pop('resolucion', None)
+        if self._al_cambiar_resolucion is not None:
+            self._al_cambiar_resolucion()
+
+    def _cvt(self, ancho: int, alto: int) -> Optional[str]:
+        """Los tiempos de un modo que no es estándar, calculados con cvt (si está)."""
+        if not self._hay('cvt'):
+            return None
+        codigo, salida = self._ejecutar(['cvt', str(ancho), str(alto), '60'], None, 5)
+        return _resolucion.cvt_desde(salida) if codigo == 0 else None
 
     def diagnostico(self) -> list[str]:
         """
@@ -521,6 +570,10 @@ class GestorEnergia:
         error = self._xrandr(['--output', salida, '--auto' if encendida else '--off'])
         if error is None:
             self._senal_cortada = not encendida
+            # --auto vuelve a la resolución "preferida" del TV, que en uno sin
+            # EDID es 1024×768: se repone la de SPUI_RESOLUCION.
+            if encendida:
+                self.aplicar_resolucion()
         return error
 
     def _por_vcgencmd(self, encendida: bool) -> Optional[str]:

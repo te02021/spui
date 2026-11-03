@@ -53,6 +53,7 @@ from spui.mqtt_listener import MqttListener
 from spui.network import NetworkMonitor
 from spui.player import Player
 from spui.reloj import RELOJ
+from spui.resolucion import leer as leer_resolucion
 from spui.reproduccion import APAGADO, ESPERA, PLAYLIST, Reproduccion
 from spui.sync import SyncClient, intervalo_desde_sync
 from spui.telemetria import TelemetriaPublisher
@@ -183,7 +184,13 @@ def main() -> None:
         brillo_software=player.ajustar_brillo,
         # Escucha CEC: saber si apagaron el TV con el control (spui/cec.py).
         crear_cec=ClienteCec,
+        # SPUI_RESOLUCION: la que se impone a un TV que no informa las suyas;
+        # al cambiarla, la ventana del TV se rehace a ese tamaño.
+        resolucion=leer_resolucion(config.RESOLUCION_TEXTO),
+        al_cambiar_resolucion=player.pantalla_cambio,
     )
+    if config.RESOLUCION_TEXTO and not leer_resolucion(config.RESOLUCION_TEXTO):
+        logger.warning('SPUI_RESOLUCION=%r no es una resolución válida (ej. 1920x1080): se ignora.', config.RESOLUCION_TEXTO)
 
     def recolectar_diagnostico() -> list[str]:
         """

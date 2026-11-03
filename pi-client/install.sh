@@ -161,6 +161,10 @@ SPUI_LOG_LEVEL=INFO
 # Sólo cambiarlo si la pantalla queda en negro aunque el log diga "VLC listo":
 # alternativas xcb_xv, gl, glx.
 # SPUI_VOUT=xcb_x11
+
+# Resolución fija, para un TV que no le informa a la Pi sus resoluciones y
+# queda en 1024x768 con franjas negras (docs/09_instalacion_raspberry.md §14):
+# SPUI_RESOLUCION=1920x1080
 EOF
     sudo chmod 640 "$ENV_FILE"
     echo "  IMPORTANTE: editar $ENV_FILE con los valores reales antes de iniciar."

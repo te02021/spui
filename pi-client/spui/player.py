@@ -303,6 +303,31 @@ class Player:
         self._firma_actual = None
         self._mostrando_fallback = False
 
+    def pantalla_cambio(self) -> None:
+        """
+        La resolución cambió (SPUI_RESOLUCION, o la señal que vuelve): la
+        ventana del TV se rehace a ese tamaño. Se llama desde cualquier hilo;
+        la rehace el de reproducción (_atender_ventana), el dueño de la ventana.
+        """
+        self._reabrir_ventana = True
+        self._interrumpido.set()
+
+    def _rehacer_ventana(self) -> None:
+        if not getattr(self, '_reabrir_ventana', False):
+            return
+        self._reabrir_ventana = False
+        if self._ventana is None:
+            return
+        logger.info('Cambió la resolución: se vuelve a abrir la ventana del TV a su tamaño nuevo.')
+        if self._video_activo:
+            self._parar_vlc()
+            self._video_activo = False
+        self._ventana.cerrar()
+        self._ventana = None
+        self._incrustado = False
+        self._ventana_intentada = False
+        self._abrir_ventana()
+
     def fijar_entorno(self, lugar: Optional[str], horario_tema: Optional[dict],
                       actualizado: Optional[str] = None) -> None:
         """
@@ -1031,6 +1056,7 @@ class Player:
         reproducción, que es también el que abre la ventana del TV.
         """
         if not self._simulacion:
+            self._rehacer_ventana()
             self._abrir_ventana()
             return True
         if not _VLC_IMPORTABLE and not self._puede_usar_ventana():
@@ -1678,6 +1704,10 @@ class Player:
         """Mientras se espera: avisos de la ventana del TV y el brillo por software."""
         ventana = getattr(self, '_ventana', None)
         if ventana is None:
+            return
+        if getattr(self, '_reabrir_ventana', False) or ventana.cambio_la_pantalla():
+            self._reabrir_ventana = True
+            self._rehacer_ventana()
             return
         try:
             ventana.brillo(self._brillo_sw)

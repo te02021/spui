@@ -97,6 +97,7 @@ class Ventana:
         # La hora en vivo (03/11/2026): la última que llegó y la que está en pantalla.
         self._hhmm: Optional[str] = None
         self._hora_en_pantalla: Optional[str] = None
+        self._escritorio_al_abrir: Optional[tuple] = None
         self.motivo: Optional[str] = None
 
     # ── Abrir y cerrar ────────────────────────────────────────────────────
@@ -119,6 +120,7 @@ class Ventana:
             pygame.display.set_caption('SPUI')
             pygame.mouse.set_visible(False)
             self._tam = self._sup.get_size()
+            self._escritorio_al_abrir = self._escritorio()
             self._reloj = pygame.time.Clock()
             self._sup.fill((0, 0, 0))
             pygame.display.flip()
@@ -142,6 +144,25 @@ class Ventana:
         """El id de la ventana para VLC (X11: window; Windows: el HWND)."""
         try:
             return pygame.display.get_wm_info().get('window')
+        except Exception:
+            return None
+
+    def cambio_la_pantalla(self) -> bool:
+        """
+        Si la resolución de la pantalla ya no es la de la ventana (alguien la
+        cambió con xrandr): una ventana a pantalla completa no se agranda sola
+        y quedaría un cuadrado en un rincón (pasó el 03/11/2026).
+        """
+        actual = self._escritorio()
+        # Contra el escritorio de cuando se abrió, no contra la ventana: si en
+        # algún equipo SDL los informara distintos, no se reabre en bucle.
+        return self._sup is not None and actual is not None and actual != self._escritorio_al_abrir
+
+    @staticmethod
+    def _escritorio() -> Optional[tuple]:
+        try:
+            tamanos = pygame.display.get_desktop_sizes()
+            return tuple(tamanos[0]) if tamanos else None
         except Exception:
             return None
 
