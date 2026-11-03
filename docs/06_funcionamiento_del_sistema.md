@@ -208,6 +208,10 @@ La migración `Version20261028190000` borró los contenidos de ese tipo que hab�
   - **Cómo se actualiza:** la lámina guarda el recuadro de la hora (`Lamina.zona_hora`) y la ventana repinta sólo ese recuadro al cambiar el minuto, sin redibujar la pantalla.
   - **Sin la ventana** (el método por VLC) no se dibuja, porque quedaría congelada.
   - **En la vista previa del CMS** la mantiene al día `vista-tv.js`, con la hora del navegador.
+- **La pantalla de espera** (cuando no hay nada programado ni playlist de respaldo) es institucional desde el 03/11/2026 (`Dibujante.espera()`).
+  - **Qué muestra:** la cabecera con el logo, la hora y la fecha; al medio, sobre el azul, el molino en un círculo blanco, "Universidad Nacional de Rafaela" y "Sistema de Pantallas Informativas", con el filete de la marca entre los dos; el lugar en el pie.
+  - **Por VLC** (sin la ventana) va sin hora ni fecha.
+  - **Reemplaza** al cartel azul con "UNRaf".
 - **Cuándo se redibuja.** Cada pantalla se dibuja una vez por momento: el día, el tema y, en el cronograma, el minuto. Un contenido permanente se redibuja solo cuando cambia la fecha de la cabecera o llegan las 19.
 - **El brillo por software** (pantallas sin DDC/CI) es un velo negro encima de la ventana. Se aplica al instante, sin recargar el contenido. Sobre un video sigue siendo el filtro `adjust` de VLC.
 - **Si algo falta,** se sigue viendo con el método anterior, y el motivo llega al panel en el diagnóstico del reproductor:

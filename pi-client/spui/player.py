@@ -630,17 +630,23 @@ class Player:
         Si no hay imagen en assets/, se genera una la primera vez.
         """
         # Si ya se está mostrando el fallback, no se vuelve a cargar: recargarlo
-        # en cada ciclo haría parpadear la pantalla.
-        if self._mostrando_fallback:
+        # en cada ciclo haría parpadear la pantalla. Con la ventana del TV se
+        # vuelve a dibujar sólo si cambió el día (la fecha de la cabecera) o el
+        # lugar; la hora la mantiene al día la ventana.
+        momento = f'{self._ahora():%Y-%m-%d}|{getattr(self, "_lugar", None) or ""}'
+        if self._mostrando_fallback and (self._ventana is None or momento == getattr(self, '_fallback_momento', None)):
+            return
+
+        # La pantalla de espera institucional (03/11/2026, spui/tv.py).
+        if self._ventana is not None and self._dibujante is not None:
+            if not self._mostrando_fallback:
+                logger.info('[FALLBACK] Sin programación — se muestra la pantalla de espera.')
+            self._poner(self._dibujante.espera(self._ahora(), self._lugar, con_hora=True))
+            self._mostrando_fallback = True
+            self._fallback_momento = momento
             return
 
         logo = self._imagen_fallback()
-
-        if self._ventana is not None and logo:
-            logger.info('[FALLBACK] Sin programación — se muestra la pantalla de espera.')
-            self._poner(self._dibujante.de_imagen(logo))
-            self._mostrando_fallback = True
-            return
 
         if not self._simulacion and logo:
             logger.info('[FALLBACK] Sin programación — se muestra la pantalla de espera.')
@@ -663,6 +669,21 @@ class Player:
         propia = os.path.join(os.path.dirname(__file__), '..', 'assets', 'logo_fallback.png')
         if os.path.exists(propia):
             return propia
+
+        # La pantalla de espera institucional (03/11/2026) sin hora ni fecha,
+        # que por VLC quedarían congeladas. Una por lugar (va en el pie).
+        if self._dibujante is not None:
+            lugar = getattr(self, '_lugar', None) or ''
+            clave = hashlib.sha1(lugar.encode('utf-8')).hexdigest()[:8]
+            ruta = os.path.join(self._media_dir, f'_espera_v3_{clave}.png')
+            if os.path.exists(ruta):
+                return ruta
+            try:
+                os.makedirs(self._media_dir, exist_ok=True)
+                self._dibujante.espera(self._ahora(), lugar or None).fondo.save(ruta)
+                return ruta
+            except Exception as exc:
+                logger.warning('No se pudo dibujar la pantalla de espera (%s): se usa la anterior.', exc)
 
         # v2: el nombre cambia con el diseño para que se regenere la vieja.
         generada = os.path.join(self._media_dir, '_fallback_v2.png')

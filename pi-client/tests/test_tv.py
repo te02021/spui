@@ -181,6 +181,35 @@ class HoraTest(unittest.TestCase):
         self.assertIsNone(lam.zona_hora)
 
 
+@unittest.skipUnless(_PIL, 'Pillow no instalado')
+class EsperaTest(unittest.TestCase):
+    """La pantalla de espera institucional (03/11/2026)."""
+
+    def test_con_la_ventana_lleva_la_hora_y_por_vlc_no(self):
+        d = tv.Dibujante()
+        con = d.espera(LUNES_18, 'Campus E4', con_hora=True)
+        sin = d.espera(LUNES_18, 'Campus E4')
+        self.assertEqual(con.fondo.size, (1920, 1080))
+        self.assertIsNotNone(con.zona_hora)
+        self.assertIsNone(sin.zona_hora)
+
+    def test_no_se_vuelve_a_dibujar_en_el_mismo_dia(self):
+        from spui.player import Player
+        p = Player.__new__(Player)
+        p._mostrando_fallback = False
+        p._ventana = object()
+        p._dibujante = tv.Dibujante()
+        p._lugar = 'Campus E4'
+        p._reloj = mock.Mock(ahora=lambda: LUNES_18)
+        p._poner = mock.Mock()
+        p.mostrar_fallback()
+        p.mostrar_fallback()
+        self.assertEqual(p._poner.call_count, 1)
+        p._reloj = mock.Mock(ahora=lambda: datetime(2026, 11, 3, 0, 1))   # otro día: otra fecha arriba
+        p.mostrar_fallback()
+        self.assertEqual(p._poner.call_count, 2)
+
+
 class CurvaTest(unittest.TestCase):
     def test_la_curva_del_css(self):
         self.assertEqual(ventana.curva(0), 0)

@@ -280,8 +280,60 @@ class Dibujante:
         lam.fondo = lam.fondo.convert('RGB')
         return lam
 
+    def espera(self, ahora: datetime, lugar: Optional[str] = None, con_hora: bool = False) -> Lamina:
+        """
+        La pantalla de espera institucional (03/11/2026, pedido de Mateo): lo
+        que se ve cuando no hay nada programado. Representa a la universidad:
+        la plantilla institucional (logo, hora y fecha arriba; el lugar en el
+        pie) y, al medio sobre el azul, el molino, "Universidad Nacional de
+        Rafaela" y el nombre del sistema, con el filete de la marca entre los
+        dos. Reemplaza al cartel azul liso con "UNRaf".
+
+        Sin `con_hora` (cuando la muestra VLC y no se puede mantener al día)
+        no lleva ni hora ni fecha: no queda nada que pueda quedar viejo.
+        """
+        lienzo = self._fondo('oscura', False)
+        self._cabecera(lienzo, ahora, con_fecha=False)
+        self._pie(lienzo, 'oscura', lugar)
+
+        # El molino en un círculo blanco, con una sombra suave.
+        diam, y = 260, 290
+        sombra = Image.new('RGBA', (diam + 120, diam + 120), (0, 0, 0, 0))
+        ImageDraw.Draw(sombra).ellipse((60, 60, 60 + diam, 60 + diam), fill=(0, 0, 0, 70))
+        sombra = sombra.filter(ImageFilter.GaussianBlur(24))
+        lienzo.alpha_composite(sombra, (ANCHO // 2 - diam // 2 - 60, y - 60 + 14))
+        circulo = Image.new('RGBA', (diam, diam), (0, 0, 0, 0))
+        ImageDraw.Draw(circulo).ellipse((0, 0, diam - 1, diam - 1), fill=BLANCO + (255,))
+        molino = self._imagen_asset('unraf-molino.png')
+        if molino is not None:
+            lado = 200
+            circulo.alpha_composite(molino.resize((lado, lado), Image.LANCZOS), ((diam - lado) // 2, (diam - lado) // 2))
+        mascara = Image.new('L', (diam, diam), 0)
+        ImageDraw.Draw(mascara).ellipse((0, 0, diam - 1, diam - 1), fill=255)
+        circulo.putalpha(Image.composite(circulo.getchannel('A'), mascara, mascara))
+        lienzo.alpha_composite(circulo, (ANCHO // 2 - diam // 2, y))
+
+        # El nombre, el filete y el sistema.
+        y += diam + 64
+        f1, f2 = self._fuente(76), self._fuente(40, False)
+        nombre = 'Universidad Nacional de Rafaela'
+        self._escribir(lienzo, ANCHO / 2 - self._ancho(nombre, f1) / 2, y, 76 * 1.1, nombre, f1, BLANCO)
+        y += 76 * 1.1 + 36
+        for i, c in enumerate((AMARILLO, TURQUESA, AZUL)):
+            x = ANCHO // 2 - 150 + i * 100
+            self._rect(lienzo, (x, y, x + 100, y + 8), c)
+        y += 8 + 36
+        sistema = 'Sistema de Pantallas Informativas'
+        self._escribir(lienzo, ANCHO / 2 - self._ancho(sistema, f2) / 2, y, 40 * 1.2, sistema, f2, BLANCO, .85)
+
+        lam = Lamina(fondo=lienzo)
+        if con_hora:
+            self._hora(lam, ahora, True)
+        lam.fondo = lam.fondo.convert('RGB')
+        return lam
+
     def de_imagen(self, ruta: str) -> Lamina:
-        """Una imagen suelta a pantalla completa, sin recortar (la de espera, la de alerta)."""
+        """Una imagen suelta a pantalla completa, sin recortar (la de alerta)."""
         lienzo = Image.new('RGBA', (ANCHO, ALTO), NEGRO + (255,))
         self._imagen(lienzo, (0, 0, ANCHO, ALTO), ruta)
         return Lamina(fondo=lienzo.convert('RGB'))
