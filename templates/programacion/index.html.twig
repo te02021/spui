@@ -83,33 +83,44 @@
                     title="Ver detalle">
                 <img src="{{ asset('unraf-ui/icons/eye.svg') }}" class="spui-action-icon" alt=""> Ver
             </button>
-            <button type="button" class="unraf-btn spui-btn-editar unraf-btn-sm {{ bloqueo.clase(motivo) }}"
-                    data-spui-form="{{ path('spui_cms_programacion_editar', {id: prog.id}) }}"
-                    data-spui-title="Editar regla"
-                    data-spui-size="modal-lg"
-                    {% if motivo %}{{ bloqueo.attrs(motivo) }}{% else %}title="Editar"{% endif %}>
-                <img src="{{ asset('unraf-ui/icons/pencil.svg') }}" class="spui-action-icon" alt=""> Editar
-            </button>
-            <button type="button"
-                    class="unraf-btn unraf-btn-sm {{ prog.activo ? 'spui-btn-desactivar' : 'spui-btn-activar' }} {{ bloqueo.clase(motivo) }}"
-                    data-spui-action="{{ path('spui_cms_programacion_toggle', {id: prog.id}) }}"
-                    data-spui-title="{{ prog.activo ? 'Desactivar regla' : 'Activar regla' }}"
-                    data-spui-message="{{ prog.activo ? '¿Desactivar esta regla de programación?' : '¿Activar esta regla de programación?' }}"
-                    data-spui-variant="{{ prog.activo ? 'desactivar' : 'activar' }}"
-                    data-spui-confirm-label="{{ prog.activo ? 'Desactivar' : 'Activar' }}"
-                    {% if motivo %}{{ bloqueo.attrs(motivo) }}{% else %}title="{{ prog.activo ? 'Desactivar' : 'Activar' }}"{% endif %}>
-                <img src="{{ asset(prog.activo ? 'unraf-ui/icons/pause.svg' : 'unraf-ui/icons/play.svg') }}"
-                     class="spui-action-icon" alt="">
-                {{ prog.activo ? 'Desactivar' : 'Activar' }}
-            </button>
-            <button type="button" class="unraf-btn spui-btn-eliminar unraf-btn-sm {{ bloqueo.clase(motivo) }}"
-                    data-spui-action="{{ path('spui_cms_programacion_eliminar', {id: prog.id}) }}"
-                    data-spui-title="Eliminar regla"
-                    data-spui-message="¿Eliminar esta regla de programación? Esta acción no se puede deshacer."
-                    data-spui-variant="eliminar"
-                    {% if motivo %}{{ bloqueo.attrs(motivo) }}{% else %}title="Eliminar"{% endif %}>
-                <img src="{{ asset('unraf-ui/icons/trash.svg') }}" class="spui-action-icon" alt=""> Eliminar
-            </button>
+            {# El resto de las acciones, en el menú ⋮ (03/11/2026, pedido de Mateo):
+               Ver queda a la vista. Los botones son los mismos de siempre (sus
+               data-spui-* no cambian) y una acción bloqueada muestra el motivo. #}
+            <span class="spui-desp spui-menu-acciones">
+                <button type="button" class="unraf-btn unraf-btn-sm spui-btn-menu" data-spui-desp aria-expanded="false"
+                        aria-controls="acciones-programacion-{{ prog.id }}" aria-haspopup="true" title="Más acciones">
+                    <img src="{{ asset('unraf-ui/icons/dots-three-vertical.svg') }}" class="spui-action-icon" alt=""> Más
+                </button>
+                <div id="acciones-programacion-{{ prog.id }}" class="spui-desp-panel spui-menu-panel" role="group" aria-label="Más acciones">
+                    <button type="button" class="unraf-btn spui-btn-editar unraf-btn-sm {{ bloqueo.clase(motivo) }}"
+                            data-spui-form="{{ path('spui_cms_programacion_editar', {id: prog.id}) }}"
+                            data-spui-title="Editar regla"
+                            data-spui-size="modal-lg"
+                            {% if motivo %}{{ bloqueo.attrs(motivo) }}{% else %}title="Editar"{% endif %}>
+                        <img src="{{ asset('unraf-ui/icons/pencil.svg') }}" class="spui-action-icon" alt=""> Editar
+                    </button>
+                    <button type="button"
+                            class="unraf-btn unraf-btn-sm {{ prog.activo ? 'spui-btn-desactivar' : 'spui-btn-activar' }} {{ bloqueo.clase(motivo) }}"
+                            data-spui-action="{{ path('spui_cms_programacion_toggle', {id: prog.id}) }}"
+                            data-spui-title="{{ prog.activo ? 'Desactivar regla' : 'Activar regla' }}"
+                            data-spui-message="{{ prog.activo ? '¿Desactivar esta regla de programación?' : '¿Activar esta regla de programación?' }}"
+                            data-spui-variant="{{ prog.activo ? 'desactivar' : 'activar' }}"
+                            data-spui-confirm-label="{{ prog.activo ? 'Desactivar' : 'Activar' }}"
+                            {% if motivo %}{{ bloqueo.attrs(motivo) }}{% else %}title="{{ prog.activo ? 'Desactivar' : 'Activar' }}"{% endif %}>
+                        <img src="{{ asset(prog.activo ? 'unraf-ui/icons/pause.svg' : 'unraf-ui/icons/play.svg') }}"
+                             class="spui-action-icon" alt="">
+                        {{ prog.activo ? 'Desactivar' : 'Activar' }}
+                    </button>
+                    <button type="button" class="unraf-btn spui-btn-eliminar unraf-btn-sm {{ bloqueo.clase(motivo) }}"
+                            data-spui-action="{{ path('spui_cms_programacion_eliminar', {id: prog.id}) }}"
+                            data-spui-title="Eliminar regla"
+                            data-spui-message="¿Eliminar esta regla de programación? Esta acción no se puede deshacer."
+                            data-spui-variant="eliminar"
+                            {% if motivo %}{{ bloqueo.attrs(motivo) }}{% else %}title="Eliminar"{% endif %}>
+                        <img src="{{ asset('unraf-ui/icons/trash.svg') }}" class="spui-action-icon" alt=""> Eliminar
+                    </button>
+                </div>
+            </span>
         </div>
     </article>
 {% else %}

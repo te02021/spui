@@ -421,6 +421,34 @@ textarea.is-invalid,
 .spui-item.is-apilada .spui-item-acciones { flex-basis: 100%; justify-content: center; }
 /* Con un desplegable abierto, la tarjeta se pinta sobre las siguientes. */
 .spui-item:has([data-spui-desp][aria-expanded="true"]) { z-index: 20; }
+
+/* Menú ⋮ de acciones de cada tarjeta (03/11/2026): Ver queda a la vista y el
+   resto va acá, como una lista. Son los mismos botones de siempre: se les
+   saca el relleno de color y quedan como filas. */
+.spui-menu-acciones { position: relative; display: inline-flex; }
+.spui-btn-menu.unraf-btn { background: #fff; border: 1px solid #cfd8e0; color: #2b3a4a; }
+.spui-btn-menu.unraf-btn:hover, .spui-btn-menu[aria-expanded="true"] { background: #eef4fa; border-color: #9fb6cc; color: #2b3a4a; }
+.spui-menu-panel { left: auto; right: 0; min-width: 15rem; padding: .3rem; }
+.spui-menu-panel .unraf-btn.unraf-btn {
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-start; gap: .15rem .65rem; width: 100%; margin: 0;
+    padding: .55rem .65rem; border: 0; border-radius: 6px; box-shadow: none;
+    background: none; color: #2b3a4a; font-size: .88rem; font-weight: 600; text-align: left;
+    white-space: normal; text-decoration: none;
+}
+.spui-menu-panel .unraf-btn.unraf-btn:hover, .spui-menu-panel .unraf-btn.unraf-btn:focus-visible { background: #f1f5f9; color: #2b3a4a; }
+.spui-menu-panel .unraf-btn .spui-action-icon { filter: none; opacity: .75; }
+/* Eliminar, al final, separado y en rojo. */
+.spui-menu-panel .spui-btn-eliminar.unraf-btn { color: #b3142a; border-top: 1px solid #f0f2f5; border-radius: 0 0 6px 6px; margin-top: .2rem; }
+.spui-menu-panel .spui-btn-eliminar.unraf-btn:hover { background: #fdf0f2; color: #b3142a; }
+.spui-menu-panel .spui-btn-eliminar .spui-action-icon {
+    filter: invert(14%) sepia(83%) saturate(5000%) hue-rotate(345deg) brightness(85%); opacity: 1;
+}
+/* Una acción bloqueada (reproductor desconectado) se ve y dice por qué. */
+.spui-menu-panel .spui-accion-bloqueada.unraf-btn { opacity: .7; }
+.spui-menu-panel .spui-accion-bloqueada[data-spui-bloqueado]::after {
+    content: attr(data-spui-bloqueado); flex-basis: 100%; padding-left: 1.65rem;
+    font-size: .76rem; font-weight: 400; color: #6c757d;
+}
 @media (max-width: 768px) {
     .spui-item { padding: .85rem 1rem; }
 }

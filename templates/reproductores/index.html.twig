@@ -125,50 +125,61 @@
                     title="Ver detalle">
                 <img src="{{ asset('unraf-ui/icons/eye.svg') }}" class="spui-action-icon" alt=""> Ver
             </button>
-            <a href="{{ path('spui_cms_reproductores_telemetria', {id: r.id}) }}"
-               class="unraf-btn spui-btn-telemetria unraf-btn-sm"
-               title="Histórico de temperatura, RAM y disco">
-                <img src="{{ asset('unraf-ui/icons/chart-line.svg') }}" class="spui-action-icon" alt=""> Telemetría
-            </a>
-            <button type="button"
-                    class="unraf-btn spui-btn-sincronizar unraf-btn-sm {{ bloqueo.clase(motivo) }}"
-                    data-spui-action="{{ path('spui_cms_reproductores_sincronizar', {id: r.id}) }}"
-                    data-spui-title="Sincronizar ahora"
-                    data-spui-message="¿Pedirle a «{{ r.hostname }}» que sincronice ahora con el CMS? Sincroniza solo cada {{ texto.duracion_minutos(r.intervaloSyncMin) }}."
-                    data-spui-variant="sincronizar"
-                    data-spui-confirm-label="Sincronizar"
-                    {% if motivo %}{{ bloqueo.attrs(motivo) }}{% else %}title="Pedir que sincronice ahora con el CMS"{% endif %}>
-                <img src="{{ asset('unraf-ui/icons/arrows-clockwise.svg') }}" class="spui-action-icon" alt=""> Sincronizar
-            </button>
-            <button type="button"
-                    class="unraf-btn spui-btn-editar unraf-btn-sm {{ bloqueo.clase(motivo) }}"
-                    data-spui-form="{{ path('spui_cms_reproductores_editar', {id: r.id}) }}"
-                    data-spui-title="Editar: {{ r.hostname }}"
-                    {% if motivo %}{{ bloqueo.attrs(motivo) }}{% else %}title="Editar"{% endif %}>
-                <img src="{{ asset('unraf-ui/icons/pencil.svg') }}" class="spui-action-icon" alt=""> Editar
-            </button>
-            <button type="button"
-                    class="unraf-btn spui-btn-clave unraf-btn-sm {{ bloqueo.clase(motivo) }}"
-                    data-spui-action="{{ path('spui_cms_reproductores_regenerar_clave', {id: r.id}) }}"
-                    data-spui-title="Regenerar clave API"
-                    data-spui-message="¿Regenerar la API key de «{{ r.hostname }}»? La clave anterior quedará inválida de inmediato."
-                    data-spui-variant="clave"
-                    data-spui-confirm-label="Regenerar"
-                    {% if motivo %}{{ bloqueo.attrs(motivo) }}{% else %}title="Regenerar API key"{% endif %}>
-                <img src="{{ asset('unraf-ui/icons/key.svg') }}" class="spui-action-icon" alt=""> Clave
-            </button>
-            {# Sin bloqueo por conectividad a propósito: dar de baja un
-               equipo es lo que se hace cuando se rompió y no vuelve.
-               Ver el comentario en ReproductorCmsController::eliminar(). #}
-            <button type="button"
-                    class="unraf-btn spui-btn-eliminar unraf-btn-sm"
-                    data-spui-action="{{ path('spui_cms_reproductores_eliminar', {id: r.id}) }}"
-                    data-spui-title="Eliminar reproductor"
-                    data-spui-message="¿Eliminar «{{ r.hostname }}»? El Pi dejará de poder comunicarse con el sistema."
-                    data-spui-variant="eliminar"
-                    title="Eliminar">
-                <img src="{{ asset('unraf-ui/icons/trash.svg') }}" class="spui-action-icon" alt=""> Eliminar
-            </button>
+            {# El resto de las acciones, en el menú ⋮ (03/11/2026, pedido de Mateo):
+               Ver queda a la vista. Los botones son los mismos de siempre (sus
+               data-spui-* no cambian) y una acción bloqueada muestra el motivo. #}
+            <span class="spui-desp spui-menu-acciones">
+                <button type="button" class="unraf-btn unraf-btn-sm spui-btn-menu" data-spui-desp aria-expanded="false"
+                        aria-controls="acciones-reproductores-{{ r.id }}" aria-haspopup="true" title="Más acciones">
+                    <img src="{{ asset('unraf-ui/icons/dots-three-vertical.svg') }}" class="spui-action-icon" alt=""> Más
+                </button>
+                <div id="acciones-reproductores-{{ r.id }}" class="spui-desp-panel spui-menu-panel" role="group" aria-label="Más acciones">
+                    <a href="{{ path('spui_cms_reproductores_telemetria', {id: r.id}) }}"
+                       class="unraf-btn spui-btn-telemetria unraf-btn-sm"
+                       title="Histórico de temperatura, RAM y disco">
+                        <img src="{{ asset('unraf-ui/icons/chart-line.svg') }}" class="spui-action-icon" alt=""> Telemetría
+                    </a>
+                    <button type="button"
+                            class="unraf-btn spui-btn-sincronizar unraf-btn-sm {{ bloqueo.clase(motivo) }}"
+                            data-spui-action="{{ path('spui_cms_reproductores_sincronizar', {id: r.id}) }}"
+                            data-spui-title="Sincronizar ahora"
+                            data-spui-message="¿Pedirle a «{{ r.hostname }}» que sincronice ahora con el CMS? Sincroniza solo cada {{ texto.duracion_minutos(r.intervaloSyncMin) }}."
+                            data-spui-variant="sincronizar"
+                            data-spui-confirm-label="Sincronizar"
+                            {% if motivo %}{{ bloqueo.attrs(motivo) }}{% else %}title="Pedir que sincronice ahora con el CMS"{% endif %}>
+                        <img src="{{ asset('unraf-ui/icons/arrows-clockwise.svg') }}" class="spui-action-icon" alt=""> Sincronizar
+                    </button>
+                    <button type="button"
+                            class="unraf-btn spui-btn-editar unraf-btn-sm {{ bloqueo.clase(motivo) }}"
+                            data-spui-form="{{ path('spui_cms_reproductores_editar', {id: r.id}) }}"
+                            data-spui-title="Editar: {{ r.hostname }}"
+                            {% if motivo %}{{ bloqueo.attrs(motivo) }}{% else %}title="Editar"{% endif %}>
+                        <img src="{{ asset('unraf-ui/icons/pencil.svg') }}" class="spui-action-icon" alt=""> Editar
+                    </button>
+                    <button type="button"
+                            class="unraf-btn spui-btn-clave unraf-btn-sm {{ bloqueo.clase(motivo) }}"
+                            data-spui-action="{{ path('spui_cms_reproductores_regenerar_clave', {id: r.id}) }}"
+                            data-spui-title="Regenerar clave API"
+                            data-spui-message="¿Regenerar la API key de «{{ r.hostname }}»? La clave anterior quedará inválida de inmediato."
+                            data-spui-variant="clave"
+                            data-spui-confirm-label="Regenerar"
+                            {% if motivo %}{{ bloqueo.attrs(motivo) }}{% else %}title="Regenerar API key"{% endif %}>
+                        <img src="{{ asset('unraf-ui/icons/key.svg') }}" class="spui-action-icon" alt=""> Clave
+                    </button>
+                    {# Sin bloqueo por conectividad a propósito: dar de baja un
+                       equipo es lo que se hace cuando se rompió y no vuelve.
+                       Ver el comentario en ReproductorCmsController::eliminar(). #}
+                    <button type="button"
+                            class="unraf-btn spui-btn-eliminar unraf-btn-sm"
+                            data-spui-action="{{ path('spui_cms_reproductores_eliminar', {id: r.id}) }}"
+                            data-spui-title="Eliminar reproductor"
+                            data-spui-message="¿Eliminar «{{ r.hostname }}»? El Pi dejará de poder comunicarse con el sistema."
+                            data-spui-variant="eliminar"
+                            title="Eliminar">
+                        <img src="{{ asset('unraf-ui/icons/trash.svg') }}" class="spui-action-icon" alt=""> Eliminar
+                    </button>
+                </div>
+            </span>
         </div>
     </article>
 {% else %}

@@ -65,29 +65,40 @@
                     data-spui-title="{{ e.nombre }}" title="Ver detalle">
                 <img src="{{ asset('unraf-ui/icons/eye.svg') }}" class="spui-action-icon" alt=""> Ver
             </button>
-            <button type="button" class="unraf-btn spui-btn-editar unraf-btn-sm"
-                    data-spui-form="{{ path('spui_cms_edificios_editar', {id: e.id}) }}"
-                    data-spui-title="Editar: {{ e.nombre }}" title="Editar">
-                <img src="{{ asset('unraf-ui/icons/pencil.svg') }}" class="spui-action-icon" alt=""> Editar
-            </button>
-            <button type="button"
-                    class="unraf-btn unraf-btn-sm {{ e.activo ? 'spui-btn-desactivar' : 'spui-btn-activar' }}"
-                    data-spui-action="{{ path('spui_cms_edificios_toggle', {id: e.id}) }}"
-                    data-spui-title="{{ e.activo ? 'Desactivar' : 'Activar' }} edificio"
-                    data-spui-message="{{ e.activo ? 'Desactivar' : 'Activar' }} «{{ e.nombre }}»?"
-                    data-spui-variant="{{ e.activo ? 'desactivar' : 'activar' }}"
-                    data-spui-confirm-label="{{ e.activo ? 'Desactivar' : 'Activar' }}"
-                    title="{{ e.activo ? 'Desactivar' : 'Activar' }}">
-                <img src="{{ e.activo ? asset('unraf-ui/icons/hand-palm.svg') : asset('unraf-ui/icons/lightning.svg') }}" class="spui-action-icon" alt="">
-                {{ e.activo ? 'Desactivar' : 'Activar' }}
-            </button>
-            <button type="button" class="unraf-btn spui-btn-eliminar unraf-btn-sm"
-                    data-spui-action="{{ path('spui_cms_edificios_eliminar', {id: e.id}) }}"
-                    data-spui-title="Eliminar edificio"
-                    data-spui-message="¿Eliminar «{{ e.nombre }}»? Esta acción no se puede deshacer."
-                    data-spui-variant="eliminar" title="Eliminar">
-                <img src="{{ asset('unraf-ui/icons/trash.svg') }}" class="spui-action-icon" alt=""> Eliminar
-            </button>
+            {# El resto de las acciones, en el menú ⋮ (03/11/2026, pedido de Mateo):
+               Ver queda a la vista. Los botones son los mismos de siempre (sus
+               data-spui-* no cambian) y una acción bloqueada muestra el motivo. #}
+            <span class="spui-desp spui-menu-acciones">
+                <button type="button" class="unraf-btn unraf-btn-sm spui-btn-menu" data-spui-desp aria-expanded="false"
+                        aria-controls="acciones-edificios-{{ e.id }}" aria-haspopup="true" title="Más acciones">
+                    <img src="{{ asset('unraf-ui/icons/dots-three-vertical.svg') }}" class="spui-action-icon" alt=""> Más
+                </button>
+                <div id="acciones-edificios-{{ e.id }}" class="spui-desp-panel spui-menu-panel" role="group" aria-label="Más acciones">
+                    <button type="button" class="unraf-btn spui-btn-editar unraf-btn-sm"
+                            data-spui-form="{{ path('spui_cms_edificios_editar', {id: e.id}) }}"
+                            data-spui-title="Editar: {{ e.nombre }}" title="Editar">
+                        <img src="{{ asset('unraf-ui/icons/pencil.svg') }}" class="spui-action-icon" alt=""> Editar
+                    </button>
+                    <button type="button"
+                            class="unraf-btn unraf-btn-sm {{ e.activo ? 'spui-btn-desactivar' : 'spui-btn-activar' }}"
+                            data-spui-action="{{ path('spui_cms_edificios_toggle', {id: e.id}) }}"
+                            data-spui-title="{{ e.activo ? 'Desactivar' : 'Activar' }} edificio"
+                            data-spui-message="{{ e.activo ? 'Desactivar' : 'Activar' }} «{{ e.nombre }}»?"
+                            data-spui-variant="{{ e.activo ? 'desactivar' : 'activar' }}"
+                            data-spui-confirm-label="{{ e.activo ? 'Desactivar' : 'Activar' }}"
+                            title="{{ e.activo ? 'Desactivar' : 'Activar' }}">
+                        <img src="{{ e.activo ? asset('unraf-ui/icons/hand-palm.svg') : asset('unraf-ui/icons/lightning.svg') }}" class="spui-action-icon" alt="">
+                        {{ e.activo ? 'Desactivar' : 'Activar' }}
+                    </button>
+                    <button type="button" class="unraf-btn spui-btn-eliminar unraf-btn-sm"
+                            data-spui-action="{{ path('spui_cms_edificios_eliminar', {id: e.id}) }}"
+                            data-spui-title="Eliminar edificio"
+                            data-spui-message="¿Eliminar «{{ e.nombre }}»? Esta acción no se puede deshacer."
+                            data-spui-variant="eliminar" title="Eliminar">
+                        <img src="{{ asset('unraf-ui/icons/trash.svg') }}" class="spui-action-icon" alt=""> Eliminar
+                    </button>
+                </div>
+            </span>
         </div>
     </article>
 {% else %}

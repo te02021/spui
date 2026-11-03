@@ -427,7 +427,11 @@ Los datos se agrupan por hora: con una lectura por minuto, 7 días serían unos 
 
 **Filtros:** al lado del buscador (salvo en Playlists), un chip por grupo con la opción elegida y su cantidad (por defecto **Todos**); tocarlo abre las demás opciones, con su cantidad y una tilde en la elegida. Si hay un filtro puesto, el chip queda en azul. Cuando el buscador y los chips no entran en una fila, se centran. Edificios, Ubicaciones y Pantallas: activos / inactivos. Reproductores: conectados / desconectados / sin registrar (por la última señal, en el momento). Contenidos: disponibles / archivados y, aparte, un chip por tipo; los dos grupos se combinan. Programación y Alertas: activas / inactivas y, aparte, el orden por prioridad (mayor primero, por defecto, o menor primero); en Alertas, las activas van siempre arriba. El filtro va en la dirección (`?estado=activos`), así que se puede compartir o volver con "atrás".
 
-**Botones:** todos rellenos, cada acción con su color (Ver azul, Editar amarillo, Eliminar rojo, y el resto con uno propio); al pasar el mouse se oscurecen. Si no entran al lado de los datos de la tarjeta bajan a otro renglón, centrados.
+**Acciones de cada tarjeta** (desde el 03/11/2026): queda a la vista **Ver** y el resto está en el botón **⋮ Más**, que abre una lista: Editar, Activar o Desactivar, Ítems, Energía, Telemetría, Sincronizar, Clave, según la sección, y **Eliminar** al final, en rojo.
+- **Al elegir una acción**, el menú se cierra y la acción sigue como siempre: su confirmación o su ventana.
+- **Una acción bloqueada** porque el reproductor está desconectado se ve atenuada y dice el motivo debajo.
+- **El menú se cierra** tocando afuera o con Esc.
+- **Ver** es azul y **Más** es blanco con borde. Si no entran al lado de los datos de la tarjeta, bajan a otro renglón, centrados.
 
 **Ventanas (modales):**
 

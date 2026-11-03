@@ -12,6 +12,10 @@
 // Se abre por aria-expanded (el CSS muestra el panel que le sigue), que
 // auto-refresh.js no toca: si la lista se refresca, el panel sigue abierto.
 // Uno a la vez; se cierra tocando afuera o con Esc.
+//
+// El menú ⋮ de acciones de cada tarjeta (.spui-menu-panel, 03/11/2026) es uno
+// de estos: se cierra solo al elegir una acción, salvo una bloqueada, para
+// que se pueda leer el motivo.
 (function () {
     'use strict';
 
@@ -25,13 +29,19 @@
         if (devolverFoco && document.contains(btn)) btn.focus();
     }
 
-    /** Si el panel se sale por la derecha (celular, chip al final de la fila), se corre a la izquierda. */
+    /**
+     * Si el panel se sale de la pantalla (celular, chip al final de la fila,
+     * o el menú ⋮, que se abre hacia la izquierda), se corre lo justo.
+     */
     function acomodar(btn) {
         var panel = document.getElementById(btn.getAttribute('aria-controls'));
         if (!panel) return;
-        panel.style.left = '';
+        panel.style.transform = '';
         var r = panel.getBoundingClientRect(), vw = document.documentElement.clientWidth;
-        if (r.right > vw - 16) panel.style.left = Math.min(0, vw - 16 - r.right) + 'px';
+        var corrimiento = 0;
+        if (r.right > vw - 16) corrimiento = vw - 16 - r.right;
+        if (r.left + corrimiento < 16) corrimiento = 16 - r.left;
+        if (corrimiento) panel.style.transform = 'translateX(' + corrimiento + 'px)';
     }
 
     function abrir(btn) {
@@ -47,7 +57,11 @@
             if (btn === abierto) cerrar(); else abrir(btn);
             return;
         }
-        if (abierto && !e.target.closest('.spui-desp-panel')) cerrar();
+        if (abierto && !e.target.closest('.spui-desp-panel')) { cerrar(); return; }
+        // Elegida una acción del menú ⋮, el menú se cierra (la acción ya la
+        // tomó su propio manejador: confirmación, modal o enlace).
+        var accion = abierto && e.target.closest('.spui-menu-panel .unraf-btn');
+        if (accion && !accion.classList.contains('spui-accion-bloqueada')) cerrar();
     });
     document.addEventListener('keydown', function (e) {
         if (e.key === 'Escape') cerrar(true);

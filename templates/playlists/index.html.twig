@@ -85,23 +85,34 @@
                     title="Ver detalle de la playlist">
                 <img src="{{ asset('unraf-ui/icons/playlist.svg') }}" class="spui-action-icon" alt=""> Ver
             </button>
+            {# El resto de las acciones, en el menú ⋮ (03/11/2026, pedido de Mateo):
+               Ver queda a la vista. Los botones son los mismos de siempre (sus
+               data-spui-* no cambian) y una acción bloqueada muestra el motivo. #}
+            <span class="spui-desp spui-menu-acciones">
+                <button type="button" class="unraf-btn unraf-btn-sm spui-btn-menu" data-spui-desp aria-expanded="false"
+                        aria-controls="acciones-playlists-{{ pl.id }}" aria-haspopup="true" title="Más acciones">
+                    <img src="{{ asset('unraf-ui/icons/dots-three-vertical.svg') }}" class="spui-action-icon" alt=""> Más
+                </button>
+                <div id="acciones-playlists-{{ pl.id }}" class="spui-desp-panel spui-menu-panel" role="group" aria-label="Más acciones">
 
-            <button type="button" class="unraf-btn spui-btn-editar unraf-btn-sm {{ bloqueo.clase(motivo) }}"
-                    data-spui-form="{{ path('spui_cms_playlists_editar', {id: pl.id}) }}"
-                    data-spui-title="Editar: {{ pl.nombre }}"
-                    {% if motivo %}{{ bloqueo.attrs(motivo) }}{% else %}title="Editar datos"{% endif %}>
-                <img src="{{ asset('unraf-ui/icons/pencil.svg') }}" class="spui-action-icon" alt=""> Editar
-            </button>
+                    <button type="button" class="unraf-btn spui-btn-editar unraf-btn-sm {{ bloqueo.clase(motivo) }}"
+                            data-spui-form="{{ path('spui_cms_playlists_editar', {id: pl.id}) }}"
+                            data-spui-title="Editar: {{ pl.nombre }}"
+                            {% if motivo %}{{ bloqueo.attrs(motivo) }}{% else %}title="Editar datos"{% endif %}>
+                        <img src="{{ asset('unraf-ui/icons/pencil.svg') }}" class="spui-action-icon" alt=""> Editar
+                    </button>
 
-            <button type="button" class="unraf-btn spui-btn-eliminar unraf-btn-sm {{ bloqueo.clase(motivo) }}"
-                    data-spui-action="{{ path('spui_cms_playlists_eliminar', {id: pl.id}) }}"
-                    data-spui-title="Eliminar playlist"
-                    data-spui-message="¿Eliminar «{{ pl.nombre }}»?{% if pl.items|length %} Se quitan sus {{ pl.items|length }} ítem(s); los contenidos se conservan.{% endif %} Esta acción no se puede deshacer."
-                    data-spui-variant="eliminar"
-                    {% if motivo %}{{ bloqueo.attrs(motivo) }}{% else %}title="Eliminar"{% endif %}>
-                <img src="{{ asset('unraf-ui/icons/trash.svg') }}" class="spui-action-icon" alt=""> Eliminar
-            </button>
+                    <button type="button" class="unraf-btn spui-btn-eliminar unraf-btn-sm {{ bloqueo.clase(motivo) }}"
+                            data-spui-action="{{ path('spui_cms_playlists_eliminar', {id: pl.id}) }}"
+                            data-spui-title="Eliminar playlist"
+                            data-spui-message="¿Eliminar «{{ pl.nombre }}»?{% if pl.items|length %} Se quitan sus {{ pl.items|length }} ítem(s); los contenidos se conservan.{% endif %} Esta acción no se puede deshacer."
+                            data-spui-variant="eliminar"
+                            {% if motivo %}{{ bloqueo.attrs(motivo) }}{% else %}title="Eliminar"{% endif %}>
+                        <img src="{{ asset('unraf-ui/icons/trash.svg') }}" class="spui-action-icon" alt=""> Eliminar
+                    </button>
 
+                </div>
+            </span>
         </div>
     </article>
 {% else %}

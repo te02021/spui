@@ -78,61 +78,72 @@
                     title="Ver detalle">
                 <img src="{{ asset('unraf-ui/icons/eye.svg') }}" class="spui-action-icon" alt=""> Ver
             </button>
-
-            <button type="button" class="unraf-btn spui-btn-editar unraf-btn-sm {{ bloqueo.clase(motivo) }}"
-                    data-spui-form="{{ path('spui_cms_contenidos_editar', {id: c.id}) }}"
-                    data-spui-title="Editar: {{ c.titulo }}"
-                    {% if motivo %}{{ bloqueo.attrs(motivo) }}{% else %}title="Editar"{% endif %}>
-                <img src="{{ asset('unraf-ui/icons/pencil.svg') }}" class="spui-action-icon" alt=""> Editar
-            </button>
-
-            {% if c.tieneItemsPropios %}
-                {# Abre el listado de ítems en un modal (agregar/editar/eliminar
-                   encima). Se puede abrir siempre: lo que se bloquea con un
-                   reproductor caído son las acciones de adentro. Uno "del
-                   edificio de la pantalla" no tiene ítems propios. #}
-                <button type="button" class="unraf-btn spui-btn-items unraf-btn-sm"
-                        data-spui-form="{{ path('spui_cms_cronograma_items', {id: c.id}) }}"
-                        data-spui-title="Ítems de «{{ c.titulo }}»"
-                        data-spui-size="modal-lg"
-                        title="Ítems del cronograma">
-                    <img src="{{ asset('unraf-ui/icons/calendar-dots.svg') }}" class="spui-action-icon" alt=""> Ítems
+            {# El resto de las acciones, en el menú ⋮ (03/11/2026, pedido de Mateo):
+               Ver queda a la vista. Los botones son los mismos de siempre (sus
+               data-spui-* no cambian) y una acción bloqueada muestra el motivo. #}
+            <span class="spui-desp spui-menu-acciones">
+                <button type="button" class="unraf-btn unraf-btn-sm spui-btn-menu" data-spui-desp aria-expanded="false"
+                        aria-controls="acciones-contenidos-{{ c.id }}" aria-haspopup="true" title="Más acciones">
+                    <img src="{{ asset('unraf-ui/icons/dots-three-vertical.svg') }}" class="spui-action-icon" alt=""> Más
                 </button>
-            {% endif %}
+                <div id="acciones-contenidos-{{ c.id }}" class="spui-desp-panel spui-menu-panel" role="group" aria-label="Más acciones">
 
-            {% if c.estaArchivado %}
-                {% set n = c.cantidadPlaylists %}
-                <button type="button" class="unraf-btn spui-btn-desarchivar unraf-btn-sm {{ bloqueo.clase(motivo) }}"
-                        data-spui-action="{{ path('spui_cms_contenidos_desarchivar', {id: c.id}) }}"
-                        data-spui-title="Desarchivar contenido"
-                        data-spui-confirm-label="Desarchivar"
-                        data-spui-message="¿Desarchivar «{{ c.titulo }}»? Vuelve a estar disponible{% if n %} y a mostrarse en {{ n == 1 ? 'la playlist' : 'las ' ~ n ~ ' playlists' }} donde estaba{% endif %}."
-                        data-spui-variant="desarchivar"
-                        {% if motivo %}{{ bloqueo.attrs(motivo) }}{% else %}title="Desarchivar"{% endif %}>
-                    <img src="{{ asset('unraf-ui/icons/arrow-u-left-up.svg') }}" class="spui-action-icon" alt=""> Desarchivar
-                </button>
-            {% else %}
-                {% set n = c.cantidadPlaylists %}
-                <button type="button" class="unraf-btn spui-btn-archivar unraf-btn-sm {{ bloqueo.clase(motivo) }}"
-                        data-spui-action="{{ path('spui_cms_contenidos_archivar', {id: c.id}) }}"
-                        data-spui-title="Archivar contenido"
-                        data-spui-confirm-label="Archivar"
-                        data-spui-message="¿Archivar «{{ c.titulo }}»? {% if n %}Está en {{ n == 1 ? '1 playlist' : n ~ ' playlists' }}: deja de mostrarse en todas las pantallas ahora mismo. Al desarchivarlo vuelve a donde estaba.{% else %}No va a poder agregarse a playlists hasta desarchivarlo.{% endif %}"
-                        data-spui-variant="archivar"
-                        {% if motivo %}{{ bloqueo.attrs(motivo) }}{% else %}title="Archivar"{% endif %}>
-                    <img src="{{ asset('unraf-ui/icons/box-arrow-down.svg') }}" class="spui-action-icon" alt=""> Archivar
-                </button>
-            {% endif %}
+                    <button type="button" class="unraf-btn spui-btn-editar unraf-btn-sm {{ bloqueo.clase(motivo) }}"
+                            data-spui-form="{{ path('spui_cms_contenidos_editar', {id: c.id}) }}"
+                            data-spui-title="Editar: {{ c.titulo }}"
+                            {% if motivo %}{{ bloqueo.attrs(motivo) }}{% else %}title="Editar"{% endif %}>
+                        <img src="{{ asset('unraf-ui/icons/pencil.svg') }}" class="spui-action-icon" alt=""> Editar
+                    </button>
 
-            <button type="button" class="unraf-btn spui-btn-eliminar unraf-btn-sm {{ bloqueo.clase(motivo) }}"
-                    data-spui-action="{{ path('spui_cms_contenidos_eliminar', {id: c.id}) }}"
-                    data-spui-title="Eliminar contenido"
-                    data-spui-message="¿Eliminar «{{ c.titulo }}»? Esta acción no se puede deshacer."
-                    data-spui-variant="eliminar"
-                    {% if motivo %}{{ bloqueo.attrs(motivo) }}{% else %}title="Eliminar"{% endif %}>
-                <img src="{{ asset('unraf-ui/icons/trash.svg') }}" class="spui-action-icon" alt=""> Eliminar
-            </button>
+                    {% if c.tieneItemsPropios %}
+                        {# Abre el listado de ítems en un modal (agregar/editar/eliminar
+                           encima). Se puede abrir siempre: lo que se bloquea con un
+                           reproductor caído son las acciones de adentro. Uno "del
+                           edificio de la pantalla" no tiene ítems propios. #}
+                        <button type="button" class="unraf-btn spui-btn-items unraf-btn-sm"
+                                data-spui-form="{{ path('spui_cms_cronograma_items', {id: c.id}) }}"
+                                data-spui-title="Ítems de «{{ c.titulo }}»"
+                                data-spui-size="modal-lg"
+                                title="Ítems del cronograma">
+                            <img src="{{ asset('unraf-ui/icons/calendar-dots.svg') }}" class="spui-action-icon" alt=""> Ítems
+                        </button>
+                    {% endif %}
 
+                    {% if c.estaArchivado %}
+                        {% set n = c.cantidadPlaylists %}
+                        <button type="button" class="unraf-btn spui-btn-desarchivar unraf-btn-sm {{ bloqueo.clase(motivo) }}"
+                                data-spui-action="{{ path('spui_cms_contenidos_desarchivar', {id: c.id}) }}"
+                                data-spui-title="Desarchivar contenido"
+                                data-spui-confirm-label="Desarchivar"
+                                data-spui-message="¿Desarchivar «{{ c.titulo }}»? Vuelve a estar disponible{% if n %} y a mostrarse en {{ n == 1 ? 'la playlist' : 'las ' ~ n ~ ' playlists' }} donde estaba{% endif %}."
+                                data-spui-variant="desarchivar"
+                                {% if motivo %}{{ bloqueo.attrs(motivo) }}{% else %}title="Desarchivar"{% endif %}>
+                            <img src="{{ asset('unraf-ui/icons/arrow-u-left-up.svg') }}" class="spui-action-icon" alt=""> Desarchivar
+                        </button>
+                    {% else %}
+                        {% set n = c.cantidadPlaylists %}
+                        <button type="button" class="unraf-btn spui-btn-archivar unraf-btn-sm {{ bloqueo.clase(motivo) }}"
+                                data-spui-action="{{ path('spui_cms_contenidos_archivar', {id: c.id}) }}"
+                                data-spui-title="Archivar contenido"
+                                data-spui-confirm-label="Archivar"
+                                data-spui-message="¿Archivar «{{ c.titulo }}»? {% if n %}Está en {{ n == 1 ? '1 playlist' : n ~ ' playlists' }}: deja de mostrarse en todas las pantallas ahora mismo. Al desarchivarlo vuelve a donde estaba.{% else %}No va a poder agregarse a playlists hasta desarchivarlo.{% endif %}"
+                                data-spui-variant="archivar"
+                                {% if motivo %}{{ bloqueo.attrs(motivo) }}{% else %}title="Archivar"{% endif %}>
+                            <img src="{{ asset('unraf-ui/icons/box-arrow-down.svg') }}" class="spui-action-icon" alt=""> Archivar
+                        </button>
+                    {% endif %}
+
+                    <button type="button" class="unraf-btn spui-btn-eliminar unraf-btn-sm {{ bloqueo.clase(motivo) }}"
+                            data-spui-action="{{ path('spui_cms_contenidos_eliminar', {id: c.id}) }}"
+                            data-spui-title="Eliminar contenido"
+                            data-spui-message="¿Eliminar «{{ c.titulo }}»? Esta acción no se puede deshacer."
+                            data-spui-variant="eliminar"
+                            {% if motivo %}{{ bloqueo.attrs(motivo) }}{% else %}title="Eliminar"{% endif %}>
+                        <img src="{{ asset('unraf-ui/icons/trash.svg') }}" class="spui-action-icon" alt=""> Eliminar
+                    </button>
+
+                </div>
+            </span>
         </div>
     </article>
 {% else %}
