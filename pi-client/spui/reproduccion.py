@@ -151,6 +151,25 @@ class Reproduccion(threading.Thread):
                 logger.exception('Error reproduciendo (se sigue con la próxima vuelta): %s', exc)
                 self._cambio.wait(5)
 
+    def _esperar_cambio(self, segundos: float) -> None:
+        """
+        Espera un cambio de programa con algo fijo en pantalla (la pantalla de
+        espera, un contenido permanente, el apagado), atendiendo la ventana
+        del TV mientras tanto: la hora en vivo, el brillo y los avisos del
+        sistema. Antes era un wait(60) de una vez y la hora quedaba congelada
+        (03/11/2026: la pantalla de espera decía 13:28 a las 13:33).
+        """
+        atender = getattr(self._player, 'atender', None)
+        fin = time.monotonic() + segundos
+        while self._corriendo and time.monotonic() < fin:
+            if self._cambio.wait(0.25):
+                return
+            if atender is not None:
+                try:
+                    atender()
+                except Exception as exc:   # la espera no puede caerse por la ventana
+                    logger.warning('Error atendiendo la pantalla: %s', exc)
+
     def _una_vuelta(self) -> None:
         self._player.reintentar_pantalla()
 
@@ -165,19 +184,19 @@ class Reproduccion(threading.Thread):
 
         if tipo == APAGADO:
             self._player.en_negro()
-            self._cambio.wait(60)
+            self._esperar_cambio(60)
             return
 
         if tipo == ESPERA or not items:
             self._player.mostrar_fallback()
-            self._cambio.wait(60)
+            self._esperar_cambio(60)
             return
 
         inicio = time.monotonic()
         otra_vuelta = self._player.reproducir_playlist(items, sync_client=self._sync)
         if not otra_vuelta:
             # Quedó algo fijo en pantalla (permanente o espera): hasta que cambie.
-            self._cambio.wait(60)
+            self._esperar_cambio(60)
         elif time.monotonic() - inicio < _VUELTA_MINIMA_SEG:
             # Una vuelta que termina en el acto es una playlist que no puede
             # mostrar nada (todos los archivos faltan, por ejemplo): se espera

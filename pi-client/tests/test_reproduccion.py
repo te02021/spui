@@ -32,6 +32,7 @@ class PlayerFalso:
         self._interrumpido = threading.Event()
         self._stop = threading.Event()
         self.paradas = 0
+        self.atendidas = 0
 
     @staticmethod
     def _firma_playlist(items):
@@ -75,6 +76,9 @@ class PlayerFalso:
     def en_negro(self):
         self.paradas += 1
 
+    def atender(self):
+        self.atendidas += 1
+
     def reintentar_pantalla(self):
         return True
 
@@ -92,6 +96,13 @@ class ReproduccionTest(unittest.TestCase):
         self.r = Reproduccion(self.p)
         self.r.start()
         self.addCleanup(self.r.detener)
+
+    def test_con_la_pantalla_de_espera_se_sigue_atendiendo_la_ventana(self):
+        """La hora en vivo no se congela con algo fijo en pantalla (03/11/2026)."""
+        self.r.programar(ESPERA)
+        antes = self.p.atendidas
+        time.sleep(1.2)
+        self.assertGreaterEqual(self.p.atendidas - antes, 3)
 
     def mostrado(self):
         """Lo que se vio, sin la pantalla de espera del arranque."""

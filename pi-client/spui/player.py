@@ -1700,6 +1700,10 @@ class Player:
             self._atender_ventana()
             time.sleep(0.2)
 
+    def atender(self) -> None:
+        """Lo llama el hilo de reproducción mientras espera con algo fijo en pantalla."""
+        self._atender_ventana()
+
     def _atender_ventana(self) -> None:
         """Mientras se espera: avisos de la ventana del TV y el brillo por software."""
         ventana = getattr(self, '_ventana', None)
