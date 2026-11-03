@@ -358,10 +358,6 @@ class Player:
     # CMS lee al subirlo) es el máximo a esperar si VLC no avisa el final, más
     # este margen por lo que tarda en arrancar. Sin duración, el tope.
     _MARGEN_FIN_VIDEO_SEG = 5
-    # Con lo que sigue ya preparado, el video se deja esta cantidad de ms antes
-    # del final: VLC, al terminar, cierra su imagen y deja la pantalla en negro
-    # hasta que se lo saca (decisión de Mateo, 03/11/2026).
-    _CORTE_ANTES_DEL_FINAL_MS = 300
     _TOPE_VIDEO_SEG = 3600
 
     # Un ítem permanente devuelve None, no un número: "permanente" es un estado,
@@ -1649,9 +1645,6 @@ class Player:
         si VLC nunca informa el final.
         """
         fin = time.monotonic() + maximo + self._MARGEN_FIN_VIDEO_SEG
-        # Sólo si lo que sigue está listo para mostrarse al instante.
-        anticipar = getattr(self, '_precarga', None) is not None and getattr(self, '_ventana', None) is not None
-        visto, visto_en = -1, 0.0
         while time.monotonic() < fin:
             if self._tiene_alerta() or self._stop.is_set() or self._interrumpido.is_set():
                 return
@@ -1659,33 +1652,7 @@ class Player:
             if estado in (vlc.State.Ended, vlc.State.Error, vlc.State.Stopped):
                 return
             self._atender_ventana()
-            pausa = 0.25
-            if anticipar:
-                restante, visto, visto_en = self._restante_ms(visto, visto_en)
-                if restante is not None:
-                    if restante <= self._CORTE_ANTES_DEL_FINAL_MS:
-                        return
-                    if restante < 2000:
-                        pausa = 0.03   # cerca del final se mira seguido, para no pasarse
-            time.sleep(pausa)
-
-    def _restante_ms(self, visto: int, visto_en: float) -> tuple[Optional[float], int, float]:
-        """
-        Cuánto le falta al video, en ms; None si VLC no lo informa (ahí termina
-        solo, como siempre). get_time() avanza de a saltos, así que entre un
-        salto y otro se estima con el reloj. Devuelve también el último tiempo
-        visto y cuándo se lo vio.
-        """
-        try:
-            largo, tiempo = int(self._media_player.get_length()), int(self._media_player.get_time())
-        except (TypeError, ValueError, OSError):
-            return None, visto, visto_en
-        if largo <= 0 or tiempo <= 0:
-            return None, visto, visto_en
-        ahora = time.monotonic()
-        if tiempo != visto:
-            visto, visto_en = tiempo, ahora
-        return largo - (visto + (ahora - visto_en) * 1000), visto, visto_en
+            time.sleep(0.25)
 
     def _reproducir_texto(
         self,
