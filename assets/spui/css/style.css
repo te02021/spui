@@ -2491,6 +2491,9 @@ span.unraf-form-label.d-block { margin-bottom: .5rem; }
 .spui-selector-opcion {
     display: flex; align-items: center; gap: .5rem; padding: .45rem .55rem; border-radius: 6px;
     color: #2b3a4a; text-decoration: none; font-size: .88rem;
+    /* En los filtros de ítems la opción es un <button> (en los listados, un
+       enlace): sin esto no ocupaba todo el ancho y traía fondo y borde propios. */
+    width: 100%; border: 0; background: none; font-family: inherit; text-align: left; cursor: pointer;
 }
 .spui-selector-opcion:hover, .spui-selector-opcion:focus-visible { background: #f1f5f9; color: #2b3a4a; }
 .spui-selector-check { width: .9rem; color: var(--unraf-azul); font-weight: 700; visibility: hidden; }
