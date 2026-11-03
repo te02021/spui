@@ -145,7 +145,7 @@ El repositorio de todo lo que puede aparecer en una pantalla. Cinco tipos:
 | **Texto** | El texto a mostrar | — |
 | **Imagen** | Archivo JPG, PNG, GIF o WebP | Se adapta sola al guardarla: se gira según la foto y se achica a 1920×1080 como máximo, que es lo que muestra la pantalla. Una foto de celular se puede subir tal cual |
 | **Video** | Archivo MP4 o MOV en H.264, hasta 1920×1080 y 30 cuadros por segundo | Un video más grande no se acepta: en la pantalla se vería trabado. El aviso aparece apenas se elige el archivo. **Un video de YouTube** se baja desde la PC (en 1080p o menos) y se sube como video: no hay un tipo para pegar el link |
-| **QR** | URL destino y vencimiento opcional, en el mismo formulario | El sistema genera la imagen automáticamente (ver §3.3) |
+| **QR** | URL destino (o los dos enlaces de tienda de una app) y vencimiento opcional, en el mismo formulario | El sistema genera la imagen automáticamente (ver §3.3) |
 | **Cronograma** | Nada al crearlo | Al guardar se abre su listado de ítems (ver §3.2) |
 
 Además se define **título** y **duración en segundos**:
@@ -285,6 +285,15 @@ como cualquier otro: Contenidos → Nuevo → tipo **QR**.
 
 - **Crear:** el formulario se adapta al elegir el tipo y pide **URL destino** (a dónde llega quien
   escanea) y un **vencimiento opcional**. Nada más: el nombre del código es el título del contenido.
+- **QR de una app** (desde el 03/11/2026): en **URL destino** se pegan los dos enlaces, el de Google
+  Play y el del App Store, uno por renglón y en cualquier orden. El CMS reconoce solo cuál es cuál.
+  - **Android** va directo a Google Play y **iPhone** al App Store, con un solo código y un solo contador.
+  - **Una computadora o un iPad** (Safari en iPad se presenta como una Mac) ven una página de la UNRaf
+    con los dos botones de las tiendas, en vez de una tienda elegida a ciegas.
+  - **Con dos enlaces** tiene que ser uno de cada tienda; con más de dos, o dos que no son de tienda,
+    el formulario lo dice debajo del campo.
+  - **Para probarlo sin iPhone:** en Chrome, F12 → el ícono de dispositivo → elegir un iPhone, y abrir
+    la dirección del QR (`/api/spui/qr/{id}/r`): tiene que llevar al App Store.
 - **La imagen se genera sola.** El QR no codifica la URL destino sino un redirect del CMS: por eso
   se pueden contar los escaneos **y cambiar el destino sin reimprimir nada**.
 - **Editar:** desde Editar del contenido, igual que se edita el archivo de una imagen o el texto de

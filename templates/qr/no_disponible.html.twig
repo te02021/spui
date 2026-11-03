@@ -25,13 +25,11 @@
             --tenue: #6b7c93;
         }
         * { box-sizing: border-box; }
+        /* El centrado va acá y no en el <body>: en desarrollo Symfony le agrega
+           su barra al body, y con el body flex quedaba al lado de la tarjeta. */
+        .centro { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 1.5rem; }
         body {
             margin: 0;
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 1.5rem;
             background: linear-gradient(160deg, #f4f7fa 0%, #e8eef4 100%);
             color: var(--texto);
             font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
@@ -98,6 +96,7 @@
     </style>
 </head>
 <body>
+<div class="centro">
     <main class="tarjeta">
         <div class="icono">
             {% if vencido %}
@@ -139,5 +138,6 @@
 
         <p class="marca"><strong>UNRaf</strong> · Pantallas informativas</p>
     </main>
+</div>
 </body>
 </html>

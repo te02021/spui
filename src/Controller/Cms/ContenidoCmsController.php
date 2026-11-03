@@ -154,11 +154,55 @@ class ContenidoCmsController extends AbstractController
         if (!is_string($urlCruda)) {
             return ['qr_url_destino', 'La URL de destino no tiene el formato esperado.'];
         }
-        $url = trim($urlCruda);
-        if ($url === '') {
+        // Uno o dos enlaces, uno por renglón (03/11/2026): con dos, uno es de
+        // Google Play y el otro del App Store, y cada teléfono va a su tienda.
+        $lineas = array_values(array_filter(array_map('trim', preg_split('/\R/', $urlCruda)), static fn($l) => $l !== ''));
+        if ($lineas === []) {
             return ['qr_url_destino', 'La URL de destino es requerida: es a dónde llega quien escanea el código.'];
         }
+        if (count($lineas) > 2) {
+            return ['qr_url_destino', 'Pegá como máximo dos enlaces, uno por renglón: el de Google Play y el del App Store.'];
+        }
+        $urls = [];
+        foreach ($lineas as $linea) {
+            $resultado = $this->validarUrlQr($linea);
+            if (is_array($resultado)) {
+                return $resultado;
+            }
+            $urls[] = $resultado;
+        }
+        if (count($urls) === 2) {
+            $tiendas = [CodigoQr::tiendaDe($urls[0]), CodigoQr::tiendaDe($urls[1])];
+            sort($tiendas);
+            if ($tiendas !== ['android', 'ios']) {
+                return ['qr_url_destino', 'Con dos enlaces, uno tiene que ser de Google Play y el otro del App Store: así cada teléfono va a su tienda.'];
+            }
+        }
 
+        $error = $this->leerVencimientoQr($request);
+        if (is_array($error)) {
+            return $error;
+        }
+        $expira = $error;
+
+        $codigo = $contenido->getCodigoQr() ?? new CodigoQr();
+        $codigo->setEtiqueta($contenido->getTitulo())
+               ->setUrlDestino($urls[0])
+               ->setUrlDestinoAlternativa($urls[1] ?? null)
+               ->setExpiraEn($expira)
+               ->setActivo(true);
+
+        return $this->guardarCodigoQr($contenido, $codigo);
+    }
+
+    /**
+     * Un enlace de destino del QR: la URL ya normalizada, o [campo, mensaje]
+     * del error.
+     *
+     * @return string|array{0:string,1:string}
+     */
+    private function validarUrlQr(string $url): string|array
+    {
         // Sin esquema se asume https, en vez de rechazar algo que el usuario
         // escribió bien — mismo criterio que tenía el formulario propio de
         // códigos QR con su default_protocol.
@@ -182,6 +226,17 @@ class ContenidoCmsController extends AbstractController
             return ['qr_url_destino', 'La URL de destino tiene caracteres que no puede llevar (<, >, comillas).'];
         }
 
+        return $url;
+    }
+
+    /**
+     * El vencimiento del QR: null (sin vencimiento), la fecha, o [campo,
+     * mensaje] del error.
+     *
+     * @return DateTimeImmutable|array{0:string,1:string}|null
+     */
+    private function leerVencimientoQr(Request $request): DateTimeImmutable|array|null
+    {
         // El <input type="datetime-local"> manda 'Y-m-dTH:i' (algunos
         // navegadores agregan los segundos). El '!' inicial pone en cero todo
         // lo que el formato no nombra: sin él, createFromFormat completa con la
@@ -208,12 +263,12 @@ class ContenidoCmsController extends AbstractController
             }
         }
 
-        $codigo = $contenido->getCodigoQr() ?? new CodigoQr();
-        $codigo->setEtiqueta($contenido->getTitulo())
-               ->setUrlDestino($url)
-               ->setExpiraEn($expira)
-               ->setActivo(true);
+        return $expira;
+    }
 
+    /** Guarda el código y su PNG; [campo, mensaje] si algo falló. */
+    private function guardarCodigoQr(Contenido $contenido, CodigoQr $codigo): ?array
+    {
         if ($codigo->getId() === null) {
             // El PNG codifica /api/spui/qr/{id}/r, así que el código necesita
             // tener id antes de poder materializarlo.

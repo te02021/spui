@@ -132,13 +132,30 @@
 <div class="spui-view-section">
     <p class="spui-view-section-title">Código QR</p>
 
-    <div class="spui-view-row">
-        <span class="spui-view-row-label">Destino</span>
-        <span class="spui-view-row-value">
-            <a href="{{ qr.urlDestino }}" target="_blank" rel="noopener noreferrer"
-               style="word-break:break-all">{{ qr.urlDestino }}</a>
-        </span>
-    </div>
+    {% set tiendas = qr.enlacesDeTienda %}
+    {% if tiendas %}
+        {# Un QR de app: cada teléfono va a su tienda; los demás, a una página con las dos. #}
+        <div class="spui-view-row">
+            <span class="spui-view-row-label">Android</span>
+            <span class="spui-view-row-value"><a href="{{ tiendas.android }}" target="_blank" rel="noopener noreferrer" style="word-break:break-all">{{ tiendas.android }}</a></span>
+        </div>
+        <div class="spui-view-row">
+            <span class="spui-view-row-label">iPhone</span>
+            <span class="spui-view-row-value"><a href="{{ tiendas.ios }}" target="_blank" rel="noopener noreferrer" style="word-break:break-all">{{ tiendas.ios }}</a></span>
+        </div>
+        <div class="spui-view-row">
+            <span class="spui-view-row-label">Otros</span>
+            <span class="spui-view-row-value text-muted">Una computadora o un iPad ven una página con las dos tiendas.</span>
+        </div>
+    {% else %}
+        <div class="spui-view-row">
+            <span class="spui-view-row-label">Destino</span>
+            <span class="spui-view-row-value">
+                <a href="{{ qr.urlDestino }}" target="_blank" rel="noopener noreferrer"
+                   style="word-break:break-all">{{ qr.urlDestino }}</a>
+            </span>
+        </div>
+    {% endif %}
     <div class="spui-view-row">
         <span class="spui-view-row-label">Expira</span>
         <span class="spui-view-row-value">{{ qr.expiraEn ? qr.expiraEn|date('d/m/Y H:i') : 'Sin vencimiento' }}</span>

@@ -101,9 +101,15 @@
 <div id="campoQr" hidden>
     <div class="mb-3">
         <label class="unraf-form-label" for="qrUrlDestino">URL destino <span class="text-danger">*</span></label>
-        <input type="url" name="qr_url_destino" id="qrUrlDestino" class="unraf-form-control{{ err.qr_url_destino is defined ? ' is-invalid' }}"
-               maxlength="500" placeholder="https://…" value="{{ qr_url_destino|default('') }}">
+        {# Uno o dos enlaces (03/11/2026): con los de las dos tiendas, cada
+           teléfono va a la suya (CodigoQr::destinoPara). #}
+        <textarea name="qr_url_destino" id="qrUrlDestino" rows="2" class="unraf-form-control spui-qr-destinos{{ err.qr_url_destino is defined ? ' is-invalid' }}"
+                  maxlength="1001" placeholder="https://…" spellcheck="false" autocomplete="off">{{ qr_url_destino|default('') }}</textarea>
         {% if err.qr_url_destino is defined %}<p class="spui-campo-error">{{ err.qr_url_destino }}</p>{% endif %}
+        <small class="text-muted d-block mt-1" data-spui-qr-app-ayuda>
+            ¿Es una app? Pegá los dos enlaces, uno por renglón (Google Play y App Store, en cualquier orden):
+            cada teléfono va a su tienda con un solo código.
+        </small>
         <small class="text-muted d-block mt-1">
             A dónde llega quien escanea. La imagen del QR se genera sola, y se puede cambiar el
             destino después sin reimprimir nada.

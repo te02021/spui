@@ -9,6 +9,7 @@ use SPUI\Service\QrEscaneoPublisherService;
 use SPUI\Service\QrGeneratorService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\RedirectResponse;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 
@@ -79,7 +80,7 @@ class CodigoQrController extends AbstractController
      * del otro lado hay un celular ajeno, sin sesión en la intranet.
      */
     #[Route('/{id}/r', name: 'spui_qr_redirect', methods: ['GET'], requirements: ['id' => '\d{1,10}'])]
-    public function redirigir(int $id): Response
+    public function redirigir(int $id, Request $request): Response
     {
         $qr = $this->repo->find($id);
 
@@ -115,6 +116,22 @@ class CodigoQrController extends AbstractController
         // está.
         $this->escaneoPublisher->publicar($qr);
 
-        return new RedirectResponse($qr->getUrlDestino(), Response::HTTP_FOUND);
+        // Un QR de app (03/11/2026) manda a cada teléfono a su tienda; si no
+        // se sabe cuál es (una computadora, un iPad), muestra las dos.
+        $destino = $qr->destinoPara((string) $request->headers->get('User-Agent', ''));
+        if ($destino === null) {
+            $respuesta = new Response();
+            $respuesta->headers->set('Cache-Control', 'no-store, max-age=0');
+            return $this->render('@SPUI/qr/elegir_tienda.html.twig', [
+                'titulo'  => $qr->getEtiqueta(),
+                'tiendas' => $qr->enlacesDeTienda(),
+            ], $respuesta);
+        }
+
+        $redirect = new RedirectResponse($destino, Response::HTTP_FOUND);
+        // La respuesta depende del teléfono: que nadie la guarde para otro.
+        $redirect->headers->set('Vary', 'User-Agent');
+        $redirect->headers->set('Cache-Control', 'no-store, max-age=0');
+        return $redirect;
     }
 }

@@ -72,10 +72,13 @@
         {% set qr = contenido.codigoQr %}
         <div class="mb-3">
             <label class="unraf-form-label" for="ed_qr_url">URL destino <span class="text-danger">*</span></label>
-            <input type="url" id="ed_qr_url" name="qr_url_destino" class="unraf-form-control{{ err.qr_url_destino is defined ? ' is-invalid' }}"
-                   maxlength="500" placeholder="https://…"
-                   value="{{ qr ? qr.urlDestino : '' }}" required>
+            <textarea id="ed_qr_url" name="qr_url_destino" rows="2" class="unraf-form-control spui-qr-destinos{{ err.qr_url_destino is defined ? ' is-invalid' }}"
+                      maxlength="1001" placeholder="https://…" spellcheck="false" autocomplete="off" required>{{ qr_url_destino is defined and qr_url_destino is not null ? qr_url_destino : (qr ? qr.destinosTexto : '') }}</textarea>
             {% if err.qr_url_destino is defined %}<p class="spui-campo-error">{{ err.qr_url_destino }}</p>{% endif %}
+            <small class="text-muted d-block mt-1" data-spui-qr-app-ayuda>
+                ¿Es una app? Pegá los dos enlaces, uno por renglón (Google Play y App Store, en cualquier orden):
+                cada teléfono va a su tienda con un solo código.
+            </small>
             <small class="text-muted d-block mt-1">
                 Cambiarla <strong>no invalida</strong> los códigos ya impresos ni el que está en pantalla.
             </small>

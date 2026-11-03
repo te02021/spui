@@ -12,6 +12,7 @@
       4a. video.php     qué videos acepta el CMS (H.264 hasta 1080p y 30 fps) y su duración, con
                         MP4 sintéticos: 4K, HEVC, 60 fps, moov al final, cajas de 64 bits, basura
       4b'. imagen.php   cada imagen sale derecha (las 8 orientaciones EXIF) y de 1920×1080 o menos
+      4b'''. qr_tiendas.php  un QR de app manda a cada teléfono a su tienda (o a la página de las dos)
       4b''. mqtt_permisos.php  contra el broker real, con un cliente temporal con el rol de un
                         reproductor: publica y recibe sólo lo suyo, nunca lo de otro equipo ni alertas
       4b. cliente-pi    sintaxis del cliente Python con 3.10 y sus tests (pi-client/tests) con el
@@ -81,6 +82,7 @@ try {
     Paso 'formularios'    { php (Join-Path $aqui 'formularios.php') }
     Paso 'video'          { php (Join-Path $aqui 'video.php') }
     Paso 'imagen'         { php (Join-Path $aqui 'imagen.php') }
+    Paso 'qr_tiendas'     { php (Join-Path $aqui 'qr_tiendas.php') }
     Paso 'mqtt permisos'  { php (Join-Path $aqui 'mqtt_permisos.php') }
 
     # Cliente de la Pi: sintaxis con el Python más viejo disponible (3.10: si
