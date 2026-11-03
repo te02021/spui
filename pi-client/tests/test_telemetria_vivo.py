@@ -93,7 +93,9 @@ class VivoTest(unittest.TestCase):
             p.start()
             time.sleep(0.1)
             p.vivo(1)
-            time.sleep(1.4)
+            # Margen sobre el segundo pedido: con la suite entera corriendo,
+            # 1,4 s a veces no alcanzaba (03/11/2026).
+            time.sleep(2.0)
             p.detener()
             p.join(timeout=2)
         self.assertTrue(any('en vivo terminada' in l for l in log.output), log.output)
@@ -109,6 +111,35 @@ class ComandoTest(unittest.TestCase):
         msg = mock.Mock(payload=json.dumps({'accion': 'telemetria_vivo', 'segundos': 120}).encode(), topic='spui/comandos/reproductor/17')
         listener._on_message(None, None, msg)
         self.assertTrue(recibido.is_set())
+
+
+
+class MedidorCpuTest(unittest.TestCase):
+    """Uso de CPU (noviembre 2026): el promedio entre dos lecturas, cada medidor con el suyo."""
+
+    def _tiempos(self, *valores):
+        from collections import namedtuple
+        T = namedtuple('T', 'user system idle iowait')
+        it = iter(valores)
+        return lambda: T(*next(it))
+
+    def test_promedio_entre_dos_lecturas(self):
+        from spui.telemetria import MedidorCpu
+        # 100 s de CPU: 30 ocupados y 70 ociosos → 30 %.
+        m = MedidorCpu(self._tiempos((0, 0, 0, 0), (20, 10, 65, 5)))
+        self.assertEqual(m.leer(), 30.0)
+
+    def test_dos_medidores_no_se_pisan(self):
+        from spui.telemetria import MedidorCpu
+        lecturas = [(0, 0, 0, 0), (50, 0, 50, 0), (50, 0, 150, 0)]
+        minuto = MedidorCpu(self._tiempos(lecturas[0], lecturas[2]))
+        vivo = MedidorCpu(self._tiempos(lecturas[0], lecturas[1]))
+        self.assertEqual(vivo.leer(), 50.0)       # su propio intervalo
+        self.assertEqual(minuto.leer(), 25.0)     # 50 ocupados de 200: no lo afectó el vivo
+
+    def test_sin_psutil_o_sin_tiempo_da_none(self):
+        from spui.telemetria import MedidorCpu
+        self.assertIsNone(MedidorCpu(self._tiempos((1, 1, 1, 1), (1, 1, 1, 1))).leer())
 
 
 if __name__ == '__main__':

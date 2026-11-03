@@ -19,9 +19,9 @@
 {% set reproductores_orden = reproductores|sort((a, b) =>
     (RANGO[a.estadoCalculado(spui_umbral_conexion).value] <=> RANGO[b.estadoCalculado(spui_umbral_conexion).value])
     ?: (a.hostname <=> b.hostname)) %}
-{% set avisos = caidos|length + sin_registrar|length + sobrecalentados|length + con_problemas|length
+{% set avisos = caidos|length + sin_registrar|length + sobrecalentados|length + cpu_altos|length + con_problemas|length
               + (intentos_fallidos|length > 0 ? 1 : 0) + (scheduler_desactualizado ? 1 : 0) %}
-{% set avisos_graves = caidos|length + sobrecalentados|length + (scheduler_desactualizado ? 1 : 0) %}
+{% set avisos_graves = caidos|length + sobrecalentados|length + cpu_altos|length + (scheduler_desactualizado ? 1 : 0) %}
 {% set COLORES_ESTADO = {conectado: '#4A9930', desconectado: '#FF223D', sin_registrar: '#adb5bd'} %}
 {% set COLORES_TIPO = {texto: '#5B6B7F', imagen: '#3387EF', video: '#7A5AF8', qr: '#1CA1A7', cronograma: '#C77F0A'} %}
 
@@ -97,6 +97,19 @@
                                         <div class="spui-dash-aviso-titulo"><strong>{{ r.hostname }}</strong> a {{ sobrecalentados[r.id]|number_format(1, ',') }} °C</div>
                                         <div class="spui-dash-aviso-detalle">Por encima del umbral de {{ temp_umbral|number_format(0) }} °C: la Raspberry Pi se frena.</div>
                                         <div class="spui-dash-aviso-ayuda">Revisá ventilación y disipador.</div>
+                                    </div>
+                                </li>
+                            {% endfor %}
+
+                            {# CPU alta sostenida (03/11/2026): el promedio de los últimos
+                               10 minutos, no una lectura suelta. #}
+                            {% for r in reproductores|filter(r => cpu_altos[r.id] is defined) %}
+                                <li class="spui-dash-aviso is-grave">
+                                    <span class="spui-dash-aviso-icono" aria-hidden="true">!</span>
+                                    <div class="min-w-0">
+                                        <div class="spui-dash-aviso-titulo"><strong>{{ r.hostname }}</strong> con la CPU al {{ cpu_altos[r.id]|number_format(0) }} %</div>
+                                        <div class="spui-dash-aviso-detalle">Promedio de los últimos 10 minutos, por encima del {{ cpu_umbral|number_format(0) }} %: el reproductor puede trabarse.</div>
+                                        <div class="spui-dash-aviso-ayuda">Revisá qué está mostrando (un video muy pesado) en su telemetría.</div>
                                     </div>
                                 </li>
                             {% endfor %}
@@ -292,27 +305,59 @@
             </section>
         </div>
         <div class="col-12 col-lg-7 col-xl-8">
-            <section class="unraf-card h-100" aria-labelledby="dash-temp-titulo">
+            {# Un solo gráfico para toda la red (03/11/2026, pedido de Mateo):
+               arranca en la temperatura de las últimas 24 h y se elige qué
+               variable, qué período y qué reproductores mirar. Lo arma
+               dashboard/dashboard.js; otra variable u otro período los pide a
+               spui_cms_dashboard_serie. La barra de controles se conserva entre
+               refrescos: lo elegido no vuelve a cero cada 20 s. #}
+            <section class="unraf-card h-100" aria-labelledby="dash-temp-titulo"
+                     data-dash-grafico data-url-serie="{{ path('spui_cms_dashboard_serie') }}">
                 <div class="p-3 border-bottom spui-dash-graf-cab">
-                    <div class="min-w-0">
-                        <h2 id="dash-temp-titulo" class="spui-dash-h2">Temperatura del procesador (°C) · últimas 24 h</h2>
-                        <small class="text-muted">
-                            {%- if series_temp|length > 6 -%}
-                                Se ven los 5 más calientes y el promedio de la red: tocá un nombre para mostrarlo u ocultarlo
-                            {%- else -%}
-                                Promedio por hora de cada reproductor
-                            {%- endif -%}
-                        </small>
+                    <div class="min-w-0" data-spui-refresh-conservar>
+                        <h2 id="dash-temp-titulo" class="spui-dash-h2" data-dash-graf-titulo>Temperatura del procesador (°C) · últimas 24 h</h2>
+                        <small class="text-muted" data-dash-graf-ayuda>Promedio por hora de cada reproductor</small>
                     </div>
-                    {% if series_temp|length %}{{ g.herramientas('dashboard') }}{% endif %}
+                    {{ g.herramientas('dashboard') }}
                 </div>
-                <div class="p-2 p-md-3">
-                    {% if series_temp|length %}
-                        <div class="spui-tel-lienzo" data-dash-chart="temperatura" data-spui-refresh-conservar
-                             role="img" aria-label="Gráfico de temperatura de las últimas 24 horas"></div>
-                    {% else %}
-                        <p class="text-muted text-center py-5 mb-0">Todavía no hay telemetría de las últimas 24 h.</p>
-                    {% endif %}
+                <div class="spui-dash-graf-controles" data-spui-refresh-conservar>
+                    <div class="spui-dash-variables" role="group" aria-label="Qué mirar">
+                        {% for v, e in {temp: 'Temperatura', cpu: 'CPU', ram: 'RAM', disco: 'Disco', latencia: 'Latencia'} %}
+                            <button type="button" class="spui-dash-variable" data-dash-variable="{{ v }}" aria-pressed="{{ v == 'temp' ? 'true' : 'false' }}">{{ e }}</button>
+                        {% endfor %}
+                    </div>
+                    <div class="spui-filtros">
+                        <span class="spui-desp">
+                            <button type="button" class="spui-selector" data-spui-desp aria-expanded="false" aria-controls="dash-periodo">
+                                <span class="spui-selector-etiqueta">Período</span>
+                                <span class="spui-selector-valor" data-dash-periodo-valor>Últimas 24 h</span>
+                                <img src="{{ asset('unraf-ui/icons/caret-down.svg') }}" class="spui-selector-flecha" alt="">
+                            </button>
+                            <div id="dash-periodo" class="spui-desp-panel spui-selector-menu" role="region" aria-label="Período">
+                                <ul class="spui-desp-lista">
+                                    {% for p, e in {'24h': 'Últimas 24 h', '7d': 'Últimos 7 días', '30d': 'Últimos 30 días'} %}
+                                        <li><button type="button" class="spui-selector-opcion{{ p == '24h' ? ' is-elegida' }}" data-dash-periodo="{{ p }}">
+                                            <span class="spui-selector-check" aria-hidden="true">✓</span><span class="spui-selector-texto">{{ e }}</span>
+                                        </button></li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                        </span>
+                        <span class="spui-desp">
+                            <button type="button" class="spui-selector" data-spui-desp aria-expanded="false" aria-controls="dash-equipos">
+                                <span class="spui-selector-etiqueta">Reproductores</span>
+                                <span class="spui-selector-valor" data-dash-equipos-valor>Todos</span>
+                                <img src="{{ asset('unraf-ui/icons/caret-down.svg') }}" class="spui-selector-flecha" alt="">
+                            </button>
+                            {# Las casillas las arma dashboard.js, con el color de cada equipo. #}
+                            <div id="dash-equipos" class="spui-desp-panel spui-selector-menu spui-dash-equipos" role="group" aria-label="Reproductores del gráfico"></div>
+                        </span>
+                    </div>
+                </div>
+                <div class="p-2 p-md-3 position-relative">
+                    <div class="spui-tel-lienzo" data-dash-chart="metricas" data-spui-refresh-conservar
+                         role="img" aria-label="Gráfico de la red: temperatura de las últimas 24 horas"></div>
+                    <p class="spui-dash-graf-vacio text-muted" data-dash-graf-vacio data-spui-refresh-conservar hidden></p>
                 </div>
             </section>
         </div>
@@ -372,12 +417,23 @@
                         {% if tel %}
                             {% set temp = tel.temperaturaSocCelsius %}
                             {% set ram = tel.usoRamPorcentaje %}
+                            {% set cpu = tel.usoCpuPorcentaje %}
                             {% set disco_uso = r.discoTotalMb ? (r.discoTotalMb - tel.espacioDiscoLibreMb) / r.discoTotalMb * 100 : null %}
                             <div class="spui-dash-metricas">
                                 <div class="spui-dash-metrica">
                                     <span>Temperatura</span>
                                     <strong class="{{ temp >= temp_umbral ? 'text-danger' : (temp >= temp_umbral * 0.85 ? 'text-warning' : '') }}">{{ temp|number_format(1, ',') }} °C</strong>
                                     <div class="spui-dash-barra"><div data-spui-sync="style" style="width:{{ min(100, temp) }}%;background:{{ temp >= temp_umbral ? '#FF223D' : (temp >= temp_umbral * 0.85 ? '#C77F0A' : '#4A9930') }}"></div></div>
+                                </div>
+                                <div class="spui-dash-metrica">
+                                    <span>CPU</span>
+                                    {% if cpu is not null %}
+                                        <strong class="{{ cpu >= cpu_umbral ? 'text-danger' : '' }}">{{ cpu|number_format(0) }} %</strong>
+                                        <div class="spui-dash-barra"><div data-spui-sync="style" style="width:{{ min(100, cpu) }}%;background:{{ cpu >= cpu_umbral ? '#FF223D' : (cpu >= 75 ? '#C77F0A' : '#0E7490') }}"></div></div>
+                                    {% else %}
+                                        <strong class="text-muted fw-normal">—</strong>
+                                        <div class="spui-dash-barra"></div>
+                                    {% endif %}
                                 </div>
                                 <div class="spui-dash-metrica">
                                     <span>RAM</span>
@@ -415,6 +471,7 @@
 
     {# Datos de los gráficos y del globo de la dona. #}
     {% set lista = reproductores|map(r => {
+        id: r.id,
         hostname: r.hostname,
         estado: r.estadoCalculado(spui_umbral_conexion).value,
         pantallas: r.pantallas|map(p => p.nombre ~ ' · ' ~ p.ubicacion.edificio.nombre)|join('; '),
@@ -425,7 +482,6 @@
         estado: {conectado: conteo.conectado, desconectado: conteo.desconectado, sin_registrar: conteo.sin_registrar, total: total},
         colores: COLORES_ESTADO,
         reproductores: lista,
-        temperatura: series_temp,
-        umbral: temp_umbral
+        grafico: grafico
     }|json_encode|raw }}</script>
 </div>

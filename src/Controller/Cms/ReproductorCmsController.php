@@ -265,6 +265,8 @@ class ReproductorCmsController extends AbstractController
             ['titulo' => 'Temp. máxima (°C)',   'tipo' => 'decimal', 'ancho' => 19],
             ['titulo' => 'RAM promedio (%)',    'tipo' => 'decimal', 'ancho' => 18],
             ['titulo' => 'RAM máxima (%)',      'tipo' => 'decimal', 'ancho' => 16],
+            ['titulo' => 'CPU promedio (%)',    'tipo' => 'decimal', 'ancho' => 18],
+            ['titulo' => 'CPU máxima (%)',      'tipo' => 'decimal', 'ancho' => 16],
         ];
         $columnas = array_merge($columnas, $totalMb !== null ? [
             ['titulo' => 'Disco en uso máx. (GB)', 'tipo' => 'decimal', 'ancho' => 22],
@@ -279,7 +281,7 @@ class ReproductorCmsController extends AbstractController
             $disco = $totalMb !== null
                 ? [round(max(0, $totalMb - $f['disco_min']) / 1024, 1), round(max(0, $totalMb - $f['disco_min']) / $totalMb * 100, 1), round($totalMb / 1024, 1)]
                 : [round($f['disco_min'] / 1024, 1)];
-            return array_merge([$f['hora'], $f['temp_prom'], $f['temp_max'], $f['ram_prom'], $f['ram_max']], $disco, [$f['lecturas']]);
+            return array_merge([$f['hora'], $f['temp_prom'], $f['temp_max'], $f['ram_prom'], $f['ram_max'], $f['cpu_prom'], $f['cpu_max']], $disco, [$f['lecturas']]);
         }, $horas);
 
         [$binario, $tipoMime] = match ($formato) {
@@ -394,6 +396,7 @@ class ReproductorCmsController extends AbstractController
             'resumenes' => $resumenes,
             'ultima'    => $ultima === null ? null : [
                 'temp'           => round($ultima->getTemperaturaSocCelsius(), 1),
+                'cpu'            => $ultima->getUsoCpuPorcentaje() !== null ? round($ultima->getUsoCpuPorcentaje(), 1) : null,
                 'ram'            => round($ultima->getUsoRamPorcentaje(), 1),
                 'disco_gb'       => round($ultima->getEspacioDiscoLibreMb() / 1024, 1),
                 'disco_total_gb' => $reproductor->getDiscoTotalMb() !== null ? round($reproductor->getDiscoTotalMb() / 1024, 1) : null,

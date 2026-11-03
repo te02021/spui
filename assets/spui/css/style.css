@@ -2432,7 +2432,41 @@ a.spui-paginacion-btn:hover { background: #eef4fa; border-color: #9fb6cc; color:
 .spui-dash-estado.is-conectado .spui-dash-punto { background: #4A9930; }
 .spui-dash-estado.is-desconectado { background: #fff1f3; color: #b3142a; }
 .spui-dash-estado.is-desconectado .spui-dash-punto { background: #FF223D; }
-.spui-dash-metricas { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .75rem; margin-top: .9rem; }
+.spui-dash-metricas { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .75rem; margin-top: .9rem; }
+
+/* Gráfico único de la red (03/11/2026): qué mirar, el período y los equipos. */
+.spui-dash-graf-controles {
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .6rem 1rem;
+    padding: .75rem 1rem 0;
+}
+.spui-dash-variables { display: flex; flex-wrap: wrap; gap: .35rem; }
+.spui-dash-variable {
+    padding: .3rem .8rem; border: 1px solid #d6dde4; border-radius: 2rem; background: #fff;
+    font-size: .82rem; font-weight: 600; color: #4a5866; cursor: pointer; white-space: nowrap;
+}
+.spui-dash-variable:hover { border-color: #9fb6cc; background: #f4f7fa; }
+.spui-dash-variable[aria-pressed="true"] { background: var(--unraf-azul); border-color: var(--unraf-azul); color: #fff; }
+.spui-dash-variable:focus-visible { outline: 3px solid rgba(51, 135, 239, .4); outline-offset: 1px; }
+.spui-dash-equipos { min-width: 15rem; padding: .35rem; }
+.spui-dash-desde-derecha .spui-desp-panel { left: auto; right: 0; }
+.spui-dash-equipo {
+    display: flex; align-items: center; gap: .55rem; padding: .4rem .5rem; border-radius: 6px;
+    font-size: .86rem; color: #2b3a4a; cursor: pointer; margin: 0;
+}
+.spui-dash-equipo:hover { background: #f1f5f9; }
+.spui-dash-equipo input { width: 1rem; height: 1rem; margin: 0; accent-color: var(--unraf-azul); flex: none; }
+.spui-dash-equipo .spui-dash-punto { flex: none; }
+.spui-dash-equipo small { margin-left: auto; color: #8a96a3; font-size: .74rem; }
+.spui-dash-equipo.is-todos { font-weight: 700; border-bottom: 1px solid #f0f2f5; border-radius: 6px 6px 0 0; }
+.spui-dash-graf-vacio {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    text-align: center; padding: 1rem; margin: 0; background: rgba(255, 255, 255, .85);
+}
+.spui-dash-graf-vacio[hidden] { display: none; }
+[data-dash-chart="metricas"].is-cargando { opacity: .5; transition: opacity .2s; }
+@media (max-width: 576px) {
+    .spui-dash-metricas { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
 .spui-dash-metrica { display: flex; flex-direction: column; gap: .15rem; min-width: 0; }
 .spui-dash-metrica > span { font-size: .78rem; color: #6c757d; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .spui-dash-metrica > strong { font-size: 1rem; color: #2b3a4a; }

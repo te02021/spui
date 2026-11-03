@@ -126,7 +126,7 @@ El cliente Python corre como servicio (`systemd`) y levanta cuatro hilos:
 |---|---|---|
 | principal | El intervalo del reproductor (5 min por defecto, se configura en el CMS en minutos y llega en el sync como `proxima_sync_seg`), o al instante si llega un `sync_ahora` (al guardar algo en el CMS o con el botón **Sincronizar**) | Pide `/sync`, guarda en caché, descarga archivos, decide qué reproducir. El CMS registra la hora de cada sync (`reproductor.ultimo_sync`) |
 | heartbeat | 60 s | Avisa por HTTP que sigue vivo |
-| telemetría | 60 s (1 s en vivo) | Publica temperatura, RAM y disco por MQTT. Con el comando `telemetria_vivo`, además temperatura y RAM cada 1 s en `spui/telemetria/vivo/{id}`, sin guardar |
+| telemetría | 60 s (1 s en vivo) | Publica temperatura, uso de CPU, RAM y disco por MQTT. Con el comando `telemetria_vivo`, además temperatura, CPU y RAM cada 1 s en `spui/telemetria/vivo/{id}`, sin guardar |
 | MQTT listener | — | Escucha alertas y los comandos `sync_ahora` y `telemetria_vivo`; reacciona al instante. Publica además el estado de conexión (`online` al conectar, `offline` por LWT si se cae) |
 
 El usuario MQTT de cada Pi es `spui-repro-{id}` (el id llega en el primer sync) y su contraseña se **deriva** de la API key y de `SPUI_MQTT_SALT`, que tiene que ser idéntico en la Pi y en el CMS. Por eso regenerar la API key renueva también la credencial del broker, y un salt distinto deja a la Pi sin alertas instantáneas aunque el sync por HTTP siga andando.
@@ -347,6 +347,19 @@ Así viaja por la misma tubería que una imagen (descarga, verificación por has
 **Telemetría en vivo, a pedido.** Mientras alguien tiene abierta la telemetría de un reproductor, la página le pide al CMS (`POST /spui/reproductores/{id}/telemetria/vivo`) que publique el comando `{"accion":"telemetria_vivo","segundos":120}` en `spui/comandos/reproductor/{id}`, y lo renueva cada 60 s. La Pi publica temperatura y RAM cada 1 s en `spui/telemetria/vivo/{id}` (`pi-client/spui/telemetria.py`), además de la telemetría normal de cada minuto. Ese topic tiene un nivel más que `spui/telemetria/+`, así que el daemon no lo guarda: llega directo al navegador, que lo lee con el usuario de sólo lectura `spui-cms-web`. Con la pestaña oculta o cerrada no se renueva y la Pi vuelve sola a cada minuto a los 2 min como mucho (tope de la Pi: 5 min aunque se pida más).
 
 **El detalle por hora se conserva 60 días** (`MantenimientoService::RETENCION_HORA_DIAS`; antes no se borraba nunca). La página trae los 60 días de una vez (`ReproductorCmsController::datosTelemetria()`: el rollup para las horas cerradas, el crudo para las que todavía no agregó) y los rangos son ventanas sobre esa serie; cada gráfico tiene su propia vista (independiente de los otros, pedido de Mateo del 29/10/2026), con tope en "ahora"; los botones de período mueven los tres. Se exporta en Excel, CSV o PDF desde un modal (`/telemetria/exportar?formato=`): el .xlsx lo escribe `XlsxSimpleService` (el monorepo no tiene PhpSpreadsheet) y el PDF, Dompdf con `telemetria_pdf.html.twig`.
+
+**Uso de CPU** (desde el 03/11/2026).
+- **Qué manda la Pi:** `uso_cpu_porcentaje`, el promedio desde la lectura anterior (un minuto; en vivo, un segundo). Lo calcula `MedidorCpu` en `telemetria.py`, con un punto de partida propio para cada publicación: la en vivo no le acorta el intervalo a la de cada minuto.
+- **Dónde se guarda:** en `telemetria.uso_cpu_porcentaje` y en el resumen por hora (`cpu_prom`, `cpu_max`). Es opcional: una Pi sin actualizar no lo manda y las lecturas anteriores quedan sin el dato (huecos en el gráfico).
+- **El resumen por hora guarda también `lat_prom`,** la latencia promedio, para el Dashboard de 30 días (el crudo se purga a los 7).
+- **El aviso del Dashboard:** salta si el promedio de los últimos 10 minutos supera `SPUI_CPU_ALERTA_PORCENTAJE` (90 % por defecto), con al menos 5 lecturas. Un pico de un minuto no avisa.
+
+**Gráfico de la red en el Dashboard** (03/11/2026).
+- **Qué hace:** junta a todos los reproductores en un gráfico y deja elegir variable, período y equipos.
+- **Los datos:** arranca con la temperatura de 24 h incluida en la página. Lo demás lo pide a `GET /spui/dashboard/serie?variable=&periodo=` (`DashboardController::serie()`).
+- **De dónde sale cada período:** 24 h y 7 días, de la telemetría cruda agrupada por hora; 30 días, del resumen por hora más el crudo de las horas que todavía no agregó.
+- **El disco** se da como % en uso contra la capacidad de cada equipo.
+- **El navegador** filtra los equipos marcados y recuerda la elección en `localStorage`.
 
 **Tamaño del disco.** La Pi manda `espacio_disco_total_mb` con su telemetría (normal y en vivo); el CMS lo guarda en `reproductor.disco_total_mb`, no en cada lectura, porque casi no cambia. Lo usa el indicador de disco en uso.
 

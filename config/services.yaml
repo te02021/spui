@@ -23,6 +23,9 @@ parameters:
     # empieza a hacer throttling; en reposo bajo carga ronda los 50-60.
     # Se puede bajar por entorno con SPUI_TEMP_ALERTA_CELSIUS si se quiere avisar antes.
     spui_temp_alerta_default: 80.0
+    # Uso de CPU promedio de los últimos 10 minutos que dispara el aviso del
+    # Dashboard (03/11/2026). Un pico de un minuto no avisa.
+    spui_cpu_alerta_default: 90.0
 
     # Zona horaria de la aplicación. PHP corre en UTC por defecto y la
     # universidad está en UTC-3: sin esto las alertas expiran 3 horas antes de

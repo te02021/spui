@@ -77,6 +77,89 @@ class TelemetriaRepository extends ServiceEntityRepository
         return $ultima;
     }
 
+    /** Qué se calcula de cada variable al agrupar por hora (el gráfico del Dashboard). */
+    private const AGREGADO_POR_VARIABLE = [
+        'temp'     => 'AVG(temperatura_soc_celsius)',
+        'cpu'      => 'AVG(uso_cpu_porcentaje)',
+        'ram'      => 'AVG(uso_ram_porcentaje)',
+        'disco'    => 'MIN(espacio_disco_libre_mb)',
+        'latencia' => 'AVG(latencia_red_ms)',
+    ];
+
+    /**
+     * Una variable por hora de varios reproductores a la vez, para el gráfico
+     * único del Dashboard (03/11/2026). Las horas sin el dato (la CPU antes de
+     * que la Pi la mandara, la latencia sin red) no vienen.
+     *
+     * @param Reproductor[] $reproductores
+     * @return array<int, list<array{0: string, 1: float}>> id del reproductor => [[periodo, valor], ...]
+     */
+    public function findPorHoraDeVarios(array $reproductores, DateTimeImmutable $desde, string $variable): array
+    {
+        $ids = array_values(array_filter(array_map(static fn(Reproductor $r) => $r->getId(), $reproductores)));
+        $agregado = self::AGREGADO_POR_VARIABLE[$variable] ?? null;
+        if ($ids === [] || $agregado === null) {
+            return [];
+        }
+        $sql = sprintf(<<<'SQL'
+            SELECT reproductor_id,
+                   DATE_FORMAT(registrado_en, '%%Y-%%m-%%d %%H:00') AS periodo,
+                   %s                                            AS valor
+              FROM telemetria
+             WHERE reproductor_id IN (:ids)
+               AND registrado_en >= :desde
+             GROUP BY reproductor_id, periodo
+            HAVING valor IS NOT NULL
+             ORDER BY reproductor_id, periodo
+            SQL, $agregado);
+        $filas = $this->getEntityManager()->getConnection()->executeQuery(
+            $sql,
+            ['ids' => $ids, 'desde' => $desde->format('Y-m-d H:i:s')],
+            ['ids' => \Doctrine\DBAL\ArrayParameterType::INTEGER],
+        )->fetchAllAssociative();
+
+        $series = [];
+        foreach ($filas as $f) {
+            $series[(int) $f['reproductor_id']][] = [$f['periodo'], round((float) $f['valor'], 1)];
+        }
+        return $series;
+    }
+
+    /**
+     * Reproductores con la CPU alta de forma sostenida: el promedio desde
+     * `$desde` (los últimos 10 minutos) supera el umbral, con al menos 5
+     * lecturas para que un equipo recién conectado no avise por un pico.
+     *
+     * @param Reproductor[] $reproductores
+     * @return array<int, float> id del reproductor => promedio
+     */
+    public function findCpuAlta(array $reproductores, DateTimeImmutable $desde, float $umbral): array
+    {
+        $ids = array_values(array_filter(array_map(static fn(Reproductor $r) => $r->getId(), $reproductores)));
+        if ($ids === []) {
+            return [];
+        }
+        $filas = $this->getEntityManager()->getConnection()->executeQuery(
+            <<<'SQL'
+                SELECT reproductor_id, AVG(uso_cpu_porcentaje) AS prom
+                  FROM telemetria
+                 WHERE reproductor_id IN (:ids)
+                   AND registrado_en >= :desde
+                   AND uso_cpu_porcentaje IS NOT NULL
+                 GROUP BY reproductor_id
+                HAVING COUNT(*) >= 5 AND prom >= :umbral
+                SQL,
+            ['ids' => $ids, 'desde' => $desde->format('Y-m-d H:i:s'), 'umbral' => $umbral],
+            ['ids' => \Doctrine\DBAL\ArrayParameterType::INTEGER],
+        )->fetchAllAssociative();
+
+        $altos = [];
+        foreach ($filas as $f) {
+            $altos[(int) $f['reproductor_id']] = round((float) $f['prom'], 1);
+        }
+        return $altos;
+    }
+
     /**
      * Serie temporal agregada para los gráficos del detalle de nodo.
      *
@@ -93,44 +176,6 @@ class TelemetriaRepository extends ServiceEntityRepository
      *
      * @return array<int, array{periodo:string, temp_prom:float, temp_max:float, ram_prom:float, disco_min:int, lecturas:int}>
      */
-    /**
-     * Temperatura promedio por hora de varios reproductores en UNA consulta
-     * (el Dashboard la pide cada 20 s por cada navegador abierto: con una
-     * consulta por equipo eran N). Mismo detalle crudo que findSeriePorHora(),
-     * así que vale para rangos cortos.
-     *
-     * @param Reproductor[] $reproductores
-     * @return array<int, list<array{0: string, 1: float}>> id del reproductor => [[periodo, temp_prom], ...]
-     */
-    public function findTemperaturaPorHoraDeVarios(array $reproductores, DateTimeImmutable $desde): array
-    {
-        $ids = array_values(array_filter(array_map(static fn(Reproductor $r) => $r->getId(), $reproductores)));
-        if ($ids === []) {
-            return [];
-        }
-        $sql = <<<'SQL'
-            SELECT reproductor_id,
-                   DATE_FORMAT(registrado_en, '%Y-%m-%d %H:00') AS periodo,
-                   AVG(temperatura_soc_celsius)                 AS temp_prom
-              FROM telemetria
-             WHERE reproductor_id IN (:ids)
-               AND registrado_en >= :desde
-             GROUP BY reproductor_id, periodo
-             ORDER BY reproductor_id, periodo
-            SQL;
-        $filas = $this->getEntityManager()->getConnection()->executeQuery(
-            $sql,
-            ['ids' => $ids, 'desde' => $desde->format('Y-m-d H:i:s')],
-            ['ids' => \Doctrine\DBAL\ArrayParameterType::INTEGER],
-        )->fetchAllAssociative();
-
-        $series = [];
-        foreach ($filas as $f) {
-            $series[(int) $f['reproductor_id']][] = [$f['periodo'], round((float) $f['temp_prom'], 1)];
-        }
-        return $series;
-    }
-
     public function findSeriePorHora(Reproductor $reproductor, DateTimeImmutable $desde): array
     {
         $sql = <<<'SQL'
@@ -138,6 +183,7 @@ class TelemetriaRepository extends ServiceEntityRepository
                    AVG(temperatura_soc_celsius)                 AS temp_prom,
                    MAX(temperatura_soc_celsius)                 AS temp_max,
                    AVG(uso_ram_porcentaje)                      AS ram_prom,
+                   AVG(uso_cpu_porcentaje)                      AS cpu_prom,
                    MIN(espacio_disco_libre_mb)                  AS disco_min,
                    COUNT(*)                                     AS lecturas
               FROM telemetria
@@ -157,6 +203,7 @@ class TelemetriaRepository extends ServiceEntityRepository
             'temp_prom' => round((float) $f['temp_prom'], 1),
             'temp_max'  => round((float) $f['temp_max'], 1),
             'ram_prom'  => round((float) $f['ram_prom'], 1),
+            'cpu_prom'  => $f['cpu_prom'] !== null ? round((float) $f['cpu_prom'], 1) : null,
             'disco_min' => (int) $f['disco_min'],
             'lecturas'  => (int) $f['lecturas'],
         ], $filas);
@@ -171,6 +218,8 @@ class TelemetriaRepository extends ServiceEntityRepository
                    MAX(temperatura_soc_celsius)    AS temp_max,
                    AVG(uso_ram_porcentaje)         AS ram_prom,
                    MAX(uso_ram_porcentaje)         AS ram_max,
+                   AVG(uso_cpu_porcentaje)         AS cpu_prom,
+                   MAX(uso_cpu_porcentaje)         AS cpu_max,
                    MIN(espacio_disco_libre_mb)     AS disco_min
               FROM telemetria
              WHERE reproductor_id = :reproductor
@@ -192,6 +241,8 @@ class TelemetriaRepository extends ServiceEntityRepository
             'temp_max'  => round((float) $f['temp_max'], 1),
             'ram_prom'  => round((float) $f['ram_prom'], 1),
             'ram_max'   => round((float) $f['ram_max'], 1),
+            'cpu_prom'  => $f['cpu_prom'] !== null ? round((float) $f['cpu_prom'], 1) : null,
+            'cpu_max'   => $f['cpu_max'] !== null ? round((float) $f['cpu_max'], 1) : null,
             'disco_min' => (int) $f['disco_min'],
         ];
     }

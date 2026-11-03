@@ -4,6 +4,8 @@ TelemetriaPublisher — publica métricas del sistema vía MQTT cada N segundos.
 Métricas recopiladas:
   temperatura_soc_celsius : sensor térmico del Pi (/sys/class/thermal) o psutil.
                             None en Windows/simulación sin sensor.
+  uso_cpu_porcentaje      : uso de CPU en %, promedio desde la lectura anterior
+                            (noviembre 2026; un CMS viejo lo ignora).
   uso_ram_porcentaje      : RAM usada en % (psutil).
   espacio_disco_libre_mb  : espacio libre en la partición raíz en MB (psutil).
   latencia_red_ms         : TCP connect al host del CMS, en ms (NetworkMonitor).
@@ -14,7 +16,7 @@ El thread no publica hasta tener un reproductor_id válido.
 
 Modo en vivo (29/10/2026): mientras alguien mira la telemetría de este
 reproductor en el CMS, el CMS manda el comando 'telemetria_vivo' y este hilo
-publica además temperatura y RAM cada 1 s en spui/telemetria/vivo/{id}. Ese
+publica además temperatura, CPU y RAM cada 1 s en spui/telemetria/vivo/{id}. Ese
 topic tiene dos niveles después de spui/telemetria/, así que el daemon del CMS
 (suscrito a spui/telemetria/+) no lo guarda: va directo al navegador. El CMS
 renueva el pedido mientras la página está abierta; si deja de renovarlo, el
@@ -35,6 +37,40 @@ try:
 except ImportError:
     _PSUTIL_OK = False
     logger.warning('psutil no disponible — métricas de RAM/disco simuladas en 0.')
+
+class MedidorCpu:
+    """
+    Uso de CPU entre una lectura y la anterior, en %.
+
+    Con su propio punto de partida y no con psutil.cpu_percent(), que guarda
+    uno solo para todo el proceso: la lectura en vivo (cada 1 s) le robaría
+    el intervalo a la de cada minuto, que dejaría de ser el promedio del minuto.
+    """
+
+    def __init__(self, tiempos=None):
+        self._tiempos = tiempos or (psutil.cpu_times if _PSUTIL_OK else None)
+        self._anterior = self._leer_tiempos()
+
+    def _leer_tiempos(self):
+        if self._tiempos is None:
+            return None
+        try:
+            t = self._tiempos()
+            ocioso = t.idle + getattr(t, 'iowait', 0.0)
+            return sum(t), ocioso
+        except Exception:
+            return None
+
+    def leer(self) -> float | None:
+        actual = self._leer_tiempos()
+        anterior, self._anterior = self._anterior, actual
+        if actual is None or anterior is None:
+            return None
+        total, ocioso = actual[0] - anterior[0], actual[1] - anterior[1]
+        if total <= 0:
+            return None
+        return round(max(0.0, min(100.0, 100.0 * (1 - ocioso / total))), 1)
+
 
 try:
     import paho.mqtt.client as mqtt          # noqa: F401 — chequeo de disponibilidad
@@ -93,6 +129,10 @@ class TelemetriaPublisher(threading.Thread):
         self._network  = network_monitor
         self._fallos_mqtt = 0
         self._usando_http = False
+        # Uso de CPU: uno para la publicación de cada minuto y otro para la
+        # en vivo, así cada uno promedia su propio intervalo (MedidorCpu).
+        self._cpu = MedidorCpu()
+        self._cpu_vivo = MedidorCpu()
         # Modo en vivo: hasta cuándo (time.monotonic()) publicar cada segundo.
         self._vivo_hasta = 0.0
         # Despierta el ciclo antes de tiempo: al detener o al pedir modo en vivo.
@@ -231,10 +271,11 @@ class TelemetriaPublisher(threading.Thread):
                     self._usando_http = False
                 self._fallos_mqtt = 0
                 logger.debug(
-                    'Telemetría → %s | temp=%s°C ram=%.1f%% disco=%dMB',
+                    'Telemetría → %s | temp=%s°C cpu=%s%% ram=%.1f%% disco=%dMB',
                     topic,
                     f'{payload["temperatura_soc_celsius"]:.1f}'
                     if payload['temperatura_soc_celsius'] is not None else 'N/A',
+                    payload.get('uso_cpu_porcentaje') if payload.get('uso_cpu_porcentaje') is not None else 'N/A',
                     payload['uso_ram_porcentaje'],
                     payload['espacio_disco_libre_mb'],
                 )
@@ -286,6 +327,7 @@ class TelemetriaPublisher(threading.Thread):
             return
         payload = {
             'temperatura_soc_celsius': self._leer_temperatura(),
+            'uso_cpu_porcentaje':      self._cpu_vivo.leer(),
             'uso_ram_porcentaje':      self._leer_ram(),
             'espacio_disco_libre_mb':  self._leer_disco(),
             'espacio_disco_total_mb':  self._leer_disco_total(),
@@ -299,6 +341,9 @@ class TelemetriaPublisher(threading.Thread):
         return {
             'reproductor_id':         self._reproductor_id,
             'temperatura_soc_celsius': self._leer_temperatura(),
+            # Promedio desde la publicación anterior (un minuto). Opcional:
+            # un CMS viejo lo ignora.
+            'uso_cpu_porcentaje':     self._cpu.leer(),
             'uso_ram_porcentaje':     self._leer_ram(),
             'espacio_disco_libre_mb': self._leer_disco(),
             # Para el indicador circular del CMS (% usado). Opcional: un CMS

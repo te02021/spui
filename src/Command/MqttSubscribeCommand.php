@@ -369,6 +369,9 @@ class MqttSubscribeCommand extends Command
         $telemetria->setReproductor($reproductor);
         $telemetria->setTemperaturaSocCelsius($temp);
         $telemetria->setUsoRamPorcentaje((float) ($data['uso_ram_porcentaje'] ?? 0.0));
+        // Uso de CPU (03/11/2026): opcional, una Pi sin actualizar no lo manda.
+        $cpu = $data['uso_cpu_porcentaje'] ?? null;
+        $telemetria->setUsoCpuPorcentaje(is_numeric($cpu) && $cpu >= 0 && $cpu <= 100 ? round((float) $cpu, 2) : null);
         $telemetria->setLatenciaRedMs(isset($data['latencia_red_ms']) ? (int) $data['latencia_red_ms'] : null);
         $telemetria->setEspacioDiscoLibreMb((int) ($data['espacio_disco_libre_mb'] ?? 0));
         if (isset($data['espacio_disco_total_mb']) && (int) $data['espacio_disco_total_mb'] > 0) {

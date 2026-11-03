@@ -28,6 +28,10 @@ class Telemetria
     #[ORM\Column(type: 'decimal', precision: 5, scale: 2)]
     private string $usoRamPorcentaje;
 
+    /** Uso de CPU en %, promedio del minuto (desde el 03/11/2026; antes, o de una Pi sin actualizar, null). */
+    #[ORM\Column(type: 'decimal', precision: 5, scale: 2, nullable: true)]
+    private ?string $usoCpuPorcentaje = null;
+
     #[ORM\Column(type: 'smallint', options: ['unsigned' => true], nullable: true)]
     private ?int $latenciaRedMs = null;
 
@@ -52,6 +56,9 @@ class Telemetria
 
     public function getUsoRamPorcentaje(): float { return (float) $this->usoRamPorcentaje; }
     public function setUsoRamPorcentaje(float $v): static { $this->usoRamPorcentaje = (string) $v; return $this; }
+
+    public function getUsoCpuPorcentaje(): ?float { return $this->usoCpuPorcentaje !== null ? (float) $this->usoCpuPorcentaje : null; }
+    public function setUsoCpuPorcentaje(?float $v): static { $this->usoCpuPorcentaje = $v !== null ? (string) $v : null; return $this; }
 
     public function getLatenciaRedMs(): ?int { return $this->latenciaRedMs; }
     public function setLatenciaRedMs(?int $latenciaRedMs): static { $this->latenciaRedMs = $latenciaRedMs; return $this; }

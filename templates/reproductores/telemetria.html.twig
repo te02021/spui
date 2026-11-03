@@ -14,7 +14,7 @@
     de los tres. Arrastrar mueve la vista, la rueda del mouse hace zoom (suave,
     centrado en el puntero). Cada gráfico es independiente: lo que se hace en
     uno no mueve a los otros. Nunca más allá de ahora.
-  - En vivo: mientras la página está abierta, la Pi publica temperatura y RAM
+  - En vivo: mientras la página está abierta, la Pi publica temperatura, CPU y RAM
     cada 1 s por MQTT directo al navegador (no se guarda). El panel tiene su
     lugar reservado desde el principio, con un spinner, para que no empuje la
     página al llegar el primer dato. Sin broker alcanzable no aparece.
@@ -54,10 +54,12 @@
             {% for p in reproductor.pantallas %}· {{ p.nombre }}{% endfor %}
         </p>
     </div>
-    <div class="d-flex gap-2 flex-shrink-0 align-items-center flex-wrap">
+    {# Sin flex-shrink-0: en celular los tres botones no entraban en un renglón
+       y el último se salía 6 px de la pantalla; ahora bajan. #}
+    <div class="d-flex gap-2 align-items-center flex-wrap">
         {% if cfg_vivo %}
             <button type="button" class="spui-tel-vivo" data-tel-vivo-btn aria-pressed="true"
-                    title="Temperatura y RAM actualizadas cada segundo">
+                    title="Temperatura, CPU y RAM actualizadas cada segundo">
                 <span class="spui-tel-vivo-punto" aria-hidden="true"></span>
                 <span data-tel-vivo-texto>Conectando…</span>
             </button>
@@ -74,7 +76,7 @@
 
 {# ── Indicadores: lo último que se sabe (en vivo, si está activo) ── #}
 <div class="row g-3 mb-4">
-    <div class="col-12 col-md-4">
+    <div class="col-12 col-sm-6 col-xl-3">
         <div class="unraf-card spui-tel-indicador h-100">
             <div class="spui-tel-indicador-titulo">Temperatura del procesador</div>
             <div data-tel-gauge="temp" class="spui-tel-gauge"></div>
@@ -84,7 +86,18 @@
             </div>
         </div>
     </div>
-    <div class="col-12 col-md-4">
+    {# Uso de CPU (03/11/2026): promedio de cada minuto que manda la Pi. #}
+    <div class="col-12 col-sm-6 col-xl-3">
+        <div class="unraf-card spui-tel-indicador h-100">
+            <div class="spui-tel-indicador-titulo">Uso del procesador</div>
+            <div data-tel-gauge="cpu" class="spui-tel-gauge"></div>
+            <div class="spui-tel-indicador-pie">
+                <span>Promedio <strong data-tel-res="cpu_prom">—</strong></span>
+                <span>Máximo <strong data-tel-res="cpu_max">—</strong></span>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-sm-6 col-xl-3">
         <div class="unraf-card spui-tel-indicador h-100">
             <div class="spui-tel-indicador-titulo">Memoria RAM en uso</div>
             <div data-tel-gauge="ram" class="spui-tel-gauge"></div>
@@ -94,7 +107,7 @@
             </div>
         </div>
     </div>
-    <div class="col-12 col-md-4">
+    <div class="col-12 col-sm-6 col-xl-3">
         <div class="unraf-card spui-tel-indicador h-100">
             <div class="spui-tel-indicador-titulo">Disco en uso</div>
             <div data-tel-gauge="disco" class="spui-tel-gauge"></div>
@@ -117,14 +130,21 @@
     </div>
     <div class="spui-tel-vivo-cuerpo">
         <div class="row g-0">
-            <div class="col-12 col-lg-6 p-2 p-md-3" data-tel-vivo-grafico>
+            <div class="col-12 col-lg-4 p-2 p-md-3" data-tel-vivo-grafico>
                 <div class="d-flex justify-content-between align-items-center gap-2 mb-1">
                     <strong class="small">Temperatura</strong>
                     {{ t.herramientas('vivo') }}
                 </div>
                 <div class="spui-tel-lienzo spui-tel-lienzo-vivo" data-tel-chart="vivo_temp"></div>
             </div>
-            <div class="col-12 col-lg-6 p-2 p-md-3" data-tel-vivo-grafico>
+            <div class="col-12 col-lg-4 p-2 p-md-3" data-tel-vivo-grafico>
+                <div class="d-flex justify-content-between align-items-center gap-2 mb-1">
+                    <strong class="small">CPU</strong>
+                    {{ t.herramientas('vivo') }}
+                </div>
+                <div class="spui-tel-lienzo spui-tel-lienzo-vivo" data-tel-chart="vivo_cpu"></div>
+            </div>
+            <div class="col-12 col-lg-4 p-2 p-md-3" data-tel-vivo-grafico>
                 <div class="d-flex justify-content-between align-items-center gap-2 mb-1">
                     <strong class="small">RAM</strong>
                     {{ t.herramientas('vivo') }}
@@ -174,13 +194,22 @@
         <div class="col-12 col-lg-6">
             <div class="unraf-card h-100">
                 <div class="p-3 border-bottom d-flex justify-content-between align-items-center gap-2">
+                    <strong>Uso del procesador (%)</strong>
+                    {{ t.herramientas('historico') }}
+                </div>
+                <div class="p-2 p-md-3"><div class="spui-tel-lienzo" data-tel-chart="cpu"></div></div>
+            </div>
+        </div>
+        <div class="col-12 col-lg-6">
+            <div class="unraf-card h-100">
+                <div class="p-3 border-bottom d-flex justify-content-between align-items-center gap-2">
                     <strong>Memoria RAM en uso (%)</strong>
                     {{ t.herramientas('historico') }}
                 </div>
                 <div class="p-2 p-md-3"><div class="spui-tel-lienzo" data-tel-chart="ram"></div></div>
             </div>
         </div>
-        <div class="col-12 col-lg-6">
+        <div class="col-12">
             <div class="unraf-card h-100">
                 <div class="p-3 border-bottom d-flex justify-content-between align-items-center gap-2">
                     <strong>{{ reproductor.discoTotalMb ? 'Disco en uso (GB, máximo de cada hora)' : 'Espacio libre en disco (GB, mínimo de cada hora)' }}</strong>
