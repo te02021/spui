@@ -235,7 +235,7 @@ Sus ítems se administran en una **ventana emergente**, como el resto del panel:
   - **Fecha:** lo que se da un día puntual: las clases de ese día de la semana y los eventos de esa fecha.
   - **Hora:** lo que está en curso a esa hora exacta. Se elige con un selector de dos columnas, hora y minutos (de 1 en 1), que se desplazan; **Ahora** pone la hora actual, **Aplicar** filtra y **Todas las horas** quita el filtro. Con las flechas del teclado también se mueven.
   - Las opciones de Día dicen cuántos ítems quedarían.
-- **De a 25 por página** (desde el 03/11/2026), con la misma barra de páginas que los listados, sobre lo que dejan los filtros. La lista dice "Mostrando 26–50 de 226 ítems", y si hay filtros, también cuántos hay en total. Cambiar un filtro o la búsqueda vuelve a la primera página.
+- **De a 25 por página** (desde el 03/11/2026), con la misma barra que los listados: "26–50 de 226 ítems" a la izquierda y las páginas a la derecha, sobre lo que dejan los filtros. Con un filtro puesto, arriba dice cuántos coinciden ("21 de 226 ítems coinciden."). Cambiar un filtro o la búsqueda vuelve a la primera página.
 - Lo elegido y la página se mantienen al volver de agregar o editar un ítem.
 
 La Pi recibe **la semana entera** (desde el 02/11/2026): las clases con sus días y los eventos de los próximos 7 días. Elige sola lo de hoy y lo que todavía no terminó, con las mismas reglas que la vista previa, así pasa de un día al otro sin depender del CMS. Se ordenan por hora de inicio y aula.
@@ -244,7 +244,7 @@ Un evento especial puede no tener **hora de fin**: en la pantalla dice "Desde la
 
 #### Importar el Excel de horarios
 
-**Contenidos → Importar cronograma** carga los horarios de todo el cuatrimestre desde el Excel (`.xlsx`) o un `.csv`, sin cargar clase por clase.
+**Contenidos → Nuevo contenido → tipo Cronograma → Importar desde Excel** (desde el 03/11/2026 el botón está ahí y no en la cabecera de Contenidos) carga los horarios de todo el cuatrimestre desde el Excel (`.xlsx`) o un `.csv`, sin cargar clase por clase.
 
 1. **Elegir el archivo.** Se lee apenas se elige.
    - Una hoja por edificio, con los títulos Día, Aula, Horario, Carrera, Año, Materia y Docente. El día y el aula pueden ir en celdas combinadas.

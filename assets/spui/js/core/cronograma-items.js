@@ -76,10 +76,12 @@
             '<span class="spui-filtro-cuenta">' + cuenta + '</span></button></li>';
     }
 
-    // La barra de páginas, con las mismas clases que _partials/paginacion.html.twig:
-    // la primera, la última y dos a cada lado de la actual.
-    function paginasHtml(pagina, paginas) {
-        var html = '<ul class="spui-paginacion-lista">';
+    // La barra de páginas, igual a _partials/paginacion.html.twig: "26–50 de
+    // 226 ítems" a la izquierda y los botones a la derecha (la primera, la
+    // última y dos a cada lado de la actual).
+    function paginasHtml(pagina, paginas, desde, hasta, total) {
+        var html = '<p class="spui-paginacion-resumen mb-0">' + desde + '–' + hasta + ' de ' + total + ' ítems</p>' +
+            '<ul class="spui-paginacion-lista">';
         var boton = function (n, texto, etiqueta, rel) {
             return '<li><button type="button" class="spui-paginacion-btn" data-spui-items-pagina="' + n + '"' +
                 (rel ? ' rel="' + rel + '"' : '') + ' aria-label="' + etiqueta + '">' + texto + '</button></li>';
@@ -122,7 +124,7 @@
             var prueba = Object.assign({}, filtro, { dia: valor });
             return filas.filter(function (f) { return cumple(f, prueba); }).length;
         };
-        var ulDia = barra.querySelector('[data-spui-items-opciones="dia"]');
+        var ulDia = buscar(barra, '[data-spui-items-opciones="dia"]');
         var html = opcion('dia', '', 'Todos', cuenta(''), filtro.dia === '');
         DIAS.forEach(function (n, i) {
             var c = cuenta(i);
@@ -141,20 +143,17 @@
             sel.querySelector('[data-spui-items-valor]').textContent = valores[g];
             sel.classList.toggle('is-activo', g === 'dia' ? filtro.dia !== '' : !!filtro[g]);
         });
-        barra.querySelector('[data-spui-items-op="fecha"]').classList.toggle('is-elegida', !filtro.fecha);
-        barra.querySelector('[data-spui-items-op="hora"]').classList.toggle('is-elegida', !filtro.hora);
+        buscar(barra, '[data-spui-items-op="fecha"]').classList.toggle('is-elegida', !filtro.fecha);
+        buscar(barra, '[data-spui-items-op="hora"]').classList.toggle('is-elegida', !filtro.hora);
 
+        // Arriba, sólo con filtros: cuántos quedan de todos.
         var hay = filtro.dia !== '' || filtro.fecha || filtro.hora || filtro.q;
         var texto = modal.querySelector('[data-spui-items-cuenta]');
-        if (texto) {
-            texto.textContent = !quedan.length ? '' : paginas > 1
-                ? 'Mostrando ' + (desde + 1) + '–' + (desde + enPagina.length) + ' de ' + quedan.length + ' ítems' + (hay ? ' (de ' + filas.length + ' en total).' : '.')
-                : (hay ? 'Mostrando ' + quedan.length + ' de ' + filas.length + ' ítems.' : '');
-        }
+        if (texto) texto.textContent = hay && quedan.length ? quedan.length + ' de ' + filas.length + ' ítems coinciden.' : '';
         var nav = modal.querySelector('[data-spui-items-paginas]');
         if (nav) {
             nav.hidden = paginas < 2;
-            nav.innerHTML = paginas < 2 ? '' : paginasHtml(barra._spuiPagina, paginas);
+            nav.innerHTML = paginas < 2 ? '' : paginasHtml(barra._spuiPagina, paginas, desde + 1, desde + enPagina.length, quedan.length);
         }
         var vacio = modal.querySelector('[data-spui-items-vacio]');
         if (vacio) vacio.hidden = quedan.length > 0;
@@ -199,7 +198,7 @@
     }
 
     function prepararReloj(barra) {
-        var reloj = barra.querySelector('[data-spui-reloj]');
+        var reloj = buscar(barra, '[data-spui-reloj]');
         if (!reloj || reloj._spuiListo) return;
         reloj._spuiListo = true;
         llenarColumna(reloj.querySelector('[data-spui-reloj-col="h"]'), 24);
@@ -209,7 +208,7 @@
     // Al abrir: la hora del filtro, o la de ahora si no hay ninguna.
     function abrirReloj(barra) {
         prepararReloj(barra);
-        var reloj = barra.querySelector('[data-spui-reloj]');
+        var reloj = buscar(barra, '[data-spui-reloj]');
         var hora = barra._spuiFiltro.hora;
         var d = new Date();
         var h = hora ? parseInt(hora.split(':')[0], 10) : d.getHours();
@@ -236,14 +235,33 @@
             barra._spuiPagina = previo ? previo.pagina : 1;
             if (previo) {
                 barra.querySelector('[data-spui-items-buscar]').value = previo.textoBuscado || '';
-                barra.querySelector('[data-spui-items-fecha]').value = previo.fecha || '';
+                buscar(barra, '[data-spui-items-fecha]').value = previo.fecha || '';
             }
             aplicar(barra);
         });
     }
 
+    // Algo de la barra que puede estar en uno de sus paneles: un panel abierto
+    // dentro de un modal se lleva afuera (desplegable.js), así que no siempre
+    // está adentro de la barra.
+    function buscar(barra, sel) {
+        var el = barra.querySelector(sel);
+        if (el) return el;
+        var botones = barra.querySelectorAll('[data-spui-desp]');
+        for (var i = 0; i < botones.length; i++) {
+            var panel = document.getElementById(botones[i].getAttribute('aria-controls'));
+            el = panel && panel.querySelector(sel);
+            if (el) return el;
+        }
+        return null;
+    }
+
     function barraDe(el) {
-        var modal = el.closest('.spui-abm-modal-body') || document;
+        // Un panel abierto dentro de un modal se lleva afuera (desplegable.js):
+        // se busca desde su botón.
+        var panel = el.closest('.spui-desp-panel');
+        var desde = panel && panel._spuiBoton ? panel._spuiBoton : el;
+        var modal = desde.closest('.spui-abm-modal-body') || document;
         return modal.querySelector('[data-spui-items-filtros]');
     }
 
@@ -304,7 +322,7 @@
             var g = op.getAttribute('data-spui-items-op');
             var v = op.getAttribute('data-valor');
             barra._spuiFiltro[g] = g === 'dia' ? (v === '' ? '' : parseInt(v, 10)) : v;
-            if (g === 'fecha') barra.querySelector('[data-spui-items-fecha]').value = v;
+            if (g === 'fecha') buscar(barra, '[data-spui-items-fecha]').value = v;
             filtrar(barra);
             // Elegida la opción, el menú se cierra (lo maneja desplegable.js).
             cerrarMenu(barra, g);
@@ -320,7 +338,7 @@
                 b._spuiFiltro.dia = '';
                 b._spuiFiltro.hora = '';
                 b._spuiFiltro.fecha = '';
-                b.querySelector('[data-spui-items-fecha]').value = '';
+                buscar(b, '[data-spui-items-fecha]').value = '';
             }
             filtrar(b);
             campo.focus();

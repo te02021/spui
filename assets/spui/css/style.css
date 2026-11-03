@@ -2827,6 +2827,10 @@ html.spui-sidebar-plegado .spui-sidebar-plegar img { transform: rotate(180deg); 
 .spui-reloj-ahora:hover { background: #eef4fa; }
 .spui-reloj-acciones { display: flex; gap: .5rem; }
 .spui-reloj-acciones .unraf-btn { flex: 1 1 0; justify-content: center; }
+.spui-importar-desde-alta {
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .5rem 1rem;
+    margin-top: .75rem; padding-top: .75rem; border-top: 1px solid #d5e5f3;
+}
 .spui-reloj > .spui-selector-opcion { border-top: 1px solid #f0f2f5; border-radius: 0; padding-top: .55rem; }
 .spui-items-vacio {
     display: flex; flex-direction: column; align-items: center; gap: .35rem; padding: 2rem 1rem;

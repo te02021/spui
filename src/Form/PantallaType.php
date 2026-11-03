@@ -53,7 +53,7 @@ class PantallaType extends AbstractType
                 'class'        => Playlist::class,
                 'em'           => 'SPUI',
                 'choice_label' => fn(Playlist $p) => $p->getNombre(),
-                'placeholder'  => '— sin fallback (pantalla en negro) —',
+                'placeholder'  => '— ninguna (pantalla de espera institucional) —',
                 'required'     => false,
                 'attr'         => ['class' => 'unraf-form-select'],
             ])

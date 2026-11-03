@@ -20,13 +20,72 @@
     'use strict';
 
     var abierto = null;
+    // Dentro de un modal: si la ventana cambia de tamaño con el panel abierto
+    // (se está achicando por un filtro recién aplicado y, como está centrada,
+    // el botón se mueve), el panel lo acompaña.
+    var vigiaModal = typeof ResizeObserver !== 'undefined'
+        ? new ResizeObserver(function () { if (abierto) acomodar(abierto); })
+        : null;
 
     function cerrar(devolverFoco) {
         if (!abierto) return;
         var btn = abierto;
         abierto = null;
+        if (vigiaModal) vigiaModal.disconnect();
         btn.setAttribute('aria-expanded', 'false');
+        devolver(btn);
         if (devolverFoco && document.contains(btn)) btn.focus();
+    }
+
+    // Dentro de un modal, el panel abierto se lleva al final de la página: la
+    // ventana del modal recorta todo lo que se le sale (y, por su transform,
+    // ni siquiera "fixed" se escapa). Al cerrarse vuelve a su lugar, al lado
+    // de su botón. panel._spuiBoton le dice a quien lo use de qué filtro es.
+    function sacarDelModal(btn, panel) {
+        if (!btn.closest('.spui-abm-modal-body') || panel.parentNode === document.body) return;
+        panel._spuiBoton = btn;
+        panel.style.display = 'block';
+        document.body.appendChild(panel);
+    }
+
+    function devolver(btn) {
+        var panel = document.getElementById(btn.getAttribute('aria-controls'));
+        if (!panel || panel.parentNode !== document.body || panel._spuiBoton !== btn) return;
+        panel.style.display = '';
+        ['position', 'zIndex', 'left', 'right', 'top', 'maxHeight', 'transform'].forEach(function (p) { panel.style[p] = ''; });
+        if (document.contains(btn)) btn.parentNode.insertBefore(panel, btn.nextSibling);
+        else panel.remove();   // la ventana se volvió a dibujar: ya hay otro
+    }
+
+    /**
+     * Dentro de un modal (los filtros de la ventana de ítems), el panel se
+     * ubica fijo respecto de la pantalla: si no, el cuerpo del modal, que
+     * tiene su propio scroll, lo recortaba y había que scrollear para ver el
+     * selector de hora entero (03/11/2026). Se abre hacia abajo o hacia arriba,
+     * donde haya lugar; sólo si no entra de ninguna forma tiene scroll propio.
+     */
+    function ubicarEnModal(btn, panel) {
+        var rb = btn.getBoundingClientRect(), vh = window.innerHeight;
+        panel.style.position = 'fixed';
+        panel.style.zIndex = '10050';
+        panel.style.right = 'auto';
+        // La ventana del modal tiene un transform, y con un ancestro así
+        // "fixed" se mide desde ese ancestro y no desde la pantalla: se mide
+        // dónde cae el 0,0 y se descuenta.
+        panel.style.top = '0px';
+        panel.style.left = '0px';
+        var cero = panel.getBoundingClientRect();
+        var x = panel.classList.contains('spui-menu-panel') ? rb.right - panel.offsetWidth : rb.left;
+        panel.style.left = (x - cero.left) + 'px';
+        var alto = panel.offsetHeight;
+        var abajo = vh - rb.bottom - 16, arriba = rb.top - 16;
+        if (alto > abajo && arriba > abajo) {
+            panel.style.maxHeight = alto > arriba ? arriba + 'px' : '';
+            panel.style.top = (rb.top - 6 - Math.min(alto, arriba) - cero.top) + 'px';
+        } else {
+            panel.style.maxHeight = alto > abajo ? abajo + 'px' : '';
+            panel.style.top = (rb.bottom + 6 - cero.top) + 'px';
+        }
     }
 
     /**
@@ -37,6 +96,8 @@
         var panel = document.getElementById(btn.getAttribute('aria-controls'));
         if (!panel) return;
         panel.style.transform = '';
+        ['position', 'zIndex', 'left', 'right', 'top', 'maxHeight'].forEach(function (p) { panel.style[p] = ''; });
+        if (panel._spuiBoton === btn && panel.parentNode === document.body) ubicarEnModal(btn, panel);
         var r = panel.getBoundingClientRect(), vw = document.documentElement.clientWidth;
         var corrimiento = 0;
         if (r.right > vw - 16) corrimiento = vw - 16 - r.right;
@@ -48,7 +109,11 @@
         cerrar();
         abierto = btn;
         btn.setAttribute('aria-expanded', 'true');
+        var panel = document.getElementById(btn.getAttribute('aria-controls'));
+        if (panel) sacarDelModal(btn, panel);
         acomodar(btn);
+        var modal = btn.closest('.spui-abm-modal');
+        if (modal && vigiaModal) vigiaModal.observe(modal);
     }
 
     document.addEventListener('click', function (e) {
@@ -67,6 +132,12 @@
         if (e.key === 'Escape') cerrar(true);
     });
     window.addEventListener('resize', function () { cerrar(); });
+    // Un panel ubicado fijo dentro de un modal acompaña al botón si se scrollea.
+    document.addEventListener('scroll', function (e) {
+        if (!abierto || !abierto.closest('.spui-abm-modal-body')) return;
+        if (e.target.closest && e.target.closest('.spui-desp-panel')) return;   // el scroll propio de una columna
+        acomodar(abierto);
+    }, true);
 
     // Un refresco que reemplazó la fila entera deja el botón nuevo cerrado:
     // se lo vuelve a abrir si es el mismo (mismo aria-controls).
