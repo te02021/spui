@@ -71,8 +71,10 @@ def curva(t: float) -> float:
 class _Preparada:
     """Una lámina ya convertida a superficies de pygame, al tamaño de la pantalla."""
 
-    def __init__(self, lamina, fondo, zona, paginas, zona_avance, avances):
+    def __init__(self, lamina, fondo, zona, paginas, zona_avance, avances, zona_hora=None):
         self.lamina = lamina
+        self.zona_hora = zona_hora
+        self.hora: Optional[tuple] = None     # (hhmm, superficie) del último recuadro preparado
         self.fondo = fondo
         self.zona = zona
         self.paginas = paginas
@@ -92,6 +94,9 @@ class Ventana:
         self._cubierta = False                       # VLC está dibujando encima
         self._reloj = None
         self.fps_ultimo_deslizamiento: Optional[float] = None
+        # La hora en vivo (03/11/2026): la última que llegó y la que está en pantalla.
+        self._hhmm: Optional[str] = None
+        self._hora_en_pantalla: Optional[str] = None
         self.motivo: Optional[str] = None
 
     # ── Abrir y cerrar ────────────────────────────────────────────────────
@@ -183,9 +188,39 @@ class Ventana:
             self._sup.blit(p.paginas[pagina], p.zona.topleft)
         if p.avances:
             self._sup.blit(p.avances[pagina], p.zona_avance.topleft)
+        self._pintar_hora(p)
         self._velar(None)
         pygame.display.flip()
         self._olvidar_viejas(lamina)
+
+    def hora(self, hhmm: str) -> None:
+        """
+        La hora de ahora ('18:40', la del CMS: spui/reloj.py). Si cambió el
+        minuto, se repinta sólo el recuadro de la hora de lo que está en
+        pantalla. Se llama seguido mientras se espera: comparar es gratis.
+        """
+        self._hhmm = hhmm
+        if self._sup is None or self._cubierta or self._actual is None or hhmm == self._hora_en_pantalla:
+            return
+        p = self._preparar(self._actual[0])
+        if p.zona_hora is None:
+            return
+        self._pintar_hora(p)
+        self._velar(p.zona_hora)
+        pygame.display.update(p.zona_hora)
+
+    def _pintar_hora(self, p: '_Preparada') -> None:
+        self._hora_en_pantalla = None
+        if p.zona_hora is None:
+            return
+        hhmm = self._hhmm or p.lamina.hora_dibujada
+        if p.hora is None or p.hora[0] != hhmm:
+            img = p.lamina.con_hora(hhmm)
+            if img is None:
+                return
+            p.hora = (hhmm, self._superficie(img, p.zona_hora.size, True))
+        self._sup.blit(p.hora[1], p.zona_hora.topleft)
+        self._hora_en_pantalla = hhmm
 
     def deslizar(self, sale, i_sale: int, entra, i_entra: int, cortar: Callable[[], bool]) -> None:
         """
@@ -210,6 +245,7 @@ class Ventana:
         self._sup.blit(pe.fondo, (0, 0))
         if pe.avances:
             self._sup.blit(pe.avances[i_entra], pe.zona_avance.topleft)
+        self._pintar_hora(pe)
         primero = True
         cuadros, inicio = 0, time.monotonic()
         while True:
@@ -297,7 +333,6 @@ class Ventana:
         # Se compara el objeto, no sólo el id: Python reusa los id de lo que ya se borró.
         if p is not None and p.lamina is lamina and p.fondo.get_size() == self._tam:
             return p
-        from PIL import Image   # noqa: PLC0415 — viene con spui.tv
 
         # Sin deformar: una pantalla que no es 16:9 queda con franjas negras,
         # como hace VLC con --autoscale.
@@ -306,12 +341,7 @@ class Ventana:
         ancho, alto = round(lamina.fondo.width * e), round(lamina.fondo.height * e)
         ox, oy = (w - ancho) // 2, (h - alto) // 2
 
-        def superficie(img, tam, alfa):
-            if img.size != tam:
-                img = img.resize(tam, Image.LANCZOS)
-            img = img.convert('RGBA' if alfa else 'RGB')
-            s = pygame.image.frombuffer(img.tobytes(), img.size, img.mode)
-            return s.convert_alpha() if alfa else s.convert()
+        superficie = self._superficie
 
         def escalar(r):
             x, y, rw, rh = r
@@ -324,9 +354,20 @@ class Ventana:
         paginas = [superficie(img, zona.size, True) for img in lamina.paginas] if zona else []
         zona_av = escalar(lamina.zona_avance) if lamina.zona_avance else None
         avances = [superficie(img, zona_av.size, True) for img in lamina.avances] if zona_av else []
-        p = _Preparada(lamina, fondo, zona, paginas, zona_av, avances)
+        zona_hora = escalar(lamina.zona_hora) if getattr(lamina, 'zona_hora', None) else None
+        p = _Preparada(lamina, fondo, zona, paginas, zona_av, avances, zona_hora)
         self._cache[id(lamina)] = p
         return p
+
+    @staticmethod
+    def _superficie(img, tam, alfa):
+        """Una imagen de Pillow como superficie de pygame, al tamaño `tam`."""
+        from PIL import Image   # noqa: PLC0415 — viene con spui.tv
+        if img.size != tuple(tam):
+            img = img.resize(tuple(tam), Image.LANCZOS)
+        img = img.convert('RGBA' if alfa else 'RGB')
+        s = pygame.image.frombuffer(img.tobytes(), img.size, img.mode)
+        return s.convert_alpha() if alfa else s.convert()
 
     def _olvidar_viejas(self, actual) -> None:
         """Se guardan las últimas láminas convertidas (pesan: ~8 MB cada una)."""

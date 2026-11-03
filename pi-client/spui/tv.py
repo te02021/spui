@@ -177,6 +177,21 @@ class Lamina:
     segundos: int = SEG_PAGINA_DEFECTO
     # Para no volver a dibujar si nada cambió (fecha, hora, tema, contenido).
     clave: str = ''
+    # La hora (03/11/2026): el recuadro donde va, el fondo que tiene debajo y
+    # cómo se dibuja. Quien muestra la lámina repinta sólo ese recuadro cuando
+    # cambia el minuto (con_hora), sin volver a dibujar la pantalla.
+    zona_hora: Optional[tuple[int, int, int, int]] = None
+    hora_base: Optional[Image.Image] = None
+    hora_dibujada: str = ''
+    dibujar_hora: Optional[Callable] = None
+
+    def con_hora(self, hhmm: str) -> Optional[Image.Image]:
+        """El recuadro de la hora con `hhmm` ('18:40'), del tamaño de zona_hora."""
+        if self.hora_base is None or self.dibujar_hora is None:
+            return None
+        img = self.hora_base.copy()
+        self.dibujar_hora(img, hhmm)
+        return img
 
     @property
     def cantidad(self) -> int:
@@ -212,10 +227,15 @@ class Dibujante:
         horario_tema: Optional[dict] = None,
         archivo: Optional[str] = None,
         actualizado: Optional[datetime] = None,
+        con_hora: bool = False,
     ) -> Lamina:
         """
         La pantalla de un contenido (texto, imagen, qr o cronograma) a esta
         hora. `archivo` es la imagen ya descargada (imagen o el PNG del QR).
+
+        `con_hora`: la hora en vivo (la grande de la cabecera, o una píldora
+        arriba a la derecha sin plantilla). Sólo si quien muestra la lámina la
+        va a mantener al día (spui/ventana.py); si no, quedaría congelada.
 
         `actualizado`: cuándo se bajó del CMS, sólo si hace mucho (la Pi lleva
         más de un día sin conexión). En un cronograma con plantilla, el pie lo
@@ -236,7 +256,7 @@ class Dibujante:
 
         lienzo = self._fondo(tema, tipo == 'imagen' and not institucional)
         if institucional:
-            self._cabecera(lienzo, ahora)
+            self._cabecera(lienzo, ahora, con_fecha=not con_hora)
             self._pie(lienzo, tema, lugar)
             caja = (0, 132, ANCHO, 1016) if tipo == 'imagen' else (64, 168, 1856, 992)
         else:
@@ -255,6 +275,8 @@ class Dibujante:
 
         if not institucional and pres.get('marca_agua'):
             self._marca_agua(lam.fondo)
+        if con_hora:
+            self._hora(lam, ahora, institucional)
         lam.fondo = lam.fondo.convert('RGB')
         return lam
 
@@ -410,19 +432,61 @@ class Dibujante:
         chico.putdata(datos)
         return chico.resize((ANCHO, ALTO), Image.BILINEAR)
 
-    def _cabecera(self, lienzo, ahora: datetime) -> None:
+    def _cabecera(self, lienzo, ahora: datetime, con_fecha: bool = True) -> None:
         self._rect(lienzo, (0, 0, ANCHO, 124), BLANCO)
         logo = self._imagen_asset('unraf.png')
         if logo is not None:
             alto = 76
             logo = logo.resize((round(logo.width * alto / logo.height), alto), Image.LANCZOS)
             lienzo.alpha_composite(logo, (64, (124 - alto) // 2))
-        f = self._fuente(40)
-        texto = fecha_legible(ahora)
-        self._escribir(lienzo, ANCHO - 64 - self._ancho(texto, f), 0, 124, texto, f, GRIS_CAB)
+        if con_fecha:
+            f = self._fuente(40)
+            texto = fecha_legible(ahora)
+            self._escribir(lienzo, ANCHO - 64 - self._ancho(texto, f), 0, 124, texto, f, GRIS_CAB)
         # Filete: amarillo, turquesa y azul.
         for i, c in enumerate((AMARILLO, TURQUESA, AZUL)):
             self._rect(lienzo, (i * ANCHO // 3, 124, (i + 1) * ANCHO // 3, 132), c)
+
+    def _ancho_hora(self, fuente) -> float:
+        """Lo que ocupa la hora más ancha posible: el recuadro no cambia de tamaño con los dígitos."""
+        return 4 * max(fuente.getlength(d) for d in '0123456789') + fuente.getlength(':')
+
+    def _hora(self, lam: Lamina, ahora: datetime, institucional: bool) -> None:
+        """
+        La hora (03/11/2026, decisión de Mateo): con plantilla, grande en la
+        cabecera con la fecha debajo; sin plantilla, en una píldora oscura
+        arriba a la derecha. 24 h, sin segundos. Se dibuja ahora y se guarda
+        cómo redibujarla (Lamina.con_hora) sobre el mismo fondo.
+        """
+        if institucional:
+            fh, ff = self._fuente(56), self._fuente(24)
+            fecha = fecha_legible(ahora)
+            ancho = max(self._ancho_hora(fh), self._ancho(fecha, ff))
+            x0 = int(ANCHO - 64 - ancho) - 8
+            caja = (x0, 0, ANCHO - 56, 124)
+            alto = 56 + 6 + 24 * 1.2
+            y = (124 - alto) / 2
+
+            def dibujar(img, hhmm):
+                derecha = img.width - 8
+                self._escribir(img, derecha - self._ancho(hhmm, fh), y, 56, hhmm, fh, GRIS_CAB)
+                self._escribir(img, derecha - self._ancho(fecha, ff), y + 62, 24 * 1.2, fecha, ff, (0x4a, 0x58, 0x66))
+        else:
+            f = self._fuente(44)
+            ancho, alto = int(self._ancho_hora(f)) + 52, 64
+            caja = (ANCHO - 40 - ancho, 36, ANCHO - 40, 36 + alto)
+
+            def dibujar(img, hhmm):
+                self._rect(img, (0, 0, img.width, img.height), NEGRO, .45, img.height // 2)
+                self._escribir(img, img.width / 2 - self._ancho(hhmm, f) / 2, 10, 44, hhmm, f, BLANCO)
+
+        fondo = lam.fondo if lam.fondo.mode == 'RGBA' else lam.fondo.convert('RGBA')
+        lam.fondo = fondo
+        lam.zona_hora = (caja[0], caja[1], caja[2] - caja[0], caja[3] - caja[1])
+        lam.hora_base = fondo.crop(caja)
+        lam.dibujar_hora = dibujar
+        lam.hora_dibujada = ahora.strftime('%H:%M')
+        fondo.alpha_composite(lam.con_hora(lam.hora_dibujada), caja[:2])
 
     def _pie(self, lienzo, tema: str, lugar: Optional[str]) -> None:
         color, op = TEMAS[tema]['pie']
@@ -441,7 +505,12 @@ class Dibujante:
         molino = self._imagen_asset('unraf-molino.png')
         if molino is not None:
             capa.alpha_composite(molino.resize((76, 76), Image.LANCZOS), (10, 10))
-        capa.putalpha(capa.getchannel('A').point(lambda a: round(a * .85)))
+        # Recortado al círculo, como el border-radius del CSS: las esquinas
+        # del molino (cuadrado) se salían y sobre fondo oscuro se veían.
+        circulo = Image.new('L', (96, 96), 0)
+        ImageDraw.Draw(circulo).ellipse((0, 0, 95, 95), fill=255)
+        alfa = Image.composite(capa.getchannel('A'), circulo, circulo)
+        capa.putalpha(alfa.point(lambda a: round(a * .85)))
         lienzo.alpha_composite(capa, (ANCHO - 40 - 96, ALTO - 36 - 96))
 
     # ── Texto, imagen y QR ────────────────────────────────────────────────

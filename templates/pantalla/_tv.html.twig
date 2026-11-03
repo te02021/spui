@@ -84,7 +84,11 @@
         {% if tv.plantilla == 'institucional' %}
             <header class="tv-cab">
                 <img class="tv-logo" src="{{ asset('spui/img/tv/unraf.png') }}" alt="UNRaf">
-                <span class="tv-dia">{{ tv.fecha }}</span>
+                {# La hora grande y la fecha debajo (03/11/2026). #}
+                <div class="tv-reloj">
+                    <span class="tv-hora" data-spui-tv-hora>{{ tv.hora }}</span>
+                    <span class="tv-dia">{{ tv.fecha }}</span>
+                </div>
             </header>
             <div class="tv-franja"><i></i><i></i><i></i></div>
             <div class="tv-cuerpo">{{ _self.contenido(tv, media_url|default(null)) }}</div>
@@ -97,6 +101,9 @@
         {% else %}
             <div class="tv-completa">{{ _self.contenido(tv, media_url|default(null)) }}</div>
             {% if tv.marca_agua %}<img class="tv-agua" src="{{ asset('spui/img/tv/unraf-molino.png') }}" alt="">{% endif %}
+            {# Sin plantilla, la hora va en una píldora; no sobre un video (en
+               la Pi lo dibuja VLC y no se le puede poner nada encima). #}
+            {% if tv.tipo != 'video' %}<span class="tv-hora-pildora" data-spui-tv-hora>{{ tv.hora }}</span>{% endif %}
         {% endif %}
     </div>
 </div>

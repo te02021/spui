@@ -1211,12 +1211,15 @@ class Player:
         momento (_momento_tv: día, tema y, en un cronograma, minuto): en la
         próxima vuelta de la playlist se reusa.
         """
-        clave = f'{_tv.firma(contenido)}|{self._momento_tv(contenido)}|{archivo or ""}'
+        # La hora en vivo sólo con la ventana del TV, que la mantiene al día
+        # cada minuto: por VLC quedaría congelada en la hora en que se dibujó.
+        con_hora = self._ventana is not None
+        clave = f'{_tv.firma(contenido)}|{self._momento_tv(contenido)}|{archivo or ""}|{con_hora}'
         lamina = self._laminas.get(clave)
         if lamina is None:
             inicio = time.monotonic()
             lamina = self._dibujante.lamina(contenido, self._ahora(), self._lugar, self._horario_tema, archivo,
-                                            actualizado=self._actualizado_viejo())
+                                            actualizado=self._actualizado_viejo(), con_hora=con_hora)
             lamina.clave = clave
             logger.debug('Lámina de "%s" dibujada en %.2f s (%d página/s).',
                          contenido.get('titulo') or '', time.monotonic() - inicio, lamina.cantidad)
@@ -1657,6 +1660,7 @@ class Player:
             return
         try:
             ventana.brillo(self._brillo_sw)
+            ventana.hora(self._ahora().strftime('%H:%M'))
             ventana.atender()
         except Exception as exc:
             logger.warning('Error atendiendo la ventana del TV: %s', exc)

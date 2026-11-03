@@ -158,6 +158,29 @@ class DibujoTest(unittest.TestCase):
         self.assertNotEqual(b, tv.firma(c))
 
 
+@unittest.skipUnless(_PIL, 'Pillow no instalado')
+class HoraTest(unittest.TestCase):
+    """La hora en vivo (03/11/2026): un recuadro que se repinta solo cada minuto."""
+
+    def test_con_plantilla_va_en_la_cabecera_y_sin_plantilla_en_una_pildora(self):
+        d = tv.Dibujante()
+        con = d.lamina({'tipo': 'texto', 'contenido_texto': 'Hola', 'presentacion': {'plantilla': 'institucional'}}, LUNES_18, con_hora=True)
+        sin = d.lamina({'tipo': 'texto', 'contenido_texto': 'Hola', 'presentacion': {'plantilla': 'ninguna'}}, LUNES_18, con_hora=True)
+        self.assertLess(con.zona_hora[1] + con.zona_hora[3], 125)     # dentro de la franja blanca
+        self.assertGreater(sin.zona_hora[0], 1600)                    # arriba a la derecha
+        self.assertEqual((con.hora_dibujada, sin.hora_dibujada), ('18:00', '18:00'))
+
+    def test_el_recuadro_cambia_con_el_minuto_y_es_del_tamano_de_su_zona(self):
+        lam = tv.Dibujante().lamina({'tipo': 'texto', 'contenido_texto': 'Hola', 'presentacion': {'plantilla': 'institucional'}}, LUNES_18, con_hora=True)
+        a, b = lam.con_hora('18:00'), lam.con_hora('18:01')
+        self.assertEqual(a.size, lam.zona_hora[2:])
+        self.assertNotEqual(a.tobytes(), b.tobytes())
+
+    def test_sin_pedirla_no_hay_hora(self):
+        lam = tv.Dibujante().lamina({'tipo': 'texto', 'contenido_texto': 'Hola', 'presentacion': {'plantilla': 'institucional'}}, LUNES_18)
+        self.assertIsNone(lam.zona_hora)
+
+
 class CurvaTest(unittest.TestCase):
     def test_la_curva_del_css(self):
         self.assertEqual(ventana.curva(0), 0)
@@ -244,6 +267,15 @@ class VentanaTest(unittest.TestCase):
         self.v.deslizar(lam, 0, lam, 1, lambda: True)
         self.assertLess(time.monotonic() - inicio, 0.5)
         self.assertEqual(self.v._actual, (lam, 1))
+
+    def test_la_hora_se_repinta_sola_al_cambiar_el_minuto(self):
+        lam = tv.Dibujante().lamina({'tipo': 'texto', 'contenido_texto': 'Hola', 'presentacion': {'plantilla': 'institucional'}},
+                                    LUNES_18, con_hora=True)
+        self.v.mostrar(lam)
+        self.v.hora('18:01')
+        self.assertEqual(self.v._hora_en_pantalla, '18:01')
+        self.v.mostrar(lam)    # al volver a mostrarla, sigue la hora nueva
+        self.assertEqual(self.v._hora_en_pantalla, '18:01')
 
     def test_brillo_y_negro_no_fallan(self):
         lam = tv.Dibujante().lamina({'tipo': 'texto', 'contenido_texto': 'Hola'}, LUNES_18)

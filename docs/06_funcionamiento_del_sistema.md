@@ -204,6 +204,10 @@ La migración `Version20261028190000` borró los contenidos de ese tipo que hab�
   - Sin conexión con el CMS sigue mostrando lo que corresponde con lo que tiene en caché.
   - El "del edificio de la pantalla" se resuelve en el CMS con el edificio de cada pantalla.
   - El campo anterior, `cronograma_items` (sólo lo de hoy), se sigue mandando para una Pi sin actualizar.
+- **La hora en vivo** (desde el 03/11/2026, 24 h, sin segundos): con plantilla, grande en la cabecera con la fecha debajo; sin plantilla, en una píldora oscura arriba a la derecha (no sobre un video, que lo dibuja VLC). Es la hora que confirma el CMS (`spui/reloj.py`).
+  - **Cómo se actualiza:** la lámina guarda el recuadro de la hora (`Lamina.zona_hora`) y la ventana repinta sólo ese recuadro al cambiar el minuto, sin redibujar la pantalla.
+  - **Sin la ventana** (el método por VLC) no se dibuja, porque quedaría congelada.
+  - **En la vista previa del CMS** la mantiene al día `vista-tv.js`, con la hora del navegador.
 - **Cuándo se redibuja.** Cada pantalla se dibuja una vez por momento: el día, el tema y, en el cronograma, el minuto. Un contenido permanente se redibuja solo cuando cambia la fecha de la cabecera o llegan las 19.
 - **El brillo por software** (pantallas sin DDC/CI) es un velo negro encima de la ventana. Se aplica al instante, sin recargar el contenido. Sobre un video sigue siendo el filtro `adjust` de VLC.
 - **Si algo falta,** se sigue viendo con el método anterior, y el motivo llega al panel en el diagnóstico del reproductor:

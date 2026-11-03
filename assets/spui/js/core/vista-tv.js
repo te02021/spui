@@ -9,6 +9,7 @@
 //     formulario se manda lo que se está cargando (POST) y se vuelve a pedir
 //     a medida que cambia; en el modal Ver, el contenido guardado (GET).
 //   - Ampliar: abre la misma vista en el visor a pantalla completa.
+//   - Hora: los [data-spui-tv-hora] se mantienen al día, como en la Pi.
 (function () {
     'use strict';
 
@@ -123,6 +124,16 @@
         }
         setTimeout(siguiente, seg * 1000);
     }
+
+    // La hora de todas las vistas que haya en la página, cuando cambia el minuto.
+    function actualizarHoras() {
+        var d = new Date();
+        var hhmm = ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2);
+        document.querySelectorAll('[data-spui-tv-hora]').forEach(function (el) {
+            if (el.textContent !== hhmm) el.textContent = hhmm;
+        });
+    }
+    setInterval(actualizarHoras, 15000);
 
     /** Pone en marcha los TV que haya dentro de root (uno recién pintado). */
     function iniciar(root) {
