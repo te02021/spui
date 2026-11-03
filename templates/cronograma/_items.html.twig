@@ -66,6 +66,27 @@
                                     <span class="spui-selector-check" aria-hidden="true">✓</span><span class="spui-selector-texto">Todas las fechas</span>
                                 </button>
                             </div>
+                        {% elseif f.c == 'hora' %}
+                            {# Selector de hora y minuto (03/11/2026, pedido de Mateo): dos
+                               columnas que se desplazan, de 1 en 1, y Aplicar. Muestra lo que
+                               está en curso a esa hora exacta. Las columnas las llena
+                               cronograma-items.js. #}
+                            <div class="spui-reloj" data-spui-reloj>
+                                <p class="spui-reloj-ayuda">Lo que está en curso a las</p>
+                                <div class="spui-reloj-columnas">
+                                    <div class="spui-reloj-col" data-spui-reloj-col="h" role="listbox" aria-label="Hora" tabindex="0"></div>
+                                    <span class="spui-reloj-sep" aria-hidden="true">:</span>
+                                    <div class="spui-reloj-col" data-spui-reloj-col="m" role="listbox" aria-label="Minutos" tabindex="0"></div>
+                                </div>
+                                <button type="button" class="spui-reloj-ahora" data-spui-reloj-ahora>Ahora</button>
+                                <div class="spui-reloj-acciones">
+                                    <button type="button" class="unraf-btn spui-btn-back unraf-btn-sm" data-spui-reloj-cancelar>Cancelar</button>
+                                    <button type="button" class="unraf-btn spui-btn-crear unraf-btn-sm" data-spui-reloj-aplicar>Aplicar</button>
+                                </div>
+                                <button type="button" class="spui-selector-opcion" data-spui-items-op="hora" data-valor="">
+                                    <span class="spui-selector-check" aria-hidden="true">✓</span><span class="spui-selector-texto">Todas las horas</span>
+                                </button>
+                            </div>
                         {% else %}
                             {# Las opciones las arma cronograma-items.js, con sus cantidades. #}
                             <ul class="spui-desp-lista" data-spui-items-opciones="{{ f.c }}"></ul>
@@ -168,6 +189,9 @@
             </tbody>
         </table>
     </div>
+    {# 25 por página, sobre lo que dejan los filtros (03/11/2026): la arma
+       cronograma-items.js con los mismos estilos que la de los listados. #}
+    <nav class="spui-paginacion" data-spui-items-paginas aria-label="Páginas de los ítems" hidden></nav>
     <div class="spui-items-vacio" data-spui-items-vacio hidden>
         <strong>Ningún ítem coincide</strong>
         <span>Probá con otra búsqueda u otro filtro.</span>

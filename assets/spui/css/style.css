@@ -2799,6 +2799,35 @@ html.spui-sidebar-plegado .spui-sidebar-plegar img { transform: rotate(180deg); 
 .spui-items-filtros { margin-bottom: .5rem; }
 .spui-items-filtros .spui-selector-menu { min-width: 12rem; }
 .spui-items-fecha { display: flex; flex-direction: column; gap: .35rem; padding: .4rem; }
+/* Selector de hora de los filtros de ítems (03/11/2026): hora y minutos en
+   dos columnas que se desplazan, la elegida resaltada, y Aplicar. */
+/* El panel no se corta: las listas cortas tienen un alto máximo, el selector no. */
+.spui-desp-panel:has(.spui-reloj) { max-height: none; overflow: visible; }
+.spui-reloj { display: flex; flex-direction: column; gap: .55rem; padding: .5rem; width: 15rem; max-width: 100%; }
+.spui-reloj-ayuda { margin: 0; font-size: .8rem; color: #6c7a89; }
+.spui-reloj-columnas { display: flex; align-items: center; justify-content: center; gap: .4rem; }
+.spui-reloj-col {
+    flex: 1; height: 11.5rem; overflow-y: auto; scroll-behavior: auto; overscroll-behavior: contain;
+    display: flex; flex-direction: column; gap: 2px; padding: .25rem; border: 1px solid #e3e8ee; border-radius: 10px;
+    background: #f8fafc; scrollbar-width: thin;
+}
+.spui-reloj-col:focus-visible { outline: 3px solid rgba(51, 135, 239, .35); outline-offset: 1px; }
+.spui-reloj-sep { font-size: 1.6rem; font-weight: 700; color: #2b3a4a; }
+.spui-reloj-num {
+    flex: none; padding: .35rem 0; border: 0; border-radius: 7px; background: none; cursor: pointer;
+    font-family: var(--unraf-font-principal); font-size: 1.05rem; font-weight: 600; color: #4a5866;
+    font-variant-numeric: tabular-nums; text-align: center;
+}
+.spui-reloj-num:hover { background: #eef4fa; color: #2b3a4a; }
+.spui-reloj-num.is-elegido { background: var(--unraf-azul); color: #fff; }
+.spui-reloj-ahora {
+    align-self: flex-start; padding: .2rem .55rem; border: 1px solid #cfd8e0; border-radius: 1rem; background: #fff;
+    font-size: .8rem; font-weight: 600; color: var(--unraf-azul); cursor: pointer;
+}
+.spui-reloj-ahora:hover { background: #eef4fa; }
+.spui-reloj-acciones { display: flex; gap: .5rem; }
+.spui-reloj-acciones .unraf-btn { flex: 1 1 0; justify-content: center; }
+.spui-reloj > .spui-selector-opcion { border-top: 1px solid #f0f2f5; border-radius: 0; padding-top: .55rem; }
 .spui-items-vacio {
     display: flex; flex-direction: column; align-items: center; gap: .35rem; padding: 2rem 1rem;
     text-align: center; color: #6c7a89; border: 1px dashed #d6dde4; border-radius: 10px;
