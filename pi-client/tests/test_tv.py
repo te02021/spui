@@ -210,6 +210,70 @@ class EsperaTest(unittest.TestCase):
         self.assertEqual(p._poner.call_count, 2)
 
 
+@unittest.skipUnless(_PIL, 'Pillow no instalado')
+class DespuesDelVideoTest(unittest.TestCase):
+    """Del video al contenido siguiente: sin negro y sin reaparecer lo de antes (03/11/2026)."""
+
+    def _player(self, ahora=LUNES_18):
+        from spui.player import Player
+        p = Player.__new__(Player)
+        p._simulacion = False
+        p._ventana = mock.Mock()
+        p._dibujante = mock.Mock()
+        p._dibujante.lamina.return_value = tv.Lamina(fondo=None)
+        p._lugar = None
+        p._horario_tema = None
+        p._laminas = {}
+        p._precarga = None
+        p._actualizado = None
+        p._reloj = mock.Mock(ahora=lambda: ahora, confiable=lambda: True)
+        p._video_activo = True
+        p._parar_vlc = mock.Mock()
+        return p
+
+    TEXTO = {'tipo': 'texto', 'contenido_texto': 'Hola', 'presentacion': {'tema': 'claro'}}
+
+    def test_no_reaparece_lo_de_antes_y_vlc_se_saca_con_lo_nuevo_ya_pintado(self):
+        p, orden = self._player(), []
+        p._ventana.cubierta.side_effect = lambda si, redibujar=True: orden.append(('cubierta', si, redibujar))
+        p._ventana.mostrar.side_effect = lambda l, i=0: orden.append('mostrar')
+        p._parar_vlc.side_effect = lambda: orden.append('parar')
+        p._poner(tv.Lamina(fondo=None))
+        self.assertEqual(orden, [('cubierta', False, False), 'mostrar', 'parar', 'mostrar'])
+
+    def test_lo_que_sigue_al_video_se_dibuja_antes_y_no_otra_vez(self):
+        p = self._player()
+        p._precargar_siguiente({'contenido': self.TEXTO}, None, 30)
+        self.assertEqual(p._dibujante.lamina.call_count, 1)
+        p._reloj = mock.Mock(ahora=lambda: datetime(2026, 11, 2, 18, 0, 30), confiable=lambda: True)
+        p._lamina(self.TEXTO)
+        self.assertEqual(p._dibujante.lamina.call_count, 1)
+
+    def test_si_el_video_se_atraso_mucho_se_dibuja_de_nuevo(self):
+        p = self._player()
+        p._precargar_siguiente({'contenido': self.TEXTO}, None, 30)
+        p._reloj = mock.Mock(ahora=lambda: datetime(2026, 11, 2, 18, 5), confiable=lambda: True)
+        p._lamina(self.TEXTO)
+        self.assertEqual(p._dibujante.lamina.call_count, 2)
+
+    def test_otro_contenido_no_usa_lo_preparado(self):
+        p = self._player()
+        p._precargar_siguiente({'contenido': self.TEXTO}, None, 30)
+        p._lamina({'tipo': 'texto', 'contenido_texto': 'Otro'})
+        self.assertEqual(p._dibujante.lamina.call_count, 2)
+
+    def test_un_error_al_preparar_no_frena_el_video(self):
+        p = self._player()
+        p._dibujante.lamina.side_effect = OSError('sin fuente')
+        p._precargar_siguiente({'contenido': self.TEXTO}, None, 30)
+        self.assertIsNone(p._precarga)
+
+    def test_si_sigue_otro_video_no_se_prepara_nada(self):
+        p = self._player()
+        p._precargar_siguiente({'contenido': {'tipo': 'video'}}, None, 30)
+        p._dibujante.lamina.assert_not_called()
+
+
 class CurvaTest(unittest.TestCase):
     def test_la_curva_del_css(self):
         self.assertEqual(ventana.curva(0), 0)

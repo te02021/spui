@@ -157,6 +157,8 @@ class Player:
         self._incrustado = False
         # _momento_tv() de lo que quedó en pantalla (ver reproducir_playlist).
         self._momento_actual = ''
+        # La lámina del contenido que sigue a un video, ya dibujada (_precargar_siguiente).
+        self._precarga: Optional[dict] = None
         # La hora del CMS en el sync que se está mostrando (ver fijar_entorno).
         self._actualizado: Optional[datetime] = None
 
@@ -399,7 +401,7 @@ class Player:
         self._momento_actual = ''
         mostrados = 0
 
-        for item in items:
+        for i, item in enumerate(items):
             if self._tiene_alerta() or self._stop.is_set() or self._interrumpido.is_set():
                 return True
 
@@ -407,6 +409,8 @@ class Player:
             contenido = item.get('contenido') or {}
             if self._guardia is not None and self._guardia.salteado(contenido):
                 continue
+            if contenido.get('tipo') == 'video':
+                self._precargar_siguiente(items[(i + 1) % len(items)], sync_client, duracion)
             if self._guardia is not None:
                 self._guardia.empezar(contenido)
             self._reproducir_item(item, sync_client, duracion)
@@ -1141,7 +1145,7 @@ class Player:
         self._parar_vlc()
         self._video_activo = False
         if self._ventana is not None:
-            self._ventana.cubierta(False)
+            self._ventana.cubierta(False, redibujar=False)
             self._ventana.negro()
         self._firma_actual = None
         self._momento_actual = ''
@@ -1264,6 +1268,11 @@ class Player:
         clave = f'{_tv.firma(contenido)}|{self._momento_tv(contenido)}|{archivo or ""}|{con_hora}'
         lamina = self._laminas.get(clave)
         if lamina is None:
+            lamina = self._tomar_precarga(contenido, archivo)
+            if lamina is not None:
+                lamina.clave = clave
+                self._laminas[clave] = lamina
+        if lamina is None:
             inicio = time.monotonic()
             lamina = self._dibujante.lamina(contenido, self._ahora(), self._lugar, self._horario_tema, archivo,
                                             actualizado=self._actualizado_viejo(), con_hora=con_hora)
@@ -1274,6 +1283,50 @@ class Player:
             while len(self._laminas) > self._LAMINAS_GUARDADAS:
                 self._laminas.pop(next(iter(self._laminas)))
         return lamina
+
+    # Hasta cuánto puede diferir la hora para la que se dibujó de antemano. Si
+    # el video se atrasa más, se dibuja de nuevo y se ve negro un instante.
+    _PRECARGA_TOLERANCIA_SEG = 90
+
+    def _precargar_siguiente(self, item: dict, sync_client, duracion: Optional[int]) -> None:
+        """
+        Antes de un video, deja dibujado lo que sigue, para la hora en que va a
+        terminar. Al terminar, VLC queda en negro: si recién ahí se dibujaba
+        (un cronograma tarda un rato en la Pi), se veía negro todo ese tiempo
+        (03/11/2026). Se hace antes de arrancar el video porque ahí el dibujo
+        no le quita procesador, y mientras tanto sigue a la vista lo de antes.
+        """
+        self._precarga = None
+        contenido = item.get('contenido') or {}
+        if (self._ventana is None or _tv is None or not _tv.para_mostrar(contenido)
+                or duracion is None or duracion >= self._TOPE_VIDEO_SEG):
+            return
+        try:
+            archivo = None
+            if contenido.get('tipo') in ('imagen', 'qr'):
+                archivo = self._resolver_local(contenido.get('url_descarga') or '', contenido, sync_client)
+                if not archivo:
+                    return
+            cuando = self._ahora() + timedelta(seconds=duracion)
+            lamina = self._dibujante.lamina(contenido, cuando, self._lugar, self._horario_tema, archivo,
+                                            actualizado=self._actualizado_viejo(), con_hora=True)
+            self._ventana.preparar(lamina)
+            self._precarga = {'firma': _tv.firma(contenido), 'archivo': archivo, 'cuando': cuando, 'lamina': lamina}
+        except Exception as exc:   # se dibuja al terminar el video, como antes
+            logger.warning('No se pudo preparar el contenido que sigue al video: %s', exc)
+
+    def _tomar_precarga(self, contenido: dict, archivo: Optional[str]):
+        """La lámina preparada antes del video, si es de este contenido y todavía vale."""
+        previa, self._precarga = getattr(self, '_precarga', None), None
+        if previa is None or previa['firma'] != _tv.firma(contenido) or previa['archivo'] != archivo:
+            return None
+        ahora = self._ahora()
+        tema = (contenido.get('presentacion') or {}).get('tema') or 'oscuro'
+        if (abs((ahora - previa['cuando']).total_seconds()) > self._PRECARGA_TOLERANCIA_SEG
+                or ahora.date() != previa['cuando'].date()
+                or _tv.tema_efectivo(tema, ahora, self._horario_tema) != _tv.tema_efectivo(tema, previa['cuando'], self._horario_tema)):
+            return None
+        return previa['lamina']
 
     def _mostrar_tv(self, contenido: dict, archivo: Optional[str], duracion: Optional[int]) -> None:
         """Texto, imagen, QR o cronograma, con su plantilla y su tema."""
@@ -1327,11 +1380,15 @@ class Player:
         """Muestra una lámina: en la ventana del TV o, si no hay, por VLC como imagen."""
         if self._ventana is not None:
             # Si había un video, la ventana de VLC queda encima: se saca
-            # recién ahora, con lo nuevo listo, para que no haya negro.
+            # recién ahora, con lo nuevo listo, para que no haya negro. Sin
+            # redibujar: reaparecería lo de antes del video. Se pinta antes de
+            # sacarla y otra vez después, porque lo que estaba tapado se pierde.
+            self._ventana.preparar(lamina)
             if self._video_activo:
                 self._video_activo = False
+                self._ventana.cubierta(False, redibujar=False)
+                self._ventana.mostrar(lamina, pagina)
                 self._parar_vlc()
-                self._ventana.cubierta(False)
             self._ventana.mostrar(lamina, pagina)
             return
         self._reproducir_imagen(self._lamina_png(lamina, pagina), None)

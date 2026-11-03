@@ -177,11 +177,20 @@ class Ventana:
 
     # ── Lo que llama el player ────────────────────────────────────────────
 
-    def cubierta(self, si: bool) -> None:
-        """VLC empieza (o deja) de dibujar encima: mientras tanto no se pinta nada."""
+    def cubierta(self, si: bool, redibujar: bool = True) -> None:
+        """
+        VLC empieza (o deja) de dibujar encima: mientras tanto no se pinta nada.
+        `redibujar=False` cuando quien llama ya tiene otra lámina para mostrar:
+        si no, reaparecía un instante lo de antes del video (03/11/2026).
+        """
         self._cubierta = si
-        if not si:
+        if not si and redibujar:
             self._redibujar()
+
+    def preparar(self, lamina) -> None:
+        """Deja la lámina convertida de antemano, para que mostrarla sea inmediato."""
+        if self._sup is not None:
+            self._preparar(lamina)
 
     def brillo(self, fraccion: float) -> None:
         nuevo = max(0.0, min(1.0, float(fraccion)))
