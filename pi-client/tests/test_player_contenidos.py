@@ -83,6 +83,58 @@ class FinDeVideoTest(unittest.TestCase):
             p._esperar_fin_video(1)
         self.assertLess(time.monotonic() - inicio, 2)
 
+    def _mp(self, largo, tiempo):
+        return mock.Mock(get_state=lambda: 'playing', get_length=lambda: largo, get_time=tiempo)
+
+    def test_con_lo_que_sigue_listo_termina_antes_del_final(self):
+        """Antes de que VLC cierre su imagen y deje la pantalla en negro (03/11/2026)."""
+        p = _player()
+        p._precarga = {'lamina': object()}
+        p._ventana = mock.Mock(cambio_la_pantalla=lambda: False)
+        p._media_player = self._mp(10000, lambda: 9800)     # faltan 200 ms
+        inicio = time.monotonic()
+        p._esperar_fin_video(60)
+        self.assertLess(time.monotonic() - inicio, 0.5)
+        self.assertEqual(p._media_player.stop.call_count, 0)
+
+    def test_no_termina_antes_de_llegar_a_los_ultimos_ms(self):
+        p = _player()
+        p._precarga = {'lamina': object()}
+        p._ventana = mock.Mock(cambio_la_pantalla=lambda: False)
+        comienzo = time.monotonic()
+        # Faltan 800 ms al arrancar: tiene que esperar unos 500 ms.
+        p._media_player = self._mp(10000, lambda: 9200 + int((time.monotonic() - comienzo) * 1000))
+        p._esperar_fin_video(60)
+        self.assertGreater(time.monotonic() - comienzo, 0.4)
+        self.assertLess(time.monotonic() - comienzo, 0.9)
+
+    def test_entre_saltos_de_get_time_estima_con_el_reloj(self):
+        p = _player()
+        p._precarga = {'lamina': object()}
+        p._ventana = mock.Mock(cambio_la_pantalla=lambda: False)
+        comienzo = time.monotonic()
+        p._media_player = self._mp(10000, lambda: 9500)     # no avanza, faltan 500 ms al verlo
+        p._esperar_fin_video(60)
+        self.assertLess(time.monotonic() - comienzo, 0.6)
+
+    def test_sin_lo_que_sigue_listo_el_video_termina_entero(self):
+        p = _player()
+        p._precarga = None
+        p._ventana = mock.Mock(cambio_la_pantalla=lambda: False)
+        secuencia = iter(['playing', 'playing', 'ended'])
+        p._media_player = mock.Mock(get_state=lambda: next(secuencia, 'ended'), get_length=lambda: 10000, get_time=lambda: 9900)
+        p._esperar_fin_video(60)
+        self.assertEqual(next(secuencia, 'fin'), 'fin')     # esperó hasta que VLC avisó
+
+    def test_si_vlc_no_informa_el_tiempo_termina_cuando_avisa(self):
+        p = _player()
+        p._precarga = {'lamina': object()}
+        p._ventana = mock.Mock(cambio_la_pantalla=lambda: False)
+        secuencia = iter(['playing', 'playing', 'ended'])
+        p._media_player = mock.Mock(get_state=lambda: next(secuencia, 'ended'), get_length=lambda: -1, get_time=lambda: -1)
+        p._esperar_fin_video(60)
+        self.assertEqual(next(secuencia, 'fin'), 'fin')
+
     def test_una_alerta_lo_corta(self):
         p = _player()
         p._tiene_alerta = mock.Mock(return_value=True)
