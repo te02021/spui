@@ -6,21 +6,18 @@
 
 ## 1. Qué documento manda sobre qué
 
-| Documento | Alcance | Autoridad |
+La documentación del repo sostiene al **Informe del Proyecto Final** (`Proyecto Final Mateo Rivero - Version Reglamento v9.docx`, local, fuera de git), que es la referencia del proyecto.
+
+| Documento | Alcance | En el Informe |
 |---|---|---|
-| `00_investigacion_tecnologias.md` | Comparativas y decisiones de stack | Histórico de decisiones (por qué se eligió cada cosa) |
-| `01_mer_base_datos.md` | Modelo entidad-relación | Diseño de datos |
-| `02_casos_de_uso.md` | Los 12 casos de uso | Requerimientos — verificado contra el código (agosto 2026) |
-| `03_diagramas_flujo.md` | Diagramas de flujo | Diseño |
-| `04_gantt.md` | Planificación temporal | Gestión |
-| `05_arquitectura_sistema.md` | Diagramas C4 y despliegue | Diseño — verificado contra el código (agosto 2026) |
-| `06_funcionamiento_del_sistema.md` | **Cómo funciona el sistema por dentro** | ✅ **Autoridad. Verificado contra código** |
-| `07_manual_uso_cms.md` | **Uso del panel CMS, pantalla por pantalla** | ✅ **Autoridad. Verificado contra código** |
-| `08_pendientes_vm.md` | **Configuración del servidor y red para el reproductor** | ✅ Autoridad para §3-§8. Sus §2 y §5 pasos 1-3 (VirtualBox) quedaron obsoletos al haber hardware real |
-| `09_instalacion_raspberry.md` | Instalación de la Pi desde cero (SO, red, cliente) | ✅ Guía operativa, alineada a 06/07/08 |
-| `10_pruebas.md` | **Protocolo y registro de los casos de prueba CP01–CP13**: procedimiento, evidencia y planilla de cada uno | ✅ Autoridad sobre cómo se ejecuta cada prueba y su resultado |
-| `tips_conectividad_acceso.md` | Tips sueltos de red y acceso SSH | Referencia puntual, no secuencial |
-| `pruebas/` | Informes de las pruebas de carga y concurrencia (`tools/simulador/`): uno por corrida (Markdown + JSON crudo) y un análisis por tanda | Evidencia medida para el Informe (CP11, CP12, concurrencia) |
+| `06_funcionamiento_del_sistema.md` | **Cómo funciona el sistema por dentro.** Autoridad, verificado contra el código | §9.3 a §9.10 |
+| `07_manual_uso_cms.md` | **Uso del panel, pantalla por pantalla.** Autoridad, verificado contra el código | Manual de uso (Tabla 3) |
+| `08_pendientes_vm.md` | **Servidor:** qué pide SPUI a la VM de la intranet y entorno de desarrollo | §9.3, §9.9 |
+| `09_instalacion_raspberry.md` | Instalación de la Pi desde cero | Anexo A |
+| `10_pruebas.md` y `pruebas/` | **Protocolo y registro de CP01 a CP13**, e informes medidos del simulador | §9.11, Anexo B |
+| `archivo/auditorias.md` | Historial de decisiones y causas de bugs (§3.1 a §3.6) | — |
+
+`archivo/` guarda además, sólo en esta PC y sin versionar, lo que el Informe ya cubre: `00` investigación (§6 y §7), `01` modelo de datos (§9.6), `02` casos de uso (Tabla 4), `03` diagramas (figuras), `04` Gantt (§9.13), `05` arquitectura (§9.3), los tips de conectividad, el contexto inicial y `ESTADO_DESARROLLO.md`. No se mantienen al día.
 
 ---
 
@@ -36,7 +33,7 @@ Esta es la terminología real del sistema. **No usar sinónimos** en documentaci
 | Edificio | — | `src/Entity/Edificio.php` |
 | **Alerta** / **Alertas** (CMS y pantalla del reproductor) | ~~Alerta de emergencia~~ (en UI) | Entidad y tabla siguen siendo `AlertaEmergencia`/`alerta_emergencia` — **no** se renombraron; solo cambió el texto que ve el usuario, porque "de emergencia" no encajaba con avisos cotidianos (cambio de aula) |
 
-> Los documentos `00`–`05` se actualizaron en agosto de 2026 y ya no usan "Nodo" salvo en notas históricas explícitas sobre el renombre. En **rutas, nombres de entidad, etiquetas de UI y pasos operativos** siempre va **Reproductor**.
+> En **rutas, nombres de entidad, etiquetas de UI y pasos operativos** siempre va **Reproductor**.
 
 ### Rutas reales
 
@@ -124,300 +121,6 @@ Verificados contra código. Si algo "deja de andar", empezar por acá.
 
 ---
 
-## 3.1. Registro de auditorías
-
-| Fecha | Alcance | Resultado |
-|---|---|---|
-| Agosto 2026 | Auditoría cruzada de código vs. documentación: 13 entidades, 11 controllers API, 12 controllers CMS, formularios, migraciones y los 8 módulos del cliente Python | 9 inconsistencias detectadas y corregidas. Detalle en `06_funcionamiento_del_sistema.md` §10.1 |
-| Septiembre 2026 | Auditoría sistemática de todo el proyecto (CMS + cliente Pi) posterior al merge de `fix/media-storage-s3`: seguridad, consistencia de negocio, bloqueo por reproductor desconectado, resiliencia del cliente Python y código muerto | Hallazgos y correcciones en §3.3. El más grave: el tipo de contenido **QR** nunca funcionó pese a figurar completo en CU-10 |
-| 25/09/2026 | Rama `fix/offline-blocking-csrf` + revisión de consistencia de `06`, `07`, `08`, `09` y este README contra el código | Cambios de código en §3.4. En los docs se corrigieron afirmaciones que habían quedado viejas: topics MQTT (faltaban comandos, estado y QR), broker descripto como anónimo, CSRF listado como deuda ya resuelta, `spui:mantenimiento` "a programar en cron" (corre dentro del daemon), `SPUI_MQTT_SALT` ausente de la configuración de la Pi, API REST de administración ya dada de baja, duración por ítem de playlist ya eliminada, repetición del sonido "cada 20 s", y "Nodo" en lugar de "Reproductor" |
-| 10/08/2026 | Reescritura de `00`–`05` contra el código real + corrección de bugs reportados en pruebas de uso | Docs `00`–`05` actualizados (ERD con las 13 entidades, flujos reales, árbol de directorios real). Corregidos: zona horaria, expiración de alertas, API key al regenerar, errores de formulario en español, modales de detalle, alertas dirigidas, almacenamiento S3. Ver §3.2 |
-
-Resumen de lo corregido (todo aplicado, nada pendiente):
-
-1. `spui.service` apuntaba al Python del sistema en vez del venv → el cliente no arrancaba
-2. El player ignoraba el tipo `cronograma` → no se mostraba nada en pantalla
-3. El fallback dependía de un PNG no versionado → pantalla en negro
-4. La API de pantallas exigía MAC y validaba unicidad contra un esquema que ya no lo requería
-5. La API de pantallas no permitía asignar reproductor ni playlist de respaldo
-6. Código muerto en la caché SQLite del cliente (`media_cache`)
-7. El primer heartbeat tardaba 60 s → el reproductor figuraba desconectado al arrancar
-8. `python-vlc>=3.0.20120801` en `requirements.txt` era una versión inexistente → `install.sh` fallaba al instalar dependencias
-9. `paho-mqtt>=1.6.1` instalaba la 2.x, incompatible con el código → telemetría y alertas fallaban en silencio
-
----
-
-## 3.2. Correcciones de agosto 2026 (pruebas de uso)
-
-Bugs detectados usando el sistema, con su causa real. Se dejan documentados porque varios no eran
-lo que parecían a simple vista.
-
-| Síntoma | Causa real | Dónde se arregló |
-|---|---|---|
-| Una alerta creada 11:00 con vencimiento 11:05 figuraba **vencida al instante** | PHP corría en **UTC** y la universidad está en **UTC-3**: `haExpirado()` comparaba contra las 14:0x | `TimezoneSubscriber` fija la zona horaria en cada request y comando |
-| Al **regenerar la API key** no aparecía la clave nueva | El backend sí la devolvía; el JS la descartaba: `openActionModal` no tenía la rama `data.apiKey` que sí tiene el envío de formularios | `assets/spui/js/core/modal.js` |
-| El formulario de **regla de programación no se enviaba y no mostraba ningún error** | Symfony mapea los datos al objeto **antes** de validar: un campo de hora vacío escribía `null` en un setter tipado no-nullable y lanzaba `TypeError` (HTTP 500) antes de que corrieran los `NotBlank` | Setters nullable en `Programacion`, `CronogramaItem` y `ProgramacionEnergetica` + bucles de error en las plantillas |
-| Mensajes de validación **en inglés** | `default_locale: en` en el config compartido de la intranet | `framework.yaml` propio de SPUI con `default_locale: "es"` (mismo patrón que viáticos) + mensaje explícito en los 20 constraints |
-| Un modal podía quedar **en blanco al guardar** | Sólo 1 de 10 formularios renderizaba los errores de nivel raíz; con el CSRF vencido no se mostraba nada | Bloque `form.vars.errors` en los 10 formularios |
-| Los modales **"Ver" se veían despareja la columna de valores** | `.spui-view-row` nunca tuvo `justify-content: space-between`: usaba `min-width` + `flex: 1` | `assets/spui/css/style.css` |
-| Filas con `—` en los detalles | `?? '—'` no cubre strings vacíos, sólo `null` | Filas opcionales dentro de `{% if %}`: si no hay dato, no se muestra la fila |
-| Valores en minúscula (`sin_registrar`, `youtube`) | Se imprimía `.value` del enum crudo | Método `etiqueta()` en los 4 enums ("Sin registrar", "YouTube", "QR") |
-| El listado de **alertas** no era responsive | Usaba tarjetas propias en vez de la tabla estándar con `spui-tabla-cards` + `data-label` | `templates/alertas/index.html.twig` |
-| Una alerta desactivada **reaparecía** al reiniciar la Pi | El borrado del mensaje retenido MQTT estaba mal: hay que publicar payload **vacío con `retain=true`**, no `retain=false` | `AlertaPublisherService::publicarDesactivacion()` (payload vacío con `retain` en cada topic) |
-| Una alerta vencida **tapaba** a otra vigente de menor prioridad | `findActivaConMayorPrioridad()` filtraba la expiración en PHP, después de traer una sola fila | Filtro de expiración dentro de la consulta |
-| Nada desactivaba las alertas vencidas | No existía ese paso | `spui:mantenimiento` las desactiva y limpia su mensaje retenido |
-| En hardware real, la imagen adjunta de una alerta se veía **recortada** (una cara cortada) o como un **recuadro chico** con franjas rojas alrededor | Distintos intentos de encuadre (`contain` con letterbox, `cover` con recorte) no lograban ocupar todo el espacio sin perder contenido de la foto | `_generar_imagen_alerta()` en `pi-client/spui/player.py`: la imagen se **estira** al tamaño exacto de la región (sin mantener proporción) — ocupa el 100% del espacio, sin recortar ni dejar franjas |
-| El velo rojo semitransparente sobre la imagen de alerta **le cambiaba los colores** a la foto | Se aplicaba sobre toda la región de contenido, incluida la imagen ya pegada | Ahora es una placa oscura acotada **solo** al bloque de texto del mensaje, no sobre la imagen |
-| La pantalla de alerta decía **"Alerta de emergencia"** incluso para avisos cotidianos (cambio de aula) | Texto fijo genérico en vez de mostrar el título propio de la alerta | CMS y pantalla del reproductor renombrados a "Alerta"/"Alertas" (la entidad `AlertaEmergencia` no cambió, sólo la UI); la pantalla del Pi ahora muestra el **título real** de la alerta en la banda superior en vez de un rótulo fijo |
-| El sonido de la alerta **no se escuchaba** en hardware real aunque el log confirmaba `reproductor.play()` sin error | El audio sale por HDMI (parlantes del TV), y el dispositivo ALSA "default"/`plughw:` no empaqueta el audio en las tramas IEC958 que HDMI exige a nivel de hardware | `SPUI_AOUT_DEVICE=hdmi:CARD=<id>,DEV=0` en `spui.env` — procedimiento completo en `09_instalacion_raspberry.md` §8.6 |
-| El sonido de la alerta se repetía **cada 20 segundos fijos**, incluso para un clip de 1 segundo | `_esperar_alerta()` medía el intervalo desde el **inicio** de la reproducción anterior por reloj, no desde que terminaba | Ahora consulta el estado real de VLC (`get_state()`) y repite en cuanto pasa a `Ended`/`Stopped`; `SPUI_ALERTA_SONIDO_INTERVALO_SEG` pasó a ser la pausa **después** de terminar (default 0) |
-| El monitor se quedaba **sin señal (standby)**, no solo en negro, y no se recuperaba solo | `Xorg.0.log.old` mostró varias renegociaciones de EDID en pleno funcionamiento (patrón de hotplug HDMI intermitente, probablemente por un micro-HDMI flojo) que el driver `vc4-hdmi` no siempre recupera solo | `hdmi_force_hotplug=1` en `config.txt` + asegurar físicamente el conector — `09_instalacion_raspberry.md` §14.2. De paso se detectó que el journal de la Pi no era persistente y se perdía la evidencia de estos incidentes — activado en §6.1 |
-| En `/spui/reproductores`, **Editar/Regenerar clave/Eliminar** se veían habilitados (badge "Conectado") pero al hacer clic tiraban el aviso de "Desconectado" — ni el auto-refresh ni el botón "Actualizar" lo destrababan, sólo un F5 entero | Dos causas reales, ambas corregidas: (1) `estadoCalculado()` le daba prioridad al LWT de MQTT sobre el heartbeat HTTP, permitiendo que badge y bloqueo se calcularan distinto en instantes distintos; (2) la causa dominante — `auto-refresh.js` → `copiarAtributos()` **agregaba/actualizaba** los `data-*` que traía el HTML fresco pero nunca **quitaba** los que ya no correspondían, así que `data-spui-bloqueado` (que `modal.js` usa para frenar el clic del lado del cliente, sin llegar al servidor) quedaba pegado en el botón para siempre una vez que se ponía, aunque el reproductor volviera a conectarse | `estadoCalculado()` ya no consulta el LWT (depende sólo del heartbeat HTTP, misma fuente para badge y bloqueo); `copiarAtributos()` ahora también quita los `data-*` que sobran, además de agregar los que faltan |
-| Al reconectar la Pi, el CMS tardaba hasta 60s+ en volver a marcarla "Conectado" | El aviso `{"estado":"online"}` que la Pi ya publica por MQTT apenas reconecta (`mqtt_listener.py::_on_connect`) sólo limpiaba un flag inerte del lado del CMS — no actualizaba `ultimoHeartbeat`, así que no aceleraba nada; había que esperar al próximo heartbeat HTTP programado (hasta 60s) | `MqttSubscribeCommand::procesarEstado()` ahora llama a `registrarHeartbeat()` al recibir "online" — el mismo método que usa el heartbeat HTTP. El aviso de reconexión por MQTT cuenta como prueba de vida igual que un heartbeat; el de caída (`"offline"`) sigue sin forzar nada, a propósito — acelerar una confirmación es seguro, acelerar una sospecha no (mismo motivo del hallazgo anterior) |
-| Reemplazar el archivo de un Contenido al editarlo no hacía nada; además, eliminar un Contenido dejaba el archivo huérfano en el storage para siempre | `ContenidoCmsController` y `AlertaCmsController` nunca usaron `MediaStorageService` — escribían/borraban directo a disco local con `move()`/`hash_file()`/`@unlink()`, ignorando `SPUI_STORAGE_DRIVER` por completo. Con `s3` como default esto hubiera roto la descarga a la Pi de forma silenciosa (subida "exitosa" a disco local, `MediaController` buscando en S3 y sin encontrar nada) | Los dos controllers migrados a `MediaStorageService` (`guardar()`/`borrar()`/`hash()`/`leer()`); `editar()` de Contenido ahora sí reemplaza el archivo, `eliminar()` ahora sí borra el archivo. De paso, `spui/media/` pasó a tener subcarpetas por tipo (`imagenes/`, `videos/`, `qr/`, `alertas/`) en vez de todo plano — `MediaStorageService` valida la categoría (`claveDesdeRuta()`) y expone `rutaParaUrl()` para que `SyncController`/`AlertaPublisherService` arman la URL de descarga de la Pi sin tener que saber el formato interno. Verificado con subida/reemplazo/borrado reales contra el bucket S3 de desarrollo — incluida una llamada real a `MediaController::serve()`, el endpoint que usa la Pi — no sólo lectura de código |
-| Crear un Contenido con archivo (p. ej. tipo video) podía quedar "colgado": el modal no cerraba ni mostraba ningún error, ni en pantalla ni en la consola del navegador | Dos causas apiladas. (1) El JSON de error volvía con `success:false` **y** `html` al mismo tiempo — el contrato de `modal.js` es que si `html` está presente sólo re-renderiza el formulario e ignora `message` sin avisar nada (mismo patrón ya resuelto antes en `AlertaCmsController`, pero sin aplicar acá). (2) Por separado, el límite real de subida de este WAMP no es el que parece — ver hecho operativo #15 | `ContenidoCmsController::nuevo()`: las ramas de "archivo requerido", validación de archivo y "texto requerido" dejaron de mandar `html` junto con `success:false`, ahora sólo `{success:false, message, type:'error'}` |
-| Cada subida a S3 tardaba el doble de lo esperado y, ante cualquier hiccup de red, podía colgarse sin ningún límite de tiempo | `MediaStorageService::hash()` volvía a **descargar** el archivo recién subido (URL prefirmada + `file_get_contents()` sin timeout) sólo para calcularle el SHA-256 | Nuevo método `hashArchivoSubido()`: calcula el hash del temporal local de PHP **antes** de `guardar()`/subir, sin ningún viaje de vuelta a S3. Los tres puntos que subían archivo (Contenido nuevo/editar, sonido de Alerta) lo usan en vez de `hash()` |
-| El mensaje de una subida rechazada por PHP (archivo más grande que el límite del servidor) llegaba al frontend en inglés, con el nombre de la directiva de `php.ini` incluido | `MediaStorageService::validar()` devolvía `$archivo->getErrorMessage()` tal cual — texto de Symfony pensado para logs, no para mostrarle a un usuario | El detalle técnico se registra con `$this->logger->warning()` (queda en `var/log/spui/`) y al frontend sólo llega un mensaje en español según el tipo de error real (`UPLOAD_ERR_INI_SIZE` → "demasiado pesado", etc.) |
-
-### Funcionalidad agregada en la misma tanda
-
-- **Alertas dirigidas.** Una alerta puede apuntar a pantallas concretas (tabla `alerta_pantalla`).
-  Sin ninguna elegida sigue siendo global, así que las alertas ya cargadas no cambian de
-  comportamiento. Las dirigidas se publican en `spui/alertas/reproductor/{id}`.
-- **Almacenamiento S3 conmutable.** `MediaStorageService` con `SPUI_STORAGE_DRIVER=local|s3`,
-  reutilizando `Shared\Service\S3StorageService`. El Pi no se entera del cambio.
-- **Validación de subidas**: tipo MIME y tamaño máximo (200 MB), con mensajes en español.
-- **`/api/spui/media` pasa a requerir `X-Api-Key`**: antes cualquiera que adivinara un nombre de
-  archivo podía descargarlo.
-- **Los archivos se borran** al eliminar el contenido; antes quedaban huérfanos para siempre.
-- **Detalle completo en los modales "Ver"**, y "Ver" propio para alertas (con el mensaje entero,
-  que en el listado se corta a 80 caracteres).
-- **Visor de media en pantalla completa** (`assets/spui/js/core/media-viewer.js`,
-  `window.spui.abrirVisorMedia`): cualquier ícono de ojo con `data-spui-preview-url` lo abre, por
-  encima del modal ABM abierto (no lo cierra). Zoom con botones y scroll del mouse (10 en 10%,
-  50–400%) sólo para imágenes — un video ya trae sus propios controles nativos, así que ahí el
-  zoom se oculta directamente. Se agregó primero en Contenido (ver/editar); sumarlo a otra
-  pantalla es sólo poner el mismo atributo, sin tocar el JS.
-
-> **Sobre playlists y contenidos:** un contenido **siempre pudo estar en varias playlists**
-> — `playlist_item` es tabla puente. Dura lo mismo en todas: la duración la define el contenido y
-> es su única fuente de verdad. Hasta octubre 2026 el selector evitaba repetirlo **dentro** de la
-> misma playlist; desde §3.4 se permite (decisión de Mateo: dar más frecuencia a un aviso dentro
-> del loop). La base nunca lo impidió (el único UNIQUE es `(playlist_id, orden)`) y la Pi ya
-> recorría la lista tal cual, así que el cambio fue sólo del CMS.
-
----
-
-## 3.3. Auditoría de septiembre 2026 (CMS + cliente Pi)
-
-Barrido sistemático de todo el proyecto —CMS Symfony y cliente Python— buscando inconsistencias,
-huecos de seguridad, funcionalidad que aparenta funcionar pero no, y código muerto. A diferencia de
-§3.2, estos hallazgos **no** salieron de usar el sistema sino de leerlo entero: varios son cosas que
-nunca funcionaron y que nadie había probado todavía.
-
-Dos áreas se revisaron a fondo y **no** tuvieron hallazgos: inyección SQL/comandos, exposición de
-secretos, path traversal en media, y la validación real de MIME en las subidas (se valida por
-contenido, no por el `Content-Type` que declara el cliente).
-
-| Síntoma | Causa real | Dónde se arregló |
-|---|---|---|
-| Crear un Contenido de tipo **QR** fallaba siempre, con el mensaje "El campo de texto/URL es requerido para este tipo" — un campo que su propio formulario no muestra | `ContenidoCmsController` **nunca leía `codigo_qr_id`** de la request: `qr` no estaba en `TIPOS_ARCHIVO` ni era `Cronograma`, así que caía en el `else` genérico que exige `contenido_texto`. Como consecuencia directa, `ContenidoQrService::materializar()` (que genera el PNG y lo asocia) no se invocaba desde ningún lado y figuraba como código muerto. CU-10 estaba documentado como completo | Rama propia para `TipoContenido::Qr` en `nuevo()` y en `editar()`, que llama a `materializar()`. Al arreglarlo quedó a la vista que el flujo en sí no cerraba —había que crear el código en otra sección antes de poder usarlo— y se reorganizó entero: ver "Los códigos QR pasan a vivir dentro de Contenidos", abajo |
-| El `<select>` de código QR del formulario de **edición** decía siempre "No hay códigos QR creados", hubiera o no | `editar()` renderizaba `_edit_form.html.twig` sin pasarle nunca `codigos_qr` | Sin efecto ya: ese `<select>` no existe más (los datos del código se cargan en el mismo formulario). Queda anotado porque explica por qué el tipo QR tampoco se podía arreglar editando |
-| Entrar a `/spui/contenidos/nuevo` fuera del modal (o un POST directo que fallara) devolvía **HTTP 500** | Las cuatro salidas no-XHR de `nuevo()` renderizaban `@SPUI/contenidos/new.html.twig`, una plantilla que **no existe** en este repo | Todas pasan por `errorAlta()`, que hace flash + redirect al listado — el mismo patrón que ya usaba `editar()` |
-
-### Los códigos QR pasan a vivir dentro de Contenidos
-
-Un código QR no es una entidad que el operador administre por su cuenta: existe **para** un contenido
-y no se comparte con ningún otro. Tenerlo en su propia sección (`/spui/qr`) obligaba a un rodeo que
-ningún otro tipo de contenido pide —crear primero el código, después el contenido, y elegirlo de una
-lista— y dejaba el mismo nombre cargado dos veces (la etiqueta del código y el título del contenido).
-
-Qué cambió:
-
-- **Se eliminó la sección `/spui/qr`** y su ítem del menú, junto con `CodigoQrCmsController`,
-  `CodigoQrType` y `templates/qr/`. Las dos rutas **públicas** siguen igual y son las que importan
-  de verdad: `GET /api/spui/qr/{id}/r` (lo abre el celular al escanear) y `/imagen`.
-- **El formulario de Contenido se adapta al tipo `qr`** y pide ahí mismo URL destino y vencimiento
-  opcional (`content-type-fields.js`, igual que ya hacía con archivo/texto/cronograma). La etiqueta
-  del código sale del título del contenido, y el código queda siempre activo: para cortar el
-  redirect están el vencimiento y eliminar el contenido.
-- **Editar el contenido edita su código**, como en cualquier otro tipo. Cambiar la URL destino **no**
-  regenera el PNG ni invalida los QR ya impresos: lo que el código lleva adentro es el redirect del
-  CMS, que no cambia.
-- **Los escaneos, el destino y el vencimiento** se ven en el modal **Ver** del contenido, único lugar
-  del CMS donde quedan. La **imagen** no se muestra incrustada en ningún lado: se mira con el mismo
-  botón del ojo que abre el archivo de una imagen o un video (`data-spui-preview-url` →
-  `media-viewer.js`). Un tipo de contenido no tiene por qué verse distinto que el resto sólo por ser
-  QR, y con la imagen ya a la vista el botón del ojo quedaba de adorno.
-- **El contador de escaneos se actualiza en vivo**, empujado por el broker: al escanear,
-  `CodigoQrController::redirigir()` publica `spui/qr/escaneo/{id}` con el total ya persistido
-  (`QrEscaneoPublisherService`), y el navegador que tenga el modal abierto lo recibe por el listener
-  **WebSocket** del broker (`qr-escaneos-vivo.js`, suscrito sólo mientras ese modal está abierto).
-  **No hay ningún endpoint que se consulte cada X segundos**, y se descartó a propósito: entre
-  escaneo y escaneo pueden pasar días, así que preguntar a intervalo fijo gasta ancho de banda casi
-  siempre para no enterarse de nada. Piezas nuevas que esto trae: el listener `9001 websockets` en
-  `config/mosquitto/mosquitto.conf`, el usuario MQTT de sólo lectura `spui-cms-web` —contraseña
-  derivada de `SPUI_MQTT_SALT`, dado de alta solo por `MqttSecurityService::asegurarClienteWeb()`,
-  sin variable de entorno ni paso manual— y `mqtt.js` por CDN, cargado entonces únicamente en la
-  página de Contenidos (desde §3.4 también en Pantallas, Playlists y Programación, y el mismo usuario
-  web lee además `spui/cms/conexion/#`). Si el broker está caído no se rompe nada: el escaneo cuenta igual en la base y el
-  número aparece bien al reabrir el modal.
-- **La URL del broker que recibe el navegador sale del host por el que entró al CMS**, no de
-  `MQTT_HOST` (`MqttSecurityService::urlWebsocket()`). `MQTT_HOST` vale hoy
-  `spui-broker.unraf.local`, un nombre que sólo existe en el archivo `hosts` de la máquina del CMS:
-  dárselo a un operador que abre el panel desde otra computadora lo dejaría conectando a un host
-  inexistente. Mismo criterio que `QrGeneratorService::urlRedirect()`. Vale mientras el broker
-  corra en la misma máquina que el CMS, que es como está desplegado.
-- **Con el CMS por HTTPS la URL pasa a `wss://` por el 443 del sitio**, no al 9001: un navegador
-  bloquea `ws://` dentro de una página `https://` (contenido mixto) sin avisar, y lo único visible
-  sería un contador que no se mueve. `urlWebsocket()` decide por `Request::isSecure()` y arma
-  `wss://<host><base_path>` + `MqttSecurityService::RUTA_WEBSOCKET`; lo reexpone Apache con
-  `mod_proxy_wstunnel` hacia `ws://127.0.0.1:9001`, sin abrir ningún puerto ni emitir un
-  certificado para el broker. La ruta lleva el prefijo de la instalación porque el vhost es
-  compartido con el resto de las apps de la intranet. Config de Apache y verificación en
-  `config/mosquitto/README.md`, sección *Producción*.
-- **Eliminar un contenido QR elimina su código** (salvo que datos viejos lo compartan con otro
-  contenido, que se comprueba antes).
-- **`Version20260901123000`** borra los códigos que no pertenecen a ningún contenido: sin la sección
-  quedarían en la base sin ninguna pantalla desde donde verlos.
-
-Verificado con harness real contra S3 y MySQL: alta en una sola pasada (con `unraf.edu.ar/…` sin
-esquema, que se completa a `https://`), vencimiento persistido, etiqueta igual al título, PNG en S3
-con hash coincidente, edición del destino sin regenerar el PNG, los tres mensajes de validación, y
-el borrado del código junto con el contenido. Más la regresión de los otros tipos (`index`, `ver`,
-`editar` y guardar en imagen y video, con la ruta del archivo intacta).
-
-### El PNG guardado llevaba adentro un host que nadie podía resolver
-
-Salió al probar un QR desde un celular: escaneaba y no llegaba nunca al destino.
-
-`ContenidoQrService` armaba la URL con `ABSOLUTE_URL`, o sea el host del request que creó el
-contenido. Como al CMS se llega por el nombre `intranet` del `/etc/hosts` —así lo hacen el operador
-y también la Pi (`09_instalacion_raspberry.md`)—, el PNG quedaba con `http://intranet/…` adentro
-**para siempre**. Ningún celular resuelve ese nombre. Creado desde `localhost` es peor: cada
-teléfono resuelve `localhost` a sí mismo. Y desde consola no hay request, así que el router cae a su
-host por defecto. Aparte, `CodigoQrController::imagen()` armaba la URL **por su cuenta**
-(`$request->getSchemeAndHttpHost() . '/api/spui/qr/…'`), con lo que la vista previa del CMS y el PNG
-que va a la pantalla podían apuntar a hosts distintos sin que nada lo avisara.
-
-- **`QrGeneratorService::urlRedirect()`** es ahora el único punto que decide qué URL codifica un QR;
-  lo usan el que guarda el PNG y el que sirve la vista previa, así no pueden discrepar.
-- **Sin configuración.** Se usa el host del request sólo si cualquiera lo puede resolver: una IP, o
-  un nombre con dominio (`intranet.unraf.edu.ar` — que además es el único caso donde HTTPS tiene un
-  certificado válido, por eso se prefiere a la IP). Un nombre corto (`intranet`, `localhost`) o
-  `.local`/`.lan` sale del `/etc/hosts` o del mDNS del propio equipo, así que se descarta y se usa
-  **la IP de red del equipo**, detectada sola: se "conecta" un socket UDP a una dirección de
-  TEST-NET-3 —lo que no envía ningún paquete, sólo hace que el sistema elija la interfaz de salida—
-  y se lee el extremo local. `gethostbyname(gethostname())` no sirve acá: devuelve la IP del
-  adaptador host-only de VirtualBox. Al caer a la IP el esquema es siempre `http` (una IP privada no
-  puede tener certificado válido y el redirect es un 302 público).
-- **Se corrige solo, sin comando ni variable de entorno.** Hubo una versión anterior con un comando
-  `spui:qr:regenerar` y una variable `SPUI_URL_PUBLICA` para correrlo en producción — se descartó:
-  obligaba a declarar en la VM algo que el CMS ya sabe (dominio y prefijo salen del request), y si
-  alguien la olvidaba el resultado eran QR impresos que no abrían, sin ningún error a la vista.
-  Ahora `ContenidoCmsController::index()` compara, cada vez que se entra a Contenidos, la dirección
-  actual contra la que guarda `CodigoQr::urlGenerada` (la URL que quedó codificada la última vez que
-  se generó el PNG) y llama a `ContenidoQrService::sincronizarUrls()` si hace falta. Guardado con
-  caché (`spui.qr.base_reconciliada`) para no recorrer nada cuando la dirección no cambió — que es
-  el caso normal y el de producción siempre, porque ahí la base es el dominio y no cambia nunca.
-- **Regla anti-churn: nunca se degrada la base.** `QrGeneratorService::rangoDeBase()` ordena una URL
-  por qué tan pública es (`https` + dominio → mejor; `http` + dominio; IP → peor) y `sincronizarUrls()`
-  sólo regenera si la base nueva es igual o mejor que la guardada. Sin esto, un contenido QR que está
-  en la playlist de un reproductor cambiaría de archivo cada vez que alguien entrara al CMS por una
-  dirección distinta (la IP de la VM en vez del dominio, por ejemplo) — y el reproductor tiene que
-  redescargar el PNG por su nombre nuevo, así que regenerar de más se ve como un parpadeo en la
-  pantalla real. El botón **"Actualizar direcciones de los QR"** del listado de Contenidos fuerza la
-  regeneración saltándose esta regla, para el caso deliberado de bajar a una dirección menos pública.
-
-### La pantalla que ve quien escanea un código caído
-
-Un código eliminado o vencido puede seguir escaneándose: queda impreso en un cartel, o guardado en el
-historial del teléfono. Antes esa respuesta era un `<h2>` suelto sobre fondo blanco, sin contexto.
-Ahora es `templates/qr/no_disponible.html.twig`, con dos variantes —**vencido** (dice hasta cuándo
-estuvo activo) y **dado de baja**— porque para quien escanea no son lo mismo.
-
-No extiende `@SPUI/base.html.twig` a propósito, y es la excepción a la regla de reutilizar el layout
-del CMS: esa plantilla trae el sidebar, el link a la intranet y da por sentada una sesión iniciada,
-mientras que del otro lado hay un celular ajeno que no tiene ninguna de las tres cosas. Por el mismo
-motivo va todo autocontenido (CSS inline, SVG inline, sin CDN ni fuentes externas): tiene que verse
-bien aunque la señal sea mala. Respeta `prefers-color-scheme`. La respuesta lleva
-`Cache-Control: no-store` — un 410 cacheado en el teléfono dejaría el código roto para esa persona
-aunque después vuelva a estar vigente.
-
-> **Para probar el escaneo desde un celular en desarrollo** hace falta además que Apache atienda por
-> IP: el vhost `intranet` lleva `ServerAlias 10.*.*.* 192.168.*.* 172.16.*.*` (sin eso un request con
-> `Host: <ip>` cae en el vhost por defecto de WAMP y devuelve 404), y su `<Directory>` necesita un
-> `Require ip` que cubra la red del celular. Ojo con lo segundo: ese bloque lo comparten **todas** las
-> apps del monolito — ver `../../CLAUDE.md`, "Entorno local (WAMP)".
-
----
-
-## 3.4. Bloqueo por reproductor desconectado, CSRF e ítems de playlist (septiembre 2026)
-
-Rama `fix/offline-blocking-csrf`. Completa el bloqueo por reproductor desconectado y el CSRF, que en la auditoría de §3.3 habían quedado aplicados sólo en parte, y rehace la edición de ítems de playlist.
-
-| Síntoma | Causa real | Dónde se arregló |
-|---|---|---|
-| Crear una playlist daba **HTTP 500** | Después de crearla se redirigía a `spui_cms_playlists_builder`, que renderizaba `playlists/builder.html.twig`: una plantilla que **nunca existió** (el diseño de editor a pantalla completa se abandonó a medio camino) | `nueva()` vuelve al listado. Se eliminaron la ruta `builder`, `agregarItemForm` y `assets/spui/js/playlists/builder.js` |
-| Los ítems de una playlist **se guardaban solos** al agregar, quitar o reordenar, sin forma de cancelar | Tres endpoints (`agregar`, `quitar`, `reorder`) que persistían cada acción en el momento, y un aviso `sync_ahora` por cada una | **Un solo punto de guardado, igual en alta y edición:** la ventana de ítems (`playlists/items.js`) sólo arma y confirma la lista, que viaja como `contenido_ids[]` + `items_modificados=1` con el Guardar del formulario de la playlist; `nueva()`/`editar()` la reconcilian con `sincronizarItems()` en una transacción, con un solo aviso al reproductor. Sin la marca no se tocan los ítems (editar sólo el nombre no vacía la playlist). En el alta los ítems se eligen antes de que la playlist exista (`items/nueva`). Un primer intento con un `POST items/guardar` propio se descartó: dejaba dos botones Guardar con efectos distintos |
-| El botón **Energía** se veía atenuado con el reproductor caído, pero el clic entraba igual a una pantalla donde nada se podía guardar | Era un `<a href>` a una página propia: el bloqueo del lado del cliente sólo intercepta los botones de modal | La grilla de energía pasó a ser un modal (`energia/_grilla.html.twig`); la cubre el mismo interceptor que al resto |
-| Cambios en **cronograma** y **energía** no se bloqueaban con el reproductor caído ni llegaban en segundos | `CronogramaCmsController` y `ProgramacionEnergeticaCmsController` no usaban ni `BloqueoOfflineTrait` ni `ComandoPublisherService` | Ambos bloquean y piden `sync_ahora`. También se sumó el bloqueo a editar/eliminar Contenido y a eliminar Pantalla, y los botones de Activar/Desactivar alertas y Editar/Eliminar contenido muestran el bloqueo en la interfaz |
-| Un reproductor roto **no se podía dar de baja** | El bloqueo por desconexión también frenaba `eliminar()`, y un equipo que no vuelve nunca se reconecta | Excepción deliberada: la baja se permite desconectado (no cambia lo que muestra ninguna pantalla y revoca la credencial MQTT). Ver `06` §6.2 |
-| Alta y edición de playlist, edición de Contenido y alta de ítems de cronograma sin token CSRF | Eran POST armados a mano, sin Symfony Form, y no pasaban por `CsrfProtegidoTrait` | Token `spui_action` en esos formularios y chequeo en los controllers. El trait además acepta el header `X-Csrf-Token` para POST con body JSON. En `modal.js`, el nivel 2 puede abrirse como sub-vista del nivel 1 y confirmar acciones desde ahí (lo usa la grilla de energía para el formulario de cada día) |
-| Los mensajes del CMS quedaban **detrás del velo** del modal, a medias y sin poder cerrarse | El contenedor de mensajes tenía `z-index` 9999, por debajo de los dos niveles de modal (10000 y 10010) | `z-index: 10030` en `style.css` |
-| En el alta de una playlist, las filas agregadas salían **sin íconos**; al editar, un ítem quitado sin guardar **no se podía volver a agregar**; reabrir "Ver ítems" en el alta **perdía la selección**; y el aviso decía "0 ítems guardados" tras agregar | `items.js` copiaba los íconos de una fila existente (no hay ninguna en una lista vacía); `items()` filtraba del catálogo lo que ya estaba en la playlist; la selección del alta vive en inputs hidden que nadie releía; `sincronizarItems()` persistía los ítems nuevos sin sumarlos a la colección en memoria | Íconos en `data-icono-*` de la raíz; el catálogo va completo; la lista confirmada se rearma desde el form al reabrir; `addItem()`. Verificado con el HTML real del servidor en un DOM simulado (jsdom) |
-| En la ventana de ítems el botón Guardar se veía **siempre**, haya o no cambios, y un contenido ya agregado **seguía apareciendo** para agregar | Bootstrap declara `.d-flex { display: flex !important }`, que le gana a la regla `[hidden] { display: none }` del navegador: todo elemento con `d-flex` y el atributo `hidden` se seguía viendo. jsdom no aplica CSS, por eso las pruebas automáticas no lo vieron | `[hidden] { display: none !important; }` al principio de `style.css` (se carga después de Bootstrap). Arregla también las filas del buscador de listas, que ocultan con el mismo atributo |
-| Una ronda de pruebas manuales se hizo con **JS y CSS viejos** sin que nada lo indicara | `public/assets/manifest.json` (build de AssetMapper compilado el 07/09, gitignoreado, compartido por todo el monorepo): mientras existe, `asset()` devuelve esos archivos aunque se esté en dev. Sólo los archivos nuevos, que no están en el manifiesto, salían actuales | No es un cambio de código: regenerar el build (Mateo usa `RebuildAssets.exe`) después de cada cambio de JS/CSS y antes de probar |
-| El daemon `spui:mqtt:subscribe` **terminaba con error casi todos los días** ("socket has reached EOF… closed by the broker", siempre al encender la PC a la mañana) y se quedaba sin telemetría, mantenimiento ni avisos de reproductor caído hasta reiniciarlo | Una sola conexión al broker: cuando la PC se suspendía el socket moría y la excepción subía hasta terminar el comando | Bucle de reconexión en `execute()` con espera creciente (5 → 60 s), sólo para `MqttClientException`; al reconectar cierra la conexión de MySQL (también muere con la suspensión) y corre el `tick()` de inmediato. Probado contra un puerto cerrado (reintenta a los 5, 10, 20 s sin terminar) |
-| Subir un video grande dejaba el modal **"colgado"** sin ninguna señal de avance | `fetch()` no informa el progreso de una subida | `modal.js::enviarFormulario()`: si el form trae un archivo, se envía con `XMLHttpRequest` y se muestra una barra con porcentaje y MB, y "Procesando en el servidor…" cuando el archivo ya llegó (la subida a S3 del servidor no se puede medir desde el navegador). Sin archivo, sigue con `fetch` |
-| Los ítems de un cronograma se editaban en una **página aparte** ("editor de cronograma"), a diferencia del resto del CMS | Diseño heredado de antes de los modales | Pasan a un modal con el esquema de la grilla de energía: `CronogramaCmsController::items()` (ruta `spui_cms_cronograma_items`, sólo XHR) dibuja el listado en el nivel 1; agregar / editar / eliminar se abren en el nivel 2 como sub-vista y cada ítem se guarda al guardarlo (decisión de Mateo: son registros con varios campos, no una lista a confirmar como las playlists). Se abre desde el botón Ítems del listado, desde Ver / Editar del contenido (`data-spui-abrir`, que reemplaza el contenido del modal) y sola al crear un cronograma (`abrir` en la respuesta de éxito, nuevo en `modal.js`). Se eliminaron `cronograma/builder.html.twig`, `cronograma/builder.js` y su CSS |
-| Dejar **vacío** prioridad (Alerta, Programación), ancho / alto / estado (Pantalla) o brillo (Energía) y guardar daba **HTTP 500**: el modal "no hacía nada" | El mismo problema de §3.2 (TypeError al mapear antes de validar) en setters que la corrección de agosto no había cubierto. Apareció en una auditoría que envía cada formulario con un campo por vez vacío | Esos setters aceptan `null` y lo ignoran (queda el valor anterior); el aviso lo da un `NotBlank` nuevo en el FormType. `orden` del ítem de cronograma pasa a `required: false` (el servidor nunca lo exigió). La auditoría ahora da, para cada campo obligatorio, "error de validación" y ninguno revienta |
-| Al rechazar el servidor el sonido de una alerta (o el archivo de un contenido), el **archivo elegido se perdía** y había que buscarlo de nuevo; un archivo de 2 GB se informaba como "2000 MB"; la ayuda listaba los formatos de imagen y de video a la vez | Un `<input type="file">` no se puede repoblar desde el HTML que redibuja el servidor; los tamaños sólo se expresaban en MB/KB | `modal.js` pasa el FileList del input viejo al nuevo y avisa con un `change` marcado (`spuiRestaurado`) para que la vista previa lo tome sin que la validación en vivo borre el error del servidor. Tamaños con KB/MB/GB y coma decimal, igual en navegador y servidor. `MediaStorageService::FORMATOS` (extensiones, texto, `accept` por tipo) alimenta la ayuda, el selector de archivos y `validacion-vivo.js`, que además avisa "obligatorio" al salir de un campo vacío y revisa todo al Guardar |
-| Errores de un **dato** (horas al revés en energía, nombre de playlist vacío, sonido con formato inválido, archivo/texto/URL faltante en Contenido) salían como **flash** un momento después de guardar, o en un recuadro arriba del formulario, sin marcar qué campo estaba mal | Cada formulario resolvía el error a su manera; en los manuales (playlist, alta de cronograma, edición de contenido) no había forma de asociar el mensaje a un input | **Regla del proyecto: error de campo debajo del campo, flash sólo para sistema/negocio.** Estilo único `.spui-campo-error` + `is-invalid` (también en los 36 errores de FormType que ya existían). Forms Symfony: `addError()` en el campo; forms manuales: mapa `errores` por `name`. **En vivo** (`validacion-vivo.js`, declarativo): `data-spui-validar-posterior` para las horas de energía y cronograma, y `data-spui-max-bytes` en los archivos — el límite real es el menor entre el de la app y los de PHP (`LimiteSubidaTrait::limiteArchivoBytes()`), y un archivo que lo excede **no se envía** (si se enviara, PHP descarta el pedido entero y el formulario volvería vacío). El límite de PHP del servidor sigue avisando por flash como resguardo. De paso: el botón del alta de cronograma decía "+ Agregar ítem" (ahora "Guardar") y dos textos de ayuda de Contenido seguían hablando de la duración "por ítem", que ya no existe |
-| En Pantallas, Contenidos, Playlists y Programación un botón bloqueado **seguía bloqueado** hasta recargar la página aunque el reproductor ya hubiera vuelto (el comentario de `bloqueo.html.twig` decía lo contrario) | Esas tablas no tenían ningún refresco: sólo Reproductores, Alertas y el Dashboard tienen zonas `[data-spui-refresh]` con intervalo | **Push por MQTT, sin polling:** `ConexionPublisherService` publica `spui/cms/conexion/{id}` en los tres puntos donde el estado cambia de verdad —heartbeat HTTP y "online" por MQTT si venía caído, y el mantenimiento que marca caídos—, siempre después de grabar. `conexion-vivo.js` escucha por WebSocket y vuelve a pedir la tabla (zona `data-spui-refresh="push"`, que no arranca el intervalo de 20 s). Lo publica el CMS y no la Pi porque el estado lo decide el CMS por el heartbeat: el LWT de la Pi no cambia nada, y escucharlo directo tenía una carrera con la escritura del heartbeat. Ver `06` §6.2 |
-| El Dashboard **dejaba de actualizarse** a los 20 s de abrirlo: ni el estado conectado/desconectado, ni el aviso MQTT, ni el botón Actualizar; sólo cambiando de pantalla (30/10/2026) | El controller responde al refresco sólo con el fragmento, sin el contenedor `#dashboard-zona`; `auto-refresh.js` lo toma de `<body>` y `copiarAtributos()` le sacaba a la zona el `data-spui-refresh` (el `<body>` no lo tiene), así que desde el primer ciclo no quedaba ninguna zona que refrescar. Además el botón se enganchaba al nodo inicial y quedaba muerto cuando el refresco lo reemplazaba | Al usar `<body>` como respuesta se le copian antes los atributos de la zona; el botón `data-spui-refresh-btn` se escucha delegado en el documento. "Requiere atención" suma un aviso por reproductores desconectados (antes decía "Todo en orden" con un equipo caído) |
-
-Verificado sin tocar datos reales (todo dentro de una transacción revertida): cada acción con y sin token CSRF y con el reproductor caído y conectado; los tres orígenes del aviso de conexión contra el broker real, con un suscriptor que usa las mismas credenciales y URL que recibe el navegador (vuelve → `conectado`; ya conectado u `offline` por LWT → nada; caído por mantenimiento → `desconectado`); y el JS de ítems y de avisos en jsdom.
-
----
-
-## 3.5. Suite de verificación y sus primeros hallazgos (octubre 2026)
-
-Desde el 10/10/2026 ningún cambio del CMS se da por terminado sin `tools/verificacion/verificar.ps1` en verde y sin revisar sus capturas (definición completa en `../CLAUDE.md`, "Definición de terminado"). La suite pide todas las rutas del panel por HTTP real, envía cada formulario con un campo vacío por vez, avisa si el build de assets está viejo y recorre el panel con un navegador real en escritorio y celular. Se verificó que detecta errores inyectados a propósito: variable de Twig inexistente, excepción de JavaScript, elemento `[hidden]` visible y asset sin recompilar.
-
-| Síntoma | Causa real | Dónde se arregló |
-|---|---|---|
-| Desmarcar todos los días de una regla de **Programación** o de un **ítem de cronograma** guardaba la regla como "todos los días" sin avisar (sólo el alta de ítem decía "Sin selección = todos los días"; Programación y la edición del ítem, no) | `$bitmask ?: 127` en los controllers | Decisión de Mateo: se exige al menos un día. `Count(min: 1)` en `ProgramacionType` y `CronogramaItemType`, error por campo en el alta manual del cronograma, y regla en vivo nueva en `validacion-vivo.js` (`data-spui-requiere-alguno`, sobre el contenedor de un grupo de casillas). Se quitaron los `?: 127` |
-| En el modal de Programación, los errores de horas, fecha y prioridad salían **angostos y centrados**, distintos del de Playlist | `.spui-hora-field { align-items: center }` achica cada hijo a su contenido | `.spui-hora-field .spui-campo-error { align-self: stretch }` |
-| En celular, el campo "Desde" con error **cortaba la fecha** ("dd/mm/yyy") | El ícono "!" de Bootstrap para inválido se sumaba al del calendario y le comía el ancho | Sin ese ícono en campos de hora y fecha (`style.css`): el borde rojo y el mensaje de abajo ya marcan el error |
-| Textos como "1 sector(es)" o "1 reproductor(es) registrado(s)" en 11 lugares del panel | Plural armado con paréntesis | Macro `templates/_macros/texto.html.twig` (`texto.plural(n, 'sector', 'sectores')`); el contador de ítems de playlist, que lo actualiza `items.js`, usa las mismas palabras por `data-singular`/`data-plural`. Los mensajes de consola y de log quedan como estaban |
-
-### Cliente Pi en la misma tanda
-
-| Síntoma | Causa real | Dónde se arregló |
-|---|---|---|
-| Una descarga cortada a mitad de camino quedaba en el caché, y el player la reproducía; lo mismo con un archivo alterado en disco (CP07) | `descargar_media()` escribía directo sobre el nombre final, y el player sólo comprobaba que el archivo existiera | `sync.py`: descarga a `.part`, verificación SHA-256 y `os.replace` atómico; `archivo_valido()` verifica el hash antes de reproducir (memorizado por tamaño y fecha); al arrancar se borran las descargas a medias. Ver `06` §5 |
-| El horario energético **no apagaba** un monitor sin HDMI-CEC, y no lo avisaba | Sin CEC se usaba `vcgencmd display_power`, que con el driver KMS de Raspberry Pi OS Bookworm (el de fábrica) se ignora sin dar error; además, que `cec-client` estuviera instalado se tomaba como "hay CEC", aunque la pantalla no respondiera | `energia.py` detecta qué permite la pantalla (si el TV **responde** a una consulta CEC, qué salida conectada ve `xrandr`) y usa, en orden, CEC → corte de señal con `xrandr` (decisión de Mateo) → `vcgencmd` (con aviso). Verifica el resultado de cada comando, y si la pantalla tiene horario energético, cualquier limitación o fallo llega al diagnóstico del CMS. Al reencender, el player recarga el contenido |
-| El brillo programado **no tenía efecto** con ninguna pantalla | Sólo se escribía `/sys/class/backlight`, que existe en el display oficial de la Pi y no en un monitor o TV. Un primer arreglo con `xrandr --brightness` **tampoco servía**: con el driver KMS de la Pi 4, xrandr termina sin error y hasta informa `Brightness: 0.30`, pero la imagen no cambia (probado en hardware real con el Philips 221V8). El cliente le creía y el log decía "Brillo al 5% por xrandr" | `spui/brillo.py` + `spui/ddc.py`, cadena automática para cualquier pantalla (decisión de Mateo): backlight → **DDC/CI** con `ddcutil`, el brillo real del monitor por HDMI, como en Windows (ahorra energía) → si la pantalla no lo soporta, VLC oscurece la imagen (filtro `adjust`; no ahorra energía y se avisa). Cada escritura se **lee de vuelta**. Con DDC/CI el % del CMS es **relativo al brillo que dejó el instalador** (referencia guardada en `/var/cache/spui/brillo.json`): **la pantalla no se consulta periódicamente** (pedido de Mateo): sólo en los momentos clave, al arrancar y cuando empieza, cambia o termina una regla o una alerta, mirando primero el aviso VCP 0x02 del monitor si lo implementa (el Philips sí). Un cambio a mano se toma ahí: antes de una regla, la regla se aplica sobre ese brillo; durante una regla, además, se compara con la pantalla en cada **sincronización exitosa** con el CMS (cada 5 min, o al instante con `sync_ahora`): si alguien lo cambió, vuelve el brillo de la regla y se avisa en el panel (decisión de Mateo: el CMS manda; se descartaron bloquear los botones del monitor por DDC/CI y un sondeo propio). Sin regla vigente o sin conexión con el CMS no se consulta la pantalla. Un 0 % se respeta. El paso del slider es 1 |
-
-Los tests del cliente (`pi-client/tests`, 42 casos de caché, energía y brillo) corren en la PC dentro de `verificar.ps1`, con el venv fijo `D:\tools\spui-python`, y en la Pi con `/opt/spui/venv/bin/python3 -m unittest discover -s tests`. El comportamiento real con hardware (reposo con `xrandr --off` confirmado por Mateo con el monitor de banco; falta el brillo por DDC/CI y que VLC vuelva a pantalla completa tras `xrandr --auto`) hay que confirmarlo en la Pi.
-
-**Corregido el 29/10/2026:** en el alta de un ítem de cronograma (y en cualquier formulario cuyo primer campo sea obligatorio), un clic directo en un día con el campo vacío se perdía: el campo pierde el foco al *apretar* el botón del mouse, el aviso "Este campo es obligatorio" aparecía en ese momento, empujaba el formulario y el clic se completaba en otro lugar. `validacion-vivo.js` ahora espera a que termine el clic para mostrar el aviso (con Tab sigue saliendo en el acto). Reproducido y verificado con Playwright en escritorio y celular: antes el día no cambiaba, ahora sí.
-
----
-
-## 3.6. Simulador de reproductores y pruebas de carga (octubre 2026)
-
-`tools/simulador/simulador.py` (Python, venv `D:	ools\spui-python`) simula N reproductores con el **mismo código HTTP de la Pi** (`pi-client/spui/sync.py`) y su propia conexión MQTT con los topics y credenciales reales, sin VLC. Escenarios: `carga` (CP11), `rafaga` (todos sincronizan a la vez) y `alerta` (CP12, activada con el mismo POST del botón Activar). `tools/simulador/sim.php` crea antes de cada corrida una estructura `[SIM]` propia (edificio, pantallas, reproductores `sim-NNN` y sus credenciales MQTT) y la borra al final aunque la corrida falle; las alertas van dirigidas sólo a esas pantallas, así que los reproductores reales no se enteran. Cada corrida deja un informe en `docs/pruebas/`.
-
-Primera tanda, 13/10/2026: **cumplen CP11 y CP12** y no hubo errores en la ráfaga. Hallazgos con causa medida: una conexión TLS nueva por cada pantalla destinataria de una alerta (~30 ms cada una; la entrega crece con la cantidad de pantallas) y la publicación a Mercure, que suma 2 s fijos a cada Activar/Desactivar. Análisis y recomendaciones en `pruebas/2026-10-13_analisis.md`.
-
-Segunda tanda, 15/10/2026, después de corregir los dos primeros hallazgos (alertas por una sola conexión MQTT, sin Mercure) y de sumar jitter al reintento sin red del cliente: el último de 100 reproductores recibe la alerta en **0,29 s** (antes 3,27 s) y Activar responde en **0,24–0,34 s** (antes 4–5 s). Informe en `pruebas/2026-10-15_1314_alerta.md`; seguimiento al pie de `pruebas/2026-10-13_analisis.md` §5.
-
-**Trampa vista al armarlo:** el CMS toma de las variables de entorno del proceso valores como `MQTT_TLS` antes que los de `.env.local.php`. Un script que las setea y después lanza PHP le cambia la configuración al CMS (pasó: hablaba sin TLS con el 8883 y no podía crear credenciales MQTT).
-
----
-
 ## 4. Convención de placeholders — no escribir IPs concretas
 
 Las direcciones IP de este sistema **no son estables**: host del CMS y reproductores toman IP por DHCP, y cambian según la red (desarrollo local, campus, producción). Documentar una IP concreta genera instrucciones que quedan mal a los pocos días.
@@ -437,7 +140,6 @@ Las direcciones IP de este sistema **no son estables**: host del CMS y reproduct
 
 **Para desacoplar la configuración de la IP del host:** el reproductor mapea el nombre `intranet` en su `/etc/hosts`, y `SPUI_API_URL` apunta a ese nombre. Cuando la IP del host cambia, se corrige una sola línea. En producción corresponde un nombre DNS real.
 
-> Los documentos históricos (`08_pendientes_vm.md`) contienen IPs concretas del momento en que se escribieron. Sirven como registro de lo que se verificó entonces, **no como valores a copiar**.
 
 ---
 
@@ -446,3 +148,25 @@ Las direcciones IP de este sistema **no son estables**: host del CMS y reproduct
 - Cuando se modifique el código, actualizar el documento con autoridad sobre ese tema (§1) **y** esta tabla de nomenclatura si cambió algún nombre.
 - Antes de escribir un paso operativo (rutas, menús de `raspi-config`, nombres de campos de formulario), **verificarlo contra el código o contra la pantalla real** — no de memoria. Los menús de herramientas externas cambian entre versiones.
 - Si un documento queda superado por otro, marcarlo en §1 como obsoleto en vez de dejar dos versiones compitiendo.
+
+---
+
+## 6. Pendientes, según el Informe
+
+Lo que falta para cerrar el Proyecto Final, con la sección del Informe que completa. Plazo: abril de 2027 (un año desde la aprobación del plan, 30/04/2026).
+
+| Pendiente | Sección | Depende de |
+|---|---|---|
+| Repetir las pruebas sobre la versión final del reproductor (`10_pruebas.md` §1.2) | §9.11 | Mateo, por log |
+| Simulador con 10, 25, 50 y 100: gráfico de latencia, recursos y ancho de banda por escenario | §9.11 (a, b) | Se puede en desarrollo; después en la VM |
+| CP02, segmentación | Tabla 7 | Segundo reproductor real |
+| CP10 con la pantalla del piloto | §9.5, Tabla 7 | Alguien mirando la pantalla |
+| Hardening de la Pi: cortafuegos, SSH con clave, actualizaciones, usuario sin `sudo` | §9.9 | Mateo, con vuelta atrás si se corta el SSH |
+| Migración a la VM con HTTPS, y CP11 y CP12 ahí (`08_pendientes_vm.md` §3) | §9.3, §9.9, §9.11 | Fecha que define Mateo en el trabajo |
+| Piloto: espacios, instalación, período de operación y disponibilidad ≥ 99 % | §8.3, §9.11 (c), Anexo C | Migración |
+| CP13, cuestionario SUS | §9.11 (d), Anexo D | Piloto y participantes |
+| Medir consumo con vatímetro; costos reales | §11.6, §12.3 | Piloto |
+| Constancia escrita de la titularidad y licencia de la fuente Museo | §11.2 | Mateo |
+| Anexos A y B, a partir de `09` y `10` | §15 | Pruebas finales |
+| Análisis de resultados, conclusiones y resumen | §4, §13 | Todo lo anterior |
+| Defensa | — | Informe entregado |

@@ -7,7 +7,7 @@
  * Por qué existe: Symfony mapea los datos al objeto ANTES de validar, y un
  * setter no-nullable revienta con TypeError → HTTP 500 → un modal que "no
  * hace nada" al guardar. Pasó en agosto y volvió con 7 campos en octubre
- * (docs/README.md §3.2 y §3.4). Ningún lint lo detecta.
+ * (docs/archivo/auditorias.md §3.2 y §3.4). Ningún lint lo detecta.
  *
  * También avisa (sin fallar) de los campos que el HTML marca `required` pero
  * el servidor acepta vacíos: el navegador los exige, el servidor no.

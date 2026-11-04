@@ -9,7 +9,7 @@ Guía operativa para dejar una Raspberry Pi funcionando como **reproductor** SPU
 - `08_pendientes_vm.md` — estado real del servidor (Apache, Mosquitto, firewall) y qué falta abrirle al reproductor
 - `07_manual_uso_cms.md` — cómo cargar los datos en el CMS
 
-> **Nota sobre `08_pendientes_vm.md`:** ese documento planteaba probar con una VM x86 porque no había hardware. **Ahora hay una Raspberry Pi real**, así que el camino de VirtualBox/Raspberry Pi Desktop x86 ya no aplica. Lo que **sí sigue vigente** de ese doc: la configuración del servidor (§3), el problema de la IP del host (§4), los pasos 4, 5 y 7, y las tablas de verificación (§6). Con hardware real, además, sí funcionan la temperatura del SoC y el HDMI, que en VM no se podían probar.
+> **Nota:** `08_pendientes_vm.md` cubre el servidor, en desarrollo (§4) y en la VM de la intranet (§1 a §3).
 
 ---
 
@@ -44,7 +44,7 @@ Salida típica: `eth0: dc:a6:32:...`, `wlan0: dc:a6:32:...`, `lo: 00:00:00:00:00
 
 | Ítem | Especificación | Notas |
 |---|---|---|
-| Placa | Raspberry Pi 4 Model B — 4 GB RAM | Definido en `00_investigacion_tecnologias.md` |
+| Placa | Raspberry Pi 4 Model B — 4 GB RAM | La usada en el banco de pruebas |
 | microSD | 16 GB mínimo, clase 10 / A1 o A2 | 32 GB recomendado por la caché de media |
 | Fuente | 5V / 3A USB-C | Fuentes flojas causan reinicios y corrupción de SD |
 | Cable video | Micro-HDMI a HDMI | La Pi 4 tiene dos micro-HDMI; usar **HDMI0** (el más cercano al USB-C). **El conector micro-HDMI es físicamente frágil** — un cable/conversor que queda flojo o se mueve puede generar desconexiones intermitentes de milisegundos que el driver de video no siempre recupera solo (pantalla se queda en negro/sin señal hasta reiniciar) — ver §14.2. Asegurar el conector (cinta, soporte, sin tensión del cable) y evitar mover el equipo con todo conectado |
@@ -139,7 +139,7 @@ Guardá y recién ahí escribí la imagen.
 
    **Primera conexión:** SSH muestra el fingerprint del host y pregunta `Are you sure you want to continue connecting (yes/no/[fingerprint])?`. Hay que escribir **`yes` completo** (no `y`, no Enter vacío) — cualquier otra cosa corta con `Host key verification failed`.
 
-> `ssh <usuario>@spui-pi-01.local` puede fallar: depende de mDNS, que Windows no resuelve sin Bonjour y que muchas redes WiFi institucionales bloquean. Conectar por IP es lo confiable. Ver `tips_conectividad_acceso.md`.
+> `ssh <usuario>@spui-pi-01.local` puede fallar: depende de mDNS, que Windows no resuelve sin Bonjour y que muchas redes WiFi institucionales bloquean. Conectar por IP es lo confiable. Ver `archivo/tips_conectividad_acceso.md` (copia local).
 
 5. Actualizá el sistema:
    ```bash
@@ -168,7 +168,7 @@ solo, no está persistiendo.
 
 ### 6.2. Sobre la IP de la Pi
 
-La Pi toma IP por DHCP. Para que no cambie, las opciones están en `tips_conectividad_acceso.md` (Tips 4 y 5): reserva DHCP por MAC si tenés acceso al router (lo correcto), o IP estática desde la Pi con `nmcli` si no lo tenés.
+La Pi toma IP por DHCP. Para que no cambie: reserva DHCP por MAC si tenés acceso al router (lo correcto), o IP estática desde la Pi con `nmcli` si no lo tenés.
 
 Anotá la IP que quede — **la vas a necesitar en el paso 7** para abrirle el paso en el firewall del servidor.
 
@@ -178,7 +178,7 @@ Anotá la IP que quede — **la vas a necesitar en el paso 7** para abrirle el p
 
 **Esto se hace en la PC donde corre WAMP, no en la Pi.** Sin esto, la Pi no puede llegar al CMS ni al broker MQTT.
 
-Contexto: `08_pendientes_vm.md` §3 dejó reglas para la subred `192.168.56.0/24` (host-only de VirtualBox), que **no aplican** a una Pi física en la red local. Hay que agregar la IP real de la Pi.
+Hay que agregar la IP real de la Pi en Apache y en el firewall.
 
 **a) Averiguá la IP del host (donde corre WAMP)** — en Windows:
 ```powershell
@@ -186,7 +186,6 @@ ipconfig
 ```
 Anotá la IPv4 de la interfaz activa — ese es tu `<ip_del_host>` (tabla del paso 0).
 
-> `08_pendientes_vm.md` menciona una IP concreta como ejemplo de aquel momento. **No la uses**: era la de otra red y ya cambió. Ese documento mismo advierte que la IP del host cambia por DHCP.
 
 **b) Apache** — editar `c:\wamp64\bin\apache\apache2.4.59\conf\extra\httpd-vhosts.conf`, en el bloque `<Directory "c:/wamp64/www/intranet/public/">`:
 ```apache
@@ -633,7 +632,7 @@ sudo cat /etc/spui/spui.env
 
 ## 12. Levantar el consumidor de telemetría (en el servidor)
 
-**En la PC del CMS.** Si ya está instalado como servicio (`config/servicios/instalar-servicio-telemetria.ps1`, ver `08_pendientes_vm.md` paso 7), no hay nada que hacer. Si no, para probar alcanza con una consola aparte:
+**En la PC del CMS.** Si ya está instalado como servicio (`config/servicios/instalar-servicio-telemetria.ps1`, ver `08_pendientes_vm.md` §4), no hay nada que hacer. Si no, para probar alcanza con una consola aparte:
 
 ```
 cd c:\wamp64\www\intranet
@@ -663,7 +662,7 @@ sudo systemctl is-enabled spui  # debe responder: enabled
 
 ### Checklist de verificación end-to-end
 
-Adaptado de `08_pendientes_vm.md` §6 — con hardware real, ahora **sí** aplican las pruebas de temperatura y HDMI:
+Adaptado de `08_pendientes_vm.md` §5 — con hardware real, ahora **sí** aplican las pruebas de temperatura y HDMI:
 
 | # | Qué probar | Qué tiene que pasar |
 |---|---|---|

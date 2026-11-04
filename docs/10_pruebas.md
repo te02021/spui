@@ -32,10 +32,29 @@ Todo lo que se podía probar con una Pi, el monitor Philips y la PC ya está hec
 |---|---|---|---|
 | **CP02** — segmentación | Un **segundo reproductor real** (otra Pi con su pantalla), dado de alta en otra pantalla, y si se puede, en otra ubicación o edificio | Tres reglas de Programación con playlists distintas: una por pantalla, una por ubicación y una por edificio, más una global de menor prioridad. Cada Pi tiene que mostrar sólo lo suyo; se mira en el journal de cada una (`Sync OK … programacion=`) y en la pantalla. Detalle en §3, CP02 | Por cada regla: qué reproductor la recibió y cuál no. 1 vuelta por nivel de alcance |
 | **CP10 con Smart TV** — apagado por CEC y oscurecido por software | Un **TV con HDMI-CEC** (Anynet+, Bravia Sync, SimpLink…) activado en su menú | `cec-client -l` en la Pi tiene que listarlo. Misma regla energética que con el Philips (5 min, brillo 30 %): el TV tiene que apagarse en standby por CEC (no por corte de señal) y la imagen verse oscurecida por VLC, porque un TV no expone DDC/CI | Si apagó por CEC o cayó a corte de señal (lo dice el log), si volvió a la hora y cómo se vio el brillo |
-| **CP11 y CP12 en el servidor del piloto** | La **VM definida** (C5). Probablemente la de la intranet: ajustar antes `08_pendientes_vm.md` | `tools/simulador/simulador.py carga` y `alerta` contra la URL y el broker del servidor, con las mismas cantidades que el 13/10 (50 sostenidos, 100 en ráfaga) | El informe que deja el simulador en `pruebas/`, comparado con el de desarrollo |
+| **CP11 y CP12 en el servidor del piloto** | La **VM de la intranet**, cuando se defina la fecha (`08_pendientes_vm.md` §3) | `tools/simulador/simulador.py carga` y `alerta` contra la URL y el broker del servidor, con las mismas cantidades que el 13/10 (50 sostenidos, 100 en ráfaga) | El informe que deja el simulador en `pruebas/`, comparado con el de desarrollo |
 | **CP13** — usabilidad SUS | **Participantes**: operadores reales o personas que podrían serlo (5 alcanza para detectar los problemas principales, 8–12 para un puntaje representativo) | Tarea guiada del §3, CP13, sin ayuda, y después el cuestionario SUS de 10 ítems | Puntaje SUS de cada uno, promedio y los comentarios o trabas que aparecieron |
 
-Lo que depende del servidor o de una decisión de Mateo y no es una prueba (HTTPS, CORS cerrado, piloto C6) está en `ESTADO_DESARROLLO.md` §9 (servidor), §10 (piloto) y §15 (C5, C6).
+Lo que no es una prueba está en `README.md` §6, ordenado según el Informe.
+
+### 1.2. Repetición sobre la versión final, por log
+
+Las corridas de §4 son de octubre. En noviembre cambió cómo dibuja el reproductor (`06`, ventana propia), así que hay que repetirlas antes de cerrar el Informe. **Se hace sin mirar la pantalla:** alcanza con SSH por Tailscale y el espejo apagado, que satura la Pi. Cada corrida se anota como "verificado por log" (§2.1).
+
+| Caso | Cómo | Qué se ve en el log | Qué queda sin ver |
+|---|---|---|---|
+| CP01 | Editar y Guardar en el CMS, 10 veces, con 35 s o más entre una y otra | `Sync OK` y `Reproduciendo` del contenido | El texto en la pantalla |
+| CP03 | Los 6 pasos de §3, 2 vueltas | `programacion=` y `Reproduciendo` | — |
+| CP04 | Activar y Desactivar, 10 veces | `Alerta de emergencia recibida`, `ALERTA:` y el intento de sonido | Si la imagen se ve y si suena |
+| CP05 y CP06 | `bash /opt/spui/pruebas/cp05_06.sh`, 3 veces | La tabla y el veredicto del script | — |
+| CP07 | `bash /opt/spui/pruebas/cp07.sh alterado` ×3 y `descarga` ×2 | El veredicto del script | — |
+| CP08 | `bash /opt/spui/pruebas/cp08.sh colgado` ×3 y `red` ×3 | Las horas del script | — |
+| CP09 | `sudo /opt/spui/venv/bin/python3 /opt/spui/pruebas/cp09.py` | Los vectores y el veredicto | — |
+| R1 | Pasos de "Complementaria R1" | `Usando caché de sync` y `Hora confirmada` | La fecha en la cabecera del cronograma |
+
+**CP10 no se repite por log:** el log dice qué se decidió, pero el caso prueba que la pantalla se apague y vuelva. Queda para cuando alguien pueda mirarla.
+
+**Por Tailscale** las latencias de CP01 y CP04 incluyen ese túnel. Se anota la red en cada planilla: si cumplen así, cumplen con margen, y en el piloto se miden en la red real.
 
 ---
 

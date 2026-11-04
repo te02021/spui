@@ -6,7 +6,7 @@
 //   - errores de JavaScript (consola o excepción no atrapada);
 //   - pedidos del propio sitio que responden 4xx/5xx;
 //   - elementos con el atributo `hidden` que igual se ven (el caso real de
-//     Bootstrap `.d-flex` pisando `[hidden]`, docs/README.md §3.4);
+//     Bootstrap `.d-flex` pisando `[hidden]`, docs/archivo/auditorias.md §3.4);
 //   - imágenes rotas; textos "undefined", "NaN", "[object Object]" o mensajes
 //     de validación en inglés;
 //   - en "Nuevo" → Guardar vacío: que aparezcan los errores debajo de los

@@ -36,6 +36,10 @@ docs/Evaluacion Final Plan PF IC - Rivero Mateo.pdf
 docs/*.docx
 docs/logos/
 
+# Lo que el Informe ya cubre: copia local. Sólo se versiona el historial de auditorías, que cita el código.
+docs/archivo/*
+!docs/archivo/auditorias.md
+
 # Bytecode de Python (el simulador y los tests lo generan al correr)
 __pycache__/
 

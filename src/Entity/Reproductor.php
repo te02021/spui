@@ -147,7 +147,7 @@ class Reproductor
     public function registrarSync(DateTimeImmutable $cuando): static { $this->ultimoSync = $cuando; return $this; }
 
     public function getIntervaloSyncMin(): int { return $this->intervaloSyncMin; }
-    /** Acepta null y lo ignora: el form mapea antes de validar (ver docs/README.md §3.2). */
+    /** Acepta null y lo ignora: el form mapea antes de validar (ver docs/archivo/auditorias.md §3.2). */
     public function setIntervaloSyncMin(?int $minutos): static
     {
         if ($minutos !== null) {

@@ -3,7 +3,7 @@
 **SPUI — Sistema de Pantallas Informativas Universitarias (UNRaf)**
 Estado del documento: refleja el código tal como está, verificado contra rutas, entidades y base de datos.
 
-Este documento explica **qué hace el sistema y cómo funciona por dentro**. Para el uso concreto del panel, ver `07_manual_uso_cms.md`. Para lo que falta hacer con la Raspberry Pi, ver `08_pendientes_vm.md`.
+Este documento explica **qué hace el sistema y cómo funciona por dentro**. Para el uso concreto del panel, ver `07_manual_uso_cms.md`. Para el servidor, ver `08_pendientes_vm.md`.
 
 ---
 
@@ -317,7 +317,7 @@ No hay API de administración: el CRUD JSON que existía bajo `/api/spui/*` dupl
 
 ## 8. Estado de los casos de uso
 
-Contra los 12 casos de uso definidos en `02_casos_de_uso.md`:
+Contra los 12 casos de uso del diseño (`archivo/02_casos_de_uso.md`, copia local):
 
 | CU | Estado |
 |---|---|
@@ -330,11 +330,11 @@ Contra los 12 casos de uso definidos en `02_casos_de_uso.md`:
 | CU-07 Reproducir contenido | ✅ Completo. Incluye modo simulación para probar sin VLC |
 | CU-08 Telemetría | ✅ Completo. Umbral configurable (80 °C por defecto) y aviso visible en el dashboard |
 | CU-09 Modo offline | ✅ Completo |
-| CU-10 Códigos QR | ✅ Completo. El QR codifica el redirect del CMS, por eso se cuentan los escaneos. Se administra desde Contenidos (tipo `qr`), sin sección propia — ver `README.md` §3.3 |
+| CU-10 Códigos QR | ✅ Completo. El QR codifica el redirect del CMS, por eso se cuentan los escaneos. Se administra desde Contenidos (tipo `qr`), sin sección propia — ver `docs/archivo/auditorias.md` §3.3 |
 | CU-11 Programación energética | ✅ Completo (CMS + API + módulo en el cliente Pi) |
 | CU-12 Monitorear reproductores | ✅ Completo, con histórico y gráficos |
 
-**Probado con hardware real** (Raspberry Pi 4, agosto 2026): los hallazgos que salieron de esas pruebas —render de alertas, audio por HDMI, hotplug— están en `README.md` §3.2, y la instalación en `09_instalacion_raspberry.md`.
+**Probado con hardware real** (Raspberry Pi 4, agosto 2026): los hallazgos que salieron de esas pruebas —render de alertas, audio por HDMI, hotplug— están en `docs/archivo/auditorias.md` §3.2, y la instalación en `09_instalacion_raspberry.md`.
 
 ---
 
