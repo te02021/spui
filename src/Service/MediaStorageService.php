@@ -6,6 +6,7 @@ namespace SPUI\Service;
 
 use Psr\Log\LoggerInterface;
 use Shared\Service\S3StorageService;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\File\Exception\FileException;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
@@ -69,6 +70,7 @@ final class MediaStorageService
 
     /** Tamaño máximo por archivo (bytes). Los videos institucionales entran holgados. */
     public const TAMANIO_MAXIMO = 200 * 1024 * 1024;   // 200 MB
+    private const TAMANIO_PARTE = 64 * 1024;
 
     /**
      * Formatos admitidos por tipo de contenido, tal como los ve el navegador:
@@ -249,6 +251,87 @@ final class MediaStorageService
         return $contenido === false ? null : $contenido;
     }
 
+    /**
+     * Abre un archivo para leerlo de a partes, sin cargarlo en memoria: un video
+     * puede pesar más que el memory_limit de PHP (04/11/2026, en la VM son 128 MB
+     * y se admiten hasta 200 MB). Devuelve el recurso y su tamaño, si se conoce.
+     *
+     * @return array{recurso: resource, tamanio: ?int}|null
+     */
+    public function abrirLectura(string $rutaRelativa): ?array
+    {
+        $clave = $this->claveDesdeRuta($rutaRelativa);
+        if ($clave === null) {
+            return null;
+        }
+
+        if (!$this->usaS3()) {
+            $ruta = $this->uploadDir . '/' . $clave;
+            $recurso = is_file($ruta) && is_readable($ruta) ? @fopen($ruta, 'rb') : false;
+            return $recurso === false ? null : ['recurso' => $recurso, 'tamanio' => (int) filesize($ruta)];
+        }
+
+        try {
+            $url = $this->s3->getPresignedUrl(self::S3_PREFIX . $clave, 60);
+            $recurso = @fopen($url, 'rb', false, stream_context_create(['http' => ['timeout' => 30]]));
+        } catch (\Throwable $e) {
+            $this->logger->warning('SPUI: no se pudo leer de S3: {msg}', ['msg' => $e->getMessage(), 'archivo' => $clave]);
+            return null;
+        }
+        if ($recurso === false) {
+            $this->logger->warning('SPUI: no se pudo abrir el archivo en S3.', ['archivo' => $clave]);
+            return null;
+        }
+
+        $tamanio = null;
+        foreach (stream_get_meta_data($recurso)['wrapper_data'] ?? [] as $cabecera) {
+            if (is_string($cabecera) && preg_match('/^Content-Length:\s*(\d+)/i', $cabecera, $m)) {
+                $tamanio = (int) $m[1];
+            }
+        }
+
+        return ['recurso' => $recurso, 'tamanio' => $tamanio];
+    }
+
+    /**
+     * Respuesta que entrega un archivo de a partes. Si S3 se corta a mitad de
+     * camino, la Pi lo nota igual: el tamaño no da y verifica el SHA-256 (CP07).
+     * Devuelve null si el archivo no se pudo abrir.
+     */
+    public function respuestaEnPartes(string $rutaRelativa): ?StreamedResponse
+    {
+        $archivo = $this->abrirLectura($rutaRelativa);
+        if ($archivo === null) {
+            return null;
+        }
+
+        $recurso = $archivo['recurso'];
+        $respuesta = new StreamedResponse(static function () use ($recurso): void {
+            set_time_limit(0);   // una Pi por Wi-Fi puede tardar en bajar un video
+            try {
+                while (!feof($recurso) && !connection_aborted()) {
+                    $parte = fread($recurso, self::TAMANIO_PARTE);
+                    if ($parte === false) {
+                        break;
+                    }
+                    echo $parte;
+                    if (ob_get_level() > 0) {
+                        ob_flush();
+                    }
+                    flush();
+                }
+            } finally {
+                fclose($recurso);
+            }
+        });
+        $respuesta->headers->set('Content-Type', $this->tipoMimePorExtension($rutaRelativa));
+        if ($archivo['tamanio'] !== null) {
+            $respuesta->headers->set('Content-Length', (string) $archivo['tamanio']);
+        }
+
+        return $respuesta;
+    }
+
     /** Ruta absoluta en disco, o null si el backend no es local o la ruta es inválida. */
     public function rutaLocal(string $rutaRelativa): ?string
     {
@@ -334,8 +417,15 @@ final class MediaStorageService
             return is_file($ruta) ? hash_file('sha256', $ruta) : null;
         }
 
-        $contenido = $this->leer($rutaRelativa);
-        return $contenido === null ? null : hash('sha256', $contenido);
+        $archivo = $this->abrirLectura($rutaRelativa);
+        if ($archivo === null) {
+            return null;
+        }
+        $contexto = hash_init('sha256');
+        hash_update_stream($contexto, $archivo['recurso']);
+        fclose($archivo['recurso']);
+
+        return hash_final($contexto);
     }
 
     /**

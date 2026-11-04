@@ -8,15 +8,18 @@ La instalación de la Raspberry Pi está en `09_instalacion_raspberry.md`; la ca
 
 ## 1. La VM de la intranet frente a lo que pide SPUI
 
-SPUI va a la VM donde ya corren las apps de la intranet. **La fecha todavía no está definida:** esta sección compara, no instala nada. Relevado el 04/11/2026 por línea de comando (`php` de consola; lo que usa Apache se confirma en §2).
+SPUI va a la VM donde ya corren las apps de la intranet. **La fecha todavía no está definida:** esta sección compara, no instala nada. Relevado el 04/11/2026 por línea de comando. Es Debian 12, y Apache atiende PHP por **PHP-FPM**: los valores de abajo son los de `/etc/php/8.4/fpm/`, no los de consola.
 
 | Requisito | En la VM | Estado |
 |---|---|---|
 | PHP 8.2 o superior (Symfony 7.4) | 8.4.27 | ✅ |
 | `pdo_mysql`, `gd`, `curl`, `fileinfo`, `sockets`, `zip` | Están | ✅ |
-| **`intl`** | No aparece | ❌ **Rompe la vista previa del TV:** `PantallaTvService::fechaLegible()` usa `IntlDateFormatter('es_AR', …)`, y sin la extensión el polyfill de Symfony sólo acepta `en` y lanza una excepción |
-| `mbstring` | No aparece | 🟡 El polyfill de Symfony la reemplaza; conviene instalarla |
-| Subida de archivos: hasta 200 MB (`MediaStorageService::TAMANIO_MAXIMO`) | `upload_max_filesize` 20M, `post_max_size` 8M | ❌ El CMS toma el menor: **8 MB como máximo por archivo**. Un video no entra. Además, `post_max_size` tiene que ser mayor que `upload_max_filesize` |
+| **`intl`** | No está | ❌ **Rompe la vista previa del TV:** `PantallaTvService::fechaLegible()` usa `IntlDateFormatter('es_AR', …)`, y sin la extensión el polyfill de Symfony sólo acepta `en` y lanza una excepción. **Decisión de Mateo (04/11/2026): el código sigue usando `intl`; se instala en la VM** |
+| `mbstring` | No está | 🟡 El polyfill de Symfony la reemplaza; conviene instalarla |
+| Subida de archivos: hasta 200 MB (`MediaStorageService::TAMANIO_MAXIMO`) | `upload_max_filesize` 20M, `post_max_size` 20M | ❌ El CMS toma el menor: **menos de 20 MB por archivo**. Un video institucional no entra. `post_max_size` tiene que ser mayor que `upload_max_filesize` |
+| Memoria por pedido | `memory_limit` 128M | 🟡 Los videos ya se entregan de a partes, sin cargarlos en memoria (04/11/2026). Queda `ImagenNormalizerService`, que necesita unos 5 bytes por píxel: una foto de 50 megapíxeles no entra. Conviene subir el límite a 256M |
+| CPU y memoria | 2 núcleos; 3,8 GB, 2,0 GB disponibles y swap en uso | 🟡 Compartidos con las otras apps. Las pruebas de carga se midieron en una PC de 8 núcleos y 15,7 GB: **no se pueden trasladar**, hay que repetirlas acá |
+| Disco | 61 GB, 5,4 GB libres (91 %) | 🟡 Los medios van a S3, así que SPUI ocupa poco, pero el margen es chico para toda la VM |
 | Zona horaria | `date.timezone` UTC | ✅ La compensa `TimezoneSubscriber` |
 | MySQL | 8.0.21, la misma versión que declara `doctrine.yaml` | ✅ Falta crear el schema `spui` |
 | Configuración de MySQL | `World-writable config file … is ignored` en `conf.d/mysql.cnf` y `mysql.conf.d/mysqld.cnf` | ⚠️ **No es de SPUI y afecta a toda la intranet:** MySQL ignora esos dos archivos porque cualquier usuario puede escribirlos. Corregir los permisos (644) hace que empiecen a aplicarse en el próximo reinicio, así que hay que revisarlos antes |
@@ -26,21 +29,20 @@ SPUI va a la VM donde ya corren las apps de la intranet. **La fecha todavía no 
 
 ## 2. Lo que falta relevar
 
-La primera línea del relevamiento (sistema, CPU, memoria y disco) no llegó, y los valores de PHP de arriba son los de consola: Apache puede tener otros. Son sólo consultas:
+**Descargas:** cada descarga ocupa un proceso de PHP mientras dura, y el tráfico pasa por la VM. Con pocos procesos, un video nuevo que muchas pantallas bajen a la vez puede demorar al resto de las apps: por eso importa `pm.max_children`. Si hiciera falta, la mejora es que la Pi baje directo de S3, y eso exige cambiar el cliente y el cortafuegos del §9.9 del Informe.
+
+Los módulos de Apache no se pudieron ver: `apache2ctl -M` no mostró ninguno, ni siquiera `ssl`, aunque el 443 escucha. Seguramente hace falta `sudo`. Son sólo consultas:
 
 ```bash
-head -3 /etc/os-release; nproc; free -h; df -h /
-ls /etc/php/8.4/
-grep -E '^(post_max_size|upload_max_filesize|memory_limit)' /etc/php/8.4/apache2/php.ini /etc/php/8.4/fpm/php.ini 2>/dev/null
-ls /etc/php/8.4/apache2/conf.d /etc/php/8.4/fpm/conf.d 2>/dev/null | grep -E 'intl|mbstring'
-apache2ctl -M 2>/dev/null | grep -E 'proxy_wstunnel|proxy_http|proxy_module|ssl|rewrite'
+sudo apache2ctl -M 2>/dev/null | grep -E 'proxy_wstunnel|proxy_http|proxy_fcgi|proxy_module|ssl|rewrite'
+grep -E '^pm(\.max_children)? ' /etc/php/8.4/fpm/pool.d/www.conf
 ```
 
 También hace falta saber si la VM tiene salida hacia el bucket S3 y si las Pi del piloto llegan al 443 y al 8883.
 
 ## 3. Pasos para la migración, cuando se defina la fecha
 
-1. **PHP:** instalar `intl` y `mbstring`; subir `upload_max_filesize` a 200M y `post_max_size` por encima de eso, en el `php.ini` que usa Apache. Afecta a todas las apps de la VM: acordarlo antes.
+1. **PHP:** `sudo apt install php8.4-intl php8.4-mbstring`; subir `upload_max_filesize` a 200M y `post_max_size` por encima de eso en `/etc/php/8.4/fpm/php.ini`; reiniciar con `sudo systemctl restart php8.4-fpm`. Afecta a todas las apps de la VM: acordarlo antes.
 2. **Base:** crear el schema `spui` y correr `php bin/console doctrine:migrations:migrate --id=spui`.
 3. **Mosquitto:** instalarlo y adaptar `config/mosquitto/mosquitto.conf`, que hoy tiene rutas de Windows (certificados y plugin). Generar certificados con el nombre del servidor.
 4. **Puertos:** 1883 sólo en `127.0.0.1`; 8883 abierto únicamente a las Pi; 9001 sólo en `127.0.0.1`, sin abrirlo al firewall. Por HTTPS, el navegador entra con `wss://` por el puerto del sitio (ruta `/spui-mqtt`, `MqttSecurityService::RUTA_WEBSOCKET`), así que Apache necesita `proxy_wstunnel` y una regla de esa ruta hacia `ws://127.0.0.1:9001`.

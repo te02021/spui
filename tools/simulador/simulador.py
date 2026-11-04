@@ -58,6 +58,7 @@ sys.path.insert(0, str(SPUI / 'pi-client'))
 # configuración (pasó: con MQTT_TLS=false el CMS hablaba sin TLS con el 8883
 # y no podía dar de alta las credenciales).
 
+import config as config_cliente  # noqa: E402  (pi-client/config.py)
 from spui.mqtt_listener import nuevo_cliente_mqtt  # noqa: E402
 from spui.sync import SyncClient  # noqa: E402
 
@@ -294,7 +295,11 @@ def conectar_todos(reps, timeout=60):
     limite = time.time() + timeout
     for r in reps:
         r.conectado_mqtt.wait(max(0.1, limite - time.time()))
-    return sum(1 for r in reps if r.conectado_mqtt.is_set())
+    conectados = sum(1 for r in reps if r.conectado_mqtt.is_set())
+    if conectados == 0:
+        # Sin esto se gastaba la corrida entera midiendo nada.
+        raise RuntimeError('Ningún reproductor simulado conectó al broker: se corta la corrida.')
+    return conectados
 
 
 def escenario_carga(args, reps, medidor):
@@ -460,6 +465,7 @@ def escribir_informe(escenario, args, n, preparacion, resultado, http, servidor,
         err = sum(f['errores'] for f in http)
         err_pct = 100 * err / total if total else 0
         p95_peor = max((f['p95_ms'] for f in http), default=None)
+        veredictos.append(('Todos conectados al broker', f'{resultado["mqtt_conectados"]} de {n}', resultado['mqtt_conectados'] == n))
         veredictos.append(('CP11 — tasa de error < 1 %', f'{_f(err_pct, 2)} %', err_pct < UMBRAL_CP11_ERROR_PCT))
         veredictos.append(('CP11 — API p95 < 500 ms (peor endpoint)', f'{_f(p95_peor)} ms', p95_peor is not None and p95_peor < UMBRAL_CP11_P95_MS))
     if escenario == 'alerta':
@@ -485,7 +491,7 @@ def escribir_informe(escenario, args, n, preparacion, resultado, http, servidor,
         L.append(f'- **Rondas:** {args.repeticiones}, todos los reproductores piden sync en el mismo instante; 35 s entre rondas (límite de syncs por minuto por reproductor).')
     else:
         L.append(f'- **Rondas:** {args.repeticiones}. La alerta se activa con el mismo POST del botón Activar del CMS (sesión, CSRF, chequeo de conectados), dirigida sólo a las pantallas [SIM]; timeout {args.timeout_alerta} s por ronda.')
-    L += [f'- **CMS:** `{args.api}` · broker `{args.mqtt_host}:{args.mqtt_port}` (sin TLS) · commit `{commit}`.',
+    L += [f'- **CMS:** `{args.api}` · broker `{args.mqtt_host}:{args.mqtt_port}` ({"TLS" if args.mqtt_port != 1883 else "sin TLS"}) · commit `{commit}`.',
           f'- **Equipo:** {platform.node()}, {platform.system()} {platform.release()}, {os.cpu_count()} núcleos'
           + (f', {psutil.virtual_memory().total / 1073741824:.1f} GB de RAM' if psutil else '') + '. El simulador corre en el mismo equipo que el servidor, así que compite con él por CPU.',
           f'- **Inicio / fin:** {inicio:%H:%M:%S} – {fin:%H:%M:%S} ({_f((fin - inicio).total_seconds() / 60, 1)} min).', '']
@@ -580,7 +586,11 @@ def correr(escenario, args):
     base = escribir_informe(escenario, args, n, preparacion, resultado, resumir_http(medidor_global.pedidos),
                             resumir_servidor(servidor.muestras), integridad, inicio, fin)
     print(f'Informe: {base.with_suffix(".md")}')
-    return base
+    datos = json.loads(base.with_suffix('.json').read_text(encoding='utf-8'))
+    no_cumplen = [v['criterio'] for v in datos['veredictos'] if not v['cumple']]
+    if no_cumplen:
+        print('NO CUMPLE: ' + '; '.join(no_cumplen), flush=True)
+    return len(no_cumplen)
 
 
 def main():
@@ -592,16 +602,26 @@ def main():
     ap.add_argument('-r', '--repeticiones', type=int, default=None, help='rondas de ráfaga (5) o de alerta (10)')
     ap.add_argument('--timeout-alerta', type=float, default=30)
     ap.add_argument('--api', default='http://intranet/api/spui')
-    ap.add_argument('--mqtt-host', default='127.0.0.1')
-    ap.add_argument('--mqtt-port', type=int, default=1883)
+    # El mismo camino que una Pi: TLS por el 8883, con verificación de nombre.
+    # spui-broker.unraf.local tiene que resolver en esta PC (hosts) a 127.0.0.1.
+    ap.add_argument('--mqtt-host', default='spui-broker.unraf.local')
+    ap.add_argument('--mqtt-port', type=int, default=8883)
     ap.add_argument('--playlist', type=int, help='id de la playlist que muestran las pantallas [SIM] (por defecto, la de una pantalla real)')
     ap.add_argument('--conservar', action='store_true', help='no borrar la estructura [SIM] al terminar')
     args = ap.parse_args()
+    # Se ajusta el módulo y no el entorno: sim.php heredaría las variables (ver arriba).
+    # Sin esto el cliente intentaba TLS contra el 1883 y nadie conectaba (04/11/2026).
+    config_cliente.MQTT_TLS = args.mqtt_port != 1883
+    config_cliente.MQTT_CA_CERT = str(SPUI / 'config' / 'mosquitto' / 'certs' / 'ca.crt') if config_cliente.MQTT_TLS else ''
+    fallas = 0
     for esc in (ESCENARIOS if args.escenario == 'todo' else [args.escenario]):
         a = argparse.Namespace(**vars(args))
         if a.repeticiones is None:
             a.repeticiones = 10 if esc == 'alerta' else 5
-        correr(esc, a)
+        fallas += correr(esc, a)
+    # Una corrida que no cumple no puede salir con 0: el 04/11/2026 una serie
+    # entera sin ninguna conexión al broker se veía como si hubiera andado.
+    sys.exit(1 if fallas else 0)
 
 
 if __name__ == '__main__':

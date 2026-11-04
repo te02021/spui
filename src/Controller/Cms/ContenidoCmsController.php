@@ -730,14 +730,15 @@ class ContenidoCmsController extends AbstractController
             throw $this->createNotFoundException();
         }
 
-        $binario = $this->media->leer($contenido->getRutaArchivo());
-        if ($binario === null) {
+        // De a partes, como MediaController: acá también puede ser un video.
+        $response = $this->media->respuestaEnPartes($contenido->getRutaArchivo());
+        if ($response === null) {
             throw $this->createNotFoundException();
         }
 
-        $response = new Response($binario, Response::HTTP_OK);
-        $response->headers->set('Content-Type', $this->media->tipoMimePorExtension($contenido->getRutaArchivo()));
-        $response->setEtag($contenido->getHashArchivo() ?? hash('sha256', $binario));
+        if ($contenido->getHashArchivo() !== null) {
+            $response->setEtag($contenido->getHashArchivo());
+        }
         $response->setPublic();
 
         return $response;

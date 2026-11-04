@@ -303,7 +303,7 @@ Toda acción del CMS que cambia lo que muestra un reproductor se **rechaza si es
 | Panel CMS (`/spui/*`) | Sesión del monolito (Google OAuth) + rol `ROLE_SPUI` o `ROLE_SUPERADMIN` |
 | Acciones de un solo botón del CMS (activar, eliminar, toggle…) | Token CSRF propio (`CsrfProtegidoTrait`, intent `spui_action`) además de la sesión. Los formularios de Symfony traen el suyo |
 | Endpoints de la Pi (`/sync`, `/heartbeat`, `/telemetria`) | Header `X-Api-Key`, comparada contra un hash SHA-256 |
-| Archivos de medios (`/api/spui/media/*`) | También `X-Api-Key`, con protección contra path traversal |
+| Archivos de medios (`/api/spui/media/*`) | También `X-Api-Key`, con protección contra path traversal. Se entregan de a partes, sin cargarlos en memoria, y la Pi verifica el SHA-256 de lo que bajó |
 | Redirect y PNG de QR | Público por diseño: los abre el celular de un visitante |
 | Broker MQTT | Sin acceso anónimo (`allow_anonymous false`), usuarios y ACL con el plugin Dynamic Security, TLS en 8883. **Permisos por equipo** (29/10/2026): cada reproductor tiene su propio rol, `spui-repro-{id}-rol`, y sólo puede publicar su telemetría (normal y en vivo) y su estado, y suscribirse a la alerta global y a sus propias alertas y comandos. No puede publicar a nombre de otro, leer los comandos de otro ni emitir alertas. El CMS arma el rol al crear el reproductor o regenerar su clave, y lo asegura en cada sync (`MqttSecurityService::asegurarPermisos()`, cacheado 1 h), así que los equipos que ya existían pasaron solos. Lo verifica `tools/verificacion/mqtt_permisos.php` contra el broker real. Detalle en `config/mosquitto/README.md` |
 | CORS | Lista blanca configurable (`SPUI_CORS_ORIGINS`) |
