@@ -93,9 +93,11 @@ class VivoTest(unittest.TestCase):
             p.start()
             time.sleep(0.1)
             p.vivo(1)
-            # Margen sobre el segundo pedido: con la suite entera corriendo,
-            # 1,4 s a veces no alcanzaba (03/11/2026).
-            time.sleep(2.0)
+            # Se espera a la línea y no un tiempo fijo: con la suite entera
+            # corriendo, ni 1,4 s ni 2 s alcanzaban siempre (04/11/2026).
+            limite = time.monotonic() + 15
+            while time.monotonic() < limite and not any('en vivo terminada' in l for l in log.output):
+                time.sleep(0.05)
             p.detener()
             p.join(timeout=2)
         self.assertTrue(any('en vivo terminada' in l for l in log.output), log.output)
