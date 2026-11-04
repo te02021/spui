@@ -1,6 +1,7 @@
 {% extends '@SPUI/base.html.twig' %}
 {% import '@SPUI/_macros/texto.html.twig' as texto %}
 {% block title %}Edificios — SPUI{% endblock %}
+{% block descripcion %}Edificios del campus de la UNRaf donde se ubican las pantallas digitales.{% endblock %}
 
 {% block body %}
 <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2 spui-header-actions">
@@ -15,88 +16,95 @@
     </button>
 </div>
 
-<div id="spui-table-body">
-<div class="unraf-card">
-    <div class="unraf-table-responsive">
-        <table class="unraf-table unraf-table-striped w-100 spui-tabla-cards">
-            <thead>
-                <tr>
-                    <th class="p-3">Nombre</th>
-                    <th class="p-3">Descripción</th>
-                    <th class="p-3">Sectores</th>
-                    <th class="p-3">Estado</th>
-                    <th class="p-3">Acciones</th>
-                </tr>
-            </thead>
-            <tbody>
-            {% for e in edificios %}
-                <tr>
-                    <td class="p-3" data-label="Nombre"><strong>{{ e.nombre }}</strong></td>
-                    <td class="p-3" data-label="Descripción"><small class="text-muted">{{ e.descripcion ?? '—' }}</small></td>
-                    <td class="p-3" data-label="Sectores">
-                        {% if e.ubicaciones|length > 0 %}
-                            <span class="spui-badge-borrador">{{ texto.plural(e.ubicaciones|length, 'sector', 'sectores') }}</span>
-                        {% else %}
-                            <span class="text-muted small">Sin sectores</span>
-                        {% endif %}
-                    </td>
-                    <td class="p-3" data-label="Estado">
-                        {% if e.activo %}
-                            <span class="spui-badge-conectado">Activo</span>
-                        {% else %}
-                            <span class="spui-badge-sin_registrar">Inactivo</span>
-                        {% endif %}
-                    </td>
-                    <td class="p-3" data-label="Acciones">
-                        <div class="spui-acciones">
-                            <button type="button"
-                                    class="unraf-btn spui-btn-ver unraf-btn-sm"
-                                    data-spui-form="{{ path('spui_cms_edificios_ver', {id: e.id}) }}"
-                                    data-spui-title="{{ e.nombre }}"
-                                    title="Ver detalle">
-                                <img src="{{ asset('unraf-ui/icons/eye.svg') }}" class="spui-action-icon" alt=""> Ver
-                            </button>
-                            <button type="button"
-                                    class="unraf-btn spui-btn-editar unraf-btn-sm"
-                                    data-spui-form="{{ path('spui_cms_edificios_editar', {id: e.id}) }}"
-                                    data-spui-title="Editar: {{ e.nombre }}"
-                                    title="Editar">
-                                <img src="{{ asset('unraf-ui/icons/pencil.svg') }}" class="spui-action-icon" alt=""> Editar
-                            </button>
-                            <button type="button"
-                                    class="unraf-btn unraf-btn-sm {{ e.activo ? 'spui-btn-desactivar' : 'spui-btn-activar' }}"
-                                    data-spui-action="{{ path('spui_cms_edificios_toggle', {id: e.id}) }}"
-                                    data-spui-title="{{ e.activo ? 'Desactivar' : 'Activar' }} edificio"
-                                    data-spui-message="{{ e.activo ? 'Desactivar' : 'Activar' }} «{{ e.nombre }}»?"
-                                    data-spui-variant="{{ e.activo ? 'desactivar' : 'activar' }}"
-                                    data-spui-confirm-label="{{ e.activo ? 'Desactivar' : 'Activar' }}"
-                                    title="{{ e.activo ? 'Desactivar' : 'Activar' }}">
-                                <img src="{{ e.activo ? asset('unraf-ui/icons/hand-palm.svg') : asset('unraf-ui/icons/lightning.svg') }}"
-                                     class="spui-action-icon" alt="">
-                                {{ e.activo ? 'Desactivar' : 'Activar' }}
-                            </button>
-                            <button type="button"
-                                    class="unraf-btn spui-btn-eliminar unraf-btn-sm"
-                                    data-spui-action="{{ path('spui_cms_edificios_eliminar', {id: e.id}) }}"
-                                    data-spui-title="Eliminar edificio"
-                                    data-spui-message="¿Eliminar «{{ e.nombre }}»? Esta acción no se puede deshacer."
-                                    data-spui-variant="eliminar"
-                                    title="Eliminar">
-                                <img src="{{ asset('unraf-ui/icons/trash.svg') }}" class="spui-action-icon" alt=""> Eliminar
-                            </button>
+{# Tarjetas (30/10/2026), como el resto del CMS: ver el bloque "Listados en
+   tarjetas" de style.css. La descripción no va en el listado (está en Ver).
+   El chip de sectores abre la lista de ubicaciones del edificio, y cada una
+   abre su detalle. #}
+{{ include('@SPUI/_partials/barra_lista.html.twig', {filtros: filtros, que: 'edificios', placeholder: 'Buscar por nombre o descripción'}) }}
+<div id="spui-table-body" data-spui-busqueda-zona>
+<div class="spui-lista">
+{% for e in edificios %}
+    <article class="unraf-card spui-item {{ e.activo ? 'is-ok' : 'is-apagado' }}">
+        <div class="spui-item-cuerpo">
+            <div class="spui-item-cab">
+                <span class="spui-etiqueta {{ e.activo ? 'is-ok' : '' }}">{{ e.activo ? 'Activo' : 'Inactivo' }}</span>
+                <h2 class="spui-item-titulo">{{ e.nombre }}</h2>
+            </div>
+            <div class="spui-chips">
+                {% if e.ubicaciones|length > 0 %}
+                    <span class="spui-desp">
+                        <button type="button" class="spui-chip spui-chip-btn" data-spui-desp
+                                aria-expanded="false" aria-controls="edificio-{{ e.id }}-sectores">
+                            <img src="{{ asset('unraf-ui/icons/map-pin.svg') }}" alt=""> {{ texto.plural(e.ubicaciones|length, 'sector', 'sectores') }}
+                        </button>
+                        <div id="edificio-{{ e.id }}-sectores" class="spui-desp-panel" role="region" aria-label="Sectores de {{ e.nombre }}">
+                            <p class="spui-desp-titulo">Sectores de {{ e.nombre }}</p>
+                            <ul class="spui-desp-lista">
+                                {% for u in e.ubicaciones %}
+                                    <li>
+                                        <button type="button" class="spui-desp-accion"
+                                                data-spui-form="{{ path('spui_cms_ubicaciones_ver', {id: u.id}) }}"
+                                                data-spui-title="{{ e.nombre }}{{ u.sector ? ' — ' ~ u.sector : '' }}">
+                                            <strong>{{ u.sector ?: 'Sin nombre de sector' }}</strong>
+                                            <small>{{ texto.plural(u.pantallas|length, 'pantalla', 'pantallas') }}{{ u.activo ? '' : ' · inactivo' }}</small>
+                                        </button>
+                                    </li>
+                                {% endfor %}
+                            </ul>
                         </div>
-                    </td>
-                </tr>
-            {% else %}
-                <tr>
-                    <td colspan="5" class="p-4 text-center text-muted">
-                        No hay edificios registrados.
-                    </td>
-                </tr>
-            {% endfor %}
-            </tbody>
-        </table>
-    </div>
+                    </span>
+                {% else %}
+                    <span class="spui-chip">Sin sectores</span>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="spui-acciones spui-item-acciones">
+            <button type="button" class="unraf-btn spui-btn-ver unraf-btn-sm"
+                    data-spui-form="{{ path('spui_cms_edificios_ver', {id: e.id}) }}"
+                    data-spui-title="{{ e.nombre }}" title="Ver detalle">
+                <img src="{{ asset('unraf-ui/icons/eye.svg') }}" class="spui-action-icon" alt=""> Ver
+            </button>
+            {# El resto de las acciones, en el menú ⋮ (03/11/2026, pedido de Mateo):
+               Ver queda a la vista. Los botones son los mismos de siempre (sus
+               data-spui-* no cambian) y una acción bloqueada muestra el motivo. #}
+            <span class="spui-desp spui-menu-acciones">
+                <button type="button" class="unraf-btn unraf-btn-sm spui-btn-menu" data-spui-desp aria-expanded="false"
+                        aria-controls="acciones-edificios-{{ e.id }}" aria-haspopup="true" title="Más acciones">
+                    <img src="{{ asset('unraf-ui/icons/dots-three-vertical.svg') }}" class="spui-action-icon" alt=""> Más
+                </button>
+                <div id="acciones-edificios-{{ e.id }}" class="spui-desp-panel spui-menu-panel" role="group" aria-label="Más acciones">
+                    <button type="button" class="unraf-btn spui-btn-editar unraf-btn-sm"
+                            data-spui-form="{{ path('spui_cms_edificios_editar', {id: e.id}) }}"
+                            data-spui-title="Editar: {{ e.nombre }}" title="Editar">
+                        <img src="{{ asset('unraf-ui/icons/pencil.svg') }}" class="spui-action-icon" alt=""> Editar
+                    </button>
+                    <button type="button"
+                            class="unraf-btn unraf-btn-sm {{ e.activo ? 'spui-btn-desactivar' : 'spui-btn-activar' }}"
+                            data-spui-action="{{ path('spui_cms_edificios_toggle', {id: e.id}) }}"
+                            data-spui-title="{{ e.activo ? 'Desactivar' : 'Activar' }} edificio"
+                            data-spui-message="{{ e.activo ? 'Desactivar' : 'Activar' }} «{{ e.nombre }}»?"
+                            data-spui-variant="{{ e.activo ? 'desactivar' : 'activar' }}"
+                            data-spui-confirm-label="{{ e.activo ? 'Desactivar' : 'Activar' }}"
+                            title="{{ e.activo ? 'Desactivar' : 'Activar' }}">
+                        <img src="{{ e.activo ? asset('unraf-ui/icons/hand-palm.svg') : asset('unraf-ui/icons/lightning.svg') }}" class="spui-action-icon" alt="">
+                        {{ e.activo ? 'Desactivar' : 'Activar' }}
+                    </button>
+                    <button type="button" class="unraf-btn spui-btn-eliminar unraf-btn-sm"
+                            data-spui-action="{{ path('spui_cms_edificios_eliminar', {id: e.id}) }}"
+                            data-spui-title="Eliminar edificio"
+                            data-spui-message="¿Eliminar «{{ e.nombre }}»? Esta acción no se puede deshacer."
+                            data-spui-variant="eliminar" title="Eliminar">
+                        <img src="{{ asset('unraf-ui/icons/trash.svg') }}" class="spui-action-icon" alt=""> Eliminar
+                    </button>
+                </div>
+            </span>
+        </div>
+    </article>
+{% else %}
+    {{ include('@SPUI/_partials/vacio.html.twig', {que: 'edificios', icono: 'buildings.svg', mensaje: 'Cargá el primero con «Nuevo edificio».'}) }}
+{% endfor %}
 </div>
+{{ include('@SPUI/_partials/paginacion.html.twig', {pag: paginacion, que: 'edificios'}) }}
 </div>
 {% endblock %}

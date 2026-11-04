@@ -40,32 +40,33 @@
     <small class="text-muted d-block">Pantalla &gt; Ubicación &gt; Edificio &gt; Global (en orden de prioridad).</small>
 </div>
 
+{# Horas y fechas en columnas parejas, con la etiqueta a la izquierda como el
+   resto del formulario. Antes iban centradas (spui-hora-field) y el
+   formulario mezclaba dos alineaciones (pedido de Mateo, 28/10/2026). Con el
+   modal ancho (02/11/2026), las cuatro en una fila; dos y dos en celular. #}
 <div class="row g-3 mb-3">
-    <div class="col-6 spui-hora-field">
+    <div class="col-6 col-lg-3 spui-fecha-field">
         {{ form_label(form.horaInicio) }}
         {{ form_widget(form.horaInicio) }}
         {% for e in form.horaInicio.vars.errors %}
             <p class="spui-campo-error">{{ e.message }}</p>
         {% endfor %}
     </div>
-    <div class="col-6 spui-hora-field">
+    <div class="col-6 col-lg-3 spui-fecha-field">
         {{ form_label(form.horaFin) }}
         {{ form_widget(form.horaFin) }}
         {% for e in form.horaFin.vars.errors %}
             <p class="spui-campo-error">{{ e.message }}</p>
         {% endfor %}
     </div>
-</div>
-
-<div class="row g-3 mb-3">
-    <div class="col-6 spui-hora-field">
+    <div class="col-6 col-lg-3 spui-fecha-field">
         {{ form_label(form.fechaInicio) }}
         {{ form_widget(form.fechaInicio) }}
         {% for e in form.fechaInicio.vars.errors %}
             <p class="spui-campo-error">{{ e.message }}</p>
         {% endfor %}
     </div>
-    <div class="col-6 spui-hora-field">
+    <div class="col-6 col-lg-3 spui-fecha-field">
         {{ form_label(form.fechaFin) }}
         {{ form_widget(form.fechaFin) }}
         {% for e in form.fechaFin.vars.errors %}
@@ -74,16 +75,16 @@
     </div>
 </div>
 
+{# Los siete días en una grilla pareja (una fila en escritorio, 4 + 3 en
+   celular). Cada día es una tarjeta con su interruptor y su nombre: el
+   nombre lo pone el propio widget (form-check-label). #}
 <div class="mb-3" data-spui-campo>
     {{ form_label(form.diasSemana) }}
-    <div class="spui-dias-switches mt-2{{ form.diasSemana.vars.errors|length ? ' is-invalid' }}"
+    <div class="spui-dias-switches spui-switch-limpio{{ form.diasSemana.vars.errors|length ? ' is-invalid' }}"
          data-spui-requiere-alguno="{{ constant('SPUI\\Form\\ProgramacionType::MSG_DIAS_REQUERIDOS') }}">
         {% for child in form.diasSemana %}
-            <div class="spui-dia-switch">
-                {{ form_label(child, null, {'label_attr': {'class': 'spui-dia-label'}}) }}
-                <div class="form-switch d-flex justify-content-center">
-                    {{ form_widget(child, {'attr': {'class': 'form-check-input', 'role': 'switch'}}) }}
-                </div>
+            <div class="spui-dia-switch form-switch">
+                {{ form_widget(child, {'attr': {'class': 'form-check-input', 'role': 'switch'}}) }}
             </div>
         {% endfor %}
     </div>
@@ -92,35 +93,35 @@
     {% endfor %}
 </div>
 
-<div class="mb-4 d-flex flex-column" style="max-width:fit-content">
-    <label class="unraf-form-label mb-2" for="{{ swRepetirId }}">Repetir semanalmente</label>
-    <div class="d-flex align-items-center gap-2">
-        <div class="form-switch m-0">
-            {{ form_widget(form.repetirSemanal, {'attr': {'class': 'form-check-input spui-switch-secondary', 'role': 'switch', 'data-spui-switch': '1', 'data-switch-on': 'Sí', 'data-switch-off': 'No', 'data-switch-variant': 'azul'}}) }}
-        </div>
-        <span class="spui-switch-status on-azul" id="{{ swRepetirId }}_lbl">Sí</span>
-    </div>
-</div>
-
-<div class="row g-3 mb-4 justify-content-center">
-    <div class="col-auto spui-hora-field">
+{# Prioridad, estado y repetición en una fila: tres opciones de la regla,
+   cada una con su etiqueta arriba a la izquierda. #}
+<div class="row g-3 mb-4 spui-switch-limpio">
+    <div class="col-12 col-sm-4">
         <label class="unraf-form-label" for="{{ form.prioridad.vars.id }}">Prioridad</label>
-        {{ form_widget(form.prioridad) }}
+        {{ form_widget(form.prioridad, {'attr': {'style': 'max-width:7rem'}}) }}
         {% for e in form.prioridad.vars.errors %}
             <p class="spui-campo-error">{{ e.message }}</p>
         {% endfor %}
-        <small class="text-muted mt-1 d-block text-center">Mayor número = mayor prioridad.</small>
+        <small class="text-muted mt-1 d-block">Mayor número = mayor prioridad.</small>
     </div>
-    <div class="col-auto spui-hora-field">
+    <div class="col-12 col-sm-4">
         {# Estado de la regla: mismo switch y mismas palabras que el resto del
-           CMS, en el alta y en la edición (antes decía "Activa al crear", como
-           si no sirviera para editar). #}
+           CMS, en el alta y en la edición. #}
         <label class="unraf-form-label" for="{{ swActivoId }}">Estado</label>
-        <div class="d-flex align-items-center gap-2">
+        <div class="d-flex align-items-center gap-2 spui-switch-fila">
             <div class="form-switch m-0">
                 {{ form_widget(form.activo, {'attr': {'class': 'form-check-input spui-switch-input', 'role': 'switch', 'data-spui-switch': '1', 'data-switch-on': 'Activa', 'data-switch-off': 'Inactiva'}}) }}
             </div>
             <span class="spui-switch-status {{ form.activo.vars.checked ? 'on' : 'off' }}" id="{{ swActivoId }}_lbl">{{ form.activo.vars.checked ? 'Activa' : 'Inactiva' }}</span>
+        </div>
+    </div>
+    <div class="col-12 col-sm-4">
+        <label class="unraf-form-label" for="{{ swRepetirId }}">Repetir semanalmente</label>
+        <div class="d-flex align-items-center gap-2 spui-switch-fila">
+            <div class="form-switch m-0">
+                {{ form_widget(form.repetirSemanal, {'attr': {'class': 'form-check-input spui-switch-secondary', 'role': 'switch', 'data-spui-switch': '1', 'data-switch-on': 'Sí', 'data-switch-off': 'No', 'data-switch-variant': 'azul'}}) }}
+            </div>
+            <span class="spui-switch-status {{ form.repetirSemanal.vars.checked ? 'on-azul' : 'off' }}" id="{{ swRepetirId }}_lbl">{{ form.repetirSemanal.vars.checked ? 'Sí' : 'No' }}</span>
         </div>
     </div>
 </div>

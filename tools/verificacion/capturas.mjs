@@ -6,7 +6,7 @@
 //   - errores de JavaScript (consola o excepción no atrapada);
 //   - pedidos del propio sitio que responden 4xx/5xx;
 //   - elementos con el atributo `hidden` que igual se ven (el caso real de
-//     Bootstrap `.d-flex` pisando `[hidden]`, docs/README.md §3.4);
+//     Bootstrap `.d-flex` pisando `[hidden]`, docs/archivo/auditorias.md §3.4);
 //   - imágenes rotas; textos "undefined", "NaN", "[object Object]" o mensajes
 //     de validación en inglés;
 //   - en "Nuevo" → Guardar vacío: que aparezcan los errores debajo de los
@@ -62,7 +62,18 @@ const PANTALLAS = [
     ['playlists', '/spui/playlists'],
     ['programacion', '/spui/programacion'],
     ['alertas', '/spui/alertas'],
+    // La telemetría es por reproductor: la ruta sale del primer botón
+    // "Telemetría" del listado (ver resolverRuta).
+    ['telemetria', '@.spui-btn-telemetria'],
 ];
+
+/** Una ruta que empieza con @ es el href del primer elemento con ese selector en Reproductores. */
+async function resolverRuta(page, ruta) {
+    if (!ruta.startsWith('@')) return ruta;
+    await page.goto(BASE + '/spui/reproductores', { waitUntil: 'load' });
+    const href = await page.locator(ruta.slice(1)).first().getAttribute('href').catch(() => null);
+    return href ? new URL(href, BASE).pathname + new URL(href, BASE).search : null;
+}
 const VISTAS = [
     { nombre: 'escritorio', viewport: { width: 1366, height: 768 } },
     { nombre: 'celular', viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 },
@@ -185,8 +196,12 @@ async function botonesDeModal(page) {
 /** Nuevo → Guardar sin completar nada: tienen que verse los errores y no crearse nada. */
 async function guardarVacio(page, vista, nombre) {
     const form = page.locator('#spuiAbmBody form[data-spui-ajax]');
+    // El formulario puede tardar un instante más que el modal en aparecer:
+    // contarlo en el acto daba una falla intermitente que no era del CMS
+    // (dos veces el 28/10/2026, y al repetir pasaba).
+    await form.first().waitFor({ state: 'attached', timeout: 5000 }).catch(() => {});
     if (!await form.count()) {
-        falla('el modal de alta no tiene un formulario para probar Guardar vacío (¿cargó a tiempo?)');
+        falla(`el modal de alta de ${nombre} no tiene un formulario para probar Guardar vacío, ni a los 5 s`);
         return;
     }
     await page.evaluate(() => {
@@ -279,7 +294,9 @@ for (const v of VISTAS) {
         // Un error inesperado en una pantalla queda como falla y el recorrido
         // sigue con las demás: antes podía cortar todo el script sin decir dónde.
         try {
-            const resp = await page.goto(BASE + ruta, { waitUntil: 'load' });
+            const destino = await resolverRuta(page, ruta);
+            if (destino === null) { aviso('no hay ningún reproductor para recorrer esta pantalla'); continue; }
+            const resp = await page.goto(BASE + destino, { waitUntil: 'load' });
             if (resp && resp.url().includes('unraf.edu.ar')) { falla('redirigió al login: la sesión de prueba no sirvió'); break; }
             await page.waitForTimeout(800);
             await revisarDom(page, null, !!v.isMobile);

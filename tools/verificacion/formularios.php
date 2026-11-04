@@ -7,7 +7,7 @@
  * Por qué existe: Symfony mapea los datos al objeto ANTES de validar, y un
  * setter no-nullable revienta con TypeError → HTTP 500 → un modal que "no
  * hace nada" al guardar. Pasó en agosto y volvió con 7 campos en octubre
- * (docs/README.md §3.2 y §3.4). Ningún lint lo detecta.
+ * (docs/archivo/auditorias.md §3.2 y §3.4). Ningún lint lo detecta.
  *
  * También avisa (sin fallar) de los campos que el HTML marca `required` pero
  * el servidor acepta vacíos: el navegador los exige, el servidor no.
@@ -48,11 +48,11 @@ $tipos = [
         ['titulo' => 'T', 'mensaje' => 'M', 'prioridad' => '10']],
     'Contenido'      => [F\ContenidoType::class, fn() => new E\Contenido(),
         ['titulo' => 'T', 'tipo' => 'texto', 'duracionSegundos' => '10']],
-    'CronogramaItem' => [F\CronogramaItemType::class, fn() => new E\CronogramaItem(),
-        ['nombre' => 'N', 'horaInicio' => '08:00', 'horaFin' => '09:00', 'diasSemana' => ['0'], 'orden' => '1']],
+    // El ítem del cronograma ya no tiene FormType (02/11/2026): es un
+    // formulario manual que valida CronogramaCmsController::validarItem().
     'Edificio'       => [F\EdificioType::class, fn() => new E\Edificio(), ['nombre' => 'E']],
     'Pantalla'       => [F\PantallaType::class, fn() => new E\Pantalla(),
-        ['nombre' => 'P', 'ubicacion' => $id(E\Ubicacion::class), 'resolucionAncho' => '1920', 'resolucionAlto' => '1080']],
+        ['nombre' => 'P', 'ubicacion' => $id(E\Ubicacion::class)]],
     'Energia'        => [F\ProgramacionEnergeticaType::class, fn() => new E\ProgramacionEnergetica(),
         ['horaEncendido' => '08:00', 'horaApagado' => '20:00', 'nivelBrillo' => '80']],
     'Programacion'   => [F\ProgramacionType::class, fn() => new E\Programacion(),

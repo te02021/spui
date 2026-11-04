@@ -2,7 +2,7 @@
 
    El tipo NO se puede cambiar (un cronograma no se convierte en video), pero sí
    se edita lo que ese tipo tiene cargado: el archivo en imagen/video, el destino
-   y el vencimiento del código en qr, el texto o la URL en texto/youtube.
+   y el vencimiento del código en qr, el texto en texto.
 
    El bloque por tipo lo resuelve el server, no content-type-fields.js: ese
    módulo depende del <select> de tipo del alta, que acá no existe, y como el
@@ -18,49 +18,52 @@
     {# Errores por campo (name → mensaje): cada uno va debajo de su input. #}
     {% set err = errores|default({}) %}
 
-    <div class="row g-3 mb-3 align-items-start">
-        <div class="col">
+    {# Título, tipo y duración en una fila, como en el alta (30/10/2026). #}
+    <div class="row g-2 mb-1 align-items-start">
+        <div class="col-12 col-md-6">
             <label class="unraf-form-label" for="ed_titulo">Título <span class="text-danger">*</span></label>
             <input type="text" id="ed_titulo" name="titulo" class="unraf-form-control{{ err.titulo is defined ? ' is-invalid' }}"
                    value="{{ contenido.titulo }}" maxlength="200" required>
             {% if err.titulo is defined %}<p class="spui-campo-error">{{ err.titulo }}</p>{% endif %}
         </div>
-        <div class="col-auto d-flex flex-column">
-            <label class="unraf-form-label mb-2">Tipo</label>
-            {% if contenido.tipo.value == 'cronograma' %}
-                <span class="unraf-badge-turquesa">{{ contenido.tipo.etiqueta }}</span>
-            {% elseif contenido.tipo.value in ['imagen', 'qr'] %}
-                <span class="unraf-badge-info">{{ contenido.tipo.etiqueta }}</span>
-            {% elseif contenido.tipo.value in ['video', 'youtube'] %}
-                <span class="unraf-badge-azul">{{ contenido.tipo.etiqueta }}</span>
+        <div class="col-6 col-md-3">
+            {# El tipo no se cambia después de crear: se muestra fijo. #}
+            <span class="unraf-form-label d-block">Tipo</span>
+            <span class="spui-campo-fijo">{{ contenido.tipo.etiqueta }}</span>
+        </div>
+        <div class="col-6 col-md-3">
+            {% if contenido.esVideo or contenido.esCronograma %}
+                {# La duración de un video no se escribe: es la del archivo, que
+                   el CMS lee al subirlo (y de nuevo si se reemplaza). La de un
+                   cronograma, tampoco: la dan sus páginas. #}
+                <span class="unraf-form-label d-block">Duración</span>
+                <span class="spui-campo-fijo">{{ contenido.etiquetaDuracion }}</span>
             {% else %}
-                <span class="unraf-badge-turquesa">{{ contenido.tipo.etiqueta }}</span>
+                <label class="unraf-form-label" for="ed_duracion">Duración (segundos)</label>
+                <input type="number" id="ed_duracion" name="duracion_segundos" class="unraf-form-control"
+                       value="{{ contenido.duracionSegundos ?? '' }}" min="1" max="3600" placeholder="Permanente">
             {% endif %}
         </div>
     </div>
-
     <div class="mb-4">
-        <label class="unraf-form-label" for="ed_duracion">Duración por defecto</label>
-        <div class="spui-input-with-addon" style="max-width:16rem">
-            <input type="number" id="ed_duracion" name="duracion_segundos" class="unraf-form-control"
-                   value="{{ contenido.duracionSegundos ?? '' }}" min="1" max="3600"
-                   placeholder="Vacío = permanente">
-            <span class="spui-input-addon">segundos</span>
-        </div>
-        <small class="text-muted d-block mt-1">
-            Dura lo mismo en todas las playlists donde esté. Vacío = permanente (sin avance automático).
-        </small>
+        {% if contenido.esVideo %}
+            <small class="text-muted d-block">La del archivo de video: la playlist lo muestra completo. Si reemplazás el archivo, se vuelve a leer.</small>
+        {% elseif contenido.esCronograma %}
+            <small class="text-muted d-block">Un cronograma dura lo que tardan en pasar sus páginas, que depende de cuántas actividades quedan en el día.</small>
+        {% else %}
+            <small class="text-muted d-block">{{ include('@SPUI/contenidos/_ayuda_duracion.html.twig') }}</small>
+        {% endif %}
     </div>
 
     {# ── Lo que carga cada tipo ── #}
-    {% if contenido.tipo.value in ['texto', 'youtube'] %}
+    {% if contenido.tipo.value == 'texto' %}
         <div class="mb-3">
             <label class="unraf-form-label" for="ed_texto">
-                {{ contenido.tipo.value == 'youtube' ? 'URL de YouTube' : 'Texto a mostrar' }}
+                Texto a mostrar
                 <span class="text-danger">*</span>
             </label>
             <textarea id="ed_texto" name="contenido_texto" class="unraf-form-control" rows="3"
-                      placeholder="{{ contenido.tipo.value == 'youtube' ? 'https://www.youtube.com/watch?v=…' : 'Texto que se muestra en pantalla' }}"
+                      placeholder="Texto que se muestra en pantalla"
                       required>{{ contenido.contenidoTexto }}</textarea>
             {% if err.contenido_texto is defined %}<p class="spui-campo-error">{{ err.contenido_texto }}</p>{% endif %}
         </div>
@@ -69,10 +72,13 @@
         {% set qr = contenido.codigoQr %}
         <div class="mb-3">
             <label class="unraf-form-label" for="ed_qr_url">URL destino <span class="text-danger">*</span></label>
-            <input type="url" id="ed_qr_url" name="qr_url_destino" class="unraf-form-control{{ err.qr_url_destino is defined ? ' is-invalid' }}"
-                   maxlength="500" placeholder="https://…"
-                   value="{{ qr ? qr.urlDestino : '' }}" required>
+            <textarea id="ed_qr_url" name="qr_url_destino" rows="2" class="unraf-form-control spui-qr-destinos{{ err.qr_url_destino is defined ? ' is-invalid' }}"
+                      maxlength="1001" placeholder="https://…" spellcheck="false" autocomplete="off" required>{{ qr_url_destino is defined and qr_url_destino is not null ? qr_url_destino : (qr ? qr.destinosTexto : '') }}</textarea>
             {% if err.qr_url_destino is defined %}<p class="spui-campo-error">{{ err.qr_url_destino }}</p>{% endif %}
+            <small class="text-muted d-block mt-1" data-spui-qr-app-ayuda>
+                ¿Es una app? Pegá los dos enlaces, uno por renglón (Google Play y App Store, en cualquier orden):
+                cada teléfono va a su tienda con un solo código.
+            </small>
             <small class="text-muted d-block mt-1">
                 Cambiarla <strong>no invalida</strong> los códigos ya impresos ni el que está en pantalla.
             </small>
@@ -100,7 +106,8 @@
                     <span class="spui-archivo-nombre">{{ contenido.rutaArchivo|split('/')|last }}</span>
                     <a href="#" class="unraf-btn spui-btn-back unraf-btn-icon" title="Vista previa"
                        data-spui-preview-url="{{ path('spui_cms_contenidos_archivo_preview', {id: contenido.id}) }}"
-                       data-spui-preview-tipo="qr"
+                       data-spui-preview-pantalla-url="{{ path('spui_cms_contenidos_pantalla', {id: contenido.id}) }}"
+                   data-spui-preview-tipo="qr"
                        data-spui-preview-nombre="{{ contenido.rutaArchivo|split('/')|last }}">
                         <img src="{{ asset('unraf-ui/icons/eye.svg') }}" class="spui-action-icon" alt="Vista previa">
                     </a>
@@ -129,6 +136,7 @@
                            {% set fmt = constant('SPUI\\Service\\MediaStorageService::FORMATOS')[contenido.tipo.value] %}
                            accept="{{ fmt.accept }}"
                            data-spui-formatos="{{ fmt.extensiones }}" data-spui-formatos-texto="{{ fmt.texto }}"
+                           {% if contenido.tipo.value == 'video' %}data-spui-video-max="{{ constant('SPUI\\Service\\VideoInspectorService::LADO_MAYOR_MAXIMO') }}x{{ constant('SPUI\\Service\\VideoInspectorService::LADO_MENOR_MAXIMO') }}"{% endif %}
                            {% if max_bytes_archivo is defined %}data-spui-max-bytes="{{ max_bytes_archivo }}"{% endif %}>
                 </label>
             </div>
@@ -147,6 +155,7 @@
                 <a href="#" class="unraf-btn spui-btn-back unraf-btn-icon" title="Vista previa"
                    data-spui-archivo-preview-btn
                    data-spui-preview-nombre="{{ contenido.rutaArchivo ? contenido.rutaArchivo|split('/')|last : '' }}"
+                   data-spui-preview-pantalla-url="{{ path('spui_cms_contenidos_pantalla', {id: contenido.id}) }}"
                    data-spui-preview-tipo="{{ contenido.tipo.value }}"
                    {% if contenido.rutaArchivo %}data-spui-preview-url="{{ path('spui_cms_contenidos_archivo_preview', {id: contenido.id}) }}"{% endif %}>
                     <img src="{{ asset('unraf-ui/icons/eye.svg') }}" class="spui-action-icon" alt="Vista previa">
@@ -158,7 +167,8 @@
         </div>
 
     {% elseif contenido.tipo.value == 'cronograma' %}
-        <div class="mb-3">
+        {# Uno "del edificio de la pantalla" no tiene ítems propios. #}
+        <div class="mb-3" data-spui-si-origen="propio">
             <label class="unraf-form-label">Ítems del cronograma</label>
             <p class="text-muted small mb-2">
                 Las actividades se cargan en el listado de ítems del cronograma. Lo que no hayas
@@ -173,6 +183,8 @@
             </button>
         </div>
     {% endif %}
+
+    {{ include('@SPUI/contenidos/_presentacion.html.twig', {pv: presentacion, err: err, edificios: edificios, tipo_fijo: contenido.tipo.value, vista_id: contenido.id}) }}
 
     <div class="d-flex justify-content-end gap-2 pt-3 border-top">
         <button type="button" class="unraf-btn spui-btn-back" data-spui-close>Cancelar</button>

@@ -1,276 +1,109 @@
-# 08 — Puesta en marcha del reproductor: estado del servidor y configuración de red
+# 08 — Servidor: VM de la intranet y entorno de desarrollo
 
 **SPUI — Sistema de Pantallas Informativas Universitarias (UNRaf)**
 
-> ## ⚠️ Estado de este documento
->
-> Se escribió cuando **no había hardware** y el plan era emular el reproductor en una máquina virtual x86. **Ahora hay una Raspberry Pi real**, así que:
->
-> - **§2 y §5 pasos 1-3 (VirtualBox, imagen x86, crear la VM) ya no aplican.** Para instalar la Pi real, seguir **`09_instalacion_raspberry.md`**.
-> - **Lo que sigue plenamente vigente:** §3 (estado del servidor), §4 (la IP del host cambia), §5 pasos 4, 5 y 7 (firewall, datos del CMS, daemon de telemetría), §6 (cómo verificar) y §8 (antes de la defensa).
-> - **Con hardware real** sí se pueden probar la temperatura del SoC y el HDMI-CEC, que en VM quedaban en modo simulación (ver §7).
->
-> Las direcciones IP que aparecen acá son las del momento en que se verificó. **Cambian por DHCP** — usarlas como ejemplo de formato, no como valores a copiar (ver `README.md` §4).
-
-Este documento se escribió verificando el estado del equipo, no de memoria. Todo lo marcado ✅ está comprobado.
+La instalación de la Raspberry Pi está en `09_instalacion_raspberry.md`; la carga de datos, en `07_manual_uso_cms.md`.
 
 ---
 
-## 1. Resumen
+## 1. La VM de la intranet frente a lo que pide SPUI
 
-El CMS y la API están terminados y probados. **Lo que falta es poner el reproductor en marcha**: el circuito completo todavía no se ejecutó de punta a punta con hardware.
+SPUI va a la VM donde ya corren las apps de la intranet. **La fecha todavía no está definida:** esta sección compara, no instala nada. Relevado el 04/11/2026 por línea de comando (`php` de consola; lo que usa Apache se confirma en §2).
 
-| Pieza | Estado |
-|---|---|
-| CMS y API | ✅ Funcionando |
-| Broker MQTT (Mosquitto) | ✅ Instalado y escuchando |
-| Apache accesible desde afuera | ⚠️ Configurado, pero para la subred equivocada (ver §4) |
-| Cliente Python (`pi-client/`) | ✅ Escrito, auditado y corregido (ver `06_funcionamiento_del_sistema.md` §10.1) |
-| Raspberry Pi física | ✅ Disponible — instalar con `09_instalacion_raspberry.md` |
-| ~~VirtualBox~~ | Ya no se necesita: hay hardware real |
-| Prueba end-to-end | ✅ Hecha con la Pi real (agosto 2026) — hallazgos en `README.md` §3.2 |
-
----
-
-## 2. Sobre la VM — ya no aplica
-
-> **Obsoleto.** Se mantiene como registro de la decisión tomada cuando no había hardware.
-
-VirtualBox **no puede emular la arquitectura ARM** de una Raspberry Pi real: solo virtualiza x86/x86_64. Por eso la imagen a usar *era* **Raspberry Pi Desktop x86**, la versión oficial para PC — es Debian por dentro, así que `apt`, `systemd` y el cliente Python funcionan igual.
-
-Lo que no se podía probar en una VM: la temperatura real del SoC, el GPIO, y el apagado por HDMI-CEC. **Con la Pi real esas tres cosas sí se prueban.**
-
----
-
-## 3. Estado verificado del servidor
-
-### ✅ Ya funcionando
-
-```
-Apache (wampapache64)   RUNNING, escuchando en 0.0.0.0:80
-Mosquitto               RUNNING, escuchando en 0.0.0.0:1883
-```
-
-La configuración del broker está versionada en `config/mosquitto/mosquitto.conf` y se copia al directorio de instalación de Mosquitto. Hoy (tareas 1.0.a-e, ver §8):
-
-```
-listener 1883 0.0.0.0       ← sin TLS, abierto hasta cerrar la tarea 1.0.f
-listener 8883 0.0.0.0       ← TLS
-listener 9001 0.0.0.0       ← WebSocket, para el contador de escaneos de QR del navegador
-allow_anonymous false       ← usuarios y ACL con el plugin Dynamic Security
-```
-
-> **Historia:** cuando se escribió este documento el broker aceptaba conexiones anónimas (`allow_anonymous true`). Ya no.
->
-> ⚠️ **La copia del directorio de instalación se pierde al reinstalar Mosquitto.** Ya pasó dos veces. Si las alertas o la telemetría dejan de funcionar después de reinstalar algo, revisar esto primero — procedimiento en `config/mosquitto/README.md`, *Recuperación ante reinstalación de Mosquitto*.
-
-### ⚠️ Configurado pero apuntando a la subred equivocada
-
-Cuando se planificó esto, la idea era usar red **Host-only** (`192.168.56.0/24`). Después se decidió usar **Bridged**, para acercarse más a cómo va a ser en producción. Pero las reglas quedaron con la subred vieja:
-
-**Apache** — `c:\wamp64\bin\apache\apache2.4.59\conf\extra\httpd-vhosts.conf`:
-```apache
-Require local
-Require ip 192.168.56.0/24     ← subred host-only, no aplica a Bridged
-```
-
-**Firewall de Windows:**
-```
-SPUI - Apache desde VM     -> remoto: 192.168.56.0/255.255.255.0
-SPUI - Mosquitto desde VM  -> remoto: 192.168.56.0/255.255.255.0
-```
-
-Con Bridged, la VM recibe una IP de la red WiFi (`10.0.x.x`), que **no coincide con ninguna de esas reglas**. Hay que actualizarlas con la IP real de la VM — ver §5, paso 4.
-
----
-
-## 4. Un problema a resolver antes: la IP del host cambia
-
-El host toma su IP por DHCP de la red WiFi, y **ya cambió**: era `10.0.12.82` cuando se planificó esto, hoy es `10.0.24.103`. La subred es `10.0.0.0/19` (una red institucional grande, con unos 8000 hosts posibles).
-
-Esto importa porque el reproductor apunta al CMS por `SPUI_API_URL`. Si ahí va una IP y el host cambia de dirección, **el reproductor deja de sincronizar sin ningún aviso claro**.
-
-Tres formas de resolverlo, de menos a más definitiva:
-
-| Opción | Cómo | Cuándo conviene |
+| Requisito | En la VM | Estado |
 |---|---|---|
-| Anotar la IP a mano | En la VM, `/etc/hosts`: `10.0.24.103  intranet` | Para probar hoy. Hay que corregirlo cada vez que cambie |
-| Reservar la IP del host | Pedir al área de redes una reserva DHCP por MAC | Si el prototipo va a vivir un tiempo en esta máquina |
-| Nombre DNS real | Que el CMS tenga un nombre resoluble en la red | Es lo que corresponde en producción |
+| PHP 8.2 o superior (Symfony 7.4) | 8.4.27 | ✅ |
+| `pdo_mysql`, `gd`, `curl`, `fileinfo`, `sockets`, `zip` | Están | ✅ |
+| **`intl`** | No aparece | ❌ **Rompe la vista previa del TV:** `PantallaTvService::fechaLegible()` usa `IntlDateFormatter('es_AR', …)`, y sin la extensión el polyfill de Symfony sólo acepta `en` y lanza una excepción |
+| `mbstring` | No aparece | 🟡 El polyfill de Symfony la reemplaza; conviene instalarla |
+| Subida de archivos: hasta 200 MB (`MediaStorageService::TAMANIO_MAXIMO`) | `upload_max_filesize` 20M, `post_max_size` 8M | ❌ El CMS toma el menor: **8 MB como máximo por archivo**. Un video no entra. Además, `post_max_size` tiene que ser mayor que `upload_max_filesize` |
+| Zona horaria | `date.timezone` UTC | ✅ La compensa `TimezoneSubscriber` |
+| MySQL | 8.0.21, la misma versión que declara `doctrine.yaml` | ✅ Falta crear el schema `spui` |
+| Configuración de MySQL | `World-writable config file … is ignored` en `conf.d/mysql.cnf` y `mysql.conf.d/mysqld.cnf` | ⚠️ **No es de SPUI y afecta a toda la intranet:** MySQL ignora esos dos archivos porque cualquier usuario puede escribirlos. Corregir los permisos (644) hace que empiecen a aplicarse en el próximo reinicio, así que hay que revisarlos antes |
+| Apache con HTTPS | Activo, 80 y 443 escuchando | ✅ |
+| Mosquitto 2.x con Dynamic Security | Inactivo o sin instalar; sin 1883, 8883 ni 9001 | ❌ Hay que instalarlo |
+| Daemon `spui:mqtt:subscribe` como servicio | No está | ❌ `config/servicios/instalar-servicio.sh` |
 
-Para la primera prueba alcanza la primera opción, pero conviene tenerlo presente: si mañana "deja de andar" sin haber tocado nada, empezar por acá.
+## 2. Lo que falta relevar
 
----
-
-## 5. Pasos pendientes
-
-### Pasos 1 a 3 — ~~Reinstalar VirtualBox, descargar imagen x86, crear la VM~~
-
-> **Ya no aplican: hay una Raspberry Pi física.**
->
-> Reemplazados por **`09_instalacion_raspberry.md`** (formateo de la microSD, grabado de Raspberry Pi OS Lite 64-bit, configuración headless, red y entorno gráfico).
->
-> El resto de esta sección (pasos 4 en adelante) **sí sigue vigente** y se referencia desde esa guía.
-
-### Paso 4 — Anotar la IP del reproductor y abrirle el paso
-
-Placeholders según `README.md` §4: `<ip_de_la_pi>` y `<ip_del_host>`.
-
-En la Raspberry Pi:
+La primera línea del relevamiento (sistema, CPU, memoria y disco) no llegó, y los valores de PHP de arriba son los de consola: Apache puede tener otros. Son sólo consultas:
 
 ```bash
-hostname -I     # → <ip_de_la_pi>
+head -3 /etc/os-release; nproc; free -h; df -h /
+ls /etc/php/8.4/
+grep -E '^(post_max_size|upload_max_filesize|memory_limit)' /etc/php/8.4/apache2/php.ini /etc/php/8.4/fpm/php.ini 2>/dev/null
+ls /etc/php/8.4/apache2/conf.d /etc/php/8.4/fpm/conf.d 2>/dev/null | grep -E 'intl|mbstring'
+apache2ctl -M 2>/dev/null | grep -E 'proxy_wstunnel|proxy_http|proxy_module|ssl|rewrite'
 ```
 
-Con esa IP, en el host (la PC donde corre WAMP):
+También hace falta saber si la VM tiene salida hacia el bucket S3 y si las Pi del piloto llegan al 443 y al 8883.
 
-**a) Apache** — editar `httpd-vhosts.conf`, en el bloque `<Directory "c:/wamp64/www/intranet/public/">`:
+## 3. Pasos para la migración, cuando se defina la fecha
 
-```apache
-Require local
-Require ip 192.168.56.0/24
-Require ip <ip_de_la_pi>       ← agregar esta línea
+1. **PHP:** instalar `intl` y `mbstring`; subir `upload_max_filesize` a 200M y `post_max_size` por encima de eso, en el `php.ini` que usa Apache. Afecta a todas las apps de la VM: acordarlo antes.
+2. **Base:** crear el schema `spui` y correr `php bin/console doctrine:migrations:migrate --id=spui`.
+3. **Mosquitto:** instalarlo y adaptar `config/mosquitto/mosquitto.conf`, que hoy tiene rutas de Windows (certificados y plugin). Generar certificados con el nombre del servidor.
+4. **Puertos:** 1883 sólo en `127.0.0.1`; 8883 abierto únicamente a las Pi; 9001 sólo en `127.0.0.1`, sin abrirlo al firewall. Por HTTPS, el navegador entra con `wss://` por el puerto del sitio (ruta `/spui-mqtt`, `MqttSecurityService::RUTA_WEBSOCKET`), así que Apache necesita `proxy_wstunnel` y una regla de esa ruta hacia `ws://127.0.0.1:9001`.
+5. **Servicio:** `config/servicios/instalar-servicio.sh`. Un solo servicio cubre telemetría, mantenimiento y rollup.
+6. **Entorno:** en la configuración de la VM, `SPUI_MQTT_SALT` (idéntico al de cada Pi), `MQTT_*` y `SPUI_CORS_ORIGINS` con el dominio real. Compilar los assets con `php bin/console asset-map:compile --id=spui`.
+7. **Pi:** apuntar `SPUI_API_URL` y `MQTT_HOST` al servidor nuevo y repetir §5.
+8. **Pruebas:** repetir CP11 y CP12 en la VM (`10_pruebas.md` §1.1).
+
+## 4. Entorno de desarrollo
+
+Hoy el CMS corre en la PC con WampServer. Apache escucha en el 80 y Mosquitto se instala como servicio de Windows.
+
+```
+listener 1883 127.0.0.1     sin TLS, sólo local
+listener 8883 0.0.0.0       TLS, lo que usan el CMS y las Pi
+listener 9001 0.0.0.0       WebSocket, para el navegador
+allow_anonymous false       usuarios y permisos con Dynamic Security
 ```
 
-⚠️ Ese archivo lo comparten **todas** las apps del monolito (viáticos, sgp, sistemasat), no solo SPUI. Poner la IP exacta del reproductor, nunca la subred entera.
+⚠️ **La copia de la configuración en el directorio de instalación se pierde al reinstalar Mosquitto.** Ya pasó dos veces. Si dejan de andar las alertas o la telemetría después de reinstalar algo, empezar por `config/mosquitto/README.md`, *Recuperación ante reinstalación de Mosquitto*.
 
-> La línea `192.168.56.0/24` quedó del plan con VirtualBox host-only. Con hardware real no aplica, pero dejarla no molesta.
+**La IP del host cambia por DHCP.** El reproductor usa el nombre `intranet` de su `/etc/hosts`, y si la dirección cambia deja de sincronizar: se corrige esa línea. En producción corresponde un nombre DNS real.
 
-Reiniciar Apache desde el ícono de WAMP → *Restart All Services*.
-
-**b) Firewall** — en PowerShell **como administrador**:
+**Abrirle el paso a una Pi** (placeholders en `README.md` §4). En `httpd-vhosts.conf`, bloque `<Directory "c:/wamp64/www/intranet/public/">`, agregar `Require ip <ip_de_la_pi>` y reiniciar los servicios de WAMP. Ese bloque lo comparten todas las apps: va la IP exacta, nunca la subred. Y en PowerShell como administrador:
 
 ```powershell
 netsh advfirewall firewall add rule name="SPUI - Apache desde Pi" dir=in action=allow protocol=TCP localport=80 remoteip=<ip_de_la_pi>
-netsh advfirewall firewall add rule name="SPUI - Mosquitto desde Pi" dir=in action=allow protocol=TCP localport=1883 remoteip=<ip_de_la_pi>
+netsh advfirewall firewall add rule name="SPUI - Mosquitto desde Pi" dir=in action=allow protocol=TCP localport=8883 remoteip=<ip_de_la_pi>
 ```
 
-Si la Pi se conecta al broker por TLS (`MQTT_TLS=true`), la regla de Mosquitto va con `localport=8883` en lugar de (o además de) `1883`.
+`config/servicios/abrir-firewall-desarrollo.ps1` es otra cosa: abre el 80 a toda la subred para probar QR desde un celular. Se quita con `-Quitar` al terminar.
 
-> `config/servicios/abrir-firewall-desarrollo.ps1` es otra cosa: abre el puerto 80 a **toda la subred** para probar el escaneo de QR desde un celular. No reemplaza estas reglas por IP y conviene quitarlo (`-Quitar`) al terminar de probar.
+**Comprobar** desde la Pi con `curl -i -X POST http://<ip_del_host>/api/spui/reproductores/sync`. Tiene que dar **401**. Un timeout es firewall o Apache; un 403 es que falta `Require ip`.
 
-**c) Comprobar** desde el reproductor:
-
-```bash
-curl -i -X POST http://<ip_del_host>/api/spui/reproductores/sync
-```
-
-Tiene que devolver **401** con un JSON pidiendo la API key. Eso confirma que la petición llegó a Symfony. Un timeout significa firewall o Apache; un 403 significa que falta la regla `Require ip`.
-
-### Paso 5 — Cargar datos mínimos en el CMS
-
-Ver `07_manual_uso_cms.md`. El camino corto:
-
-1. Edificio → Ubicación → Pantalla
-2. Reproductor → **copiar la API key** (se muestra una sola vez). Sólo pide hostname y versión de firmware
-3. Volver a **Pantallas** → editar la pantalla → asignarle el reproductor (la asignación se hace desde la Pantalla, no desde el Reproductor)
-4. Contenido → publicarlo
-5. Playlist → agregarle el contenido
-6. Asignar esa playlist como **respaldo** de la pantalla (más simple que crear una regla de programación para la primera prueba)
-
-### Paso 6 — Instalar el cliente en el reproductor
-
-Copiar `apps/spui/pi-client/` a la Pi y dentro de ella:
-
-```bash
-echo "<ip_del_host>  intranet" | sudo tee -a /etc/hosts
-cd pi-client
-chmod +x install.sh
-./install.sh
-```
-
-> No usar `sudo ./install.sh`: el script detecta el usuario con `whoami` para configurar permisos y el servicio systemd.
-
-El instalador pone VLC y las dependencias Python en un entorno virtual (`/opt/spui/venv`), copia el cliente a `/opt/spui`, crea `/etc/spui/spui.env`, instala el servicio systemd y verifica que las dependencias estén disponibles.
-
-Completar `/etc/spui/spui.env`:
-
-```
-SPUI_API_URL=http://intranet/api/spui
-SPUI_API_KEY=<la clave copiada en el paso 5>
-MQTT_HOST=<ip_del_host>
-MQTT_PORT=1883
-SPUI_MQTT_SALT=<el mismo SPUI_MQTT_SALT que tiene el CMS>
-```
-
-⚠️ `SPUI_API_URL` termina en `/api/spui`, **sin** `/reproductores`.
-⚠️ `MQTT_HOST` es la IP del servidor donde corre Mosquitto, **no** `127.0.0.1` (eso apuntaría a la propia Pi).
-⚠️ Sin `SPUI_MQTT_SALT` idéntico al del CMS, el broker rechaza a la Pi: sincroniza por HTTP pero no recibe alertas al instante ni publica telemetría (ver `README.md` §3, punto 16).
-
-Arrancar y mirar:
-
-```bash
-sudo systemctl start spui
-journalctl -u spui -f
-```
-
-### Paso 7 — Levantar el consumidor de telemetría
-
-En el host, instalarlo como servicio de Windows (PowerShell **como administrador**, requiere NSSM):
+**Daemon de telemetría** (PowerShell como administrador, requiere NSSM):
 
 ```powershell
 cd c:\wamp64\www\intranet\apps\spui\config\servicios
 .\instalar-servicio-telemetria.ps1
 ```
 
-Para una prueba rápida sin instalar nada, también se puede correr en una consola aparte:
+Sin este proceso la telemetría no llega a la base, y tampoco corren el mantenimiento ni el rollup, que viven dentro de él.
 
-```bash
-cd c:\wamp64\www\intranet
-php bin/console spui:mqtt:subscribe --id=spui
-```
-
-**Sin este proceso la telemetría no llega a la base**, aunque la Pi la esté publicando, y tampoco corren el mantenimiento (marcar reproductores caídos, desactivar alertas vencidas) ni el rollup horario, que viven dentro del mismo proceso. El flag `--id=spui` es obligatorio.
-
----
-
-## 6. Cómo saber que funciona
+## 5. Cómo saber que funciona
 
 | # | Qué probar | Qué tiene que pasar |
 |---|---|---|
 | 1 | `curl` con la API key al `/sync` desde la Pi | JSON con `pantallas[]` |
-| 2 | `journalctl -u spui -f` | "Sync OK", prefetch de archivos, y el player reproduciendo |
-| 3 | Monitor conectado a la Pi | Contenido en pantalla, fullscreen |
-| 4 | Dashboard del CMS | El reproductor pasa a **conectado**; el primer heartbeat sale al arrancar, después cada ~60 s |
-| 5 | Activar una alerta desde `/spui/alertas` | Aparece en el log de la Pi casi al instante e interrumpe lo que esté mostrando |
-| 6 | Consola de `spui:mqtt:subscribe` | Líneas con temperatura, RAM y disco cada ~60 s |
-| 7 | Telemetría en `/spui/reproductores/{id}/telemetria` | Los gráficos se llenan, con temperatura real del SoC |
-| 8 | Contenido tipo **cronograma** en la playlist | Se muestran las actividades del día; si no hay, lo informa en pantalla |
-| 9 | Configurar energía con hora de apagado ya pasada | El log dice "Fuera de horario: pantalla apagada" |
-| 10 | Desconectar la red de la Pi | Sigue reproduciendo desde caché; al reconectar, sincroniza solo |
+| 2 | `journalctl -u spui -f` | `Sync OK`, prefetch de archivos y reproducción |
+| 3 | Pantalla conectada a la Pi | Contenido a pantalla completa |
+| 4 | Dashboard del CMS | El reproductor pasa a **Conectado** |
+| 5 | Activar una alerta desde `/spui/alertas` | Aparece en el log de la Pi casi al instante |
+| 6 | `/spui/reproductores/{id}/telemetria` | Los gráficos se llenan |
+| 7 | Energía con la hora de apagado ya pasada | El log dice `Fuera de horario: pantalla apagada` |
+| 8 | Cortar la red de la Pi | Sigue con la caché y, al volver, sincroniza sola |
 
-La prueba 10 es la que valida el requisito de resiliencia offline, que es uno de los tres puntos que pidió el jurado.
+## 6. Antes de una demo o de la defensa
 
----
-
-## 7. Qué se puede probar con hardware real (y qué no se podía en VM)
-
-Con la Raspberry Pi física se prueba **todo**. Esta tabla queda como referencia de las limitaciones que tenía el plan de VM:
-
-| Funciona en ambos | Sólo con Raspberry Pi real |
-|---|---|
-| Sincronización y caché offline | Temperatura real del SoC |
-| Descarga y verificación de archivos | Encendido/apagado por HDMI-CEC |
-| Lógica de horarios y programación | Control de brillo por hardware |
-| Alertas por MQTT | GPIO |
-| Heartbeat y estado de conexión | Rendimiento real de reproducción |
-| Telemetría de RAM y disco | Salida de video HDMI |
-
-En VM la telemetría de temperatura llegaba en cero porque `/sys/class/thermal/thermal_zone0/temp` no existe ahí. **Con la Pi real ese archivo existe y el valor es verdadero.**
-
----
-
-## 8. Antes de una demo o defensa
-
-Cosas que hoy están bien para desarrollo y **no** para mostrar en serio:
+Lo que está bien para desarrollo y no para mostrar en serio:
 
 | Tema | Qué hacer |
 |---|---|
-| ~~MQTT anónimo~~ | ✅ Resuelto — Dynamic Security, `allow_anonymous false`, ACL por rol (tareas 1.0.a/1.0.b) |
-| ~~MQTT sin cifrar~~ | ✅ Resuelto — certificado propio (1.0.c), listener 8883 con TLS activo en el broker (1.0.d) y CMS + reproductor 17 verificados conectando por TLS con verificación de hostname (1.0.e) |
-| HTTP sin cifrar (API REST) | Falta HTTPS para `/api/spui/...` — no forma parte de las tareas 1.0.a-f (esas son solo MQTT) |
-| 1883 sigue abierto sin TLS | **Pendiente a propósito (tarea 1.0.f)** — cerrarlo a `listener 1883 127.0.0.1` en `mosquitto.conf` una vez que 8883 lleve un tiempo probado en uso real. No se hizo apenas se desplegó 8883 para no perder el único canal de conexión si algo del TLS fallara en producción y hubiera que revertir rápido. Si en la demo/defensa las Pis ya conectan todas por 8883 sin problemas, cerrar 1883 antes de mostrarlo — dejarlo abierto sin necesidad es la única deuda de seguridad real que queda de toda la tarea 1.0 |
-| CORS abierto | Definir `SPUI_CORS_ORIGINS` con los dominios reales |
-| ~~`spui:mantenimiento` sin programar~~ | ✅ Resuelto — ya no hace falta cronearlo: `spui:mqtt:subscribe` lo dispara internamente cada minuto (y el rollup cada hora) mientras corre como servicio. Instalar **un solo** servicio deja las tres cosas funcionando; ver `config/servicios/` (`instalar-servicio.sh` en Linux, `instalar-servicio-telemetria.ps1` en Windows) |
-| ~~`spui:mqtt:subscribe` a mano~~ | ✅ Resuelto — servicio (NSSM en Windows, systemd en Linux), mismo instalador que el punto anterior |
-| IP del host por DHCP | Reserva DHCP o nombre DNS (ver §4) |
+| HTTP sin cifrar en el CMS y la API | HTTPS en la VM (§3) |
+| CORS abierto | `SPUI_CORS_ORIGINS` con los dominios reales |
+| IP del host por DHCP | Nombre DNS en la VM |
+| Hardening de la Pi | `README.md` §6 |

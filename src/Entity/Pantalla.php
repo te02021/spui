@@ -38,17 +38,9 @@ class Pantalla
     #[ORM\JoinColumn(nullable: true)]
     private ?Playlist $playlistFallback = null;
 
-    #[ORM\Column(length: 45, nullable: true)]
-    private ?string $ipAddress = null;
-
-    #[ORM\Column(length: 17, nullable: true)]
-    private ?string $macAddress = null;
-
-    #[ORM\Column(type: 'smallint', options: ['unsigned' => true])]
-    private int $resolucionAncho = 1920;
-
-    #[ORM\Column(type: 'smallint', options: ['unsigned' => true])]
-    private int $resolucionAlto = 1080;
+    // IP, MAC y resolución se sacaron el 30/10/2026: se cargaban a mano, nada
+    // los usaba (la Pi reproduce a pantalla completa en lo que detecta por
+    // HDMI e informa su propia red) y se desactualizaban solos.
 
     #[ORM\Column(enumType: EstadoPantalla::class)]
     private EstadoPantalla $estado = EstadoPantalla::Activo;
@@ -103,20 +95,6 @@ class Pantalla
 
     public function getPlaylistFallback(): ?Playlist { return $this->playlistFallback; }
     public function setPlaylistFallback(?Playlist $playlist): static { $this->playlistFallback = $playlist; return $this; }
-
-    public function getIpAddress(): ?string { return $this->ipAddress; }
-    public function setIpAddress(?string $ipAddress): static { $this->ipAddress = $ipAddress; return $this; }
-
-    public function getMacAddress(): ?string { return $this->macAddress; }
-    public function setMacAddress(?string $macAddress): static { $this->macAddress = $macAddress; return $this; }
-
-    public function getResolucionAncho(): int { return $this->resolucionAncho; }
-    // null = el campo llegó vacío del formulario: se ignora y queda el valor
-    // anterior; el NotBlank del FormType es el que avisa "obligatorio".
-    public function setResolucionAncho(?int $resolucionAncho): static { if ($resolucionAncho !== null) { $this->resolucionAncho = $resolucionAncho; } return $this; }
-
-    public function getResolucionAlto(): int { return $this->resolucionAlto; }
-    public function setResolucionAlto(?int $resolucionAlto): static { if ($resolucionAlto !== null) { $this->resolucionAlto = $resolucionAlto; } return $this; }
 
     public function getEstado(): EstadoPantalla { return $this->estado; }
 

@@ -15,6 +15,7 @@ use SPUI\Entity\Playlist;
 use SPUI\Entity\Programacion;
 use SPUI\Entity\ProgramacionEnergetica;
 use SPUI\Enum\EstadoConexion;
+use SPUI\Enum\PlantillaPantalla;
 use SPUI\Enum\TipoContenido;
 use SPUI\Repository\AlertaEmergenciaRepository;
 use SPUI\Repository\CronogramaItemRepository;
@@ -22,6 +23,8 @@ use SPUI\Repository\ProgramacionEnergeticaRepository;
 use SPUI\Repository\ProgramacionRepository;
 use SPUI\Service\ConexionPublisherService;
 use SPUI\Service\MediaStorageService;
+use SPUI\Service\PantallaTvService;
+use SPUI\Service\MqttSecurityService;
 use SPUI\Service\ReproductorAuthService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
@@ -50,6 +53,8 @@ class SyncController extends AbstractController
         private readonly RateLimiterFactory $spuiReproductorHeartbeatLimiter,
         private readonly LoggerInterface $logger,
         private readonly ConexionPublisherService $conexionPublisher,
+        private readonly MqttSecurityService $mqttSeguridad,
+        private readonly PantallaTvService $tv,
         #[Autowire('%env(int:default:spui_umbral_conexion_default:SPUI_UMBRAL_CONEXION_SEG)%')]
         private readonly int $umbralConexionSeg,
     ) {}
@@ -75,6 +80,11 @@ class SyncController extends AbstractController
                 ['Retry-After' => $limit->getRetryAfter()->getTimestamp() - time()],
             );
         }
+
+        // Permisos MQTT por equipo: los reproductores que ya existían pasan
+        // solos a su rol propio en el próximo sync (cacheado una hora; no
+        // frena el sync aunque el broker esté caído).
+        $this->mqttSeguridad->asegurarPermisos($reproductor);
 
         $ahora = new DateTimeImmutable();
 
@@ -107,16 +117,20 @@ class SyncController extends AbstractController
             $playlistData = null;
 
             if ($progActiva !== null) {
-                $playlistData = $this->serializePlaylist($progActiva->getPlaylist(), $request);
-            } elseif ($pantalla->getPlaylistFallback() !== null) {
-                $playlistData = $this->serializePlaylist($pantalla->getPlaylistFallback(), $request);
+                $playlistData = $this->serializePlaylist($progActiva->getPlaylist(), $request, $pantalla, $ahora);
+            }
+            // Si la playlist de la regla no tiene nada que mostrar (todos sus
+            // contenidos archivados), la pantalla cae a su playlist de
+            // respaldo, como si no hubiera regla, y no a la pantalla de espera.
+            if (($playlistData === null || $playlistData['items'] === []) && $pantalla->getPlaylistFallback() !== null) {
+                $playlistData = $this->serializePlaylist($pantalla->getPlaylistFallback(), $request, $pantalla, $ahora);
             }
 
             $pantallasData[] = [
                 'id'                  => $pantalla->getId(),
                 'nombre'              => $pantalla->getNombre(),
-                'resolucion_ancho'    => $pantalla->getResolucionAncho(),
-                'resolucion_alto'     => $pantalla->getResolucionAlto(),
+                // El pie de la plantilla institucional: dónde está la pantalla.
+                'lugar'               => $this->lugar($pantalla),
                 'programacion_activa' => $progActiva !== null ? $this->serializeProgMeta($progActiva) : null,
                 'playlist'            => $playlistData,
                 // CU-11: horario energético semanal. Lista vacía = sin gestión de
@@ -134,6 +148,8 @@ class SyncController extends AbstractController
             'pantallas'         => $pantallasData,
             'alerta_emergencia' => $alerta !== null ? $this->serializeAlerta($alerta, $request) : null,
             'servidor_ts'       => $ahora->format('c'),
+            // Desde qué hora el tema "Automático" es claro y desde cuál oscuro.
+            'tema_horario'      => $this->tv->horarioTema(),
             // Cada cuánto tiene que volver a sincronizar por su cuenta: lo
             // configura el operador por reproductor (en minutos) y la Pi lo usa
             // en vez del SPUI_SYNC_INTERVAL de su spui.env.
@@ -287,36 +303,49 @@ class SyncController extends AbstractController
         ];
     }
 
-    private function serializePlaylist(Playlist $playlist, Request $request): array
+    /** "Campus E4 · Hall de entrada": el edificio y, si tiene, el sector. */
+    private function lugar(Pantalla $pantalla): string
+    {
+        $ubicacion = $pantalla->getUbicacion();
+        return implode(' · ', array_filter([$ubicacion->getEdificio()->getNombre(), $ubicacion->getSector()]));
+    }
+
+    private function serializePlaylist(Playlist $playlist, Request $request, Pantalla $pantalla, DateTimeImmutable $ahora): array
     {
         return [
             'id'     => $playlist->getId(),
             'nombre' => $playlist->getNombre(),
+            // Sin los archivados: archivar saca el contenido de las pantallas.
             'items'  => array_map(
-                fn(PlaylistItem $item) => $this->serializeItem($item, $request),
-                $playlist->getItems()->toArray(),
+                fn(PlaylistItem $item) => $this->serializeItem($item, $request, $pantalla, $ahora),
+                $playlist->getItemsVigentes(),
             ),
         ];
     }
 
-    private function serializeItem(PlaylistItem $item, Request $request): array
+    private function serializeItem(PlaylistItem $item, Request $request, Pantalla $pantalla, DateTimeImmutable $ahora): array
     {
         $c = $item->getContenido();
 
         $cronogramaItems = null;
+        $cronograma      = null;
         if ($c->getTipo() === TipoContenido::Cronograma) {
-            $bit  = (int)(new DateTimeImmutable())->format('N') - 1; // 0=Lun … 6=Dom
-            $mask = 1 << $bit;
+            // La semana entera, con el edificio de esta pantalla si es "del
+            // edificio de la pantalla": la Pi elige el día y la hora.
+            $cronograma = $this->tv->cronogramaParaReproductor($c, $pantalla->getUbicacion()->getEdificio(), $ahora);
+            // Formato anterior (sólo lo de hoy), para una Pi sin actualizar.
+            // Los del día: clases por día de la semana, eventos por su fecha.
             $cronogramaItems = array_values(array_map(
                 fn(CronogramaItem $ci) => [
                     'nombre'      => $ci->getNombre(),
                     'aula'        => $ci->getAula(),
                     'hora_inicio' => $ci->getHoraInicio()->format('H:i'),
-                    'hora_fin'    => $ci->getHoraFin()->format('H:i'),
+                    // Un evento puede no tener hora de fin: va vacía.
+                    'hora_fin'    => $ci->getHoraFin()?->format('H:i') ?? '',
                 ],
                 array_filter(
                     $this->cronogramaItemRepo->findByContenidoOrdenado($c),
-                    fn(CronogramaItem $ci) => (bool)($ci->getDiasSemana() & $mask),
+                    fn(CronogramaItem $ci) => $ci->aplicaHoy(),
                 ),
             ));
         }
@@ -334,6 +363,14 @@ class SyncController extends AbstractController
                     ? $request->getSchemeAndHttpHost() . '/api/spui/media/' . $this->media->rutaParaUrl($c->getRutaArchivo())
                     : null,
                 'cronograma_items' => $cronogramaItems,
+                // Cómo se dibuja en el TV (noviembre 2026). Un video va
+                // siempre sin plantilla, como en la vista previa del CMS.
+                'presentacion'     => [
+                    'plantilla'  => $c->getTipo() === TipoContenido::Video ? PlantillaPantalla::Ninguna->value : $c->getPlantilla()->value,
+                    'tema'       => $c->getTema()->value,
+                    'marca_agua' => $c->isMarcaAgua(),
+                ],
+                'cronograma'       => $cronograma,
             ],
         ];
     }

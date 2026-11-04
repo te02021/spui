@@ -7,33 +7,11 @@
     <span class="{{ pantalla.activa ? 'spui-badge-conectado' : 'spui-badge-sin_registrar' }} flex-shrink-0">{{ pantalla.estado.etiqueta }}</span>
 </div>
 
-{% if pantalla.macAddress or pantalla.ipAddress %}
-<div class="spui-view-section">
-    <p class="spui-view-section-title">Red</p>
-    {% if pantalla.macAddress %}
-    <div class="spui-view-row">
-        <span class="spui-view-row-label">Dirección MAC</span>
-        <span class="spui-view-row-value"><code style="font-size:.82rem">{{ pantalla.macAddress }}</code></span>
-    </div>
-    {% endif %}
-    {% if pantalla.ipAddress %}
-    <div class="spui-view-row">
-        <span class="spui-view-row-label">Dirección IP</span>
-        <span class="spui-view-row-value"><code style="font-size:.82rem">{{ pantalla.ipAddress }}</code></span>
-    </div>
-    {% endif %}
-</div>
-{% endif %}
-
 <div class="spui-view-section">
     <p class="spui-view-section-title">Pantalla</p>
     <div class="spui-view-row">
         <span class="spui-view-row-label">Estado</span>
         <span class="spui-view-row-value">{{ pantalla.estado.etiqueta }}</span>
-    </div>
-    <div class="spui-view-row">
-        <span class="spui-view-row-label">Resolución</span>
-        <span class="spui-view-row-value">{{ pantalla.resolucionAncho }} × {{ pantalla.resolucionAlto }} px</span>
     </div>
     <div class="spui-view-row">
         <span class="spui-view-row-label">Reproductor</span>

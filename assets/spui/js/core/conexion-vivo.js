@@ -1,5 +1,8 @@
 // Avisos de conexión de reproductores, en vivo.
 //
+// En el Dashboard, el estado de cada reproductor cambia en el acto, sin esperar
+// el ciclo de 20 s del refresco por intervalo.
+//
 // En Pantallas, Contenidos, Playlists y Programación los botones de una fila se
 // bloquean si afectan a un reproductor desconectado. Sin esto, cuando el equipo
 // volvía el botón seguía bloqueado hasta recargar la página (y al revés: si se
@@ -95,6 +98,8 @@
 
     document.addEventListener('DOMContentLoaded', function () {
         var el = document.querySelector('[data-spui-conexion-vivo]');
-        if (el && document.querySelector('[data-spui-refresh="push"]')) conectar(el);
+        // Push puro (los listados) o además del intervalo (el Dashboard, que
+        // tiene que mostrar el cambio de estado en el momento).
+        if (el && document.querySelector('[data-spui-refresh]')) conectar(el);
     });
 }());

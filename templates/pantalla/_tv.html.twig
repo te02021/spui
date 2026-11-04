@@ -1,0 +1,109 @@
+{# Un TV de 1920 × 1080 achicado al ancho disponible (noviembre 2026): cómo se
+   va a ver un contenido en pantalla, con su plantilla y su tema.
+
+   Lo arma PantallaTvService::vista() (tv) y lo achica y anima
+   core/vista-tv.js: escala, ajuste del texto y, en el cronograma, las
+   páginas (las filas que entran a lo alto) y el cambio de una a otra,
+   deslizándose hacia la izquierda.
+
+   Variables: tv; media_url (imagen, video o la imagen del QR, si ya hay una);
+   leyenda (opcional, una línea debajo del TV). #}
+{% set cr = tv.cronograma|default(null) %}
+
+{% macro contenido(tv, media_url) %}
+    {% set cr = tv.cronograma|default(null) %}
+    {% if tv.tipo == 'texto' %}
+        <div class="tv-texto" data-spui-tv-ajustar><p>{{ tv.texto ?: 'Escribí el texto a mostrar.' }}</p></div>
+
+    {% elseif tv.tipo in ['imagen', 'video'] %}
+        {% if media_url %}
+            {% if tv.tipo == 'video' %}
+                <video class="tv-media" src="{{ media_url }}" muted autoplay loop playsinline data-spui-tv-media></video>
+            {% else %}
+                <img class="tv-media" src="{{ media_url }}" alt="" data-spui-tv-media>
+            {% endif %}
+        {% else %}
+            <div class="tv-sin-archivo" data-spui-tv-media-falta>{{ tv.tipo == 'video' ? 'Elegí el video' : 'Elegí la imagen' }}</div>
+        {% endif %}
+
+    {% elseif tv.tipo == 'qr' %}
+        <div class="tv-qrbox">
+            <div class="tv-qr-txt">
+                <span class="tv-kicker">Escaneá con tu celular</span>
+                <p data-spui-tv-ajustar>{{ tv.titulo ?: 'Título del contenido' }}</p>
+            </div>
+            <div class="tv-qr-marco">
+                {% if media_url %}
+                    <img src="{{ media_url }}" alt="">
+                {% else %}
+                    <div class="tv-qr-pendiente">El código se genera al guardar</div>
+                {% endif %}
+            </div>
+        </div>
+
+    {% elseif cr %}
+        <div class="tv-crono-tit">
+            <div><small>Cronograma de hoy</small><h1>{{ cr.edificio ?: tv.titulo }}</h1></div>
+            {% if cr.total %}
+                <div class="tv-crono-ref">
+                    <span class="tv-ref tv-ref-curso">En curso</span>
+                    <span class="tv-ref tv-ref-evento">Evento especial</span>
+                    <span class="tv-crono-cuenta">{{ cr.total }} {{ cr.total == 1 ? 'actividad' : 'actividades' }} por delante</span>
+                </div>
+            {% endif %}
+        </div>
+        {% if cr.total %}
+            <div class="tv-fila tv-tcab"><span>Horario</span><span>Materia · Docente</span><span>Carrera · Año</span><span>Aula</span></div>
+            {# Todas las filas en una lista: vista-tv.js las reparte en páginas
+               según la altura de cada una (una materia larga baja a otro
+               renglón, nunca se corta). #}
+            <div class="tv-vista">
+                <div class="tv-pagina" data-spui-tv-origen>
+                    {% for f in cr.filas %}
+                        <div class="tv-fila{{ f.curso ? ' is-curso' }}{{ f.evento ? ' is-evento' }}">
+                            <div class="tv-c-hora">{% if f.fin %}{{ f.inicio }}<i>–</i>{{ f.fin }}{% else %}Desde las {{ f.inicio }}{% endif %}</div>
+                            <div class="tv-c-mat">
+                                <div class="tv-mat">{{ f.nombre }}{% if f.evento %}<span class="tv-et">Evento especial</span>{% endif %}</div>
+                                {% if f.docente %}<div class="tv-doc">{{ f.docente }}</div>{% endif %}
+                            </div>
+                            {# <wbr> después de cada "/": "AGRO/BIO/IC" puede bajar de renglón ahí. #}
+                            <div class="tv-c-car">{{ f.meta|e|replace({'/': '/<wbr>'})|raw }}</div>
+                            <div class="tv-c-aula">{{ f.aula|e|replace({'/': '/<wbr>'})|raw }}</div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        {% else %}
+            <div class="tv-crono-vacio">{{ cr.vacio }}</div>
+        {% endif %}
+    {% endif %}
+{% endmacro %}
+
+<div class="spui-tv-escala" data-spui-tv {% if cr and cr.total %}data-spui-tv-segundos="{{ cr.segundos }}"{% endif %}>
+    <div class="spui-tv spui-tv--{{ tv.tema }} spui-tv--{{ tv.plantilla }} spui-tv--{{ tv.tipo }}">
+        {% if tv.plantilla == 'institucional' %}
+            <header class="tv-cab">
+                <img class="tv-logo" src="{{ asset('spui/img/tv/unraf.png') }}" alt="UNRaf">
+                {# La hora grande y la fecha debajo (03/11/2026). #}
+                <div class="tv-reloj">
+                    <span class="tv-hora" data-spui-tv-hora>{{ tv.hora }}</span>
+                    <span class="tv-dia">{{ tv.fecha }}</span>
+                </div>
+            </header>
+            <div class="tv-franja"><i></i><i></i><i></i></div>
+            <div class="tv-cuerpo">{{ _self.contenido(tv, media_url|default(null)) }}</div>
+            <footer class="tv-pie">
+                <span><b>SPUI</b> · Sistema de Pantallas UNRaf</span>
+                {# Los puntos de cada página los pone vista-tv.js al armarlas. #}
+                {% if cr and cr.total %}<span class="tv-avance" data-spui-tv-avance aria-hidden="true" hidden></span>{% endif %}
+                <span>{{ tv.lugar ?: 'Lugar de la pantalla' }}</span>
+            </footer>
+        {% else %}
+            <div class="tv-completa">{{ _self.contenido(tv, media_url|default(null)) }}</div>
+            {% if tv.marca_agua %}<img class="tv-agua" src="{{ asset('spui/img/tv/unraf-molino.png') }}" alt="">{% endif %}
+            {# Sin plantilla, la hora va en una píldora; no sobre un video (en
+               la Pi lo dibuja VLC y no se le puede poner nada encima). #}
+            {% if tv.tipo != 'video' %}<span class="tv-hora-pildora" data-spui-tv-hora>{{ tv.hora }}</span>{% endif %}
+        {% endif %}
+    </div>
+</div>

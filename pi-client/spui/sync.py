@@ -12,13 +12,14 @@ import hashlib
 import logging
 import os
 import threading
+import time
 from datetime import datetime
 
 import requests
 
 logger = logging.getLogger(__name__)
 
-# El CMS acepta hasta 2 syncs por minuto por reproductor: por debajo de 30 s
+# El CMS acepta hasta 4 syncs por minuto por reproductor (antes 2): por debajo de 30 s
 # los pedidos terminarían rechazados (429).
 MINIMO_SYNC_SEG = 30
 
@@ -54,8 +55,10 @@ def _legible(segundos: int) -> str:
 
 
 class SyncClient:
-    def __init__(self, api_url: str, api_key: str, media_dir: str):
+    def __init__(self, api_url: str, api_key: str, media_dir: str, reloj=None):
         self._base = api_url.rstrip('/')
+        # Recibe la hora del CMS de cada respuesta (spui/reloj.py).
+        self._reloj = reloj
         self._media_dir = media_dir
         # ruta → (tamaño, mtime_ns, hash) de los archivos ya verificados.
         self._validos: dict[str, tuple[int, int, str]] = {}
@@ -71,9 +74,11 @@ class SyncClient:
 
     def sincronizar(self) -> dict:
         """Llama a /reproductores/sync y devuelve el JSON completo."""
+        inicio = time.monotonic()
         resp = self._session.post(f'{self._base}/reproductores/sync', timeout=10)
         resp.raise_for_status()
         data = resp.json()
+        self._hora_del_cms(data, time.monotonic() - inicio)
         pantallas = data.get('pantallas') or []
         primera   = pantallas[0] if pantallas else {}
         prog      = primera.get('programacion_activa')
@@ -104,16 +109,25 @@ class SyncClient:
         sabe que el problema anterior se resolvió y limpia el aviso.
         """
         try:
+            inicio = time.monotonic()
             resp = self._session.post(
                 f'{self._base}/reproductores/heartbeat',
                 json={'diagnostico': diagnostico or []},
                 timeout=5,
             )
             resp.raise_for_status()
+            try:
+                self._hora_del_cms(resp.json(), time.monotonic() - inicio)
+            except ValueError:
+                pass
             return True
         except Exception as exc:
             logger.warning('Heartbeat falló: %s', exc)
             return False
+
+    def _hora_del_cms(self, data, ida_y_vuelta: float) -> None:
+        if self._reloj is not None and isinstance(data, dict):
+            self._reloj.registrar_servidor(data.get('servidor_ts'), ida_y_vuelta)
 
     def enviar_telemetria(self, metricas: dict) -> bool:
         """

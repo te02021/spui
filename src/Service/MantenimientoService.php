@@ -9,6 +9,7 @@ use Doctrine\Persistence\ManagerRegistry;
 use SPUI\Enum\EstadoConexion;
 use SPUI\Repository\AlertaEmergenciaRepository;
 use SPUI\Repository\ReproductorRepository;
+use SPUI\Repository\TelemetriaHoraRepository;
 use SPUI\Repository\TelemetriaRepository;
 
 /**
@@ -43,10 +44,19 @@ final class MantenimientoService
      */
     public const RETENCION_DIAS_DEFAULT = 7;
 
+    /**
+     * Días del detalle por hora (telemetria_hora) a conservar: es lo que se
+     * grafica y se exporta a Excel. Hasta el 29/10/2026 no se borraba nunca;
+     * 60 días es lo que se ofrece exportar, y a 1 fila por hora y reproductor
+     * son 1440 filas por equipo.
+     */
+    public const RETENCION_HORA_DIAS = 60;
+
     public function __construct(
         private readonly ManagerRegistry $doctrine,
         private readonly ReproductorRepository $reproductorRepo,
         private readonly TelemetriaRepository $telemetriaRepo,
+        private readonly TelemetriaHoraRepository $telemetriaHoraRepo,
         private readonly AlertaEmergenciaRepository $alertaRepo,
         private readonly AlertaPublisherService $alertaPublisher,
         private readonly ConexionPublisherService $conexionPublisher,
@@ -111,6 +121,9 @@ final class MantenimientoService
         if (!$purgaDeshabilitada && !$dryRun) {
             $corte = new DateTimeImmutable(sprintf('-%d days', $retencionDias));
             $telemetriaPurgada = $this->telemetriaRepo->purgarAnterioresA($corte);
+        }
+        if (!$dryRun) {
+            $this->telemetriaHoraRepo->purgarAnterioresA(new DateTimeImmutable(sprintf('-%d days', self::RETENCION_HORA_DIAS)));
         }
 
         return [

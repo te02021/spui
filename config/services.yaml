@@ -1,9 +1,9 @@
 parameters:
     # TLS para las conexiones MQTT del CMS al broker (tarea 1.0.e).
-    # false por defecto a propósito: el certificado (1.0.c) y el listener
-    # 8883 (1.0.d) están escritos pero el broker real todavía sirve por 1883
-    # sin cifrar. Activar esto antes de desplegar el listener dejaría al CMS
-    # sin poder conectar. Para activarlo: MQTT_TLS=true y MQTT_PORT=8883.
+    # false por defecto porque el 1883 sin cifrar sigue abierto en 127.0.0.1:
+    # un CMS en el mismo equipo que el broker conecta igual. Desde otro
+    # equipo (la VM con el broker aparte) hacen falta MQTT_TLS=true y
+    # MQTT_PORT=8883, que es lo que ya usa esta instalación.
     spui_mqtt_tls_default: false
 
     # Ruta al certificado de la CA propia (certs/ca.crt), para validar el
@@ -23,6 +23,9 @@ parameters:
     # empieza a hacer throttling; en reposo bajo carga ronda los 50-60.
     # Se puede bajar por entorno con SPUI_TEMP_ALERTA_CELSIUS si se quiere avisar antes.
     spui_temp_alerta_default: 80.0
+    # Uso de CPU promedio de los últimos 10 minutos que dispara el aviso del
+    # Dashboard (03/11/2026). Un pico de un minuto no avisa.
+    spui_cpu_alerta_default: 90.0
 
     # Zona horaria de la aplicación. PHP corre en UTC por defecto y la
     # universidad está en UTC-3: sin esto las alertas expiran 3 horas antes de
@@ -80,6 +83,14 @@ parameters:
     # intranet no está disponible en algún entorno), no como el modo esperado.
     # Ver SPUI\Service\MediaStorageService.
     spui_storage_driver_default: 's3'
+
+    # Tema "Automático" de las plantillas de pantalla (noviembre 2026): claro
+    # de día, oscuro a la noche. Horas locales (SPUI_TIMEZONE), "HH:MM".
+    # Decisión de Mateo: el cambio a oscuro, a las 19 h. Lo lee el CMS para la
+    # vista previa y se le manda a la Pi en el sync.
+    # Se pueden pisar por entorno con SPUI_TEMA_CLARO_DESDE / SPUI_TEMA_OSCURO_DESDE.
+    spui_tema_claro_desde_default: '07:00'
+    spui_tema_oscuro_desde_default: '19:00'
 
 services:
     _defaults:

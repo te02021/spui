@@ -1,0 +1,1235 @@
+{
+ "escenario": "alerta",
+ "inicio": "2026-10-15T13:14:46.643758",
+ "fin": "2026-10-15T13:15:59.676418",
+ "commit": "a206542",
+ "n": 100,
+ "parametros": {
+  "escenario": "alerta",
+  "n": 100,
+  "minutos": 10,
+  "intervalo_sync": 60,
+  "repeticiones": 10,
+  "timeout_alerta": 30,
+  "api": "http://intranet/api/spui",
+  "mqtt_host": "127.0.0.1",
+  "mqtt_port": 1883,
+  "playlist": null,
+  "conservar": false
+ },
+ "preparacion": {
+  "creados": 100,
+  "credenciales_mqtt_fallidas": 0,
+  "playlist": {
+   "id": 6,
+   "nombre": "Playlist prueba",
+   "items": 1
+  },
+  "estado": "C:\\wamp64\\www\\intranet\\apps\\spui\\tools\\simulador\\.sim\\estado.json"
+ },
+ "resultado": {
+  "mqtt_conectados": 100,
+  "alerta_id": 39,
+  "rondas": [
+   {
+    "ronda": 1,
+    "http_estado": 200,
+    "cms_success": true,
+    "cms_mensaje": "Alerta \"[SIM] Alerta de prueba de carga\" ACTIVADA. Reproductores notificados vía MQTT.",
+    "respuesta_activar_s": 0.32419919967651367,
+    "recibieron": 100,
+    "no_recibieron": 0,
+    "primera_s": 0.2781858444213867,
+    "p50_s": 0.2857472896575928,
+    "p95_s": 0.28927251100540163,
+    "ultima_s": 0.28953099250793457
+   },
+   {
+    "ronda": 2,
+    "http_estado": 200,
+    "cms_success": true,
+    "cms_mensaje": "Alerta \"[SIM] Alerta de prueba de carga\" ACTIVADA. Reproductores notificados vía MQTT.",
+    "respuesta_activar_s": 0.23724651336669922,
+    "recibieron": 100,
+    "no_recibieron": 0,
+    "primera_s": 0.1937267780303955,
+    "p50_s": 0.20222806930541992,
+    "p95_s": 0.20655386447906493,
+    "ultima_s": 0.20702362060546875
+   },
+   {
+    "ronda": 3,
+    "http_estado": 200,
+    "cms_success": true,
+    "cms_mensaje": "Alerta \"[SIM] Alerta de prueba de carga\" ACTIVADA. Reproductores notificados vía MQTT.",
+    "respuesta_activar_s": 0.33619165420532227,
+    "recibieron": 100,
+    "no_recibieron": 0,
+    "primera_s": 0.26697802543640137,
+    "p50_s": 0.2776862382888794,
+    "p95_s": 0.2830911040306091,
+    "ultima_s": 0.28334593772888184
+   },
+   {
+    "ronda": 4,
+    "http_estado": 200,
+    "cms_success": true,
+    "cms_mensaje": "Alerta \"[SIM] Alerta de prueba de carga\" ACTIVADA. Reproductores notificados vía MQTT.",
+    "respuesta_activar_s": 0.28403687477111816,
+    "recibieron": 100,
+    "no_recibieron": 0,
+    "primera_s": 0.24192380905151367,
+    "p50_s": 0.2507181167602539,
+    "p95_s": 0.2548578143119812,
+    "ultima_s": 0.25520968437194824
+   },
+   {
+    "ronda": 5,
+    "http_estado": 200,
+    "cms_success": true,
+    "cms_mensaje": "Alerta \"[SIM] Alerta de prueba de carga\" ACTIVADA. Reproductores notificados vía MQTT.",
+    "respuesta_activar_s": 0.310518741607666,
+    "recibieron": 100,
+    "no_recibieron": 0,
+    "primera_s": 0.22339272499084473,
+    "p50_s": 0.23652589321136475,
+    "p95_s": 0.2437138795852661,
+    "ultima_s": 0.24427008628845215
+   },
+   {
+    "ronda": 6,
+    "http_estado": 200,
+    "cms_success": true,
+    "cms_mensaje": "Alerta \"[SIM] Alerta de prueba de carga\" ACTIVADA. Reproductores notificados vía MQTT.",
+    "respuesta_activar_s": 0.3084719181060791,
+    "recibieron": 100,
+    "no_recibieron": 0,
+    "primera_s": 0.25745391845703125,
+    "p50_s": 0.2638282775878906,
+    "p95_s": 0.27119194269180297,
+    "ultima_s": 0.2715904712677002
+   },
+   {
+    "ronda": 7,
+    "http_estado": 200,
+    "cms_success": true,
+    "cms_mensaje": "Alerta \"[SIM] Alerta de prueba de carga\" ACTIVADA. Reproductores notificados vía MQTT.",
+    "respuesta_activar_s": 0.24655365943908691,
+    "recibieron": 100,
+    "no_recibieron": 0,
+    "primera_s": 0.1957705020904541,
+    "p50_s": 0.20343172550201416,
+    "p95_s": 0.20747262239456177,
+    "ultima_s": 0.2076575756072998
+   },
+   {
+    "ronda": 8,
+    "http_estado": 200,
+    "cms_success": true,
+    "cms_mensaje": "Alerta \"[SIM] Alerta de prueba de carga\" ACTIVADA. Reproductores notificados vía MQTT.",
+    "respuesta_activar_s": 0.27423548698425293,
+    "recibieron": 100,
+    "no_recibieron": 0,
+    "primera_s": 0.22936701774597168,
+    "p50_s": 0.23817837238311768,
+    "p95_s": 0.24223169088363647,
+    "ultima_s": 0.24258947372436523
+   },
+   {
+    "ronda": 9,
+    "http_estado": 200,
+    "cms_success": true,
+    "cms_mensaje": "Alerta \"[SIM] Alerta de prueba de carga\" ACTIVADA. Reproductores notificados vía MQTT.",
+    "respuesta_activar_s": 0.26395392417907715,
+    "recibieron": 100,
+    "no_recibieron": 0,
+    "primera_s": 0.21586060523986816,
+    "p50_s": 0.2242351770401001,
+    "p95_s": 0.22764382362365723,
+    "ultima_s": 0.22798895835876465
+   },
+   {
+    "ronda": 10,
+    "http_estado": 200,
+    "cms_success": true,
+    "cms_mensaje": "Alerta \"[SIM] Alerta de prueba de carga\" ACTIVADA. Reproductores notificados vía MQTT.",
+    "respuesta_activar_s": 0.2650949954986572,
+    "recibieron": 100,
+    "no_recibieron": 0,
+    "primera_s": 0.23546743392944336,
+    "p50_s": 0.2674793004989624,
+    "p95_s": 0.2877358436584473,
+    "ultima_s": 0.2879629135131836
+   }
+  ]
+ },
+ "http_por_endpoint": [
+  {
+   "endpoint": "/reproductores/heartbeat",
+   "pedidos": 100,
+   "errores": 0,
+   "error_pct": 0.0,
+   "http_429": 0,
+   "p50_ms": 236.8798000006791,
+   "p95_ms": 366.35432500224846,
+   "p99_ms": 1517.349737997502,
+   "max_ms": 1611.6015000006882,
+   "bytes_resp_prom": 53,
+   "estados": {
+    "200": 100
+   }
+  }
+ ],
+ "servidor": {
+  "muestras": 12,
+  "cpu_total_prom": 15.016666666666666,
+  "cpu_total_max": 25.0,
+  "ram_total_max_pct": 72.2,
+  "procesos": {
+   "Apache": {
+    "cpu_prom": 0.35,
+    "cpu_max": 1.5,
+    "ram_max_mb": 113.78515625
+   },
+   "Mosquitto": {
+    "cpu_prom": 0.725,
+    "cpu_max": 1.8,
+    "ram_max_mb": 12.78125
+   },
+   "MySQL": {
+    "cpu_prom": 1.7083333333333333,
+    "cpu_max": 3.3,
+    "ram_max_mb": 245.1484375
+   },
+   "PHP": {
+    "cpu_prom": 35.275,
+    "cpu_max": 82.7,
+    "ram_max_mb": 79.58984375
+   }
+  }
+ },
+ "integridad": {
+  "reproductores": 100,
+  "telemetria_por_reproductor": [],
+  "reproductores_sin_sync_en_la_corrida": 100,
+  "reproductores_sin_heartbeat_en_la_corrida": 0,
+  "telemetria_huerfana_en_toda_la_base": 0,
+  "telemetria_con_valores_fuera_de_rango": 0,
+  "reproductores_con_diagnostico": 0,
+  "errores_del_cms_en_el_log": []
+ },
+ "veredictos": [
+  {
+   "criterio": "CP12 — alerta a 100 reproductores en < 5 s (el último, peor ronda)",
+   "medido": "0,29 s",
+   "cumple": true
+  },
+  {
+   "criterio": "CP12 — ningún reproductor sin recibirla",
+   "medido": "0 sin recibir",
+   "cumple": true
+  }
+ ],
+ "pedidos": [
+  {
+   "t": 1792080889.597064,
+   "rep": 468,
+   "endpoint": "/reproductores/heartbeat",
+   "estado": 200,
+   "ms": 1516.3976999974693,
+   "bytes_resp": 53,
+   "bytes_env": 19,
+   "error": null
+  },
+  {
+   "t": 1792080891.1135163,
+   "rep": 469,
+   "endpoint": "/reproductores/heartbeat",
+   "estado": 200,
+   "ms": 148.90599999853293,
+   "bytes_resp": 53,
+   "bytes_env": 19,
+   "error": null
+  },
+  {
+   "t": 1792080891.2624514,
+   "rep": 470,
+   "endpoint": "/reproductores/heartbeat",
+   "estado": 200,
+   "ms": 124.54199999774573,
+   "bytes_resp": 53,
+   "bytes_env": 19,
+   "error": null
+  },
+  {
+   "t": 1792080891.3870196,
+   "rep": 471,
+   "endpoint": "/reproductores/heartbeat",
+   "estado": 200,
+   "ms": 140.19270000062534,
+   "bytes_resp": 53,
+   "bytes_env": 19,
+   "error": null
+  },
+  {
+   "t": 1792080891.5272624,
+   "rep": 472,
+   "endpoint": "/reproductores/heartbeat",
+   "estado": 200,
+   "ms": 167.41600000023027,
+   "bytes_resp": 53,
+   "bytes_env": 19,
+   "error": null
+  },
+  {
+   "t": 1792080891.6947052,
+   "rep": 473,
+   "endpoint": "/reproductores/heartbeat",
+   "estado": 200,
+   "ms": 149.5284000011452,
+   "bytes_resp": 53,
+   "bytes_env": 19,
+   "error": null
+  },
+  {
+   "t": 1792080891.844278,
+   "rep": 474,
+   "endpoint": "/reproductores/heartbeat",
+   "estado": 200,
+   "ms": 147.45229999971343,
+   "bytes_resp": 53,
+   "bytes_env": 19,
+   "error": null
+  },
+  {
+   "t": 1792080891.9917943,
+   "rep": 475,
+   "endpoint": "/reproductores/heartbeat",
+   "estado": 200,
+   "ms": 170.60319999654894,
+   "bytes_resp": 53,
+   "bytes_env": 19,
+   "error": null
+  },
+  {
+   "t": 1792080892.1624508,
+   "rep": 476,
+   "endpoint": "/reproductores/heartbeat",
+   "estado": 200,
+   "ms": 124.30270000186283,
+   "bytes_resp": 53,
+   "bytes_env": 19,
+   "error": null
+  },
+  {
+   "t": 1792080892.286818,
+   "rep": 477,
+   "endpoint": "/reproductores/heartbeat",
+   "estado": 200,
+   "ms": 156.77619999769377,
+   "bytes_resp": 53,
+   "bytes_env": 19,
+   "error": null
+  },
+  {
+   "t": 1792080892.4436224,
+   "rep": 478,
+   "endpoint": "/reproductores/heartbeat",
+   "estado": 200,
+   "ms": 147.29259999876376,
+   "bytes_resp": 53,
+   "bytes_env": 19,
+   "error": null
+  },
+  {
+   "t": 1792080892.590974,
+   "rep": 479,
+   "endpoint": "/reproductores/heartbeat",
+   "estado": 200,
+   "ms": 187.04559999969206,
+   "bytes_resp": 53,
+   "bytes_env": 19,
+   "error": null
+  },
+  {
+   "t": 1792080892.7780464,
+   "rep": 480,
+   "endpoint": "/reproductores/heartbeat",
+   "estado": 200,
+   "ms": 1196.3457000019844,
+   "bytes_resp": 53,
+   "bytes_env": 19,
+   "error": null
+  },
+  {
+   "t": 1792080893.974434,
+   "rep": 481,
+   "endpoint": "/reproductores/heartbeat",
+   "estado": 200,
+   "ms": 357.1193999996467,
+   "bytes_resp": 53,
+   "bytes_env": 19,
+   "error": null
+  },
+  {
+   "t": 1792080894.3316176,
+   "rep": 482,
+   "endpoint": "/reproductores/heartbeat",
+   "estado": 200,
+   "ms": 389.0289999981178,
+   "bytes_resp": 53,
+   "bytes_env": 19,
+   "error": null
+  },
+  {
+   "t": 1792080894.7206712,
+   "rep": 483,
+   "endpoint": "/reproductores/heartbeat",
+   "estado": 200,
+   "ms": 341.7956999983289,
+   "bytes_resp": 53,
+   "bytes_env": 19,
+   "error": null
+  },
+  {
+   "t": 1792080895.0624943,
+   "rep": 484,
+   "endpoint": "/reproductores/heartbeat",
+   "estado": 200,
+   "ms": 1611.6015000006882,
+   "bytes_resp": 53,
+   "bytes_env": 19,
+   "error": null
+  },
+  {
+   "t": 1792080896.6741233,
+   "rep": 485,
+   "endpoint": "/reproductores/heartbeat",
+   "estado": 200,
+   "ms": 192.75009999910253,
+   "bytes_resp": 53,
+   "bytes_env": 19,
+   "error": null
+  },
+  {
+   "t": 1792080896.8668995,
+   "rep": 486,
+   "endpoint": "/reproductores/heartbeat",
+   "estado": 200,
+   "ms": 210.17049999863957,
+   "bytes_resp": 53,
+   "bytes_env": 19,
+   "error": null
+  },
+  {
+   "t": 1792080897.0770977,
+   "rep": 487,
+   "endpoint": "/reproductores/heartbeat",
+   "estado": 200,
+   "ms": 215.8558000010089,
+   "bytes_resp": 53,
+   "bytes_env": 19,
+   "error": null
+  },
+  {
+   "t": 1792080897.2930095,
+   "rep": 488,
+   "endpoint": "/reproductores/heartbeat",
+   "estado": 200,
+   "ms": 215.4528000028222,
+   "bytes_resp": 53,
+   "bytes_env": 19,
+   "error": null
+  },
+  {
+   "t": 1792080897.5084963,
+   "rep": 489,
+   "endpoint": "/reproductores/heartbeat",
+   "estado": 200,
+   "ms": 182.99189999743248,
+   "bytes_resp": 53,
+   "bytes_env": 19,
+   "error": null
+  },
+  {
+   "t": 1792080897.691516,
+   "rep": 490,
+   "endpoint": "/reproductores/heartbeat",
+   "estado": 200,
+   "ms": 257.09009999991395,
+   "bytes_resp": 53,
+   "bytes_env": 19,
+   "error": null
+  },
+  {
+   "t": 1792080897.9486706,
+   "rep": 491,
+   "endpoint": "/reproductores/heartbeat",
+   "estado": 200,
+   "ms": 241.78960000062943,
+   "bytes_resp": 53,
+   "bytes_env": 19,
+   "error": null
+  },
+  {
+   "t": 1792080898.1904948,
+   "rep": 492,
+   "endpoint": "/reproductores/heartbeat",
+   "estado": 200,
+   "ms": 263.0215999997745,
+   "bytes_resp": 53,
+   "bytes_env": 19,
+   "error": null
+  },
+  {
+   "t": 1792080898.4535453,
+   "rep": 493,
+   "endpoint": "/reproductores/heartbeat",
+   "estado": 200,
+   "ms": 263.9362000008987,
+   "bytes_resp": 53,
+   "bytes_env": 19,
+   "error": null
+  },
+  {
+   "t": 1792080898.7175329,
+   "rep": 494,
+   "endpoint": "/reproductores/heartbeat",
+   "estado": 200,
+   "ms": 198.36140000188607,
+   "bytes_resp": 53,
+   "bytes_env": 19,
+   "error": null
+  },
+  {
+   "t": 1792080898.9159243,
+   "rep": 495,
+   "endpoint": "/reproductores/heartbeat",
+   "estado": 200,
+   "ms": 223.2992999997805,
+   "bytes_resp": 53,
+   "bytes_env": 19,
+   "error": null
+  },
+  {
+   "t": 1792080899.139249,
+   "rep": 496,
+   "endpoint": "/reproductores/heartbeat",
+   "estado": 200,
+   "ms": 288.8725000011618,
+   "bytes_resp": 53,
+   "bytes_env": 19,
+   "error": null
+  },
+  {
+   "t": 1792080899.428213,
+   "rep": 497,
+   "endpoint": "/reproductores/heartbeat",
+   "estado": 200,
+   "ms": 278.5256000024674,
+   "bytes_resp": 53,
+   "bytes_env": 19,
+   "error": null
+  },
+  {
+   "t": 1792080899.7067735,
+   "rep": 498,
+   "endpoint": "/reproductores/heartbeat",
+   "estado": 200,
+   "ms": 231.39589999846066,
+   "bytes_resp": 53,
+   "bytes_env": 19,
+   "error": null
+  },
+  {
+   "t": 1792080899.938237,
+   "rep": 499,
+   "endpoint": "/reproductores/heartbeat",
+   "estado": 200,
+   "ms": 251.76949999877252,
+   "bytes_resp": 53,
+   "bytes_env": 19,
+   "error": null
+  },
+  {
+   "t": 1792080900.1900396,
+   "rep": 500,
+   "endpoint": "/reproductores/heartbeat",
+   "estado": 200,
+   "ms": 184.4885999998951,
+   "bytes_resp": 53,
+   "bytes_env": 19,
+   "error": null
+  },
+  {
+   "t": 1792080900.374577,
+   "rep": 501,
+   "endpoint": "/reproductores/heartbeat",
+   "estado": 200,
+   "ms": 196.07899999755318,
+   "bytes_resp": 53,
+   "bytes_env": 19,
+   "error": null
+  },
+  {
+   "t": 1792080900.5706818,
+   "rep": 502,
+   "endpoint": "/reproductores/heartbeat",
+   "estado": 200,
+   "ms": 276.41980000043986,
+   "bytes_resp": 53,
+   "bytes_env": 19,
+   "error": null
+  },
+  {
+   "t": 1792080900.847171,
+   "rep": 503,
+   "endpoint": "/reproductores/heartbeat",
+   "estado": 200,
+   "ms": 207.7309000014793,
+   "bytes_resp": 53,
+   "bytes_env": 19,
+   "error": null
+  },
+  {
+   "t": 1792080901.0549304,
+   "rep": 504,
+   "endpoint": "/reproductores/heartbeat",
+   "estado": 200,
+   "ms": 260.5757999990601,
+   "bytes_resp": 53,
+   "bytes_env": 19,
+   "error": null
+  },
+  {
+   "t": 1792080901.3155355,
+   "rep": 505,
+   "endpoint": "/reproductores/heartbeat",
+   "estado": 200,
+   "ms": 273.460199998226,
+   "bytes_resp": 53,
+   "bytes_env": 19,
+   "error": null
+  },
+  {
+   "t": 1792080901.5890627,
+   "rep": 506,
+   "endpoint": "/reproductores/heartbeat",
+   "estado": 200,
+   "ms": 233.54919999837875,
+   "bytes_resp": 53,
+   "bytes_env": 19,
+   "error": null
+  },
+  {
+   "t": 1792080901.8226373,
+   "rep": 507,
+   "endpoint": "/reproductores/heartbeat",
+   "estado": 200,
+   "ms": 250.35750000097323,
+   "bytes_resp": 53,
+   "bytes_env": 19,
+   "error": null
+  },
+  {
+   "t": 1792080902.073039,
+   "rep": 508,
+   "endpoint": "/reproductores/heartbeat",
+   "estado": 200,
+   "ms": 264.95629999772063,
+   "bytes_resp": 53,
+   "bytes_env": 19,
+   "error": null
+  },
+  {
+   "t": 1792080902.338062,
+   "rep": 509,
+   "endpoint": "/reproductores/heartbeat",
+   "estado": 200,
+   "ms": 196.8918999991729,
+   "bytes_resp": 53,
+   "bytes_env": 19,
+   "error": null
+  },
+  {
+   "t": 1792080902.5350482,
+   "rep": 510,
+   "endpoint": "/reproductores/heartbeat",
+   "estado": 200,
+   "ms": 193.9381999982288,
+   "bytes_resp": 53,
+   "bytes_env": 19,
+   "error": null
+  },
+  {
+   "t": 1792080902.7290573,
+   "rep": 511,
+   "endpoint": "/reproductores/heartbeat",
+   "estado": 200,
+   "ms": 282.8655000012077,
+   "bytes_resp": 53,
+   "bytes_env": 19,
+   "error": null
+  },
+  {
+   "t": 1792080903.011993,
+   "rep": 512,
+   "endpoint": "/reproductores/heartbeat",
+   "estado": 200,
+   "ms": 206.52700000209734,
+   "bytes_resp": 53,
+   "bytes_env": 19,
+   "error": null
+  },
+  {
+   "t": 1792080903.2185485,
+   "rep": 513,
+   "endpoint": "/reproductores/heartbeat",
+   "estado": 200,
+   "ms": 233.03719999967143,
+   "bytes_resp": 53,
+   "bytes_env": 19,
+   "error": null
+  },
+  {
+   "t": 1792080903.451645,
+   "rep": 514,
+   "endpoint": "/reproductores/heartbeat",
+   "estado": 200,
+   "ms": 257.4008000010508,
+   "bytes_resp": 53,
+   "bytes_env": 19,
+   "error": null
+  },
+  {
+   "t": 1792080903.709113,
+   "rep": 515,
+   "endpoint": "/reproductores/heartbeat",
+   "estado": 200,
+   "ms": 271.0066999970877,
+   "bytes_resp": 53,
+   "bytes_env": 19,
+   "error": null
+  },
+  {
+   "t": 1792080903.9801855,
+   "rep": 516,
+   "endpoint": "/reproductores/heartbeat",
+   "estado": 200,
+   "ms": 178.45060000036028,
+   "bytes_resp": 53,
+   "bytes_env": 19,
+   "error": null
+  },
+  {
+   "t": 1792080904.1586611,
+   "rep": 517,
+   "endpoint": "/reproductores/heartbeat",
+   "estado": 200,
+   "ms": 377.2968999983277,
+   "bytes_resp": 53,
+   "bytes_env": 19,
+   "error": null
+  },
+  {
+   "t": 1792080904.5359855,
+   "rep": 518,
+   "endpoint": "/reproductores/heartbeat",
+   "estado": 200,
+   "ms": 301.50610000055167,
+   "bytes_resp": 53,
+   "bytes_env": 19,
+   "error": null
+  },
+  {
+   "t": 1792080904.837602,
+   "rep": 519,
+   "endpoint": "/reproductores/heartbeat",
+   "estado": 200,
+   "ms": 208.64509999955771,
+   "bytes_resp": 53,
+   "bytes_env": 19,
+   "error": null
+  },
+  {
+   "t": 1792080905.0462742,
+   "rep": 520,
+   "endpoint": "/reproductores/heartbeat",
+   "estado": 200,
+   "ms": 251.41660000008414,
+   "bytes_resp": 53,
+   "bytes_env": 19,
+   "error": null
+  },
+  {
+   "t": 1792080905.297759,
+   "rep": 521,
+   "endpoint": "/reproductores/heartbeat",
+   "estado": 200,
+   "ms": 291.65979999743286,
+   "bytes_resp": 53,
+   "bytes_env": 19,
+   "error": null
+  },
+  {
+   "t": 1792080905.5894475,
+   "rep": 522,
+   "endpoint": "/reproductores/heartbeat",
+   "estado": 200,
+   "ms": 221.13159999935306,
+   "bytes_resp": 53,
+   "bytes_env": 19,
+   "error": null
+  },
+  {
+   "t": 1792080905.8106053,
+   "rep": 523,
+   "endpoint": "/reproductores/heartbeat",
+   "estado": 200,
+   "ms": 249.8513999998977,
+   "bytes_resp": 53,
+   "bytes_env": 19,
+   "error": null
+  },
+  {
+   "t": 1792080906.060522,
+   "rep": 524,
+   "endpoint": "/reproductores/heartbeat",
+   "estado": 200,
+   "ms": 211.69100000042818,
+   "bytes_resp": 53,
+   "bytes_env": 19,
+   "error": null
+  },
+  {
+   "t": 1792080906.2722754,
+   "rep": 525,
+   "endpoint": "/reproductores/heartbeat",
+   "estado": 200,
+   "ms": 264.8275999999896,
+   "bytes_resp": 53,
+   "bytes_env": 19,
+   "error": null
+  },
+  {
+   "t": 1792080906.5371745,
+   "rep": 526,
+   "endpoint": "/reproductores/heartbeat",
+   "estado": 200,
+   "ms": 194.49770000210265,
+   "bytes_resp": 53,
+   "bytes_env": 19,
+   "error": null
+  },
+  {
+   "t": 1792080906.7317305,
+   "rep": 527,
+   "endpoint": "/reproductores/heartbeat",
+   "estado": 200,
+   "ms": 217.10259999963455,
+   "bytes_resp": 53,
+   "bytes_env": 19,
+   "error": null
+  },
+  {
+   "t": 1792080906.948858,
+   "rep": 528,
+   "endpoint": "/reproductores/heartbeat",
+   "estado": 200,
+   "ms": 259.7977000004903,
+   "bytes_resp": 53,
+   "bytes_env": 19,
+   "error": null
+  },
+  {
+   "t": 1792080907.2087255,
+   "rep": 529,
+   "endpoint": "/reproductores/heartbeat",
+   "estado": 200,
+   "ms": 256.226900000911,
+   "bytes_resp": 53,
+   "bytes_env": 19,
+   "error": null
+  },
+  {
+   "t": 1792080907.4650247,
+   "rep": 530,
+   "endpoint": "/reproductores/heartbeat",
+   "estado": 200,
+   "ms": 257.8040000007604,
+   "bytes_resp": 53,
+   "bytes_env": 19,
+   "error": null
+  },
+  {
+   "t": 1792080907.7228546,
+   "rep": 531,
+   "endpoint": "/reproductores/heartbeat",
+   "estado": 200,
+   "ms": 175.03130000113742,
+   "bytes_resp": 53,
+   "bytes_env": 19,
+   "error": null
+  },
+  {
+   "t": 1792080907.8979533,
+   "rep": 532,
+   "endpoint": "/reproductores/heartbeat",
+   "estado": 200,
+   "ms": 174.83390000052168,
+   "bytes_resp": 53,
+   "bytes_env": 19,
+   "error": null
+  },
+  {
+   "t": 1792080908.072813,
+   "rep": 533,
+   "endpoint": "/reproductores/heartbeat",
+   "estado": 200,
+   "ms": 276.6990000018268,
+   "bytes_resp": 53,
+   "bytes_env": 19,
+   "error": null
+  },
+  {
+   "t": 1792080908.3495378,
+   "rep": 534,
+   "endpoint": "/reproductores/heartbeat",
+   "estado": 200,
+   "ms": 249.60590000046068,
+   "bytes_resp": 53,
+   "bytes_env": 19,
+   "error": null
+  },
+  {
+   "t": 1792080908.5991726,
+   "rep": 535,
+   "endpoint": "/reproductores/heartbeat",
+   "estado": 200,
+   "ms": 254.71939999988535,
+   "bytes_resp": 53,
+   "bytes_env": 19,
+   "error": null
+  },
+  {
+   "t": 1792080908.8539183,
+   "rep": 536,
+   "endpoint": "/reproductores/heartbeat",
+   "estado": 200,
+   "ms": 164.1081000016129,
+   "bytes_resp": 53,
+   "bytes_env": 19,
+   "error": null
+  },
+  {
+   "t": 1792080909.0180938,
+   "rep": 537,
+   "endpoint": "/reproductores/heartbeat",
+   "estado": 200,
+   "ms": 285.23110000242013,
+   "bytes_resp": 53,
+   "bytes_env": 19,
+   "error": null
+  },
+  {
+   "t": 1792080909.3033514,
+   "rep": 538,
+   "endpoint": "/reproductores/heartbeat",
+   "estado": 200,
+   "ms": 234.7593999984383,
+   "bytes_resp": 53,
+   "bytes_env": 19,
+   "error": null
+  },
+  {
+   "t": 1792080909.5381641,
+   "rep": 539,
+   "endpoint": "/reproductores/heartbeat",
+   "estado": 200,
+   "ms": 247.93940000017756,
+   "bytes_resp": 53,
+   "bytes_env": 19,
+   "error": null
+  },
+  {
+   "t": 1792080909.7861283,
+   "rep": 540,
+   "endpoint": "/reproductores/heartbeat",
+   "estado": 200,
+   "ms": 189.30230000114534,
+   "bytes_resp": 53,
+   "bytes_env": 19,
+   "error": null
+  },
+  {
+   "t": 1792080909.9754791,
+   "rep": 541,
+   "endpoint": "/reproductores/heartbeat",
+   "estado": 200,
+   "ms": 252.02749999880325,
+   "bytes_resp": 53,
+   "bytes_env": 19,
+   "error": null
+  },
+  {
+   "t": 1792080910.2275796,
+   "rep": 542,
+   "endpoint": "/reproductores/heartbeat",
+   "estado": 200,
+   "ms": 365.7784000024549,
+   "bytes_resp": 53,
+   "bytes_env": 19,
+   "error": null
+  },
+  {
+   "t": 1792080910.5934234,
+   "rep": 543,
+   "endpoint": "/reproductores/heartbeat",
+   "estado": 200,
+   "ms": 295.37379999965196,
+   "bytes_resp": 53,
+   "bytes_env": 19,
+   "error": null
+  },
+  {
+   "t": 1792080910.8888617,
+   "rep": 544,
+   "endpoint": "/reproductores/heartbeat",
+   "estado": 200,
+   "ms": 159.59850000217557,
+   "bytes_resp": 53,
+   "bytes_env": 19,
+   "error": null
+  },
+  {
+   "t": 1792080911.0484853,
+   "rep": 545,
+   "endpoint": "/reproductores/heartbeat",
+   "estado": 200,
+   "ms": 234.35190000236616,
+   "bytes_resp": 53,
+   "bytes_env": 19,
+   "error": null
+  },
+  {
+   "t": 1792080911.2828655,
+   "rep": 546,
+   "endpoint": "/reproductores/heartbeat",
+   "estado": 200,
+   "ms": 239.38469999848166,
+   "bytes_resp": 53,
+   "bytes_env": 19,
+   "error": null
+  },
+  {
+   "t": 1792080911.522336,
+   "rep": 547,
+   "endpoint": "/reproductores/heartbeat",
+   "estado": 200,
+   "ms": 269.497199999023,
+   "bytes_resp": 53,
+   "bytes_env": 19,
+   "error": null
+  },
+  {
+   "t": 1792080911.7918584,
+   "rep": 548,
+   "endpoint": "/reproductores/heartbeat",
+   "estado": 200,
+   "ms": 240.45390000173938,
+   "bytes_resp": 53,
+   "bytes_env": 19,
+   "error": null
+  },
+  {
+   "t": 1792080912.0323381,
+   "rep": 549,
+   "endpoint": "/reproductores/heartbeat",
+   "estado": 200,
+   "ms": 234.78610000165645,
+   "bytes_resp": 53,
+   "bytes_env": 19,
+   "error": null
+  },
+  {
+   "t": 1792080912.267152,
+   "rep": 550,
+   "endpoint": "/reproductores/heartbeat",
+   "estado": 200,
+   "ms": 196.2820999979158,
+   "bytes_resp": 53,
+   "bytes_env": 19,
+   "error": null
+  },
+  {
+   "t": 1792080912.4635024,
+   "rep": 551,
+   "endpoint": "/reproductores/heartbeat",
+   "estado": 200,
+   "ms": 191.9412999995984,
+   "bytes_resp": 53,
+   "bytes_env": 19,
+   "error": null
+  },
+  {
+   "t": 1792080912.655484,
+   "rep": 552,
+   "endpoint": "/reproductores/heartbeat",
+   "estado": 200,
+   "ms": 285.5715000005148,
+   "bytes_resp": 53,
+   "bytes_env": 19,
+   "error": null
+  },
+  {
+   "t": 1792080912.9411705,
+   "rep": 553,
+   "endpoint": "/reproductores/heartbeat",
+   "estado": 200,
+   "ms": 252.4757999999565,
+   "bytes_resp": 53,
+   "bytes_env": 19,
+   "error": null
+  },
+  {
+   "t": 1792080913.1936727,
+   "rep": 554,
+   "endpoint": "/reproductores/heartbeat",
+   "estado": 200,
+   "ms": 325.5322000004526,
+   "bytes_resp": 53,
+   "bytes_env": 19,
+   "error": null
+  },
+  {
+   "t": 1792080913.51923,
+   "rep": 555,
+   "endpoint": "/reproductores/heartbeat",
+   "estado": 200,
+   "ms": 209.4969999998284,
+   "bytes_resp": 53,
+   "bytes_env": 19,
+   "error": null
+  },
+  {
+   "t": 1792080913.7287736,
+   "rep": 556,
+   "endpoint": "/reproductores/heartbeat",
+   "estado": 200,
+   "ms": 182.19300000055227,
+   "bytes_resp": 53,
+   "bytes_env": 19,
+   "error": null
+  },
+  {
+   "t": 1792080913.9110367,
+   "rep": 557,
+   "endpoint": "/reproductores/heartbeat",
+   "estado": 200,
+   "ms": 242.21209999814164,
+   "bytes_resp": 53,
+   "bytes_env": 19,
+   "error": null
+  },
+  {
+   "t": 1792080914.1532788,
+   "rep": 558,
+   "endpoint": "/reproductores/heartbeat",
+   "estado": 200,
+   "ms": 231.24970000208123,
+   "bytes_resp": 53,
+   "bytes_env": 19,
+   "error": null
+  },
+  {
+   "t": 1792080914.3845596,
+   "rep": 559,
+   "endpoint": "/reproductores/heartbeat",
+   "estado": 200,
+   "ms": 198.15319999906933,
+   "bytes_resp": 53,
+   "bytes_env": 19,
+   "error": null
+  },
+  {
+   "t": 1792080914.5827398,
+   "rep": 560,
+   "endpoint": "/reproductores/heartbeat",
+   "estado": 200,
+   "ms": 163.886199999979,
+   "bytes_resp": 53,
+   "bytes_env": 19,
+   "error": null
+  },
+  {
+   "t": 1792080914.7466874,
+   "rep": 561,
+   "endpoint": "/reproductores/heartbeat",
+   "estado": 200,
+   "ms": 203.32910000070115,
+   "bytes_resp": 53,
+   "bytes_env": 19,
+   "error": null
+  },
+  {
+   "t": 1792080914.9500768,
+   "rep": 562,
+   "endpoint": "/reproductores/heartbeat",
+   "estado": 200,
+   "ms": 267.86929999798303,
+   "bytes_resp": 53,
+   "bytes_env": 19,
+   "error": null
+  },
+  {
+   "t": 1792080915.2180133,
+   "rep": 563,
+   "endpoint": "/reproductores/heartbeat",
+   "estado": 200,
+   "ms": 265.92819999859785,
+   "bytes_resp": 53,
+   "bytes_env": 19,
+   "error": null
+  },
+  {
+   "t": 1792080915.4840014,
+   "rep": 564,
+   "endpoint": "/reproductores/heartbeat",
+   "estado": 200,
+   "ms": 238.97349999970174,
+   "bytes_resp": 53,
+   "bytes_env": 19,
+   "error": null
+  },
+  {
+   "t": 1792080915.7230475,
+   "rep": 565,
+   "endpoint": "/reproductores/heartbeat",
+   "estado": 200,
+   "ms": 243.66329999975278,
+   "bytes_resp": 53,
+   "bytes_env": 19,
+   "error": null
+  },
+  {
+   "t": 1792080915.9667377,
+   "rep": 566,
+   "endpoint": "/reproductores/heartbeat",
+   "estado": 200,
+   "ms": 215.6734999989567,
+   "bytes_resp": 53,
+   "bytes_env": 19,
+   "error": null
+  },
+  {
+   "t": 1792080916.1824625,
+   "rep": 567,
+   "endpoint": "/reproductores/heartbeat",
+   "estado": 200,
+   "ms": 336.4105999971798,
+   "bytes_resp": 53,
+   "bytes_env": 19,
+   "error": null
+  }
+ ]
+}

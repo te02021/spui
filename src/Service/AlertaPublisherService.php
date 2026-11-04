@@ -9,16 +9,19 @@ use PhpMqtt\Client\MqttClient;
 use Psr\Log\LoggerInterface;
 use SPUI\Entity\AlertaEmergencia;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
-use Symfony\Component\Mercure\HubInterface;
-use Symfony\Component\Mercure\Update;
 
 /**
- * Publica eventos de alerta de emergencia hacia:
- * - Reproductores Pi vía MQTT (broker Mosquitto): reciben el override inmediatamente
- * - Dashboard web vía Mercure SSE: el panel admin se actualiza en tiempo real
+ * Publica eventos de alerta de emergencia a los reproductores por MQTT (broker
+ * Mosquitto): reciben el override inmediatamente.
  *
- * Ambos canales fallan de forma silenciosa si el broker/hub no está disponible
- * (registra un warning en lugar de romper la activación de la alerta).
+ * Si el broker no está disponible se registra un warning y la activación sigue:
+ * la alerta llega igual por REST en el próximo sync.
+ *
+ * Ya no publica en Mercure: el hub nunca se completó del lado del navegador (el
+ * dashboard se actualiza por polling, ver docs/06 §6) y cada intento fallido le
+ * sumaba 2 s fijos a cada Activar y Desactivar (medido en
+ * docs/pruebas/2026-10-13_analisis.md §3.2). El bundle sigue en la config
+ * compartida de la intranet; SPUI era su único usuario.
  */
 final class AlertaPublisherService
 {
@@ -31,10 +34,7 @@ final class AlertaPublisherService
      */
     private const MQTT_TOPIC_REPRODUCTOR = 'spui/alertas/reproductor/';
 
-    private const MERCURE_TOPIC = 'spui-alertas';
-
     public function __construct(
-        private readonly HubInterface $hub,
         private readonly LoggerInterface $logger,
         private readonly MediaStorageService $media,
         private readonly MqttConnectionFactory $mqttConnection,
@@ -97,12 +97,8 @@ final class AlertaPublisherService
         ];
 
         // retain=true → los reproductores que se reconecten después también reciben la alerta
-        foreach ($this->topicsDestino($alerta) as $topic) {
-            $this->publicarMqtt($topic, $payload, retain: true);
-        }
-
-        // El dashboard del CMS siempre escucha el mismo topic, sea global o dirigida.
-        $this->publicarMercure(self::MERCURE_TOPIC, $payload);
+        $json = json_encode($payload);
+        $this->publicarTanda(array_map(fn(string $t) => [$t, $json, true], $this->topicsDestino($alerta)), 'activada');
     }
 
     /**
@@ -116,18 +112,18 @@ final class AlertaPublisherService
             'id'        => $alerta->getId(),
         ];
 
+        $json = json_encode($payload);
+        $mensajes = [];
         foreach ($this->topicsDestino($alerta) as $topic) {
-            // Aviso a los reproductores que están conectados ahora.
-            $this->publicarMqtt($topic, $payload, retain: false);
-
-            // Y además limpiar el mensaje retenido, o el broker le seguiría
-            // entregando la alerta ya desactivada a cualquier Pi que se reconecte.
-            // El protocolo MQTT exige payload de cero bytes CON retain=true: un
-            // publish con retain=false no borra nada (era el bug anterior).
-            $this->limpiarRetenido($topic);
+            // Aviso a los reproductores que están conectados ahora…
+            $mensajes[] = [$topic, $json, false];
+            // …y limpiar el mensaje retenido, o el broker le seguiría entregando
+            // la alerta ya desactivada a cualquier Pi que se reconecte. El
+            // protocolo exige payload de cero bytes CON retain=true: un publish
+            // con retain=false no borra nada (era un bug anterior).
+            $mensajes[] = [$topic, '', true];
         }
-
-        $this->publicarMercure(self::MERCURE_TOPIC, $payload);
+        $this->publicarTanda($mensajes, 'desactivada');
     }
 
     // -------------------------------------------------------------------------
@@ -183,63 +179,95 @@ final class AlertaPublisherService
             ->setSocketTimeout(3);
     }
 
-    private function publicarMqtt(string $topic, array $payload, bool $retain): void
-    {
-        try {
-            $client = new MqttClient($this->mqttHost, $this->mqttPort, 'spui-cms-publisher');
-            $client->connect($this->conexion(), useCleanSession: true);
-            $client->publish($topic, json_encode($payload), MqttClient::QOS_AT_MOST_ONCE, $retain);
-            $client->disconnect();
-
-            $this->logger->info('MQTT alerta publicada.', ['topic' => $topic, 'accion' => $payload['accion']]);
-        } catch (\Throwable $e) {
-            // No bloquear la respuesta HTTP si el broker no está disponible
-            $this->logger->warning('MQTT publish falló (¿Mosquitto corriendo en {host}:{port}?): {msg}', [
-                'host'  => $this->mqttHost,
-                'port'  => $this->mqttPort,
-                'msg'   => $e->getMessage(),
-                'topic' => $topic,
-            ]);
-        }
-    }
-
     /**
-     * Borra el mensaje retenido de un topic.
+     * Publica una tanda de mensajes por UNA sola conexión al broker.
      *
-     * Publicar payload vacío con retain=true es la forma que define el
-     * protocolo MQTT para que el broker olvide lo retenido; los suscriptores
-     * que se conecten después ya no reciben nada de este topic.
+     * Antes se abría, autenticaba con TLS y cerraba una conexión por cada topic:
+     * una alerta dirigida a 100 pantallas eran 100 conexiones seguidas, ~30 ms
+     * cada una, y el reproductor número 100 recibía la alerta ~3 s después que el
+     * primero (medido con tools/simulador, docs/pruebas/2026-10-13_analisis.md
+     * §3.1). Con una conexión la tanda sale en milisegundos y el tiempo deja de
+     * depender de la cantidad de pantallas.
+     *
+     * Si la conexión se corta a mitad de la tanda se reconecta una vez y sigue;
+     * lo que no se pudo publicar se registra. Nunca lanza: el CMS sigue y el
+     * reproductor recibe la alerta igual en su próximo sync.
+     *
+     * @param list<array{0: string, 1: string, 2: bool}> $mensajes [topic, payload, retain]
      */
-    private function limpiarRetenido(string $topic): void
+    private function publicarTanda(array $mensajes, string $accion): void
     {
-        try {
-            $client = new MqttClient($this->mqttHost, $this->mqttPort, 'spui-cms-publisher-clear');
-            $client->connect($this->conexion(), useCleanSession: true);
-            $client->publish($topic, '', MqttClient::QOS_AT_MOST_ONCE, true);
-            $client->disconnect();
-
-            $this->logger->info('MQTT mensaje retenido limpiado.', ['topic' => $topic]);
-        } catch (\Throwable $e) {
-            $this->logger->warning('MQTT limpieza de retenido falló: {msg}', [
-                'msg'   => $e->getMessage(),
-                'topic' => $topic,
-            ]);
+        if ($mensajes === []) {
+            return;
         }
+        $client = null;
+        $fallidos = [];
+        $error = null;
+        $intentosDeConexion = 0;
+        $conectoAlgunaVez = false;
+        foreach ($mensajes as $i => [$topic, $payload, $retain]) {
+            try {
+                if ($client === null) {
+                    $intentosDeConexion++;
+                    $client = $this->conectar();
+                    $conectoAlgunaVez = true;
+                }
+                $client->publish($topic, $payload, MqttClient::QOS_AT_MOST_ONCE, $retain);
+            } catch (\Throwable $e) {
+                $client = null;
+                $error = $e->getMessage();
+                // Se reconecta una sola vez por tanda, y sólo si la conexión se
+                // cortó a mitad de camino: si el broker ni siquiera atendió, insistir
+                // (hasta 3 s por intento) sólo demoraría la respuesta al operador.
+                if (!$conectoAlgunaVez || $intentosDeConexion >= 2) {
+                    foreach (array_slice($mensajes, $i) as [$t]) {
+                        $fallidos[] = $t;
+                    }
+                    break;
+                }
+                try {
+                    $intentosDeConexion++;
+                    $client = $this->conectar();
+                    $client->publish($topic, $payload, MqttClient::QOS_AT_MOST_ONCE, $retain);
+                } catch (\Throwable $e2) {
+                    $client = null;
+                    $error = $e2->getMessage();
+                    foreach (array_slice($mensajes, $i) as [$t]) {
+                        $fallidos[] = $t;
+                    }
+                    break;
+                }
+            }
+        }
+        try {
+            $client?->disconnect();
+        } catch (\Throwable) {
+            // la tanda ya salió; cerrar mal la conexión no cambia nada
+        }
+
+        if ($fallidos === []) {
+            $this->logger->info('MQTT alerta publicada.', ['accion' => $accion, 'mensajes' => count($mensajes)]);
+            return;
+        }
+        // No bloquear la respuesta HTTP si el broker no está disponible.
+        $this->logger->warning('MQTT: {n} de {total} mensajes de alerta sin publicar (¿Mosquitto corriendo en {host}:{port}?): {msg}', [
+            'n'      => count($fallidos),
+            'total'  => count($mensajes),
+            'host'   => $this->mqttHost,
+            'port'   => $this->mqttPort,
+            'msg'    => $error ?? '',
+            'topics' => array_slice($fallidos, 0, 20),
+            'accion' => $accion,
+        ]);
     }
 
-    private function publicarMercure(string $topic, array $payload): void
+    private function conectar(): MqttClient
     {
-        try {
-            $update = new Update($topic, json_encode($payload));
-            $this->hub->publish($update);
-
-            $this->logger->info('Mercure alerta publicada.', ['topic' => $topic, 'accion' => $payload['accion']]);
-        } catch (\Throwable $e) {
-            // No bloquear la respuesta HTTP si el hub Mercure no está disponible
-            $this->logger->warning('Mercure publish falló (¿hub corriendo?): {msg}', [
-                'msg'   => $e->getMessage(),
-                'topic' => $topic,
-            ]);
-        }
+        // Id con sufijo al azar: dos activaciones simultáneas (dos operadores, o
+        // el daemon desactivando una vencida) no se tiran la conexión entre sí,
+        // que es lo que hace el broker con dos clientes del mismo id.
+        $client = new MqttClient($this->mqttHost, $this->mqttPort, 'spui-cms-publisher-' . bin2hex(random_bytes(4)));
+        $client->connect($this->conexion(), useCleanSession: true);
+        return $client;
     }
 }

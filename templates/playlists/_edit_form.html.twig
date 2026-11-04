@@ -7,30 +7,15 @@
 
     {# Al redibujarse por un error de campo, v trae lo que se había cargado (manda
        sobre lo guardado) y err el error de cada campo, que va debajo de su input. #}
-    {% set v = values is defined ? values : {nombre: playlist.nombre, descripcion: playlist.descripcion, activo: playlist.activo} %}
+    {% set v = values is defined ? values : {nombre: playlist.nombre, descripcion: playlist.descripcion} %}
     {% set err = errores is defined ? errores : {} %}
 
-    {# Switch estándar del sistema (el mismo de qr, edificios, ubicaciones…).
-       Como este form no usa FormType, el id va literal y el span _lbl se arma a
-       mano; switch-toggle.js lo engancha por data-spui-switch. #}
     <div class="row g-3 mb-3 align-items-start">
         <div class="col">
             <label class="unraf-form-label" for="ed_pl_nombre">Nombre <span class="text-danger">*</span></label>
             <input type="text" id="ed_pl_nombre" name="nombre" class="unraf-form-control{{ err.nombre is defined ? ' is-invalid' }}"
                    value="{{ v.nombre }}" maxlength="150" required>
             {% if err.nombre is defined %}<p class="spui-campo-error">{{ err.nombre }}</p>{% endif %}
-        </div>
-        <div class="col-12 col-sm-auto d-flex flex-column align-items-center" style="min-width:110px">
-            <label class="unraf-form-label mb-2 text-center" for="ed_pl_activo">Estado</label>
-            <div class="d-flex align-items-center gap-2">
-                <div class="form-switch m-0">
-                    <input class="form-check-input spui-switch-input" type="checkbox"
-                           name="activo" id="ed_pl_activo" value="1" role="switch"
-                           data-spui-switch="1" data-switch-on="Activa" data-switch-off="Inactiva"
-                           {{ v.activo ? 'checked' : '' }}>
-                </div>
-                <span class="spui-switch-status {{ v.activo ? 'on' : 'off' }}" id="ed_pl_activo_lbl">{{ v.activo ? 'Activa' : 'Inactiva' }}</span>
-            </div>
         </div>
     </div>
 

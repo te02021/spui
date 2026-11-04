@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace SPUI\Controller\Cms;
 
+use SPUI\Enum\EstadoPantalla;
+use SPUI\Service\FiltroListado;
+use SPUI\Service\BusquedaListado;
+use SPUI\Service\Paginador;
 use Doctrine\Persistence\ManagerRegistry;
 use SPUI\Entity\Pantalla;
 use SPUI\Form\PantallaType;
@@ -34,10 +38,28 @@ class PantallaCmsController extends AbstractController
     }
 
     #[Route('', name: 'spui_cms_pantallas_index', methods: ['GET'])]
-    public function index(): Response
+    public function index(Request $request, Paginador $paginador, FiltroListado $filtro, BusquedaListado $busqueda): Response
     {
+        // Buscador (?q=, a medida que se escribe: core/busqueda-lista.js), sobre
+        // e.nombre, u.sector, ed.nombre, r.hostname.
+        $q      = $busqueda->texto($request);
+        $campos = ['e.nombre', 'u.sector', 'ed.nombre', 'r.hostname'];
+        $joins  = ['u' => 'e.ubicacion', 'ed' => 'u.edificio', 'r' => 'e.reproductor'];
+        $contar = $busqueda->contador($this->repo, $q, $campos, $joins);
+        // Chips de filtro (?estado=…) y paginado en el servidor, de a
+        // Paginador::POR_PAGINA (?pagina=N).
+        $estado = $filtro->grupo($contar, $request, 'estado', 'Estado', [
+            ''          => ['Todos', []],
+            'activas'   => ['Activas', ['estado' => EstadoPantalla::Activo]],
+            'inactivas' => ['Inactivas', ['estado' => EstadoPantalla::Inactivo]],
+        ]);
+        $paginacion = $paginador->paginarConsulta($busqueda->consulta($this->repo, $estado['criterio'], $q, $campos, $joins, ['nombre' => 'ASC']), $request);
+
         return $this->render('@SPUI/pantallas/index.html.twig', [
-            'pantallas'   => $this->repo->findBy([], ['nombre' => 'ASC']),
+            'pantallas'   => $paginacion['items'],
+            'filtros'    => [$estado],
+            'paginacion' => $paginacion,
+            'busqueda'   => $q,
             // Una sola consulta por request: resolverlo por fila dispararía la
             // cadena de relaciones por cada pantalla.
             'ids_offline' => $this->alcance->idsOfflineDeUnaVez(),

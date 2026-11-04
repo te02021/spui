@@ -35,35 +35,115 @@
     </div>
 {% else %}
     {% set diasNombres = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'] %}
+    {# Buscador y filtros (02/11/2026): se resuelven en el navegador, sobre las
+       filas que ya están acá (core/cronograma-items.js), así responden al
+       instante; con un Excel importado son cientos. Se recuerdan al volver
+       de agregar o editar un ítem. #}
+    <div class="spui-barra-lista spui-items-filtros" data-spui-items-filtros data-contenido="{{ contenido.id }}">
+        <div class="spui-buscador" role="search">
+            <label class="visually-hidden" for="items-buscar-{{ contenido.id }}">Buscar por materia, aula o docente</label>
+            <img src="{{ asset('unraf-ui/icons/magnifying-glass.svg') }}" class="spui-buscador-lupa" alt="">
+            <input type="search" id="items-buscar-{{ contenido.id }}" class="spui-buscador-campo" data-spui-items-buscar
+                   placeholder="Buscar por materia, aula o docente" maxlength="100" autocomplete="off" spellcheck="false">
+            <button type="button" class="spui-buscador-limpiar" data-spui-items-limpiar aria-label="Limpiar búsqueda" hidden>×</button>
+        </div>
+        <nav class="spui-filtros" aria-label="Filtros de los ítems">
+            {% for f in [{c: 'dia', e: 'Día', v: 'Todos'}, {c: 'fecha', e: 'Fecha', v: 'Todas'}, {c: 'hora', e: 'Hora', v: 'Todas'}] %}
+                <span class="spui-desp">
+                    <button type="button" class="spui-selector" data-spui-desp data-spui-items-selector="{{ f.c }}"
+                            aria-expanded="false" aria-controls="items-{{ f.c }}-{{ contenido.id }}">
+                        <span class="spui-selector-etiqueta">{{ f.e }}</span>
+                        <span class="spui-selector-valor" data-spui-items-valor>{{ f.v }}</span>
+                        <img src="{{ asset('unraf-ui/icons/caret-down.svg') }}" class="spui-selector-flecha" alt="">
+                    </button>
+                    <div id="items-{{ f.c }}-{{ contenido.id }}" class="spui-desp-panel spui-selector-menu" role="region" aria-label="{{ f.e }}">
+                        {% if f.c == 'fecha' %}
+                            {# Lo que se da ese día: las clases de ese día de la semana y los eventos de esa fecha. #}
+                            <div class="spui-items-fecha">
+                                <label class="unraf-form-label mb-1" for="items-fecha-in-{{ contenido.id }}">Lo que se da el día</label>
+                                <input type="date" id="items-fecha-in-{{ contenido.id }}" class="unraf-form-control" data-spui-items-fecha>
+                                <button type="button" class="spui-selector-opcion" data-spui-items-op="fecha" data-valor="">
+                                    <span class="spui-selector-check" aria-hidden="true">✓</span><span class="spui-selector-texto">Todas las fechas</span>
+                                </button>
+                            </div>
+                        {% elseif f.c == 'hora' %}
+                            {# Selector de hora y minuto (03/11/2026, pedido de Mateo): dos
+                               columnas que se desplazan, de 1 en 1, y Aplicar. Muestra lo que
+                               está en curso a esa hora exacta. Las columnas las llena
+                               cronograma-items.js. #}
+                            <div class="spui-reloj" data-spui-reloj>
+                                <p class="spui-reloj-ayuda">Lo que está en curso a las</p>
+                                <div class="spui-reloj-columnas">
+                                    <div class="spui-reloj-col" data-spui-reloj-col="h" role="listbox" aria-label="Hora" tabindex="0"></div>
+                                    <span class="spui-reloj-sep" aria-hidden="true">:</span>
+                                    <div class="spui-reloj-col" data-spui-reloj-col="m" role="listbox" aria-label="Minutos" tabindex="0"></div>
+                                </div>
+                                <button type="button" class="spui-reloj-ahora" data-spui-reloj-ahora>Ahora</button>
+                                <div class="spui-reloj-acciones">
+                                    <button type="button" class="unraf-btn spui-btn-back unraf-btn-sm" data-spui-reloj-cancelar>Cancelar</button>
+                                    <button type="button" class="unraf-btn spui-btn-crear unraf-btn-sm" data-spui-reloj-aplicar>Aplicar</button>
+                                </div>
+                                <button type="button" class="spui-selector-opcion" data-spui-items-op="hora" data-valor="">
+                                    <span class="spui-selector-check" aria-hidden="true">✓</span><span class="spui-selector-texto">Todas las horas</span>
+                                </button>
+                            </div>
+                        {% else %}
+                            {# Las opciones las arma cronograma-items.js, con sus cantidades. #}
+                            <ul class="spui-desp-lista" data-spui-items-opciones="{{ f.c }}"></ul>
+                        {% endif %}
+                    </div>
+                </span>
+            {% endfor %}
+        </nav>
+    </div>
+    <p class="text-muted small mb-2" data-spui-items-cuenta aria-live="polite"></p>
+
     <div class="unraf-table-responsive">
         <table class="unraf-table unraf-table-striped w-100 spui-tabla-cards">
             <thead>
                 <tr>
                     <th class="p-3">Hora</th>
-                    <th class="p-3">Nombre</th>
+                    <th class="p-3">Materia o actividad</th>
                     <th class="p-3">Aula</th>
-                    <th class="p-3">Días</th>
+                    <th class="p-3">Cuándo</th>
                     <th class="p-3">Estado</th>
                     <th class="p-3">Acciones</th>
                 </tr>
             </thead>
             <tbody>
             {% for item in items %}
-                <tr>
+                {# Lo que necesitan los filtros (cronograma-items.js). #}
+                <tr data-spui-item
+                    data-dias="{{ item.diasSemana }}"
+                    data-fecha="{{ item.tipo.tieneFecha and item.fecha ? item.fecha|date('Y-m-d') }}"
+                    data-inicio="{{ item.horaInicio ? item.horaInicio|date('H:i') }}"
+                    data-fin="{{ item.horaFin ? item.horaFin|date('H:i') }}"
+                    data-buscar="{{ [item.nombre, item.aula, item.docente]|filter(x => x)|join(' ')|lower }}">
                     <td class="p-3 text-nowrap" data-label="Hora">
                         <strong>{{ item.horaInicio|date('H:i') }}</strong>
-                        <span class="text-muted"> – {{ item.horaFin|date('H:i') }}</span>
+                        {% if item.horaFin %}<span class="text-muted"> – {{ item.horaFin|date('H:i') }}</span>{% else %}<span class="text-muted"> en adelante</span>{% endif %}
                     </td>
-                    <td class="p-3" data-label="Nombre"><strong>{{ item.nombre }}</strong></td>
+                    <td class="p-3" data-label="Materia o actividad">
+                        <strong>{{ item.nombre }}</strong>
+                        {% if item.tipo.value != 'clase' %}<span class="spui-item-tipo spui-item-tipo-{{ item.tipo.value }}">{{ item.tipo.etiqueta }}</span>{% endif %}
+                        {% set meta = [item.carrera, item.anio]|filter(x => x) %}
+                        {% if meta or item.docente %}
+                            <small class="text-muted d-block">{{ meta|join(' · ') }}{{ meta and item.docente ? ' — ' }}{{ item.docente }}</small>
+                        {% endif %}
+                    </td>
                     <td class="p-3" data-label="Aula">{{ item.aula ?? '—' }}</td>
-                    <td class="p-3" data-label="Días">
-                        <div class="d-flex gap-1 flex-wrap">
-                            {% for i in 0..6 %}
-                                {% if (item.diasSemana b-and (2 ** i)) != 0 %}
-                                    <span class="spui-dia-badge spui-dia-activo">{{ diasNombres[i] }}</span>
-                                {% endif %}
-                            {% endfor %}
-                        </div>
+                    <td class="p-3" data-label="Cuándo">
+                        {% if item.tipo.tieneFecha %}
+                            <span class="spui-fecha-badge">{{ item.fecha ? item.fecha|date('d/m/Y') : 'Sin fecha' }}</span>
+                        {% else %}
+                            <div class="d-flex gap-1 flex-wrap">
+                                {% for i in 0..6 %}
+                                    {% if (item.diasSemana b-and (2 ** i)) != 0 %}
+                                        <span class="spui-dia-badge spui-dia-activo">{{ diasNombres[i] }}</span>
+                                    {% endif %}
+                                {% endfor %}
+                            </div>
+                        {% endif %}
                     </td>
                     <td class="p-3" data-label="Estado">
                         {% if item.activo %}
@@ -108,5 +188,13 @@
             {% endfor %}
             </tbody>
         </table>
+    </div>
+    {# 25 por página, sobre lo que dejan los filtros (03/11/2026): la arma
+       cronograma-items.js con los mismos estilos que la de los listados. #}
+    <nav class="spui-paginacion" data-spui-items-paginas aria-label="Páginas de los ítems" hidden></nav>
+    <div class="spui-items-vacio" data-spui-items-vacio hidden>
+        <strong>Ningún ítem coincide</strong>
+        <span>Probá con otra búsqueda u otro filtro.</span>
+        <button type="button" class="unraf-btn spui-btn-back unraf-btn-sm" data-spui-items-quitar-filtros>Quitar filtros</button>
     </div>
 {% endif %}

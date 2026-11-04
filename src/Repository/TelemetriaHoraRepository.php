@@ -45,7 +45,7 @@ class TelemetriaHoraRepository extends ServiceEntityRepository
         // valores agregados coinciden exactamente con los que ya se mostraban.
         $sql = <<<'SQL'
             INSERT INTO telemetria_hora
-                (reproductor_id, hora, temp_prom, temp_max, ram_prom, ram_max, disco_min, lecturas)
+                (reproductor_id, hora, temp_prom, temp_max, ram_prom, ram_max, disco_min, cpu_prom, cpu_max, lat_prom, lecturas)
             SELECT reproductor_id,
                    DATE_FORMAT(registrado_en, '%Y-%m-%d %H:00:00') AS hora,
                    AVG(temperatura_soc_celsius),
@@ -53,6 +53,9 @@ class TelemetriaHoraRepository extends ServiceEntityRepository
                    AVG(uso_ram_porcentaje),
                    MAX(uso_ram_porcentaje),
                    MIN(espacio_disco_libre_mb),
+                   AVG(uso_cpu_porcentaje),
+                   MAX(uso_cpu_porcentaje),
+                   AVG(latencia_red_ms),
                    COUNT(*)
               FROM telemetria
              WHERE registrado_en >= :desde
@@ -64,6 +67,9 @@ class TelemetriaHoraRepository extends ServiceEntityRepository
                 ram_prom  = VALUES(ram_prom),
                 ram_max   = VALUES(ram_max),
                 disco_min = VALUES(disco_min),
+                cpu_prom  = VALUES(cpu_prom),
+                cpu_max   = VALUES(cpu_max),
+                lat_prom  = VALUES(lat_prom),
                 lecturas  = VALUES(lecturas)
             SQL;
 
@@ -81,6 +87,88 @@ class TelemetriaHoraRepository extends ServiceEntityRepository
      * Devuelve null si la tabla está vacía, caso en que el comando hace el
      * backfill completo desde la lectura cruda más antigua.
      */
+    /** Retención del detalle por hora (MantenimientoService::RETENCION_HORA_DIAS). */
+    public function purgarAnterioresA(DateTimeImmutable $fecha): int
+    {
+        return $this->createQueryBuilder('th')
+            ->delete()
+            ->where('th.hora < :fecha')
+            ->setParameter('fecha', $fecha)
+            ->getQuery()
+            ->execute();
+    }
+
+    /**
+     * Detalle por hora entre dos fechas, para exportar.
+     *
+     * @return array<int, array{hora:DateTimeImmutable, temp_prom:float, temp_max:float, ram_prom:float, ram_max:float, disco_min:int, lecturas:int}>
+     */
+    public function findEntre(Reproductor $reproductor, DateTimeImmutable $desde, DateTimeImmutable $hasta): array
+    {
+        $filas = $this->createQueryBuilder('th')
+            ->where('th.reproductor = :reproductor')
+            ->andWhere('th.hora >= :desde')
+            ->andWhere('th.hora < :hasta')
+            ->setParameter('reproductor', $reproductor)
+            ->setParameter('desde', $desde)
+            ->setParameter('hasta', $hasta)
+            ->orderBy('th.hora', 'ASC')
+            ->getQuery()
+            ->getResult();
+
+        return array_map(static fn(TelemetriaHora $th) => [
+            'hora'      => $th->getHora(),
+            'temp_prom' => round($th->getTempProm(), 1),
+            'temp_max'  => round($th->getTempMax(), 1),
+            'ram_prom'  => round($th->getRamProm(), 1),
+            'ram_max'   => round($th->getRamMax(), 1),
+            'disco_min' => $th->getDiscoMin(),
+            'cpu_prom'  => $th->getCpuProm() !== null ? round($th->getCpuProm(), 1) : null,
+            'cpu_max'   => $th->getCpuMax() !== null ? round($th->getCpuMax(), 1) : null,
+            'lecturas'  => $th->getLecturas(),
+        ], $filas);
+    }
+
+    /** La columna del resumen por hora de cada variable del gráfico del Dashboard. */
+    private const COLUMNA_POR_VARIABLE = [
+        'temp' => 'temp_prom', 'cpu' => 'cpu_prom', 'ram' => 'ram_prom', 'disco' => 'disco_min', 'latencia' => 'lat_prom',
+    ];
+
+    /**
+     * Una variable de varios reproductores, de los resúmenes por hora (para
+     * los 30 días del Dashboard: el crudo se purga a los 7).
+     *
+     * @param Reproductor[] $reproductores
+     * @return array<int, list<array{0: string, 1: float}>> id del reproductor => [[periodo, valor], ...]
+     */
+    public function findPorHoraDeVarios(array $reproductores, DateTimeImmutable $desde, DateTimeImmutable $hasta, string $variable): array
+    {
+        $ids = array_values(array_filter(array_map(static fn(Reproductor $r) => $r->getId(), $reproductores)));
+        $columna = self::COLUMNA_POR_VARIABLE[$variable] ?? null;
+        if ($ids === [] || $columna === null) {
+            return [];
+        }
+        $filas = $this->getEntityManager()->getConnection()->executeQuery(
+            sprintf(<<<'SQL'
+                SELECT reproductor_id, DATE_FORMAT(hora, '%%Y-%%m-%%d %%H:00') AS periodo, %s AS valor
+                  FROM telemetria_hora
+                 WHERE reproductor_id IN (:ids)
+                   AND hora >= :desde
+                   AND hora <= :hasta
+                   AND %s IS NOT NULL
+                 ORDER BY reproductor_id, hora
+                SQL, $columna, $columna),
+            ['ids' => $ids, 'desde' => $desde->format('Y-m-d H:i:s'), 'hasta' => $hasta->format('Y-m-d H:i:s')],
+            ['ids' => \Doctrine\DBAL\ArrayParameterType::INTEGER],
+        )->fetchAllAssociative();
+
+        $series = [];
+        foreach ($filas as $f) {
+            $series[(int) $f['reproductor_id']][] = [$f['periodo'], round((float) $f['valor'], 1)];
+        }
+        return $series;
+    }
+
     public function ultimaHoraAgregada(): ?DateTimeImmutable
     {
         $valor = $this->createQueryBuilder('th')
@@ -116,6 +204,7 @@ class TelemetriaHoraRepository extends ServiceEntityRepository
             'temp_prom' => round($th->getTempProm(), 1),
             'temp_max'  => round($th->getTempMax(), 1),
             'ram_prom'  => round($th->getRamProm(), 1),
+            'cpu_prom'  => $th->getCpuProm() !== null ? round($th->getCpuProm(), 1) : null,
             'disco_min' => $th->getDiscoMin(),
             'lecturas'  => $th->getLecturas(),
         ], $filas);
@@ -131,7 +220,7 @@ class TelemetriaHoraRepository extends ServiceEntityRepository
      *
      * @return array{lecturas:int, temp_prom:float, temp_max:float, ram_prom:float, ram_max:float, disco_min:int}|null
      */
-    public function resumen(Reproductor $reproductor, DateTimeImmutable $desde): ?array
+    public function resumen(Reproductor $reproductor, DateTimeImmutable $desde, ?DateTimeImmutable $hasta = null): ?array
     {
         $sql = <<<'SQL'
             SELECT SUM(lecturas)                          AS lecturas,
@@ -139,15 +228,19 @@ class TelemetriaHoraRepository extends ServiceEntityRepository
                    MAX(temp_max)                          AS temp_max,
                    SUM(ram_prom * lecturas) / SUM(lecturas)  AS ram_prom,
                    MAX(ram_max)                           AS ram_max,
+                   SUM(cpu_prom * lecturas) / NULLIF(SUM(CASE WHEN cpu_prom IS NOT NULL THEN lecturas END), 0) AS cpu_prom,
+                   MAX(cpu_max)                           AS cpu_max,
                    MIN(disco_min)                         AS disco_min
               FROM telemetria_hora
              WHERE reproductor_id = :reproductor
                AND hora >= :desde
+               AND hora < :hasta
             SQL;
 
         $f = $this->getEntityManager()->getConnection()->executeQuery($sql, [
             'reproductor' => $reproductor->getId(),
             'desde'       => $desde->format('Y-m-d H:i:s'),
+            'hasta'       => ($hasta ?? new DateTimeImmutable('+1 day'))->format('Y-m-d H:i:s'),
         ])->fetchAssociative();
 
         if (!$f || $f['lecturas'] === null || (int) $f['lecturas'] === 0) {
@@ -160,6 +253,9 @@ class TelemetriaHoraRepository extends ServiceEntityRepository
             'temp_max'  => round((float) $f['temp_max'], 1),
             'ram_prom'  => round((float) $f['ram_prom'], 1),
             'ram_max'   => round((float) $f['ram_max'], 1),
+            // Sólo las horas con el dato (antes del 03/11/2026 no lo hay).
+            'cpu_prom'  => $f['cpu_prom'] !== null ? round((float) $f['cpu_prom'], 1) : null,
+            'cpu_max'   => $f['cpu_max'] !== null ? round((float) $f['cpu_max'], 1) : null,
             'disco_min' => (int) $f['disco_min'],
         ];
     }

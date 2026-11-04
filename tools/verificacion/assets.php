@@ -6,7 +6,7 @@
  * gitignorado y compartido por todo el monorepo), `asset()` sirve los archivos
  * compilados aunque estemos en dev, y Apache los entrega directo: una
  * modificación en `assets/spui/` no se ve hasta regenerar el build. Ya hubo una
- * ronda entera de pruebas manuales con JS viejo por esto (docs/README.md §3.4).
+ * ronda entera de pruebas manuales con JS viejo por esto (docs/archivo/auditorias.md §3.4).
  *
  * Compara cada asset de SPUI que figura en el manifiesto con su fuente:
  * JS exacto; CSS sin tener en cuenta los url(...), que el build reescribe.

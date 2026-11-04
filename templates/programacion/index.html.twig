@@ -1,9 +1,10 @@
 {% extends '@SPUI/base.html.twig' %}
 {% import '@SPUI/_macros/bloqueo.html.twig' as bloqueo %}
 {% block title %}Programación — SPUI{% endblock %}
+{% block descripcion %}Reglas que asignan playlists a las pantallas digitales de la UNRaf por horario, días y destino.{% endblock %}
 
 {% block body %}
-<div class="d-flex justify-content-between align-items-center mb-1 flex-wrap gap-2 spui-header-actions">
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2 spui-header-actions">
     <div>
         <h1 style="color:var(--unraf-azul);font-family:var(--unraf-font-principal);margin:0">Programación</h1>
         <p class="text-muted mb-0">Asignación de playlists a pantallas, sectores, edificios o todo el campus — con horarios y días específicos.</p>
@@ -16,109 +17,117 @@
     </button>
 </div>
 
-<div id="spui-table-body">
-<div class="unraf-card mt-4">
-    {# Se vuelve a pedir cuando llega un aviso de conexión por MQTT (conexion-vivo.js),
-       no por intervalo: destraba o traba los botones si un reproductor vuelve o se cae. #}
-    <div class="unraf-table-responsive" id="spui-tabla-conexion" data-spui-refresh="push">
-        <table class="unraf-table unraf-table-striped w-100 spui-tabla-cards">
-            <thead>
-                <tr>
-                    <th class="p-3">Destino</th>
-                    <th class="p-3">Playlist</th>
-                    <th class="p-3">Horario</th>
-                    <th class="p-3">Días</th>
-                    <th class="p-3">Prioridad</th>
-                    <th class="p-3">Estado</th>
-                    <th class="p-3">Acciones</th>
-                </tr>
-            </thead>
-            <tbody>
-            {% for prog in programaciones %}
-                {% set diasLabels = ['L','M','X','J','V','S','D'] %}
-                {% set diasMasks = [1, 2, 4, 8, 16, 32, 64] %}
-                {# Una regla puede apuntar a una pantalla, ubicación, edificio o
-                   ser global: el servicio resuelve los cuatro casos. #}
-                {% set motivo = spui_alcance.motivoParaEntidad(prog, ids_offline|default({})) %}
-                <tr class="{{ not prog.activo ? 'opacity-50' : '' }}">
-                    <td class="p-3" data-label="Destino">
-                        {% if prog.pantalla %}
-                            {{ prog.pantalla.nombre }}
-                        {% elseif prog.ubicacion %}
-                            {{ prog.ubicacion.edificio.nombre }}{% if prog.ubicacion.sector %} — {{ prog.ubicacion.sector }}{% endif %}
-                        {% elseif prog.edificio %}
-                            {{ prog.edificio.nombre }}
-                        {% else %}
-                            <span class="text-muted">Global (todas las pantallas)</span>
-                        {% endif %}
-                    </td>
-                    <td class="p-3" data-label="Playlist"><strong>{{ prog.playlist.nombre }}</strong></td>
-                    <td class="p-3" data-label="Horario"><small>{{ prog.horaInicio|date('H:i') }} – {{ prog.horaFin|date('H:i') }}</small></td>
-                    <td class="p-3" data-label="Días">
-                        <div class="d-flex gap-1 flex-wrap justify-content-center">
-                        {% for i in 0..6 %}
-                            {% set diaActivo = (prog.diasSemana // diasMasks[i]) is odd %}
-                            <span class="spui-dia-badge {{ diaActivo ? 'spui-dia-activo' : 'spui-dia-inactivo' }}">
-                                {{ diasLabels[i] }}
-                            </span>
-                        {% endfor %}
+{# Tarjetas (30/10/2026). Los días ya no son siete insignias en la fila (con
+   todos marcados la estiraban a lo alto): un chip con el resumen ("Lun a
+   vie", "Todos los días"…) que al tocarlo muestra la semana. La zona interna
+   se vuelve a pedir cuando llega un aviso de conexión por MQTT
+   (conexion-vivo.js): destraba o traba los botones si un reproductor vuelve
+   o se cae. #}
+{% set NOMBRES = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'] %}
+{% set CORTOS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'] %}
+{% set MASCARAS = [1, 2, 4, 8, 16, 32, 64] %}
+{{ include('@SPUI/_partials/barra_lista.html.twig', {filtros: filtros, que: 'reglas', placeholder: 'Buscar por playlist o destino'}) }}
+<div id="spui-table-body" data-spui-busqueda-zona>
+<div class="spui-lista" id="spui-tabla-conexion" data-spui-refresh="push">
+{% for prog in programaciones %}
+    {# Una regla puede apuntar a una pantalla, ubicación, edificio o ser
+       global: el servicio resuelve los cuatro casos. #}
+    {% set motivo = spui_alcance.motivoParaEntidad(prog, ids_offline|default({})) %}
+    {% set activos = (0..6)|filter(i => (prog.diasSemana // MASCARAS[i]) is odd) %}
+    {% set resumen = prog.diasSemana == 127 ? 'Todos los días'
+                   : (prog.diasSemana == 31 ? 'Lun a vie'
+                   : (prog.diasSemana == 96 ? 'Fin de semana'
+                   : (activos|length == 0 ? 'Ningún día' : activos|map(i => CORTOS[i])|join(', ')))) %}
+    {% set destino = prog.pantalla ? prog.pantalla.nombre
+                   : (prog.ubicacion ? prog.ubicacion.edificio.nombre ~ (prog.ubicacion.sector ? ' — ' ~ prog.ubicacion.sector : '')
+                   : (prog.edificio ? prog.edificio.nombre : 'Todas las pantallas')) %}
+    <article class="unraf-card spui-item {{ prog.activo ? 'is-ok' : 'is-apagado' }}">
+        <div class="spui-item-cuerpo">
+            <div class="spui-item-cab">
+                <span class="spui-etiqueta {{ prog.activo ? 'is-ok' : '' }}">{{ prog.activo ? 'Activa' : 'Inactiva' }}</span>
+                <h2 class="spui-item-titulo">{{ prog.playlist.nombre }}</h2>
+            </div>
+            <div class="spui-chips">
+                <span class="spui-chip" title="Destino"><img src="{{ asset('unraf-ui/icons/' ~ (prog.pantalla ? 'monitor.svg' : (prog.ubicacion ? 'map-pin.svg' : (prog.edificio ? 'buildings.svg' : 'globe.svg')))) }}" alt=""> {{ destino }}</span>
+                <span class="spui-chip"><img src="{{ asset('unraf-ui/icons/clock.svg') }}" alt=""> {{ prog.horaInicio|date('H:i') }} – {{ prog.horaFin|date('H:i') }}</span>
+                {% if prog.repetirSemanal %}
+                    <span class="spui-desp">
+                        <button type="button" class="spui-chip spui-chip-btn" data-spui-desp
+                                aria-expanded="false" aria-controls="regla-{{ prog.id }}-dias"
+                                aria-label="Días: {{ resumen }}. Ver la semana">
+                            <img src="{{ asset('unraf-ui/icons/calendar-dots.svg') }}" alt=""> {{ resumen }}
+                        </button>
+                        <div id="regla-{{ prog.id }}-dias" class="spui-desp-panel" role="region" aria-label="Días de la regla">
+                            <p class="spui-desp-titulo">Se repite cada semana</p>
+                            <ul class="spui-semana">
+                                {% for i in 0..6 %}
+                                    <li class="{{ i in activos ? 'is-si' : 'is-no' }}" title="{{ NOMBRES[i] }}: {{ i in activos ? 'sí' : 'no' }}">
+                                        <span>{{ CORTOS[i] }}</span>
+                                    </li>
+                                {% endfor %}
+                            </ul>
                         </div>
-                    </td>
-                    <td class="p-3" data-label="Prioridad">
-                        <span class="spui-badge-borrador">{{ prog.prioridad }}</span>
-                    </td>
-                    <td class="p-3" data-label="Estado">
-                        {% if prog.activo %}
-                            <span class="spui-badge-publicado">Activa</span>
-                        {% else %}
-                            <span class="spui-badge-archivado">Inactiva</span>
-                        {% endif %}
-                    </td>
-                    <td class="p-3" data-label="Acciones">
-                        <div class="spui-acciones">
-                            <button type="button" class="unraf-btn spui-btn-ver unraf-btn-sm"
-                                    data-spui-form="{{ path('spui_cms_programacion_ver', {id: prog.id}) }}"
-                                    data-spui-title="Regla de programación"
-                                    title="Ver detalle">
-                                <img src="{{ asset('unraf-ui/icons/eye.svg') }}" class="spui-action-icon" alt=""> Ver
-                            </button>
-                            <button type="button" class="unraf-btn spui-btn-editar unraf-btn-sm {{ bloqueo.clase(motivo) }}"
-                                    data-spui-form="{{ path('spui_cms_programacion_editar', {id: prog.id}) }}"
-                                    data-spui-title="Editar regla"
-                                    data-spui-size="modal-lg"
-                                    {% if motivo %}{{ bloqueo.attrs(motivo) }}{% else %}title="Editar"{% endif %}>
-                                <img src="{{ asset('unraf-ui/icons/pencil.svg') }}" class="spui-action-icon" alt=""> Editar
-                            </button>
-                            <button type="button"
-                                    class="unraf-btn unraf-btn-sm {{ prog.activo ? 'spui-btn-desactivar' : 'spui-btn-activar' }} {{ bloqueo.clase(motivo) }}"
-                                    data-spui-action="{{ path('spui_cms_programacion_toggle', {id: prog.id}) }}"
-                                    data-spui-title="{{ prog.activo ? 'Desactivar regla' : 'Activar regla' }}"
-                                    data-spui-message="{{ prog.activo ? '¿Desactivar esta regla de programación?' : '¿Activar esta regla de programación?' }}"
-                                    data-spui-variant="{{ prog.activo ? 'desactivar' : 'activar' }}"
-                                    data-spui-confirm-label="{{ prog.activo ? 'Desactivar' : 'Activar' }}"
-                                    {% if motivo %}{{ bloqueo.attrs(motivo) }}{% else %}title="{{ prog.activo ? 'Desactivar' : 'Activar' }}"{% endif %}>
-                                <img src="{{ asset(prog.activo ? 'unraf-ui/icons/pause.svg' : 'unraf-ui/icons/play.svg') }}"
-                                     class="spui-action-icon" alt="">
-                                {{ prog.activo ? 'Desactivar' : 'Activar' }}
-                            </button>
-                            <button type="button" class="unraf-btn spui-btn-eliminar unraf-btn-sm {{ bloqueo.clase(motivo) }}"
-                                    data-spui-action="{{ path('spui_cms_programacion_eliminar', {id: prog.id}) }}"
-                                    data-spui-title="Eliminar regla"
-                                    data-spui-message="¿Eliminar esta regla de programación? Esta acción no se puede deshacer."
-                                    data-spui-variant="eliminar"
-                                    {% if motivo %}{{ bloqueo.attrs(motivo) }}{% else %}title="Eliminar"{% endif %}>
-                                <img src="{{ asset('unraf-ui/icons/trash.svg') }}" class="spui-action-icon" alt=""> Eliminar
-                            </button>
-                        </div>
-                    </td>
-                </tr>
-            {% else %}
-                <tr><td colspan="7" class="p-4 text-center text-muted">No hay reglas de programación.</td></tr>
-            {% endfor %}
-            </tbody>
-        </table>
-    </div>
+                    </span>
+                {% else %}
+                    <span class="spui-chip"><img src="{{ asset('unraf-ui/icons/calendar-dots.svg') }}" alt="">
+                        Única vez{% if prog.fechaInicio %}: {{ prog.fechaInicio|date('d/m/Y') }}{% if prog.fechaFin and prog.fechaFin|date('Ymd') != prog.fechaInicio|date('Ymd') %} al {{ prog.fechaFin|date('d/m/Y') }}{% endif %}{% endif %}
+                    </span>
+                {% endif %}
+                <span class="spui-chip" title="Entre reglas que coinciden, gana la de mayor prioridad"><img src="{{ asset('unraf-ui/icons/sort-descending.svg') }}" alt=""> Prioridad {{ prog.prioridad }}</span>
+            </div>
+        </div>
+        <div class="spui-acciones spui-item-acciones">
+            <button type="button" class="unraf-btn spui-btn-ver unraf-btn-sm"
+                    data-spui-form="{{ path('spui_cms_programacion_ver', {id: prog.id}) }}"
+                    data-spui-title="Regla de programación"
+                    title="Ver detalle">
+                <img src="{{ asset('unraf-ui/icons/eye.svg') }}" class="spui-action-icon" alt=""> Ver
+            </button>
+            {# El resto de las acciones, en el menú ⋮ (03/11/2026, pedido de Mateo):
+               Ver queda a la vista. Los botones son los mismos de siempre (sus
+               data-spui-* no cambian) y una acción bloqueada muestra el motivo. #}
+            <span class="spui-desp spui-menu-acciones">
+                <button type="button" class="unraf-btn unraf-btn-sm spui-btn-menu" data-spui-desp aria-expanded="false"
+                        aria-controls="acciones-programacion-{{ prog.id }}" aria-haspopup="true" title="Más acciones">
+                    <img src="{{ asset('unraf-ui/icons/dots-three-vertical.svg') }}" class="spui-action-icon" alt=""> Más
+                </button>
+                <div id="acciones-programacion-{{ prog.id }}" class="spui-desp-panel spui-menu-panel" role="group" aria-label="Más acciones">
+                    <button type="button" class="unraf-btn spui-btn-editar unraf-btn-sm {{ bloqueo.clase(motivo) }}"
+                            data-spui-form="{{ path('spui_cms_programacion_editar', {id: prog.id}) }}"
+                            data-spui-title="Editar regla"
+                            data-spui-size="modal-lg"
+                            {% if motivo %}{{ bloqueo.attrs(motivo) }}{% else %}title="Editar"{% endif %}>
+                        <img src="{{ asset('unraf-ui/icons/pencil.svg') }}" class="spui-action-icon" alt=""> Editar
+                    </button>
+                    <button type="button"
+                            class="unraf-btn unraf-btn-sm {{ prog.activo ? 'spui-btn-desactivar' : 'spui-btn-activar' }} {{ bloqueo.clase(motivo) }}"
+                            data-spui-action="{{ path('spui_cms_programacion_toggle', {id: prog.id}) }}"
+                            data-spui-title="{{ prog.activo ? 'Desactivar regla' : 'Activar regla' }}"
+                            data-spui-message="{{ prog.activo ? '¿Desactivar esta regla de programación?' : '¿Activar esta regla de programación?' }}"
+                            data-spui-variant="{{ prog.activo ? 'desactivar' : 'activar' }}"
+                            data-spui-confirm-label="{{ prog.activo ? 'Desactivar' : 'Activar' }}"
+                            {% if motivo %}{{ bloqueo.attrs(motivo) }}{% else %}title="{{ prog.activo ? 'Desactivar' : 'Activar' }}"{% endif %}>
+                        <img src="{{ asset(prog.activo ? 'unraf-ui/icons/pause.svg' : 'unraf-ui/icons/play.svg') }}"
+                             class="spui-action-icon" alt="">
+                        {{ prog.activo ? 'Desactivar' : 'Activar' }}
+                    </button>
+                    <button type="button" class="unraf-btn spui-btn-eliminar unraf-btn-sm {{ bloqueo.clase(motivo) }}"
+                            data-spui-action="{{ path('spui_cms_programacion_eliminar', {id: prog.id}) }}"
+                            data-spui-title="Eliminar regla"
+                            data-spui-message="¿Eliminar esta regla de programación? Esta acción no se puede deshacer."
+                            data-spui-variant="eliminar"
+                            {% if motivo %}{{ bloqueo.attrs(motivo) }}{% else %}title="Eliminar"{% endif %}>
+                        <img src="{{ asset('unraf-ui/icons/trash.svg') }}" class="spui-action-icon" alt=""> Eliminar
+                    </button>
+                </div>
+            </span>
+        </div>
+    </article>
+{% else %}
+    {{ include('@SPUI/_partials/vacio.html.twig', {que: 'reglas', icono: 'calendar-dots.svg', mensaje: 'Una regla dice qué playlist se muestra, dónde y cuándo: creala con «Nueva regla».'}) }}
+{% endfor %}
 </div>
+{{ include('@SPUI/_partials/paginacion.html.twig', {pag: paginacion, que: 'reglas'}) }}
 </div>
 {% endblock %}
 

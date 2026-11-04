@@ -51,13 +51,18 @@ final class MqttSecurityService
     /**
      * Usuario y rol del navegador: el panel del CMS suscrito a spui/qr/# para
      * ver los escaneos en vivo, y a spui/cms/conexion/# para destrabar los
-     * botones de los listados cuando un reproductor vuelve. Es el único
-     * cliente MQTT cuyas credenciales viajan al navegador, así que su rol es
-     * de SÓLO LECTURA y sólo sobre esos dos topics — quien las tome de la
-     * página no puede publicar nada ni leer alertas, comandos ni telemetría.
+     * botones de los listados cuando un reproductor vuelve, y a
+     * spui/telemetria/vivo/# para la telemetría en vivo. Es el único cliente
+     * MQTT cuyas credenciales viajan al navegador, así que su rol es de SÓLO
+     * LECTURA y sólo sobre esos tres topics — quien las tome de la página no
+     * puede publicar nada ni leer alertas, comandos ni la telemetría que se
+     * guarda (spui/telemetria/{id}).
      */
     public const USUARIO_WEB = 'spui-cms-web';
     public const ROL_WEB     = 'spui-cms-web';
+
+    /** Telemetría en vivo: la Pi publica en spui/telemetria/vivo/{id} (ver pi-client/spui/telemetria.py). */
+    public const TOPIC_TELEMETRIA_VIVO = 'spui/telemetria/vivo/';
 
     /**
      * Puerto del listener WebSocket del broker (ver config/mosquitto/
@@ -117,7 +122,7 @@ final class MqttSecurityService
         // se cae a actualizar la contraseña. El orden importa: es el camino que
         // funciona tanto para un reproductor nuevo como para uno al que se le
         // regeneró la clave.
-        $comandos = [
+        $comandos = array_merge([
             [
                 'command'  => 'createClient',
                 'username' => $usuario,
@@ -128,14 +133,88 @@ final class MqttSecurityService
                 'username' => $usuario,
                 'password' => $password,
             ],
-            [
-                'command'  => 'addClientRole',
-                'username' => $usuario,
-                'rolename' => self::ROL_REPRODUCTOR,
-            ],
-        ];
+        ], $this->comandosPermisos($reproductor));
 
-        return $this->enviar($comandos, 'alta/actualización', $usuario);
+        $ok = $this->enviar($comandos, 'alta/actualización', $usuario);
+        if ($ok) {
+            $this->cache->delete($this->clavePermisos($reproductor));
+        }
+        return $ok;
+    }
+
+    /**
+     * Nombre del rol propio de un reproductor (permisos por equipo, 29/10/2026).
+     *
+     * Antes todos compartían ROL_REPRODUCTOR, con permisos sobre spui/telemetria/#,
+     * spui/estado/# y spui/comandos/#: cualquier equipo podía publicar
+     * telemetría o estado a nombre de otro y leer los comandos de otro. Las ACL
+     * de Dynamic Security no pueden decir "su propio id" (%u se expande al
+     * usuario, spui-repro-17, y el topic lleva sólo 17), así que cada equipo
+     * tiene un rol con su id escrito en cada topic.
+     */
+    public static function rolDe(Reproductor $reproductor): string
+    {
+        return 'spui-repro-' . $reproductor->getId() . '-rol';
+    }
+
+    /**
+     * Lo que puede hacer un reproductor, y nada más: publicar su telemetría
+     * (normal y en vivo) y su estado (incluido el aviso de caída que el broker
+     * publica en su nombre, LWT); suscribirse a la alerta global y a sus
+     * propias alertas y comandos.
+     *
+     * El rol genérico se quita al FINAL, después de asignar el nuevo: el
+     * plugin procesa los comandos en orden, y así el equipo no queda ni un
+     * instante sin permisos aunque esté conectado.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function comandosPermisos(Reproductor $reproductor): array
+    {
+        $id   = $reproductor->getId();
+        $rol  = self::rolDe($reproductor);
+        $acl  = static fn(string $tipo, string $topic) => [
+            'command' => 'addRoleACL', 'rolename' => $rol, 'acltype' => $tipo,
+            'topic' => $topic, 'priority' => -1, 'allow' => true,
+        ];
+        $lee = ['spui/alertas/emergencia', 'spui/alertas/reproductor/' . $id, 'spui/comandos/reproductor/' . $id];
+
+        $comandos = [['command' => 'createRole', 'rolename' => $rol]];
+        foreach (['spui/telemetria/' . $id, self::TOPIC_TELEMETRIA_VIVO . $id, 'spui/estado/reproductor/' . $id] as $topic) {
+            $comandos[] = $acl('publishClientSend', $topic);
+        }
+        foreach ($lee as $topic) {
+            $comandos[] = $acl('subscribeLiteral', $topic);
+            $comandos[] = $acl('publishClientReceive', $topic);
+        }
+        $comandos[] = ['command' => 'addClientRole', 'username' => $reproductor->mqttUsuario(), 'rolename' => $rol];
+        $comandos[] = ['command' => 'removeClientRole', 'username' => $reproductor->mqttUsuario(), 'rolename' => self::ROL_REPRODUCTOR];
+
+        return $comandos;
+    }
+
+    private function clavePermisos(Reproductor $reproductor): string
+    {
+        // Con versión: si cambian los permisos, subirla rehace el rol de todos
+        // en su próximo sync en vez de esperar a que venza la hora.
+        return 'spui.mqtt.permisos_repro.v1.' . $reproductor->getId();
+    }
+
+    /**
+     * Se asegura de que el reproductor tenga su rol propio. Lo llama cada sync
+     * (SyncController), cacheado una hora: así los equipos que ya existían
+     * pasan solos a los permisos por equipo, y un broker reinstalado los
+     * recupera sin pasos manuales. No toca la contraseña (no se la conoce:
+     * se guarda sólo el hash de la API key).
+     */
+    public function asegurarPermisos(Reproductor $reproductor): bool
+    {
+        return $this->cache->get($this->clavePermisos($reproductor), function (ItemInterface $item) use ($reproductor): bool {
+            $ok = $this->enviar($this->comandosPermisos($reproductor), 'permisos por equipo', $reproductor->mqttUsuario());
+            // Broker caído: reintentar en el próximo minuto, no en una hora.
+            $item->expiresAfter($ok ? 3600 : 60);
+            return $ok;
+        });
     }
 
     /**
@@ -147,8 +226,12 @@ final class MqttSecurityService
      */
     public function revocar(Reproductor $reproductor): bool
     {
+        $this->cache->delete($this->clavePermisos($reproductor));
         return $this->enviar(
-            [['command' => 'deleteClient', 'username' => $reproductor->mqttUsuario()]],
+            [
+                ['command' => 'deleteClient', 'username' => $reproductor->mqttUsuario()],
+                ['command' => 'deleteRole', 'rolename' => self::rolDe($reproductor)],
+            ],
             'revocación',
             $reproductor->mqttUsuario(),
         );
@@ -252,10 +335,11 @@ final class MqttSecurityService
      */
     public function asegurarClienteWeb(): bool
     {
-        // La clave lleva versión: al sumar permisos (v2: avisos de conexión),
-        // cambiarla fuerza a rehacer el alta en el próximo pedido en vez de
-        // esperar a que venza la que quedó cacheada con los permisos viejos.
-        return $this->cache->get('spui.mqtt.cliente_web.v2', function (ItemInterface $item): bool {
+        // La clave lleva versión: al sumar permisos (v2: avisos de conexión;
+        // v3: telemetría en vivo), cambiarla fuerza a rehacer el alta en el
+        // próximo pedido en vez de esperar a que venza la que quedó cacheada
+        // con los permisos viejos.
+        return $this->cache->get('spui.mqtt.cliente_web.v3', function (ItemInterface $item): bool {
             $comandos = [
                 ['command' => 'createRole', 'rolename' => self::ROL_WEB],
                 [
@@ -325,6 +409,25 @@ final class MqttSecurityService
                     'rolename' => self::ROL_CMS,
                     'acltype'  => 'publishClientSend',
                     'topic'    => ConexionPublisherService::TOPIC_PATRON,
+                    'priority' => -1,
+                    'allow'    => true,
+                ],
+                // Telemetría en vivo (la publica la propia Pi, cada 1 s, sólo
+                // mientras alguien mira la pantalla de telemetría): temperatura
+                // y RAM, lo mismo que ya muestra esa pantalla.
+                [
+                    'command'  => 'addRoleACL',
+                    'rolename' => self::ROL_WEB,
+                    'acltype'  => 'subscribePattern',
+                    'topic'    => self::TOPIC_TELEMETRIA_VIVO . '#',
+                    'priority' => -1,
+                    'allow'    => true,
+                ],
+                [
+                    'command'  => 'addRoleACL',
+                    'rolename' => self::ROL_WEB,
+                    'acltype'  => 'publishClientReceive',
+                    'topic'    => self::TOPIC_TELEMETRIA_VIVO . '#',
                     'priority' => -1,
                     'allow'    => true,
                 ],

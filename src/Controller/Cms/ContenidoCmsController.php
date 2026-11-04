@@ -4,24 +4,32 @@ declare(strict_types=1);
 
 namespace SPUI\Controller\Cms;
 
+use SPUI\Service\FiltroListado;
+use SPUI\Service\BusquedaListado;
+use SPUI\Service\Paginador;
 use DateTimeImmutable;
 use Doctrine\Persistence\ManagerRegistry;
 use Psr\Cache\CacheItemPoolInterface;
 use SPUI\Entity\CodigoQr;
 use SPUI\Entity\Contenido;
 use SPUI\Enum\EstadoContenido;
+use SPUI\Enum\OrigenCronograma;
 use SPUI\Enum\TipoContenido;
 use SPUI\Form\ContenidoType;
 use SPUI\Repository\ContenidoRepository;
 use SPUI\Service\AlcanceReproductorService;
 use SPUI\Service\ComandoPublisherService;
 use SPUI\Service\ContenidoQrService;
+use SPUI\Service\ImagenNormalizerService;
 use SPUI\Service\MediaStorageService;
 use SPUI\Service\MqttSecurityService;
+use SPUI\Service\PresentacionContenidoService;
 use SPUI\Service\QrEscaneoPublisherService;
 use SPUI\Service\QrGeneratorService;
 use SPUI\Service\UsuarioResolverService;
+use SPUI\Service\VideoInspectorService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\Form\FormInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -50,11 +58,68 @@ class ContenidoCmsController extends AbstractController
         private readonly QrGeneratorService $qrGenerator,
         private readonly CacheItemPoolInterface $cache,
         private readonly UsuarioResolverService $usuarios,
+        private readonly VideoInspectorService $videos,
+        private readonly ImagenNormalizerService $imagenes,
+        private readonly PresentacionContenidoService $presentacion,
     ) {}
 
     private function em()
     {
         return $this->doctrine->getManager('SPUI');
+    }
+
+    /**
+     * Deja el archivo subido como lo puede mostrar la Pi, o dice por qué no se puede.
+     *
+     *   - Imagen: se gira según la foto y se achica a 1920×1080 como máximo
+     *     (ImagenNormalizerService). Lo que se guarda y se hashea es la imagen
+     *     ya adaptada.
+     *   - Video: se comprueba que la Pi lo reproduzca fluido y se toma su
+     *     duración del archivo (VideoInspectorService). La duración de un
+     *     video no la escribe nadie: si se reemplaza el archivo, se vuelve a leer.
+     *
+     * @return UploadedFile|string El archivo a guardar, o el mensaje para mostrar debajo del campo.
+     */
+    private function prepararArchivo(UploadedFile $archivo, Contenido $contenido): UploadedFile|string
+    {
+        $tipo = $contenido->getTipo()->value;
+        if ($error = $this->media->validar($archivo, $tipo)) {
+            return $error;
+        }
+
+        if ($tipo === 'video') {
+            $info = $this->videos->inspeccionar($archivo->getPathname());
+            if ($motivo = $this->videos->motivoRechazo($info)) {
+                return $motivo;
+            }
+            $contenido->setDuracionSegundos(VideoInspectorService::segundos($info));
+            return $archivo;
+        }
+
+        $r = $this->imagenes->normalizar($archivo->getPathname());
+        if (isset($r['error'])) {
+            return $r['error'];
+        }
+        if (!$r['cambio']) {
+            return $archivo;
+        }
+        $nombre = pathinfo($archivo->getClientOriginalName(), PATHINFO_FILENAME) . '.' . $r['extension'];
+        return new UploadedFile($r['ruta'], $nombre, $r['mime'], null, true);
+    }
+
+    /** Guarda el archivo ya preparado y lo deja en el contenido. Devuelve la ruta anterior (para borrarla). */
+    private function guardarArchivo(UploadedFile $archivo, Contenido $contenido): ?string
+    {
+        $anterior = $contenido->getRutaArchivo();
+        $hash = $this->media->hashArchivoSubido($archivo);
+        $ruta = $this->media->guardar($archivo, self::categoriaDeTipo($contenido->getTipo()->value));
+        $contenido->setRutaArchivo($ruta);
+        $contenido->setHashArchivo($hash);
+        // La imagen adaptada es un temporal propio: con S3 queda en disco después de subirla.
+        if (str_starts_with(basename($archivo->getPathname()), 'spui_img_')) {
+            @unlink($archivo->getPathname());
+        }
+        return $anterior;
     }
 
     /** Subcarpeta de MediaStorageService que corresponde a cada tipo de archivo. */
@@ -89,11 +154,55 @@ class ContenidoCmsController extends AbstractController
         if (!is_string($urlCruda)) {
             return ['qr_url_destino', 'La URL de destino no tiene el formato esperado.'];
         }
-        $url = trim($urlCruda);
-        if ($url === '') {
+        // Uno o dos enlaces, uno por renglón (03/11/2026): con dos, uno es de
+        // Google Play y el otro del App Store, y cada teléfono va a su tienda.
+        $lineas = array_values(array_filter(array_map('trim', preg_split('/\R/', $urlCruda)), static fn($l) => $l !== ''));
+        if ($lineas === []) {
             return ['qr_url_destino', 'La URL de destino es requerida: es a dónde llega quien escanea el código.'];
         }
+        if (count($lineas) > 2) {
+            return ['qr_url_destino', 'Pegá como máximo dos enlaces, uno por renglón: el de Google Play y el del App Store.'];
+        }
+        $urls = [];
+        foreach ($lineas as $linea) {
+            $resultado = $this->validarUrlQr($linea);
+            if (is_array($resultado)) {
+                return $resultado;
+            }
+            $urls[] = $resultado;
+        }
+        if (count($urls) === 2) {
+            $tiendas = [CodigoQr::tiendaDe($urls[0]), CodigoQr::tiendaDe($urls[1])];
+            sort($tiendas);
+            if ($tiendas !== ['android', 'ios']) {
+                return ['qr_url_destino', 'Con dos enlaces, uno tiene que ser de Google Play y el otro del App Store: así cada teléfono va a su tienda.'];
+            }
+        }
 
+        $error = $this->leerVencimientoQr($request);
+        if (is_array($error)) {
+            return $error;
+        }
+        $expira = $error;
+
+        $codigo = $contenido->getCodigoQr() ?? new CodigoQr();
+        $codigo->setEtiqueta($contenido->getTitulo())
+               ->setUrlDestino($urls[0])
+               ->setUrlDestinoAlternativa($urls[1] ?? null)
+               ->setExpiraEn($expira)
+               ->setActivo(true);
+
+        return $this->guardarCodigoQr($contenido, $codigo);
+    }
+
+    /**
+     * Un enlace de destino del QR: la URL ya normalizada, o [campo, mensaje]
+     * del error.
+     *
+     * @return string|array{0:string,1:string}
+     */
+    private function validarUrlQr(string $url): string|array
+    {
         // Sin esquema se asume https, en vez de rechazar algo que el usuario
         // escribió bien — mismo criterio que tenía el formulario propio de
         // códigos QR con su default_protocol.
@@ -117,6 +226,17 @@ class ContenidoCmsController extends AbstractController
             return ['qr_url_destino', 'La URL de destino tiene caracteres que no puede llevar (<, >, comillas).'];
         }
 
+        return $url;
+    }
+
+    /**
+     * El vencimiento del QR: null (sin vencimiento), la fecha, o [campo,
+     * mensaje] del error.
+     *
+     * @return DateTimeImmutable|array{0:string,1:string}|null
+     */
+    private function leerVencimientoQr(Request $request): DateTimeImmutable|array|null
+    {
         // El <input type="datetime-local"> manda 'Y-m-dTH:i' (algunos
         // navegadores agregan los segundos). El '!' inicial pone en cero todo
         // lo que el formato no nombra: sin él, createFromFormat completa con la
@@ -143,12 +263,12 @@ class ContenidoCmsController extends AbstractController
             }
         }
 
-        $codigo = $contenido->getCodigoQr() ?? new CodigoQr();
-        $codigo->setEtiqueta($contenido->getTitulo())
-               ->setUrlDestino($url)
-               ->setExpiraEn($expira)
-               ->setActivo(true);
+        return $expira;
+    }
 
+    /** Guarda el código y su PNG; [campo, mensaje] si algo falló. */
+    private function guardarCodigoQr(Contenido $contenido, CodigoQr $codigo): ?array
+    {
         if ($codigo->getId() === null) {
             // El PNG codifica /api/spui/qr/{id}/r, así que el código necesita
             // tener id antes de poder materializarlo.
@@ -207,6 +327,8 @@ class ContenidoCmsController extends AbstractController
             'qr_url_destino'    => $request->request->get('qr_url_destino'),
             'qr_expira_en'      => $request->request->get('qr_expira_en'),
             'contenido_texto'   => $request->request->get('contenido_texto'),
+            'presentacion'      => $this->presentacion->valores(null, $request),
+            'edificios'         => $this->presentacion->edificios(),
         ]);
     }
 
@@ -216,12 +338,15 @@ class ContenidoCmsController extends AbstractController
      * @param array<string, string> $errores name del campo → mensaje; cada uno
      *        se muestra debajo de su input.
      */
-    private function vistaEdicion(Contenido $c, array $errores = []): string
+    private function vistaEdicion(Contenido $c, array $errores = [], ?Request $request = null): string
     {
         return $this->renderView('@SPUI/contenidos/_edit_form.html.twig', [
             'contenido'         => $c,
             'errores'           => $errores,
             'max_bytes_archivo' => $this->limiteArchivoBytes(MediaStorageService::TAMANIO_MAXIMO),
+            // Con el request, lo recién enviado (al volver por un error).
+            'presentacion'      => $this->presentacion->valores($c, $request),
+            'edificios'         => $this->presentacion->edificios(),
         ]);
     }
 
@@ -233,7 +358,7 @@ class ContenidoCmsController extends AbstractController
     private function errorEdicion(Request $request, Contenido $c, string $campo, string $mensaje): Response
     {
         if ($request->isXmlHttpRequest()) {
-            return $this->json(['success' => false, 'html' => $this->vistaEdicion($c, [$campo => $mensaje])]);
+            return $this->json(['success' => false, 'html' => $this->vistaEdicion($c, [$campo => $mensaje], $request)]);
         }
 
         $this->addFlash('error', $mensaje);
@@ -306,22 +431,44 @@ class ContenidoCmsController extends AbstractController
     }
 
     #[Route('', name: 'spui_cms_contenidos_index', methods: ['GET'])]
-    public function index(): Response
+    public function index(Request $request, Paginador $paginador, FiltroListado $filtro, BusquedaListado $busqueda): Response
     {
+        // Buscador (?q=, a medida que se escribe: core/busqueda-lista.js), sobre
+        // e.titulo, e.contenidoTexto.
+        $q      = $busqueda->texto($request);
+        $campos = ['e.titulo', 'e.contenidoTexto'];
+        $joins  = [];
+        $contar = $busqueda->contador($this->repo, $q, $campos, $joins);
         $this->sincronizarQr();
 
-        $contenidos = $this->repo->findBy([], ['titulo' => 'ASC']);
+        // Chips de filtro (?estado=… y ?tipo=…, se combinan) y paginado en el
+        // servidor, de a Paginador::POR_PAGINA (?pagina=N). Las cantidades de
+        // cada grupo ya cuentan lo elegido en el otro.
+        $tipos = ['' => ['Todos', []]];
+        foreach (TipoContenido::cases() as $t) {
+            $tipos[$t->value] = [$t->etiqueta(), ['tipo' => $t]];
+        }
+        $estados = [
+            ''            => ['Todos', []],
+            'disponibles' => ['Disponibles', ['estado' => EstadoContenido::Disponible]],
+            'archivados'  => ['Archivados', ['estado' => EstadoContenido::Archivado]],
+        ];
+        $elegidoTipo   = $tipos[$request->query->getString('tipo')][1] ?? [];
+        $estado        = $filtro->grupo($contar, $request, 'estado', 'Estado', $estados, $elegidoTipo);
+        $tipo          = $filtro->grupo($contar, $request, 'tipo', 'Tipo', $tipos, $estado['criterio']);
+        $paginacion    = $paginador->paginarConsulta($busqueda->consulta($this->repo, $estado['criterio'] + $tipo['criterio'], $q, $campos, $joins, ['titulo' => 'ASC']), $request);
 
         // El aviso que antes daba el comando: si la dirección que va a quedar
         // adentro del PNG sólo resuelve desde este equipo, los códigos no los
-        // abre ningún celular. Sólo molesta si hay algún QR que mostrar.
-        $hayQr = false;
-        foreach ($contenidos as $c) {
-            if ($c->getTipo() === TipoContenido::Qr) { $hayQr = true; break; }
-        }
+        // abre ningún celular. Sólo molesta si hay algún QR que mostrar (en
+        // toda la base, no sólo en esta página).
+        $hayQr = $this->repo->count(['tipo' => TipoContenido::Qr]) > 0;
 
         return $this->render('@SPUI/contenidos/index.html.twig', [
-            'contenidos'    => $contenidos,
+            'contenidos'    => $paginacion['items'],
+            'filtros'       => [$estado, $tipo],
+            'paginacion'    => $paginacion,
+            'busqueda'      => $q,
             'ids_offline'   => $this->alcance->idsOfflineDeUnaVez(),
             'hay_qr'        => $hayQr,
             'qr_inalcanzable' => $hayQr && !$this->qrGenerator->urlRedirectEsAlcanzable(),
@@ -351,7 +498,7 @@ class ContenidoCmsController extends AbstractController
 
         if ($form->isSubmitted() && $form->isValid()) {
             $tipo = $contenido->getTipo();
-            $contenido->setEstado(EstadoContenido::Borrador);
+            $contenido->setEstado(EstadoContenido::Disponible);
             $contenido->setCreadoPorId((int) $this->getUser()->getId());
 
             if (in_array($tipo->value, self::TIPOS_ARCHIVO, true)) {
@@ -359,13 +506,11 @@ class ContenidoCmsController extends AbstractController
                 if (!$archivo) {
                     return $this->errorAlta($request, $form, 'archivo', 'El archivo es requerido para el tipo "' . $tipo->etiqueta() . '".');
                 }
-                if ($errValidacion = $this->media->validar($archivo)) {
-                    return $this->errorAlta($request, $form, 'archivo', $errValidacion);
+                $preparado = $this->prepararArchivo($archivo, $contenido);
+                if (is_string($preparado)) {
+                    return $this->errorAlta($request, $form, 'archivo', $preparado);
                 }
-                $hash = $this->media->hashArchivoSubido($archivo);
-                $ruta = $this->media->guardar($archivo, self::categoriaDeTipo($tipo->value));
-                $contenido->setRutaArchivo($ruta);
-                $contenido->setHashArchivo($hash);
+                $this->guardarArchivo($preparado, $contenido);
             } elseif ($tipo === TipoContenido::Cronograma) {
                 // El cronograma no requiere archivo ni texto — los ítems se gestionan en el builder
             } elseif ($tipo === TipoContenido::Qr) {
@@ -386,10 +531,15 @@ class ContenidoCmsController extends AbstractController
                 $contenido->setContenidoTexto($texto);
             }
 
+            if ($errPres = $this->presentacion->aplicar($contenido, $request)) {
+                return $this->errorAlta($request, $form, $errPres[0], $errPres[1]);
+            }
+
             $this->em()->persist($contenido);
             $this->em()->flush();
 
-            if ($tipo === TipoContenido::Cronograma) {
+            // Uno "del edificio de la pantalla" no tiene ítems que cargar.
+            if ($tipo === TipoContenido::Cronograma && $contenido->getCronogramaOrigen() === OrigenCronograma::Propio) {
                 // Recién creado está vacío: se sigue directo en el listado de
                 // sus ítems, en el mismo modal (modal.js, data.abrir).
                 $msg = 'Cronograma "' . $contenido->getTitulo() . '" creado. Ahora agregá los ítems.';
@@ -454,10 +604,14 @@ class ContenidoCmsController extends AbstractController
             }
 
             $c->setTitulo($titulo);
-            $durStr = $request->request->get('duracion_segundos', '');
-            $c->setDuracionSegundos($durStr !== '' ? max(1, (int) $durStr) : null);
+            // La duración de un video sale del archivo (validarArchivo), no del
+            // formulario: lo que llegue en duracion_segundos se ignora.
+            if ($c->getTipo() !== TipoContenido::Video) {
+                $durStr = $request->request->get('duracion_segundos', '');
+                $c->setDuracionSegundos($durStr !== '' ? max(1, (int) $durStr) : null);
+            }
 
-            if (in_array($c->getTipo()->value, ['texto', 'youtube'], true)) {
+            if ($c->getTipo() === TipoContenido::Texto) {
                 $texto = trim($request->request->get('contenido_texto', ''));
                 if ($texto !== '') { $c->setContenidoTexto($texto); }
             }
@@ -478,19 +632,19 @@ class ContenidoCmsController extends AbstractController
             if (in_array($c->getTipo()->value, self::TIPOS_ARCHIVO, true)) {
                 $archivo = $request->files->get('archivo');
                 if ($archivo) {
-                    if ($errValidacion = $this->media->validar($archivo)) {
-                        return $this->errorEdicion($request, $c, 'archivo', $errValidacion);
+                    $preparado = $this->prepararArchivo($archivo, $c);
+                    if (is_string($preparado)) {
+                        return $this->errorEdicion($request, $c, 'archivo', $preparado);
                     }
                     // Se borra el viejo DESPUÉS de guardar el nuevo, no antes: si
                     // guardar() falla (S3 caído, disco lleno), el contenido no se
                     // queda sin ningún archivo.
-                    $anterior = $c->getRutaArchivo();
-                    $hash = $this->media->hashArchivoSubido($archivo);
-                    $ruta = $this->media->guardar($archivo, self::categoriaDeTipo($c->getTipo()->value));
-                    $c->setRutaArchivo($ruta);
-                    $c->setHashArchivo($hash);
-                    $this->media->borrar($anterior);
+                    $this->media->borrar($this->guardarArchivo($preparado, $c));
                 }
+            }
+
+            if ($errPres = $this->presentacion->aplicar($c, $request)) {
+                return $this->errorEdicion($request, $c, $errPres[0], $errPres[1]);
             }
 
             $this->em()->flush();
@@ -590,68 +744,28 @@ class ContenidoCmsController extends AbstractController
     }
 
     /**
-     * Vuelve un contenido publicado a borrador.
-     *
-     * Sacarlo de circulación sin archivarlo: deja de aparecer en el selector de
-     * playlists, pero sigue editable para volver a publicarlo.
+     * Vuelve a poner disponible un contenido archivado. Como archivar no borra
+     * sus ítems, vuelve a mostrarse solo en las playlists donde estaba.
      */
-    #[Route('/{id}/despublicar', name: 'spui_cms_contenidos_despublicar', methods: ['POST'], requirements: ['id' => '\d+'])]
-    public function despublicar(int $id, Request $request): Response
+    #[Route('/{id}/desarchivar', name: 'spui_cms_contenidos_desarchivar', methods: ['POST'], requirements: ['id' => '\d+'])]
+    public function desarchivar(int $id, Request $request): Response
     {
-        $c = $this->repo->find($id);
-        if (!$c) {
-            if ($request->isXmlHttpRequest()) { return $this->json(['success' => false, 'message' => 'Contenido no encontrado.'], 404); }
-            $this->addFlash('error', 'Contenido no encontrado.');
-            return $this->redirectToRoute('spui_cms_contenidos_index');
-        }
-        if ($r = $this->denegarSiCsrfInvalido($request)) { return $r; }
-
-        $reproductores = $this->alcance->deContenido($c);
-        if ($r = $this->bloquearSiOffline($reproductores, $request, 'spui_cms_contenidos_index')) {
-            return $r;
-        }
-
-        $c->setEstado(EstadoContenido::Borrador);
-        $this->em()->flush();
-        $this->comandoPublisher->pedirSyncAhora($reproductores, 'contenido');
-        $msg = '"' . $c->getTitulo() . '" volvió a borrador.';
-        if ($request->isXmlHttpRequest()) {
-            return $this->json(['success' => true, 'message' => $msg]);
-        }
-        $this->addFlash('success', $msg);
-        return $this->redirectToRoute('spui_cms_contenidos_index');
+        return $this->cambiarEstado($id, $request, EstadoContenido::Disponible);
     }
 
-    #[Route('/{id}/publicar', name: 'spui_cms_contenidos_publicar', methods: ['POST'], requirements: ['id' => '\d+'])]
-    public function publicar(int $id, Request $request): Response
-    {
-        $c = $this->repo->find($id);
-        if (!$c) {
-            if ($request->isXmlHttpRequest()) { return $this->json(['success' => false, 'message' => 'Contenido no encontrado.'], 404); }
-            $this->addFlash('error', 'Contenido no encontrado.');
-            return $this->redirectToRoute('spui_cms_contenidos_index');
-        }
-        if ($r = $this->denegarSiCsrfInvalido($request)) { return $r; }
-
-        $reproductores = $this->alcance->deContenido($c);
-        if ($r = $this->bloquearSiOffline($reproductores, $request, 'spui_cms_contenidos_index')) {
-            return $r;
-        }
-
-        $c->setEstado(EstadoContenido::Publicado);
-        $this->em()->flush();
-        $this->comandoPublisher->pedirSyncAhora($reproductores, 'contenido');
-        $msg = '"' . $c->getTitulo() . '" publicado.';
-        if ($request->isXmlHttpRequest()) {
-            return $this->json(['success' => true, 'message' => $msg]);
-        }
-        $this->addFlash('success', $msg);
-        return $this->redirectToRoute('spui_cms_contenidos_index');
-    }
-
+    /**
+     * Lo saca de todas las pantallas en el acto (SyncController sólo manda los
+     * disponibles) y de los selectores de playlists y alertas. Los ítems se
+     * conservan: al desarchivarlo vuelve a donde estaba.
+     */
     #[Route('/{id}/archivar', name: 'spui_cms_contenidos_archivar', methods: ['POST'], requirements: ['id' => '\d+'])]
     public function archivar(int $id, Request $request): Response
     {
+        return $this->cambiarEstado($id, $request, EstadoContenido::Archivado);
+    }
+
+    private function cambiarEstado(int $id, Request $request, EstadoContenido $estado): Response
+    {
         $c = $this->repo->find($id);
         if (!$c) {
             if ($request->isXmlHttpRequest()) { return $this->json(['success' => false, 'message' => 'Contenido no encontrado.'], 404); }
@@ -665,14 +779,16 @@ class ContenidoCmsController extends AbstractController
             return $r;
         }
 
-        $c->setEstado(EstadoContenido::Archivado);
+        $c->setEstado($estado);
         $this->em()->flush();
         $this->comandoPublisher->pedirSyncAhora($reproductores, 'contenido');
-        $msg = '"' . $c->getTitulo() . '" archivado.';
+        [$msg, $tipo] = $estado === EstadoContenido::Archivado
+            ? ['"' . $c->getTitulo() . '" archivado: ya no se muestra en ninguna pantalla.', 'warning']
+            : ['"' . $c->getTitulo() . '" vuelve a estar disponible.', 'success'];
         if ($request->isXmlHttpRequest()) {
-            return $this->json(['success' => true, 'message' => $msg, 'type' => 'warning']);
+            return $this->json(['success' => true, 'message' => $msg, 'type' => $tipo]);
         }
-        $this->addFlash('warning', $msg);
+        $this->addFlash($tipo, $msg);
         return $this->redirectToRoute('spui_cms_contenidos_index');
     }
 

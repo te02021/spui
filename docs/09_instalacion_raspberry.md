@@ -9,7 +9,7 @@ Guía operativa para dejar una Raspberry Pi funcionando como **reproductor** SPU
 - `08_pendientes_vm.md` — estado real del servidor (Apache, Mosquitto, firewall) y qué falta abrirle al reproductor
 - `07_manual_uso_cms.md` — cómo cargar los datos en el CMS
 
-> **Nota sobre `08_pendientes_vm.md`:** ese documento planteaba probar con una VM x86 porque no había hardware. **Ahora hay una Raspberry Pi real**, así que el camino de VirtualBox/Raspberry Pi Desktop x86 ya no aplica. Lo que **sí sigue vigente** de ese doc: la configuración del servidor (§3), el problema de la IP del host (§4), los pasos 4, 5 y 7, y las tablas de verificación (§6). Con hardware real, además, sí funcionan la temperatura del SoC y el HDMI, que en VM no se podían probar.
+> **Nota:** `08_pendientes_vm.md` cubre el servidor, en desarrollo (§4) y en la VM de la intranet (§1 a §3).
 
 ---
 
@@ -44,7 +44,7 @@ Salida típica: `eth0: dc:a6:32:...`, `wlan0: dc:a6:32:...`, `lo: 00:00:00:00:00
 
 | Ítem | Especificación | Notas |
 |---|---|---|
-| Placa | Raspberry Pi 4 Model B — 4 GB RAM | Definido en `00_investigacion_tecnologias.md` |
+| Placa | Raspberry Pi 4 Model B — 4 GB RAM | La usada en el banco de pruebas |
 | microSD | 16 GB mínimo, clase 10 / A1 o A2 | 32 GB recomendado por la caché de media |
 | Fuente | 5V / 3A USB-C | Fuentes flojas causan reinicios y corrupción de SD |
 | Cable video | Micro-HDMI a HDMI | La Pi 4 tiene dos micro-HDMI; usar **HDMI0** (el más cercano al USB-C). **El conector micro-HDMI es físicamente frágil** — un cable/conversor que queda flojo o se mueve puede generar desconexiones intermitentes de milisegundos que el driver de video no siempre recupera solo (pantalla se queda en negro/sin señal hasta reiniciar) — ver §14.2. Asegurar el conector (cinta, soporte, sin tensión del cable) y evitar mover el equipo con todo conectado |
@@ -139,7 +139,7 @@ Guardá y recién ahí escribí la imagen.
 
    **Primera conexión:** SSH muestra el fingerprint del host y pregunta `Are you sure you want to continue connecting (yes/no/[fingerprint])?`. Hay que escribir **`yes` completo** (no `y`, no Enter vacío) — cualquier otra cosa corta con `Host key verification failed`.
 
-> `ssh <usuario>@spui-pi-01.local` puede fallar: depende de mDNS, que Windows no resuelve sin Bonjour y que muchas redes WiFi institucionales bloquean. Conectar por IP es lo confiable. Ver `tips_conectividad_acceso.md`.
+> `ssh <usuario>@spui-pi-01.local` puede fallar: depende de mDNS, que Windows no resuelve sin Bonjour y que muchas redes WiFi institucionales bloquean. Conectar por IP es lo confiable. Ver `archivo/tips_conectividad_acceso.md` (copia local).
 
 5. Actualizá el sistema:
    ```bash
@@ -168,7 +168,7 @@ solo, no está persistiendo.
 
 ### 6.2. Sobre la IP de la Pi
 
-La Pi toma IP por DHCP. Para que no cambie, las opciones están en `tips_conectividad_acceso.md` (Tips 4 y 5): reserva DHCP por MAC si tenés acceso al router (lo correcto), o IP estática desde la Pi con `nmcli` si no lo tenés.
+La Pi toma IP por DHCP. Para que no cambie: reserva DHCP por MAC si tenés acceso al router (lo correcto), o IP estática desde la Pi con `nmcli` si no lo tenés.
 
 Anotá la IP que quede — **la vas a necesitar en el paso 7** para abrirle el paso en el firewall del servidor.
 
@@ -178,7 +178,7 @@ Anotá la IP que quede — **la vas a necesitar en el paso 7** para abrirle el p
 
 **Esto se hace en la PC donde corre WAMP, no en la Pi.** Sin esto, la Pi no puede llegar al CMS ni al broker MQTT.
 
-Contexto: `08_pendientes_vm.md` §3 dejó reglas para la subred `192.168.56.0/24` (host-only de VirtualBox), que **no aplican** a una Pi física en la red local. Hay que agregar la IP real de la Pi.
+Hay que agregar la IP real de la Pi en Apache y en el firewall.
 
 **a) Averiguá la IP del host (donde corre WAMP)** — en Windows:
 ```powershell
@@ -186,7 +186,6 @@ ipconfig
 ```
 Anotá la IPv4 de la interfaz activa — ese es tu `<ip_del_host>` (tabla del paso 0).
 
-> `08_pendientes_vm.md` menciona una IP concreta como ejemplo de aquel momento. **No la uses**: era la de otra red y ya cambió. Ese documento mismo advierte que la IP del host cambia por DHCP.
 
 **b) Apache** — editar `c:\wamp64\bin\apache\apache2.4.59\conf\extra\httpd-vhosts.conf`, en el bloque `<Directory "c:/wamp64/www/intranet/public/">`:
 ```apache
@@ -201,10 +200,10 @@ Reiniciar Apache: ícono de WAMP → *Restart All Services*.
 **c) Firewall de Windows** — PowerShell **como administrador**:
 ```powershell
 netsh advfirewall firewall add rule name="SPUI - Apache desde Pi" dir=in action=allow protocol=TCP localport=80 remoteip=<ip_de_la_pi>
-netsh advfirewall firewall add rule name="SPUI - Mosquitto desde Pi" dir=in action=allow protocol=TCP localport=1883 remoteip=<ip_de_la_pi>
+netsh advfirewall firewall add rule name="SPUI - Mosquitto TLS desde Pi" dir=in action=allow protocol=TCP localport=8883 remoteip=<ip_de_la_pi>
 ```
 
-Si la Pi va a conectarse al broker por TLS (`MQTT_TLS=true`, paso 11.2), la regla de Mosquitto va con `localport=8883`.
+El broker sólo acepta la red por 8883 con TLS: el 1883 escucha únicamente en el propio servidor (desde el 28/10/2026, `config/mosquitto/mosquitto.conf`). Una regla para el 1883 no sirve de nada.
 
 **d) Verificá desde la Pi** (por SSH):
 ```bash
@@ -366,6 +365,16 @@ cat > ~/.config/openbox/rc.xml << 'EOF'
     <!-- Cualquier ventana de VLC: sin decoración, pantalla completa,
          siempre al frente y sin aparecer en la barra de tareas. -->
     <application class="vlc">
+      <decor>no</decor>
+      <fullscreen>yes</fullscreen>
+      <maximized>yes</maximized>
+      <layer>above</layer>
+      <skip_taskbar>yes</skip_taskbar>
+      <skip_pager>yes</skip_pager>
+    </application>
+    <!-- La ventana del TV (noviembre 2026), donde se dibuja todo menos el
+         video: lo mismo que VLC. -->
+    <application class="spui">
       <decor>no</decor>
       <fullscreen>yes</fullscreen>
       <maximized>yes</maximized>
@@ -546,8 +555,8 @@ chmod +x install.sh
 
 El script:
 1. Instala VLC, Python 3 y venv vía `apt`
-2. Crea el entorno virtual e instala `requirements.txt`
-3. Copia el cliente a `/opt/spui`
+2. Crea el entorno virtual e instala `requirements.txt` (entre otros, `pygame-ce`: la ventana donde se dibujan las plantillas y el cronograma; trae su propio SDL2, no necesita nada de `apt`)
+3. Copia el cliente a `/opt/spui`, dejándolo igual a la carpeta copiada: borra lo que ya no existe (salvo el `venv`), el caché de desarrollo `cache/` y los `__pycache__`
 4. Crea `/etc/spui/spui.env` con placeholders
 5. Instala y habilita el servicio `spui.service`
 
@@ -560,10 +569,26 @@ El script:
 La IP del host cambia (DHCP). Para no tener que editar la config cada vez, mapear un nombre en la Pi:
 
 ```bash
-echo "<ip_del_host>  intranet" | sudo tee -a /etc/hosts
+echo "<ip_del_host>  intranet spui-broker.unraf.local" | sudo tee -a /etc/hosts
 ```
 
 Así `SPUI_API_URL` apunta a `intranet` y cuando la IP del host cambie solo hay que corregir esta línea. (Lo definitivo en producción es un nombre DNS real — ver `08_pendientes_vm.md` §4.)
+
+`spui-broker.unraf.local` es el nombre que figura en el certificado del broker. La Pi se conecta al broker por ese nombre y no por la IP: con la IP, la verificación del certificado falla y no hay alertas.
+
+**Copiar el certificado de la CA del broker** (desde la PC, en la carpeta de la app):
+
+```powershell
+scp config\mosquitto\certs\ca.crt <usuario>@<ip_de_la_pi>:/tmp/ca.crt
+```
+
+Y en la Pi:
+
+```bash
+sudo mv /tmp/ca.crt /etc/spui/ca.crt && sudo chmod 644 /etc/spui/ca.crt
+```
+
+> Sólo `ca.crt`. `ca.key` y `server.key` no salen nunca del servidor.
 
 ### 11.2. Editar el archivo de entorno
 
@@ -578,18 +603,20 @@ Valores a completar:
 ```
 SPUI_API_URL=http://intranet/api/spui
 SPUI_API_KEY=<la API key copiada en el paso 9>
-MQTT_HOST=<ip_del_host>
-MQTT_PORT=1883
+MQTT_HOST=spui-broker.unraf.local
+MQTT_PORT=8883
+MQTT_TLS=true
+MQTT_CA_CERT=/etc/spui/ca.crt
 SPUI_MQTT_SALT=<el mismo SPUI_MQTT_SALT que tiene el CMS>
 ```
 
 > ⚠️ **`SPUI_API_URL` termina en `/api/spui`, sin `/reproductores`** — el cliente concatena el resto solo (`sync.py`).
 >
-> ⚠️ **`MQTT_HOST` es la IP del servidor donde corre Mosquitto**, no `127.0.0.1`. El default `127.0.0.1` apuntaría a la propia Pi, donde no hay broker.
+> ⚠️ **`MQTT_HOST` es el nombre del broker que se agregó al `/etc/hosts` en el paso 11.1**, no `127.0.0.1` ni la IP. El default `127.0.0.1` apuntaría a la propia Pi, donde no hay broker, y una IP no coincide con el certificado.
 >
 > ⚠️ **`SPUI_MQTT_SALT` tiene que ser idéntico al del CMS.** El broker no acepta conexiones anónimas: el usuario de la Pi es `spui-repro-<id>` y su contraseña se calcula sola a partir de la API key y este salt, así que no hay usuario ni contraseña MQTT para cargar a mano. Con el salt mal copiado, el broker la rechaza y la Pi sigue sincronizando por HTTP, pero **sin alertas instantáneas ni telemetría**. El valor lo tiene quien administra el CMS (está en su `.env.local.php`).
 >
-> 🔒 **Para conectarse por TLS** (puerto 8883): `MQTT_TLS=true`, `MQTT_PORT=8883` y `MQTT_CA_CERT` apuntando al `ca.crt` del broker copiado a la Pi (`config/mosquitto/certs/ca.crt` en el repo — ver `config/mosquitto/README.md`). Sin estas tres, la Pi usa 1883 sin cifrar.
+> 🔒 **MQTT va sólo por TLS** (puerto 8883). `MQTT_CA_CERT` es el `ca.crt` copiado en el paso 11.1. Si falta o no coincide con el del broker, la Pi sincroniza por HTTP pero no recibe alertas instantáneas. El 1883 sin cifrar no es una alternativa: el broker no lo escucha desde la red.
 >
 > 🔊 **Para que se escuchen las alertas sonoras** hace falta agregar acá `SPUI_AOUT_DEVICE` — ver §8.6, es un paso aparte porque necesita el TV ya conectado para identificar el dispositivo correcto.
 
@@ -605,7 +632,7 @@ sudo cat /etc/spui/spui.env
 
 ## 12. Levantar el consumidor de telemetría (en el servidor)
 
-**En la PC del CMS.** Si ya está instalado como servicio (`config/servicios/instalar-servicio-telemetria.ps1`, ver `08_pendientes_vm.md` paso 7), no hay nada que hacer. Si no, para probar alcanza con una consola aparte:
+**En la PC del CMS.** Si ya está instalado como servicio (`config/servicios/instalar-servicio-telemetria.ps1`, ver `08_pendientes_vm.md` §4), no hay nada que hacer. Si no, para probar alcanza con una consola aparte:
 
 ```
 cd c:\wamp64\www\intranet
@@ -635,7 +662,7 @@ sudo systemctl is-enabled spui  # debe responder: enabled
 
 ### Checklist de verificación end-to-end
 
-Adaptado de `08_pendientes_vm.md` §6 — con hardware real, ahora **sí** aplican las pruebas de temperatura y HDMI:
+Adaptado de `08_pendientes_vm.md` §5 — con hardware real, ahora **sí** aplican las pruebas de temperatura y HDMI:
 
 | # | Qué probar | Qué tiene que pasar |
 |---|---|---|
@@ -678,14 +705,14 @@ Confirmá que todo levanta solo: autologin → X11 → Openbox → servicio spui
 | `curl` al `/sync` da **timeout** | Firewall de Windows o Apache no acepta la IP de la Pi | Paso 7 (b) y (c) |
 | `curl` al `/sync` da **403** | Falta `Require ip <ip_de_la_pi>` en `httpd-vhosts.conf` | Paso 7 (b) + reiniciar Apache |
 | `curl` al `/sync` da **401** | Es lo esperado sin API key — no es un error | Seguir adelante |
-| **429** en los logs del cliente | Rate limit: 2 sync/min, 3 heartbeat/min por reproductor | Esperar; no lanzar `curl` repetidos mientras el servicio corre |
+| **429** en los logs del cliente | Rate limit: 4 sync/min, 3 heartbeat/min por reproductor | Esperar; no lanzar `curl` repetidos mientras el servicio corre |
 | Servicio se reinicia en loop | `/etc/spui/spui.env` con placeholders sin completar | `sudo cat /etc/spui/spui.env` y completar (paso 11) |
 | `SPUI_API_KEY no configurada` en el log | Falta la key en el env | Paso 11.2 |
 | Sync OK, log dice **`Modo SIMULACIÓN`** | X11 no está corriendo → el cliente ni intenta usar VLC | Paso 8; verificar con `pgrep -a Xorg` |
 | Sync OK, log dice **`VLC listo`** pero la pantalla sigue negra **con el monitor encendido/con señal** | VLC eligió una salida de vídeo que no dibuja | Ver §14.1 |
 | El monitor se queda **sin señal y entra en standby solo** (no es "negra con señal") | El driver de video no reactivó la salida después de una desconexión HDMI momentánea (cable/conversor flojo) | Ver §14.2 |
 | Reproductor **conectado** pero telemetría vacía | `spui:mqtt:subscribe` no está corriendo, o la Pi no logra autenticarse en el broker | Paso 12. Si el log de la Pi dice `Not authorized`: `SPUI_MQTT_SALT` distinto al del CMS (paso 11.2) |
-| Alertas no llegan al instante (sí en el próximo sync) | Sin conexión MQTT desde la Pi | Verificar `MQTT_HOST` (no `127.0.0.1`), `SPUI_MQTT_SALT` (paso 11.2) y la regla de firewall del puerto 1883 (u 8883 con TLS) |
+| Alertas no llegan al instante (sí en el próximo sync) | Sin conexión MQTT desde la Pi | Verificar `MQTT_HOST` (`spui-broker.unraf.local` en el `/etc/hosts`, no `127.0.0.1`), `/etc/spui/ca.crt`, `SPUI_MQTT_SALT` (paso 11.2) y la regla de firewall del puerto 8883 |
 | `Not authorized` / `Connection refused` en el log de MQTT | El broker rechaza las credenciales: salt distinto, o el usuario `spui-repro-<id>` no existe en el broker | Corregir `SPUI_MQTT_SALT`; si el salt está bien, regenerar la clave del reproductor desde el CMS (recrea su usuario MQTT). Detalle en `config/mosquitto/README.md`, *Diagnóstico* |
 | Dejó de sincronizar sin haber tocado nada | La IP del host cambió (DHCP) | Actualizar la línea de `/etc/hosts` (paso 11.1) y las reglas del paso 7 |
 | Pantalla en negro con servicio `active (running)` | Ahorro de energía HDMI | Verificar que `~/.xinitrc` tenga `xset -dpms` y `xset s off` |
@@ -694,6 +721,7 @@ Confirmá que todo levanta solo: autologin → X11 → Openbox → servicio spui
 | `REMOTE HOST IDENTIFICATION HAS CHANGED` | Se reflasheó la SD: clave SSH nueva | `ssh-keygen -R <ip>` en tu PC y reconectar |
 | Temperatura > 80 °C sostenida | Disipación insuficiente | Ventilador/disipadores; revisar ventilación del case |
 | Alerta se ve en pantalla (imagen/texto) pero **no se escucha sonido** | Falta `SPUI_AOUT_DEVICE` en `spui.env`, o VLC está usando el dispositivo ALSA "default" que no empaqueta el audio en IEC958 como HDMI necesita | §8.6 — configurar `SPUI_AOUT_DEVICE=hdmi:CARD=<id>,DEV=0` |
+| **Franjas negras** arriba y abajo (o a los costados) en un TV 16:9; `DISPLAY=:0 xrandr` dice `1024x768` y `0mm x 0mm` | La Pi no pudo leer el EDID del TV (sus resoluciones) y arrancó en un modo de resguardo 4:3. La Pi conserva la proporción 16:9 del contenido y rellena con negro. Sin EDID tampoco suele andar el CEC | Con el TV encendido y en esa entrada HDMI, `sudo reboot`. Si sigue igual, probar el otro HDMI del TV o el cable, y si no, forzar el modo: agregar ` video=HDMI-A-1:1920x1080M@60D` al final de la única línea de `/boot/firmware/cmdline.txt` y reiniciar. Con eso el arranque ya sale en 1920×1080, pero X igual elige 1024×768: agregar `SPUI_RESOLUCION=1920x1080` a `/etc/spui/spui.env` y `sudo systemctl restart spui`. El cliente la pone al arrancar y después de cada encendido por horario (caso real: TV de 42", 03/11/2026). Después volver el formato del TV a 16:9 si se le había puesto zoom. Sin EDID tampoco hay CEC: `echo 'pow 0' | cec-client -s -d 1` da `errno=64` y `power status: unknown`, porque la dirección CEC de la Pi sale del EDID; el horario energético usa el corte de señal |
 
 ### 14.1. Pantalla negra aunque el log diga que está reproduciendo
 
@@ -729,6 +757,14 @@ El log dice cuál se está usando:
 ```
 VLC listo (salida de vídeo: xcb_x11) — el contenido se va a mostrar en pantalla.
 ```
+
+**Si lo negro es un texto, una imagen, un QR o el cronograma** (desde noviembre 2026 no los
+muestra VLC sino la ventana del TV, `spui/ventana.py`), buscá en el log
+`Ventana del TV abierta: 1920x1080`. Para descartar la ventana, agregá `SPUI_VENTANA=false`
+a `/etc/spui/spui.env` y reiniciá el servicio: vuelve al método anterior (cada pantalla
+como imagen de VLC, sin animación). Si con eso se ve, el problema es la ventana: avisar con
+el log. No actives `SPUI_ACELERACION=1` para probar: es justamente lo que puede dejarla en
+negro.
 
 > **Por qué pasa:** VLC trae más de veinte módulos de salida y, sin `--vout` explícito, elige
 > uno solo. En la Pi 4 elegía uno basado en OpenGL (`gl` / `egl_x11`) que crea la ventana pero
@@ -792,4 +828,103 @@ HDMI en pleno funcionamiento — el patrón de un hotplug intermitente, no un ar
 | `/var/log/spui-client.log` | Log del cliente |
 | `/etc/systemd/system/spui.service` | Unit de systemd |
 | `~/.xinitrc` | Qué ejecuta X11 al arrancar |
-| `/etc/hosts` | Mapeo `intranet` → IP del CMS |
+| `/etc/hosts` | Mapeo `intranet` y `spui-broker.unraf.local` → IP del CMS (la de Tailscale, si se usa §16) |
+| `/etc/spui/ca.crt` | Certificado de la CA del broker (MQTT por TLS) |
+| `/opt/spui/remoto/espejo.sh` | Espejo remoto de la pantalla, sólo desarrollo (§16.3) |
+
+---
+
+## 16. Acceso remoto de desarrollo (Tailscale y espejo de pantalla)
+
+**Sólo para desarrollo.** Sirve para seguir trabajando con la Pi cuando está en otro lugar que la PC del CMS (por ejemplo, la Pi en casa y la PC en el trabajo): la Pi sigue sincronizando con el CMS, se entra por SSH y se ve y escucha lo que sale por HDMI. No forma parte del despliegue en el campus.
+
+**Cómo funciona.** Tailscale arma una red privada entre la PC y la Pi por encima de internet. Cada equipo recibe una IP `100.x.y.z` que **no cambia** aunque cambie la red o el DHCP (`<ip_tailscale_del_host>`, `<ip_tailscale_de_la_pi>`, ver `README.md` §4). No hay que abrir puertos en ningún router ni tener IP fija: los dos equipos salen hacia internet, y si una red bloquea el tráfico directo, Tailscale pasa por sus relays por HTTPS (más lento, pero anda).
+
+> ⚠️ **Consultar con sistemas antes de usarlo en una red institucional.** Técnicamente no necesita nada de la red, pero una VPN puede estar fuera de su política.
+>
+> ⚠️ **Las pruebas de la tesis (`10_pruebas.md`) se corren en la red local y con el espejo apagado.** Por Tailscale las latencias incluyen internet, y la captura del espejo usa CPU de la Pi.
+
+### 16.1. Instalar Tailscale (la primera vez, con la Pi y la PC en la misma red)
+
+**En la PC:** instalar Tailscale para Windows desde `https://tailscale.com/download` e iniciar sesión (crea la cuenta la primera vez). Anotar su IP: `tailscale ip -4` → `<ip_tailscale_del_host>`.
+
+**En la Pi** (por SSH, todavía por la red local):
+
+```bash
+curl -fsSL https://tailscale.com/install.sh | sh
+sudo tailscale up
+```
+
+`tailscale up` imprime un enlace: abrirlo en el navegador de la PC con la misma cuenta. Después:
+
+```bash
+tailscale ip -4          # → <ip_tailscale_de_la_pi>
+tailscale ping <ip_tailscale_del_host>
+```
+
+En la consola web de Tailscale (*Machines*), desactivar **Key expiry** en los dos equipos. Si no, cada 180 días piden volver a iniciar sesión, y la Pi sin teclado queda afuera hasta volver.
+
+### 16.2. Apuntar la Pi al CMS por Tailscale
+
+**En la PC**, para que Apache y el firewall acepten a la Pi por su IP de Tailscale:
+
+1. En `httpd-vhosts.conf` (paso 7.b), agregar `Require ip <ip_tailscale_de_la_pi>` y reiniciar Apache: PowerShell como administrador → `Restart-Service wampapache64`. *Restart All Services* de WAMP puede no reiniciarlo (28/10/2026): si la Pi sigue recibiendo 403 y `apache_error.log` dice `client denied by server configuration` con su IP `100.x`, Apache sigue con la configuración vieja.
+2. PowerShell como administrador:
+   ```powershell
+   netsh advfirewall firewall add rule name="SPUI - Apache desde Pi (Tailscale)" dir=in action=allow protocol=TCP localport=80 remoteip=<ip_tailscale_de_la_pi>
+   netsh advfirewall firewall add rule name="SPUI - Mosquitto TLS desde Pi (Tailscale)" dir=in action=allow protocol=TCP localport=8883 remoteip=<ip_tailscale_de_la_pi>
+   ```
+
+**En la Pi**, cambiar la línea del paso 11.1 en `/etc/hosts` por la IP de Tailscale de la PC (una sola línea con los dos nombres; borrar la vieja):
+
+```
+<ip_tailscale_del_host>  intranet spui-broker.unraf.local
+```
+
+```bash
+sudo systemctl restart spui
+curl -s -o /dev/null -w '%{http_code}\n' -X POST http://intranet/api/spui/reproductores/sync   # 401
+journalctl -u spui -n 30 --no-pager | grep -E 'Sync OK|MQTT listener conectado'
+```
+
+El certificado del broker va por nombre, no por IP, así que no hay que reemitirlo. Desde ahí la Pi encuentra al CMS esté la PC donde esté, sin volver a tocar este archivo cuando cambie su IP.
+
+**Desde la PC, en cualquier red:** `ssh <tu_usuario>@<ip_tailscale_de_la_pi>` y `.\deploy.ps1 -PiHost <ip_tailscale_de_la_pi>`.
+
+### 16.3. Espejo de pantalla: ver y escuchar lo que sale por HDMI
+
+`pi-client/remoto/espejo.sh` transmite la pantalla de la Pi (720p, 12 cuadros/s) con su sonido, sólo por Tailscale. **Nunca arranca solo**: se prende y se apaga a mano.
+
+- **Imagen:** captura la pantalla X11 donde dibuja el reproductor (videos, imágenes, textos, alertas, pantalla de espera).
+- **Sonido:** mientras está prendido, el reproductor manda el audio a una placa de sonido virtual (`snd-aloop`). De ahí lo leen dos programas a la vez: `alsaloop`, que lo pasa al HDMI de siempre (el monitor sigue sonando), y la transmisión. No se copia directo a las dos placas con el plugin `multi` de ALSA: tienen relojes distintos y `multi` no lo compensa (underruns en cadena, probado el 28/10/2026).
+- **No muestra** lo que hace el monitor por su cuenta: apagado por horario (CEC o corte de señal) y brillo por DDC/CI.
+
+Una vez, en la Pi (requiere `SPUI_AOUT_DEVICE` en `spui.env`, §8.6):
+
+```bash
+bash /opt/spui/remoto/espejo.sh instalar
+```
+
+Cada vez que se quiera mirar:
+
+```bash
+bash /opt/spui/remoto/espejo.sh on
+bash /opt/spui/remoto/espejo.sh probar      # opcional: tono de ~5 s, tiene que sonar en el monitor
+```
+
+En la PC: VLC → *Medio* → *Abrir ubicación de red* → `http://<ip_tailscale_de_la_pi>:8090`. Llega con 1–3 s de demora; es normal.
+
+Apagarlo cuando no se lo mira: la captura usa CPU y **sube la temperatura de la Pi** (se notó el 29/10/2026, con la Pi a unos 70 °C) y, mientras está prendido, el monitor suena por un camino más largo (placa virtual y `alsaloop`). Un reinicio de la Pi lo apaga solo y deja el sonido normal: el cambio que hace `on` vive en `/run`, que se vacía al arrancar. Para terminar (deja el sonido exactamente como en `spui.env`):
+
+```bash
+bash /opt/spui/remoto/espejo.sh off
+```
+
+`bash /opt/spui/remoto/espejo.sh estado` dice qué está prendido. Los errores quedan en `journalctl -u spui-espejo` (transmisión) y `journalctl -u spui-espejo-sonido` (sonido al monitor).
+
+| Síntoma | Causa probable | Qué hacer |
+|---|---|---|
+| `on` dice que el sonido al monitor no arrancó, o `probar` no suena | `alsaloop` no pudo abrir el HDMI o la placa virtual | `espejo.sh off` deja todo como estaba; pasar `journalctl -u spui-espejo-sonido -n 30 --no-pager` |
+| Con el espejo prendido, el monitor dejó de sonar | Ídem | Ídem |
+| VLC no abre la dirección | La transmisión no está esperando | `espejo.sh estado` y `journalctl -u spui-espejo -n 30` |
+| Los videos de SPUI se traban con el espejo prendido | Falta de CPU | Apagarlo; con él apagado no hay ninguna carga |

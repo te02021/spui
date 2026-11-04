@@ -3,7 +3,7 @@
 **SPUI — Sistema de Pantallas Informativas Universitarias (UNRaf)**
 Estado del documento: refleja el código tal como está, verificado contra rutas, entidades y base de datos.
 
-Este documento explica **qué hace el sistema y cómo funciona por dentro**. Para el uso concreto del panel, ver `07_manual_uso_cms.md`. Para lo que falta hacer con la Raspberry Pi, ver `08_pendientes_vm.md`.
+Este documento explica **qué hace el sistema y cómo funciona por dentro**. Para el uso concreto del panel, ver `07_manual_uso_cms.md`. Para el servidor, ver `08_pendientes_vm.md`.
 
 ---
 
@@ -70,13 +70,13 @@ Cadena: `Edificio → Ubicacion → Pantalla → Reproductor`.
 
 | Entidad | Qué representa |
 |---|---|
-| **Contenido** | Una pieza a mostrar. Seis tipos: `texto`, `imagen`, `video`, `youtube`, `qr`, `cronograma` |
-| **CronogramaItem** | Las filas de un contenido tipo cronograma (materia, aula, horario, días) |
+| **Contenido** | Una pieza a mostrar. Cinco tipos: `texto`, `imagen`, `video`, `qr`, `cronograma` (hubo un `youtube` hasta el 28/10/2026, ver §5) |
+| **CronogramaItem** | Las filas de un contenido tipo cronograma: clase, actividad o evento especial (materia, aula, carrera, año, docente, horario y días de la semana, o la fecha si es un evento) |
 | **CodigoQr** | Un QR dinámico con URL destino, vencimiento y contador de escaneos. Pertenece al `Contenido` de tipo `qr` que lo muestra: se crea, se edita y se borra desde ahí, no desde una sección propia |
 | **Playlist** | Una lista ordenada de contenidos |
-| **PlaylistItem** | Una aparición de un contenido dentro de una playlist, con su orden. Un mismo contenido puede tener varias en la misma playlist (más frecuencia en el loop). La duración no es del ítem: la define el contenido, igual en todas las playlists |
+| **PlaylistItem** | Una aparición de un contenido dentro de una playlist, con su orden. Un mismo contenido puede tener varias en la misma playlist (más frecuencia en el loop). La duración no es del ítem: la define el contenido, igual en todas las playlists. Lo que sí depende de la playlist es qué pasa con un contenido sin duración, y lo resuelve `PlaylistItem::getDuracionEfectiva()` (ver §5) |
 
-Un contenido tiene tres estados: **borrador** (no se puede usar), **publicado** (disponible para playlists), **archivado** (retirado sin borrar).
+Un contenido tiene dos estados: **disponible** (como queda al crearlo) y **archivado**. Archivar lo saca de todas las pantallas en el acto: el sync sólo manda los ítems de contenidos disponibles (`Playlist::getItemsVigentes()`), pero el ítem no se borra, así que al desarchivarlo vuelve a su lugar. Los archivados no cuentan para la regla de duración (§5). Si la playlist de una regla queda sin nada que mostrar, la pantalla pasa a su playlist de respaldo. Hasta el 29/10/2026 había también borrador y publicado, y las playlists tenían Activa/Inactiva (que el sync nunca miraba); se sacaron con la migración `Version20261029120000`.
 
 ### Operación — cuándo y cómo
 
@@ -126,8 +126,8 @@ El cliente Python corre como servicio (`systemd`) y levanta cuatro hilos:
 |---|---|---|
 | principal | El intervalo del reproductor (5 min por defecto, se configura en el CMS en minutos y llega en el sync como `proxima_sync_seg`), o al instante si llega un `sync_ahora` (al guardar algo en el CMS o con el botón **Sincronizar**) | Pide `/sync`, guarda en caché, descarga archivos, decide qué reproducir. El CMS registra la hora de cada sync (`reproductor.ultimo_sync`) |
 | heartbeat | 60 s | Avisa por HTTP que sigue vivo |
-| telemetría | 60 s | Publica temperatura, RAM y disco por MQTT |
-| MQTT listener | — | Escucha alertas y el comando `sync_ahora`; reacciona al instante. Publica además el estado de conexión (`online` al conectar, `offline` por LWT si se cae) |
+| telemetría | 60 s (1 s en vivo) | Publica temperatura, uso de CPU, RAM y disco por MQTT. Con el comando `telemetria_vivo`, además temperatura, CPU y RAM cada 1 s en `spui/telemetria/vivo/{id}`, sin guardar |
+| MQTT listener | — | Escucha alertas y los comandos `sync_ahora` y `telemetria_vivo`; reacciona al instante. Publica además el estado de conexión (`online` al conectar, `offline` por LWT si se cae) |
 
 El usuario MQTT de cada Pi es `spui-repro-{id}` (el id llega en el primer sync) y su contraseña se **deriva** de la API key y de `SPUI_MQTT_SALT`, que tiene que ser idéntico en la Pi y en el CMS. Por eso regenerar la API key renueva también la credencial del broker, y un salt distinto deja a la Pi sin alertas instantáneas aunque el sync por HTTP siga andando.
 
@@ -136,9 +136,92 @@ El usuario MQTT de cada Pi es `spui-repro-{id}` (el id llega en el primer sync) 
 1. **¿Hay red?** Se chequea con una conexión TCP rápida al host del CMS (más barato que un HTTP con timeout).
 2. **Si hay red:** `POST /api/spui/reproductores/sync` con la API key en el header `X-Api-Key`. La respuesta trae la playlist, la alerta activa si la hay, y el horario energético.
 3. **Se guarda todo en SQLite local** y se descargan los archivos que falten. Cada archivo se baja a un temporal (`.part`) y sólo pasa al caché, con un reemplazo atómico, cuando llegó completo y su SHA-256 coincide con el que informa el CMS: una descarga cortada o un archivo distinto nunca quedan con el nombre que usa el player. Además, antes de reproducir un archivo del caché se vuelve a comprobar su hash (memorizado por tamaño y fecha, para no recalcularlo en cada vuelta): uno alterado o dañado en disco sale del caché y ese ítem se saltea hasta que haya red para bajarlo de nuevo. Las descargas a medias de una ejecución anterior se borran al arrancar.
-4. **Si no hay red:** se usa lo último guardado y se reintenta a los 30 segundos en vez de esperar 5 minutos.
+4. **Si no hay red:** se usa lo último guardado y se reintenta a los 30 segundos (±10 s al azar) en vez de esperar 5 minutos. El azar es a propósito: si se corta la red del campus, todas las Pi pierden la conexión a la vez y, con un reintento fijo, vuelven a la vez y le caen juntas al CMS (y al límite de 2 syncs por minuto). Con ±10 s llegan repartidas en 20 segundos.
 5. **Se aplica el horario energético:** si está fuera de hora, se apaga la pantalla y no se reproduce nada.
 6. **Se decide qué mostrar** según la prioridad de la sección 4.
+7. **Se le avisa al hilo de reproducción qué mostrar,** y el ciclo espera hasta el próximo sync. Ver "Dos hilos: uno sincroniza, otro muestra", abajo.
+
+### Dos hilos: uno sincroniza, otro muestra
+
+El ciclo de arriba corre en el hilo principal y **nunca muestra nada**: sólo decide qué hay que mostrar y se lo avisa al hilo de reproducción (`spui/reproduccion.py`), que es el **único que usa VLC**. Hasta el 24/10/2026 el mismo hilo sincronizaba y reproducía, y las alertas se mostraban desde el hilo de MQTT. En la Pi real eso daba tres problemas:
+
+- **Mientras había una alerta en pantalla, el sync quedaba bloqueado.** Un cambio guardado en el CMS recién se aplicaba al desactivarla.
+- **Un cambio de playlist esperaba a que terminara la vuelta en curso,** que con un video largo podían ser minutos. Antes de eso, la pantalla incluso se quedaba quieta en el último contenido hasta el próximo sync.
+- **Dos hilos usaban el mismo reproductor de VLC a la vez,** una carrera que puede cerrar el proceso con un error nativo.
+
+Cómo funciona ahora:
+
+- **La playlist gira sin pausa:** al terminar el último contenido sigue el primero.
+- **Si el sync trae algo distinto, se corta en el acto** lo que se está mostrando y se pasa a lo nuevo: otra playlist, el apagado por horario o la pantalla de espera. La misma playlist (misma firma: contenidos, archivos y duraciones) no corta nada, así el sync de cada minuto no reinicia la rotación.
+- **Una alerta por MQTT corta la playlist y se muestra enseguida.** Al desactivarse se vuelve a la playlist desde el primer contenido. Una alerta por MQTT no pide un sync: despierta al ciclo sólo para volver a aplicar el horario energético con los datos que ya tiene.
+- **Un sync que no responde y se reemplaza por el último guardado** (sin red, o un 429) no revive una alerta que se desactivó por MQTT después de guardarlo, y tampoco saca una que llegó por MQTT. Sólo un sync recién hecho dice la verdad sobre la alerta. Pasó el 24/10/2026: la alerta reaparecía medio segundo después de desactivarla.
+- **Después de un 429, se reintenta cuando dice el CMS** (`Retry-After`, unos segundos) y no en el próximo intervalo. El límite es de 4 syncs por minuto (`config/packages/rate_limiter.yaml`).
+
+**Contenidos que cierran el reproductor** (`spui/guardia.py`). Un archivo que VLC no aguanta puede matar el proceso con un error que Python no puede atrapar. systemd lo reinicia, vuelve a mostrar el mismo contenido y entra en un bucle. Por eso, antes de cada contenido se anota cuál es, en `/dev/shm`: en memoria, para no gastar la SD, y se borra al reiniciar la Pi. Si el proceso muere dos veces seguidas mostrando el mismo contenido, se saltea, y el CMS lo muestra en el diagnóstico del reproductor. Volver a subir el archivo (otro hash) o desplegar otra versión del cliente lo vuelve a intentar.
+
+### Cómo muestra cada contenido
+
+**Duración.** La regla vive en un solo lugar, `PlaylistItem::getDuracionEfectiva()`. El CMS la calcula y la manda en `duracion_efectiva_seg`, la Pi la obedece y la ventana de ítems del CMS muestra exactamente eso (`etiquetaDuracion()`; `playlists/items.js` repite la regla para recalcular mientras se arma la lista):
+
+| Contenido | Único en la playlist | Comparte playlist |
+|---|---|---|
+| Video | Se repite en bucle | Dura lo que dura el archivo |
+| Con duración propia | Esa duración | Esa duración |
+| Permanente (sin duración) | Queda fijo | 10 s (`DURACION_EN_ROTACION`) |
+
+La duración de un video no la escribe nadie: el CMS la lee del archivo al subirlo (`VideoInspectorService`) y la vuelve a leer si se reemplaza. En la Pi, un video termina cuando VLC informa el final, no a reloj; su duración es sólo el máximo a esperar. Antes se esperaba la duración a reloj y un video sin duración cargada se cortaba a los 10 s.
+
+**Qué videos se aceptan.** Sólo MP4 o MOV con H.264, hasta 1920×1080 (en cualquier orientación) y hasta 30 cuadros por segundo. Es lo que la Pi 4 reproduce fluido: decodifica H.264 por hardware hasta 1080p. Un 1080p a 24 fps se vio fluido en el equipo el 24/10/2026; un 2560×1440 se trababa y llegaba a congelar la pantalla. El CMS lo controla dos veces:
+
+- **En el navegador**, al elegir el archivo (`video-archivo.js`): resolución y duración, antes de subir nada.
+- **En el servidor**, al guardar (`VideoInspectorService`): además el códec y los cuadros por segundo, leídos de las cajas del MP4 sin ffprobe ni librerías.
+
+WebM y OGG se dejaron de aceptar: la Pi los decodifica por software. Los casos de prueba están en `tools/verificacion/video.php`, dentro de la suite.
+
+**Las imágenes se adaptan al subirlas** (`ImagenNormalizerService`): se giran según la orientación EXIF de la foto, se achican para entrar en 1920×1080 (en cualquier orientación) y se guardan como JPEG, o como PNG si tienen transparencia. La que ya cumple no se toca. Una foto de celular de 4608×3456 girada por EXIF cerraba VLC en la Pi (24/10/2026). A diferencia de los videos, no se rechazan: achicarlas no pierde nada que la pantalla pueda mostrar, y quien carga contenido sube fotos de celular todo el tiempo. Los casos de prueba, incluidas las 8 orientaciones EXIF, están en `tools/verificacion/imagen.php`.
+
+**No hay tipo YouTube** (desde el 28/10/2026). Un video de YouTube se baja desde la PC y se sube como video: así pasa por las mismas validaciones (H.264, ≤1080p, duración real) y la Pi lo muestra fluido y sin red. Se probaron dos caminos antes de decidirlo:
+
+- **VLC no abre un link de YouTube:** queda en `State.Opening` y no muestra nada.
+- **Descargarlo en la Pi con `yt-dlp`** (con Deno y ffmpeg) anduvo desde la PC, pero YouTube frenó a la Pi en todos sus modos de acceso, con un 429 y "Sign in to confirm you're not a bot". Destrabarlo exigía iniciar sesión con una cuenta (cookies), algo que no corresponde en un sistema institucional, y depender de que YouTube "confíe" en cada reproductor del campus.
+
+La migración `Version20261028190000` borró los contenidos de ese tipo que había. Si una playlist vieja trae un tipo que el cliente no conoce, la Pi lo saltea en el acto y lo anota una sola vez en el registro.
+
+**Texto, imagen, QR y cronograma se ven como en la vista previa del CMS** (desde noviembre 2026):
+
+- **Plantilla y tema.** Cada uno se dibuja con su plantilla (institucional o sin plantilla, con la marca de agua opcional) y su tema (claro, oscuro o automático).
+  - Lo dibuja `spui/tv.py` con Pillow, con las medidas, colores y fuentes de `assets/spui/css/pantalla-tv.css`. Museo 300 y 700 y los logos van en `pi-client/assets/`. Si se cambia el CSS, hay que cambiar `tv.py`.
+  - El automático es claro de 07:00 a 19:00. El horario llega en el sync (`tema_horario`) y se ajusta con `SPUI_TEMA_CLARO_DESDE` / `SPUI_TEMA_OSCURO_DESDE` en el CMS.
+- **La ventana.** Lo muestra una ventana pygame (`spui/ventana.py`, paquete `pygame-ce`), siempre la misma: un contenido reemplaza al otro sin que se abra ni se cierre nada.
+  - VLC queda para el video y el sonido de las alertas, y dibuja el video **dentro** de esa ventana (`set_xwindow`).
+  - Una pantalla que no es 16:9 se ve entera, con franjas negras, sin deformarse.
+- **El cronograma.**
+  - Lo de hoy que no terminó, armado en páginas por altura. Nada se corta ni se achica: una materia larga baja de renglón.
+  - Cada página queda sus segundos y se desliza a la izquierda mientras entra la siguiente (1,4 s, la misma curva que el CSS). Se redibuja sólo la tabla.
+  - En una rotación pasa todas sus páginas una vez. Si está solo en la playlist, sigue girando y se vuelve a dibujar en cada vuelta: lo que terminó desaparece y lo que empezó pasa a "en curso".
+- **Por qué la semana entera.** El sync manda en `contenido.cronograma` las clases (con su máscara de días) y los eventos de hoy a 7 días, más la vigencia. La Pi elige el día y la hora con las mismas reglas que `PantallaTvService` (`tv.filas_del_dia()`).
+  - Así pasa sola de un día al otro.
+  - Sin conexión con el CMS sigue mostrando lo que corresponde con lo que tiene en caché.
+  - El "del edificio de la pantalla" se resuelve en el CMS con el edificio de cada pantalla.
+  - El campo anterior, `cronograma_items` (sólo lo de hoy), se sigue mandando para una Pi sin actualizar.
+- **La hora en vivo** (desde el 03/11/2026, 24 h, sin segundos): con plantilla, grande en la cabecera con la fecha debajo; sin plantilla, en una píldora oscura arriba a la derecha (no sobre un video, que lo dibuja VLC). Es la hora que confirma el CMS (`spui/reloj.py`).
+  - **Cómo se actualiza:** la lámina guarda el recuadro de la hora (`Lamina.zona_hora`) y la ventana repinta sólo ese recuadro al cambiar el minuto, sin redibujar la pantalla.
+  - **Sin la ventana** (el método por VLC) no se dibuja, porque quedaría congelada.
+  - **En la vista previa del CMS** la mantiene al día `vista-tv.js`, con la hora del navegador.
+- **La pantalla de espera** (cuando no hay nada programado ni playlist de respaldo) es institucional desde el 03/11/2026 (`Dibujante.espera()`).
+  - **Qué muestra:** la cabecera con el logo, la hora y la fecha; al medio, sobre el azul, el molino en un círculo blanco, "Universidad Nacional de Rafaela" y "Sistema de Pantallas Informativas", con el filete de la marca entre los dos; el lugar en el pie.
+  - **Por VLC** (sin la ventana) va sin hora ni fecha.
+  - **Reemplaza** al cartel azul con "UNRaf".
+- **Del video a lo que sigue** (03/11/2026). Antes de arrancar un video se deja dibujado el contenido siguiente, para la hora en que el video va a terminar (`Player._precargar_siguiente()`). Al terminar, se pinta en la ventana y recién ahí se saca a VLC, que al final queda en negro. Si el video se atrasa más de 90 s o cambió el tema o el día, se dibuja de nuevo.
+- **Cuándo se redibuja.** Cada pantalla se dibuja una vez por momento: el día, el tema y, en el cronograma, el minuto. Un contenido permanente se redibuja solo cuando cambia la fecha de la cabecera o llegan las 19.
+- **El brillo por software** (pantallas sin DDC/CI) es un velo negro encima de la ventana. Se aplica al instante, sin recargar el contenido. Sobre un video sigue siendo el filtro `adjust` de VLC.
+- **Si algo falta,** se sigue viendo con el método anterior, y el motivo llega al panel en el diagnóstico del reproductor:
+  - **Sin pygame, o si la ventana no abre:** cada página se guarda como PNG y la muestra VLC, sin animación.
+  - **Sin VLC:** se ve todo menos los videos.
+  - **A propósito:** `SPUI_VENTANA=false` fuerza el método anterior, para descartar un problema de la ventana en un equipo.
+- **Dibujo por software.** `SPUI_ACELERACION=1` le pide a SDL que presente la ventana con la GPU. Queda apagado porque en la Pi 4 lo basado en OpenGL ya dejó la pantalla en negro una vez (`09_instalacion_raspberry.md` §14.1). La velocidad real del deslizamiento queda en el registro: "Deslizamiento de páginas: N cuadros por segundo". En la Pi 4 de banco, con un monitor de 1920×1080, dio 58 por software (02/11/2026), así que la GPU no hace falta.
+
+Sin Pillow, el texto y el cronograma se dibujan como antes (`Player._imagen_de_texto()`): una imagen sobre fondo azul, que se muestra por VLC.
 
 ### Por qué sigue andando sin red
 
@@ -147,6 +230,24 @@ Tres mecanismos combinados:
 - **Caché SQLite** — la última respuesta de sync completa queda guardada.
 - **Prefetch** — al sincronizar se descargan *todos* los archivos de la playlist, no solo el que toca ahora. Cuando se corte la red, ya están.
 - **Nunca falla en silencio** — si no hay red ni caché, muestra una pantalla de espera institucional, no un error.
+
+### La hora, el TV y los datos viejos (noviembre 2026)
+
+Decisiones de Mateo del 02/11/2026:
+
+- **La hora la da el CMS** (`spui/reloj.py`).
+  - **Por qué hace falta.** La Pi no tiene reloj con pila: al arrancar vuelve a la hora con la que se apagó hasta que NTP la corrige, y sin internet eso puede no pasar.
+  - **Cómo se corrige.** El CMS manda su hora y su zona en cada sync y cada heartbeat (`servidor_ts`). El cliente guarda la diferencia y la usa para el cronograma, el tema automático y el horario energético.
+  - **Sin tocar el sistema.** El reloj del sistema no se cambia (no hace falta root), así que el journal puede seguir con la hora vieja hasta que NTP la arregle.
+  - **Mientras la hora sea dudosa** (el CMS todavía no la confirmó y `timedatectl` no dice `NTPSynchronized=yes`), el horario energético no apaga la pantalla.
+- **El TV apagado con el control** se respeta (`spui/cec.py`).
+  - **Cómo se entera.** Si el TV responde a HDMI-CEC, queda corriendo un `cec-client` que escucha lo que avisa el TV. Nunca le pregunta nada.
+  - **Qué hace.** Si el TV avisa que pasó a reposo en pleno horario, y no es el eco de una orden nuestra de apagar, queda apagado hasta el próximo encendido del horario o hasta que lo enciendan con el control. En el panel aparece en el diagnóstico del reproductor.
+  - **La excepción.** Una alerta lo enciende igual.
+  - **Sin CEC** (como el monitor Philips de banco) no hay forma de saberlo sin consultar, así que no se hace nada.
+  - **Un solo cliente CEC.** Mientras el `cec-client` corre, las órdenes de encender y apagar salen por él: dos clientes a la vez se disputan el adaptador.
+- **Encender por CEC es "a mejor esfuerzo":** se manda al arrancar y en cada encendido del horario o por una alerta, con dos reintentos a los 10 y a los 20 s por si el TV tarda en despertar. Si ya estaba encendido, la ignora.
+- **Un cronograma con más de 24 h sin sincronizar** lo avisa en el pie de la plantilla institucional: "Actualizado el 31/10 a las 18:40" en lugar del edificio. Se calcula con la hora del CMS que vino en ese sync, y no se muestra mientras la hora sea dudosa.
 
 ---
 
@@ -165,11 +266,13 @@ Admin presiona "Activar"
 
 Ese es el caso de una alerta **global**. Una alerta puede apuntar a pantallas concretas (tabla `alerta_pantalla`): entonces se publica en `spui/alertas/reproductor/{id}` de cada reproductor afectado, también con `retain`.
 
+Todos esos mensajes salen por **una sola conexión** al broker: el CMS se conecta una vez, publica en cada topic destino y se desconecta (`AlertaPublisherService::publicarTanda()`). Antes abría una conexión TLS nueva por topic (~30 ms cada una), así que una alerta a 100 pantallas tardaba en llegar a la última unos 3 s más que a la primera. Si la conexión se corta a mitad de la tanda, reconecta una vez y sigue con lo que faltaba; si tampoco puede, lo registra en el log y la alerta igual llega por el próximo `/sync`. Activar nunca falla por culpa del broker.
+
 **`retain` es importante:** el broker guarda el último mensaje del topic, así que una Pi que estaba apagada y arranca después recibe la alerta apenas se conecta. Y si MQTT no está disponible, la alerta igual llega en el próximo `/sync` — solo tarda más.
 
 **Sonido de alerta.** Cada alerta puede tener un sonido personalizado (MP3/WAV, hasta 5 MB, subido desde el formulario del CMS). El payload MQTT y el REST de `/sync` llevan `sonido_url`/`sonido_hash` (no el archivo en sí), así que el sonido correcto se conoce desde el primer instante, sin depender de un segundo round-trip. Si no hay sonido personalizado, o no se puede descargar (sin red, archivo corrupto, etc.), el reproductor genera y usa un tono propio (dos frecuencias tipo "beep-beep", vía el módulo estándar `wave` de Python) — la alerta nunca queda muda por falta de configuración o de conectividad. Mientras la alerta siga activa, vuelve a sonar apenas termina — el reproductor consulta el estado real de VLC, no un reloj fijo — con una pausa opcional de `SPUI_ALERTA_SONIDO_INTERVALO_SEG` (0 por defecto), y se corta de inmediato al desactivarse: la repetición vive dentro del mismo bucle que decide si la alerta sigue viva, no en un timer aparte, para que sea imposible que quede sonando después de que la alerta terminó.
 
-**El dashboard del CMS se actualiza solo, pero no por Mercure.** El proyecto integró `symfony/mercure-bundle` en su momento, pero nunca se completó del lado del navegador: no hay ningún consumidor `EventSource` en el frontend, y `MERCURE_URL` sigue apuntando al valor por defecto. Lo que realmente refresca el panel es `auto-refresh.js` (tarea 1.7.b) — polling cada 20s a la misma ruta del dashboard, con pausa si la pestaña está oculta o hay un modal abierto. Alcanza para el caso de uso (el operador ve el estado actualizado sin recargar); Mercure quedó como dependencia sin usar. Ver `docs/README.md` para el resto de las decisiones de la tarea 1.7.
+**El dashboard del CMS se actualiza solo, pero no por Mercure.** El proyecto integró `symfony/mercure-bundle` en su momento, pero nunca se completó del lado del navegador: no hay ningún consumidor `EventSource` en el frontend, y `MERCURE_URL` sigue apuntando al valor por defecto. Lo que realmente refresca el panel es `auto-refresh.js` (tarea 1.7.b) — polling cada 20s a la misma ruta del dashboard, con pausa si la pestaña está oculta o hay un modal abierto — más el push por WebSocket MQTT de §3.4 de `docs/README.md`. Desde el 15/10/2026 SPUI ya no publica nada en Mercure: cada Activar/Desactivar esperaba 2 s el timeout de un hub que no existe (medido en `docs/pruebas/2026-10-13_analisis.md`). El bundle sigue instalado porque es config compartida del monorepo. Ver `docs/README.md` para el resto de las decisiones de la tarea 1.7.
 
 Una alerta activa **enciende la pantalla aunque el horario energético diga que debe estar apagada**: avisar una evacuación pesa más que el ahorro.
 
@@ -189,7 +292,7 @@ Toda acción del CMS que cambia lo que muestra un reproductor se **rechaza si es
 - **En la interfaz**, el botón aparece atenuado y su tooltip nombra al equipo caído y hace cuánto (`AlcanceReproductorService::motivoBloqueo()`, macro `templates/_macros/bloqueo.html.twig`).
 - **En el servidor**, `BloqueoOfflineTrait::bloquearSiOffline()` repite el chequeo y devuelve 409 (JSON en los modales, flash + redirect en navegación normal). Es necesario además de la interfaz porque las rutas son alcanzables directo y porque el equipo se puede caer entre que se dibujó la página y el clic.
 - **Excepción deliberada: dar de baja un reproductor.** Es justamente lo que se hace cuando un equipo se rompió y no va a volver; bloquearlo dejaba el hardware muerto imposible de sacar del sistema. No cambia lo que muestra ninguna pantalla activa, y la baja revoca su usuario del broker.
-- **El bloqueo se actualiza solo en la pantalla abierta, por push.** Reproductores y Alertas se refrescan cada 20 s (`auto-refresh.js`). Pantallas, Contenidos, Playlists y Programación no hacen polling: el CMS publica `spui/cms/conexion/{id}` (`ConexionPublisherService`) en los tres puntos donde el estado cambia de verdad —el heartbeat HTTP y el `online` por MQTT, sólo si el equipo venía caído, y el mantenimiento cuando lo marca caído—, siempre **después** de grabar. El navegador, suscrito por WebSocket con el usuario de sólo lectura `spui-cms-web` (`conexion-vivo.js`), vuelve a pedir la tabla; el mensaje no se interpreta, sólo dispara el pedido. Se agrupan avisos simultáneos, se espera a que se cierre un modal abierto, y al reconectarse el socket se pide la tabla una vez por si se perdió un aviso. Lo publica el CMS y no la Pi porque el LWT de la Pi no cambia el estado calculado (ver `Reproductor::estadoCalculado()`), y porque escuchar el `online` de la Pi tendría una carrera con la escritura del heartbeat.
+- **El bloqueo se actualiza solo en la pantalla abierta, por push.** Reproductores y Alertas se refrescan cada 20 s (`auto-refresh.js`). El Dashboard, cada 20 s **y además** por este mismo aviso (desde el 30/10/2026), para que conectado/desconectado cambie en el momento. Pantallas, Contenidos, Playlists y Programación no hacen polling: el CMS publica `spui/cms/conexion/{id}` (`ConexionPublisherService`) en los tres puntos donde el estado cambia de verdad —el heartbeat HTTP y el `online` por MQTT, sólo si el equipo venía caído, y el mantenimiento cuando lo marca caído—, siempre **después** de grabar. El navegador, suscrito por WebSocket con el usuario de sólo lectura `spui-cms-web` (`conexion-vivo.js`), vuelve a pedir la tabla; el mensaje no se interpreta, sólo dispara el pedido. Se agrupan avisos simultáneos, se espera a que se cierre un modal abierto, y al reconectarse el socket se pide la tabla una vez por si se perdió un aviso. Lo publica el CMS y no la Pi porque el LWT de la Pi no cambia el estado calculado (ver `Reproductor::estadoCalculado()`), y porque escuchar el `online` de la Pi tendría una carrera con la escritura del heartbeat.
 
 ---
 
@@ -202,9 +305,9 @@ Toda acción del CMS que cambia lo que muestra un reproductor se **rechaza si es
 | Endpoints de la Pi (`/sync`, `/heartbeat`, `/telemetria`) | Header `X-Api-Key`, comparada contra un hash SHA-256 |
 | Archivos de medios (`/api/spui/media/*`) | También `X-Api-Key`, con protección contra path traversal |
 | Redirect y PNG de QR | Público por diseño: los abre el celular de un visitante |
-| Broker MQTT | Sin acceso anónimo (`allow_anonymous false`), usuarios y ACL por rol con el plugin Dynamic Security, TLS en 8883. Detalle en `config/mosquitto/README.md` |
+| Broker MQTT | Sin acceso anónimo (`allow_anonymous false`), usuarios y ACL con el plugin Dynamic Security, TLS en 8883. **Permisos por equipo** (29/10/2026): cada reproductor tiene su propio rol, `spui-repro-{id}-rol`, y sólo puede publicar su telemetría (normal y en vivo) y su estado, y suscribirse a la alerta global y a sus propias alertas y comandos. No puede publicar a nombre de otro, leer los comandos de otro ni emitir alertas. El CMS arma el rol al crear el reproductor o regenerar su clave, y lo asegura en cada sync (`MqttSecurityService::asegurarPermisos()`, cacheado 1 h), así que los equipos que ya existían pasaron solos. Lo verifica `tools/verificacion/mqtt_permisos.php` contra el broker real. Detalle en `config/mosquitto/README.md` |
 | CORS | Lista blanca configurable (`SPUI_CORS_ORIGINS`) |
-| Límite de peticiones | 2 sync/min y 3 heartbeat/min por reproductor; 120/min por IP en el resto de la API |
+| Límite de peticiones | 4 sync/min y 3 heartbeat/min por reproductor; 120/min por IP en el resto de la API |
 
 No hay API de administración: el CRUD JSON que existía bajo `/api/spui/*` duplicaba al CMS sin ningún consumidor y se dio de baja. Bajo `/api/spui` quedan sólo los cuatro controllers de arriba (sync y heartbeat, media, telemetría, QR).
 
@@ -214,24 +317,24 @@ No hay API de administración: el CRUD JSON que existía bajo `/api/spui/*` dupl
 
 ## 8. Estado de los casos de uso
 
-Contra los 12 casos de uso definidos en `02_casos_de_uso.md`:
+Contra los 12 casos de uso del diseño (`archivo/02_casos_de_uso.md`, copia local):
 
 | CU | Estado |
 |---|---|
 | CU-01 Gestionar contenido | ✅ Completo. Se agregó un 6º tipo (`cronograma`) que no estaba en el diseño original |
 | CU-02 Crear playlist | ✅ Completo, con drag & drop. Los ítems se arman en una ventana aparte y se persisten con el Guardar de la playlist (alta y edición igual). Un contenido puede repetirse. La duración la define el contenido, no el ítem |
 | CU-03 Programar reproducción | ✅ Completo, y con un alcance más que lo planeado (por edificio) |
-| CU-04 Alerta de emergencia | ✅ Completo vía MQTT (push a la Pi) + polling (dashboard del CMS, `auto-refresh.js`) — **no** usa Mercure, ver §6 |
+| CU-04 Alerta de emergencia | ✅ Completo vía MQTT (push a la Pi) + polling (dashboard del CMS, `auto-refresh.js`) — **no** usa Mercure (se quitó la publicación el 15/10/2026), ver §6 |
 | CU-05 Registrar reproductor | ✅ Completo |
 | CU-06 Sincronizar contenido | ✅ Completo |
 | CU-07 Reproducir contenido | ✅ Completo. Incluye modo simulación para probar sin VLC |
 | CU-08 Telemetría | ✅ Completo. Umbral configurable (80 °C por defecto) y aviso visible en el dashboard |
 | CU-09 Modo offline | ✅ Completo |
-| CU-10 Códigos QR | ✅ Completo. El QR codifica el redirect del CMS, por eso se cuentan los escaneos. Se administra desde Contenidos (tipo `qr`), sin sección propia — ver `README.md` §3.3 |
+| CU-10 Códigos QR | ✅ Completo. El QR codifica el redirect del CMS, por eso se cuentan los escaneos. Se administra desde Contenidos (tipo `qr`), sin sección propia — ver `docs/archivo/auditorias.md` §3.3 |
 | CU-11 Programación energética | ✅ Completo (CMS + API + módulo en el cliente Pi) |
 | CU-12 Monitorear reproductores | ✅ Completo, con histórico y gráficos |
 
-**Probado con hardware real** (Raspberry Pi 4, agosto 2026): los hallazgos que salieron de esas pruebas —render de alertas, audio por HDMI, hotplug— están en `README.md` §3.2, y la instalación en `09_instalacion_raspberry.md`.
+**Probado con hardware real** (Raspberry Pi 4, agosto 2026): los hallazgos que salieron de esas pruebas —render de alertas, audio por HDMI, hotplug— están en `docs/archivo/auditorias.md` §3.2, y la instalación en `09_instalacion_raspberry.md`.
 
 ---
 
@@ -240,8 +343,26 @@ Contra los 12 casos de uso definidos en `02_casos_de_uso.md`:
 **El QR se guarda como archivo PNG, no se genera al vuelo.**
 Así viaja por la misma tubería que una imagen (descarga, verificación por hash, caché offline) y se sigue viendo con la red caída. El PNG codifica la URL de redirect del CMS, no el destino final: por eso se pueden contar los escaneos y cambiar el destino sin reimprimir nada.
 
-**Los gráficos de telemetría son SVG hecho a mano, sin librería.**
-La red del campus puede no tener salida a internet. Una dependencia por CDN dejaría la pantalla vacía justo cuando se la quiere mostrar.
+**Los gráficos de telemetría son de ECharts, copiado dentro del repo** (`assets/spui/vendor/echarts/`, v5.5.1, licencia Apache 2.0), no por CDN: la red del campus puede no tener salida a internet, y una dependencia externa dejaría la pantalla vacía justo cuando se la quiere mostrar. Dibuja en canvas: el arrastre (dataZoom "inside") y el zoom con la rueda son fluidos aunque haya 60 días de datos. Hasta el 29/10/2026 fueron SVG a mano y después ApexCharts, que redibujaba el SVG entero en cada movimiento y se trababa. Todo cambio de ventana (rueda, botones, rangos, el deslizamiento en vivo) pasa por `Vista.irA()` en `telemetria.js`, que lo anima.
+
+**Telemetría en vivo, a pedido.** Mientras alguien tiene abierta la telemetría de un reproductor, la página le pide al CMS (`POST /spui/reproductores/{id}/telemetria/vivo`) que publique el comando `{"accion":"telemetria_vivo","segundos":120}` en `spui/comandos/reproductor/{id}`, y lo renueva cada 60 s. La Pi publica temperatura y RAM cada 1 s en `spui/telemetria/vivo/{id}` (`pi-client/spui/telemetria.py`), además de la telemetría normal de cada minuto. Ese topic tiene un nivel más que `spui/telemetria/+`, así que el daemon no lo guarda: llega directo al navegador, que lo lee con el usuario de sólo lectura `spui-cms-web`. Con la pestaña oculta o cerrada no se renueva y la Pi vuelve sola a cada minuto a los 2 min como mucho (tope de la Pi: 5 min aunque se pida más).
+
+**El detalle por hora se conserva 60 días** (`MantenimientoService::RETENCION_HORA_DIAS`; antes no se borraba nunca). La página trae los 60 días de una vez (`ReproductorCmsController::datosTelemetria()`: el rollup para las horas cerradas, el crudo para las que todavía no agregó) y los rangos son ventanas sobre esa serie; cada gráfico tiene su propia vista (independiente de los otros, pedido de Mateo del 29/10/2026), con tope en "ahora"; los botones de período mueven los tres. Se exporta en Excel, CSV o PDF desde un modal (`/telemetria/exportar?formato=`): el .xlsx lo escribe `XlsxSimpleService` (el monorepo no tiene PhpSpreadsheet) y el PDF, Dompdf con `telemetria_pdf.html.twig`.
+
+**Uso de CPU** (desde el 03/11/2026).
+- **Qué manda la Pi:** `uso_cpu_porcentaje`, el promedio desde la lectura anterior (un minuto; en vivo, un segundo). Lo calcula `MedidorCpu` en `telemetria.py`, con un punto de partida propio para cada publicación: la en vivo no le acorta el intervalo a la de cada minuto.
+- **Dónde se guarda:** en `telemetria.uso_cpu_porcentaje` y en el resumen por hora (`cpu_prom`, `cpu_max`). Es opcional: una Pi sin actualizar no lo manda y las lecturas anteriores quedan sin el dato (huecos en el gráfico).
+- **El resumen por hora guarda también `lat_prom`,** la latencia promedio, para el Dashboard de 30 días (el crudo se purga a los 7).
+- **El aviso del Dashboard:** salta si el promedio de los últimos 10 minutos supera `SPUI_CPU_ALERTA_PORCENTAJE` (90 % por defecto), con al menos 5 lecturas. Un pico de un minuto no avisa.
+
+**Gráfico de la red en el Dashboard** (03/11/2026).
+- **Qué hace:** junta a todos los reproductores en un gráfico y deja elegir variable, período y equipos.
+- **Los datos:** arranca con la temperatura de 24 h incluida en la página. Lo demás lo pide a `GET /spui/dashboard/serie?variable=&periodo=` (`DashboardController::serie()`).
+- **De dónde sale cada período:** 24 h y 7 días, de la telemetría cruda agrupada por hora; 30 días, del resumen por hora más el crudo de las horas que todavía no agregó.
+- **El disco** se da como % en uso contra la capacidad de cada equipo.
+- **El navegador** filtra los equipos marcados y recuerda la elección en `localStorage`.
+
+**Tamaño del disco.** La Pi manda `espacio_disco_total_mb` con su telemetría (normal y en vivo); el CMS lo guarda en `reproductor.disco_total_mb`, no en cada lectura, porque casi no cambia. Lo usa el indicador de disco en uso.
 
 **Temperatura y RAM van en gráficos separados.**
 Son escalas distintas (°C y %). Un eje doble haría que dos series se vean comparables sin serlo.
@@ -260,7 +381,7 @@ Cosas identificadas y decididas conscientemente, no olvidos:
 
 | Tema | Situación |
 |---|---|
-| **Puerto MQTT 1883 sin TLS** | El broker ya exige credenciales y sirve TLS en 8883, pero 1883 sigue abierto a propósito hasta que 8883 lleve un tiempo probado en uso real (tarea 1.0.f, ver `08_pendientes_vm.md` §8). El cliente Pi usa 1883 salvo que se configure `MQTT_TLS=true` |
+| **MQTT sólo por TLS** | Desde el 28/10/2026 la red entra al broker sólo por 8883 con TLS; el 1883 sin cifrar escucha únicamente en `127.0.0.1` (simulador, diagnóstico local). El cliente Pi usa TLS por defecto y necesita el `ca.crt` del broker (`09` §11.1) |
 | **HTTP en vez de HTTPS** | Esperable en local. Producción necesita TLS |
 | **Bundle `Shared` del monolito** | Las otras apps cargan 1642 imports (jQuery duplicado, DataTables duplicado, CSS legacy). SPUI ya no depende de eso, pero el problema sigue a nivel monolito. No se toca porque afecta a las demás apps |
 | **Imagen de fallback** | `pi-client/assets/logo_fallback.png` está en `.gitignore` (no se versiona el binario). Si no existe, el player muestra un texto institucional en su lugar — nunca deja la pantalla en negro |

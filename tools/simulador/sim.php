@@ -91,7 +91,7 @@ switch ($accion) {
             $rawKey = bin2hex(random_bytes(32));
             $rep = (new Reproductor())->setHostname($host)->setVersionFirmware('simulador')->setApiKeyHash(hash('sha256', $rawKey))->setIntervaloSyncMin(1);
             $pan = (new Pantalla())->setNombre('[SIM] Pantalla ' . $i)->setUbicacion($ubicacion)->setReproductor($rep)
-                ->setPlaylistFallback($playlist)->setResolucionAncho(1920)->setResolucionAlto(1080)->setActiva(true);
+                ->setPlaylistFallback($playlist)->setActiva(true);
             $em->persist($rep);
             $em->persist($pan);
             $creados[] = [$rep, $pan, $rawKey];

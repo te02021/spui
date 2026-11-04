@@ -9,14 +9,16 @@ enum TipoContenido: string
     case Texto      = 'texto';
     case Imagen     = 'imagen';
     case Video      = 'video';
-    case Youtube    = 'youtube';
+    // Hubo un 'youtube' hasta el 28/10/2026: VLC no abre el link y YouTube
+    // frena las descargas desde la Pi ("confirmá que no sos un bot"). Un video
+    // de YouTube se baja desde la PC y se sube como video. Ver docs/06 §5.
     case Qr         = 'qr';
     case Cronograma = 'cronograma';
 
     /**
      * Texto para mostrar en el CMS.
-     * Se resuelve caso por caso y no con un |capitalize porque "youtube" y
-     * "qr" no se escriben con una sola mayúscula inicial.
+     * Se resuelve caso por caso y no con un |capitalize porque "qr" no se
+     * escribe con una sola mayúscula inicial.
      */
     public function etiqueta(): string
     {
@@ -24,7 +26,6 @@ enum TipoContenido: string
             self::Texto      => 'Texto',
             self::Imagen     => 'Imagen',
             self::Video      => 'Video',
-            self::Youtube    => 'YouTube',
             self::Qr         => 'QR',
             self::Cronograma => 'Cronograma',
         };

@@ -52,6 +52,14 @@
     function aplicarCambios(viejo, nuevo) {
         var cambios = 0;
 
+        // Un grafico (ECharts dibuja su propio <canvas> adentro): no se toca.
+        // Lo actualiza su propio script con los datos nuevos, al recibir el
+        // evento spui:refrescado. Compararlo con el <div> vacio que manda el
+        // servidor lo borraria en cada ciclo.
+        if (viejo.hasAttribute('data-spui-refresh-conservar')) {
+            return cambios;
+        }
+
         // Distinta cantidad de hijos: cambio estructural (una fila nueva, una
         // alerta que aparecio). No hay forma prolija de reconciliar eso nodo a
         // nodo, asi que se reemplaza el bloque entero.
@@ -174,6 +182,21 @@
             }
         }
 
+        // Atributos extra que el servidor decide y que hay que seguir, pedidos
+        // por el elemento en data-spui-sync="style disabled ...": el ancho de
+        // una barra, un botón que se habilita. No se sincronizan siempre
+        // porque JS también los toca en otros lados (animaciones, inputs).
+        var extra = (nuevo.getAttribute('data-spui-sync') || '').split(/\s+/);
+        for (var x = 0; x < extra.length; x++) {
+            var n = extra[x];
+            if (!n) continue;
+            if (nuevo.hasAttribute(n)) {
+                if (viejo.getAttribute(n) !== nuevo.getAttribute(n)) viejo.setAttribute(n, nuevo.getAttribute(n));
+            } else if (viejo.hasAttribute(n)) {
+                viejo.removeAttribute(n);
+            }
+        }
+
         var aSacar = [];
         for (var j = 0; j < viejo.attributes.length; j++) {
             var a = viejo.attributes[j];
@@ -264,6 +287,16 @@
                         // respuesta entera. Sirve para que el controlador no
                         // tenga que repetir el div envoltorio en el partial.
                         fresco = doc.body;
+
+                        // Al <body> le faltan el id y el data-spui-refresh de
+                        // la zona: sin esto, copiarAtributos() se los sacaba a
+                        // la zona en el primer ciclo y la página no volvía a
+                        // refrescarse nunca más (ni por intervalo, ni por el
+                        // aviso MQTT, ni con el botón). Le pasó al Dashboard,
+                        // el único que responde sólo el fragmento (30/10/2026).
+                        for (var a = 0; a < el.attributes.length; a++) {
+                            fresco.setAttribute(el.attributes[a].name, el.attributes[a].value);
+                        }
                     }
                     if (!fresco) return;
 
@@ -337,11 +370,13 @@
             if (!document.hidden && !hayModalAbierto()) refrescar();
         });
 
-        // Botones "Actualizar" declarativos.
-        document.querySelectorAll('[data-spui-refresh-btn]').forEach(function (btn) {
-            btn.addEventListener('click', function () {
-                window.spui.refrescarAhora(btn);
-            });
+        // Botones "Actualizar" declarativos. Delegado en el documento: si el
+        // botón vive dentro de una zona refrescable, el refresco puede
+        // reemplazarlo por uno nuevo, que con un listener directo quedaba
+        // muerto.
+        document.addEventListener('click', function (e) {
+            var btn = e.target.closest('[data-spui-refresh-btn]');
+            if (btn && !btn.disabled) window.spui.refrescarAhora(btn);
         });
     });
 

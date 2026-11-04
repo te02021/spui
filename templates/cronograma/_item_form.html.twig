@@ -1,90 +1,132 @@
-{{ form_start(form, {'attr': {'data-spui-ajax': '1', 'novalidate': 'novalidate'}}) }}
+{# Alta y edición de un ítem del cronograma (un solo formulario desde el
+   02/11/2026; antes el alta era manual y la edición un FormType, con campos
+   distintos). Los datos son los del Excel de horarios.
 
-{# Errores del form raíz (típicamente el CSRF vencido). Sin esto el modal se
-   recargaba sin ningún mensaje y el guardado parecía no responder. #}
-{% for e in form.vars.errors %}
-    <div class="alert alert-danger mb-3">{{ e.message }}</div>
-{% endfor %}
+   Una clase o actividad se repite los días marcados; un evento especial
+   ocurre una vez, en su fecha: content-type-fields.js muestra días o fecha
+   según el tipo (data-spui-si-tipo-item).
 
-{% set swActivoId = form.activo.vars.id %}
+   Variables: action_url, v (valores), err (name → mensaje), boton (clase del Guardar). #}
+<form method="post" action="{{ action_url }}" data-spui-ajax="1" novalidate data-spui-item-cronograma>
+    <input type="hidden" name="_token" value="{{ csrf_token('spui_action') }}">
+    {% set v = v|default({}) %}
+    {% set err = err|default({}) %}
+    {% set tipo = v.tipo_item ?? 'clase' %}
 
-<div class="row g-2 mb-3">
-    <div class="col-12 col-sm">
-        {{ form_label(form.nombre) }}
-        {{ form_widget(form.nombre) }}
-        {% for e in form.nombre.vars.errors %}
-            <p class="spui-campo-error">{{ e.message }}</p>
-        {% endfor %}
-    </div>
-    <div class="col-12 col-sm">
-        {{ form_label(form.aula) }}
-        {{ form_widget(form.aula) }}
-        {% for e in form.aula.vars.errors %}
-            <p class="spui-campo-error">{{ e.message }}</p>
-        {% endfor %}
-    </div>
-</div>
-
-<div class="row g-3 mb-3">
-    <div class="col-6 spui-hora-field">
-        {{ form_label(form.horaInicio) }}
-        {{ form_widget(form.horaInicio) }}
-        {% for e in form.horaInicio.vars.errors %}
-            <p class="spui-campo-error">{{ e.message }}</p>
-        {% endfor %}
-    </div>
-    <div class="col-6 spui-hora-field">
-        {{ form_label(form.horaFin) }}
-        {{ form_widget(form.horaFin, {attr: {
-            'data-spui-validar-posterior': '#' ~ form.horaInicio.vars.id,
-            'data-spui-validar-mensaje': constant('SPUI\\Controller\\Cms\\CronogramaCmsController::MSG_FIN_POSTERIOR'),
-        }}) }}
-        {% for e in form.horaFin.vars.errors %}
-            <p class="spui-campo-error">{{ e.message }}</p>
-        {% endfor %}
-    </div>
-</div>
-
-<div class="mb-3" data-spui-campo>
-    {{ form_label(form.diasSemana) }}
-    <div class="spui-dias-switches mt-2{{ form.diasSemana.vars.errors|length ? ' is-invalid' }}"
-         data-spui-requiere-alguno="{{ constant('SPUI\\Form\\ProgramacionType::MSG_DIAS_REQUERIDOS') }}">
-        {% for child in form.diasSemana %}
-            <div class="spui-dia-switch">
-                {{ form_label(child, null, {'label_attr': {'class': 'spui-dia-label'}}) }}
-                <div class="form-switch d-flex justify-content-center">
-                    {{ form_widget(child, {'attr': {'class': 'form-check-input', 'role': 'switch'}}) }}
-                </div>
-            </div>
-        {% endfor %}
-    </div>
-    {% for e in form.diasSemana.vars.errors %}
-        <p class="spui-campo-error">{{ e.message }}</p>
-    {% endfor %}
-</div>
-
-<div class="row g-3 mb-4 align-items-end">
-    <div class="col">
-        {{ form_label(form.orden) }}
-        {{ form_widget(form.orden) }}
-        {% for e in form.orden.vars.errors %}
-            <p class="spui-campo-error">{{ e.message }}</p>
-        {% endfor %}
-    </div>
-    <div class="col-auto d-flex flex-column pb-1">
-        <label class="unraf-form-label mb-1">Estado</label>
-        <div class="d-flex align-items-center gap-2">
-            <div class="form-switch m-0">
-                {{ form_widget(form.activo, {'attr': {'class': 'form-check-input spui-switch-input', 'role': 'switch', 'data-spui-switch': '1', 'data-switch-on': 'Activo', 'data-switch-off': 'Inactivo'}}) }}
-            </div>
-            <span class="spui-switch-status {{ form.activo.vars.checked ? 'on' : 'off' }}" id="{{ swActivoId }}_lbl">{{ form.activo.vars.checked ? 'Activo' : 'Inactivo' }}</span>
+    <div class="mb-3">
+        <span class="unraf-form-label d-block" id="ci_tipo_lbl">Tipo</span>
+        <div class="spui-opciones" role="radiogroup" aria-labelledby="ci_tipo_lbl">
+            {% for op in enum('SPUI\\Enum\\TipoItemCronograma').cases() %}
+                <input type="radio" class="spui-opcion-input" name="tipo_item" id="ci_tipo_{{ op.value }}"
+                       value="{{ op.value }}" {{ tipo == op.value ? 'checked' }}>
+                <label class="spui-opcion" for="ci_tipo_{{ op.value }}">{{ op.etiqueta }}</label>
+            {% endfor %}
         </div>
     </div>
-</div>
 
-<div class="d-flex justify-content-end gap-2 pt-3 border-top">
-    <button type="button" class="unraf-btn spui-btn-back" data-spui-close>Cancelar</button>
-    <button type="submit" class="unraf-btn spui-btn-editar">Guardar</button>
-</div>
+    <div class="row g-2 mb-3">
+        <div class="col-12 col-md-8">
+            <label class="unraf-form-label" for="ci_nombre">Materia o actividad <span class="text-danger">*</span></label>
+            <input type="text" id="ci_nombre" name="nombre" class="unraf-form-control{{ err.nombre is defined ? ' is-invalid' }}"
+                   value="{{ v.nombre ?? '' }}" maxlength="200" placeholder="Ej: Análisis Matemático I" required>
+            {% if err.nombre is defined %}<p class="spui-campo-error">{{ err.nombre }}</p>{% endif %}
+        </div>
+        <div class="col-12 col-md-4">
+            <label class="unraf-form-label" for="ci_aula">Aula / espacio <small class="text-muted">(opcional)</small></label>
+            <input type="text" id="ci_aula" name="aula" class="unraf-form-control{{ err.aula is defined ? ' is-invalid' }}"
+                   value="{{ v.aula ?? '' }}" maxlength="100" placeholder="Ej: 6 A / Lab. ECA">
+            {% if err.aula is defined %}<p class="spui-campo-error">{{ err.aula }}</p>{% endif %}
+        </div>
+    </div>
 
-{{ form_end(form) }}
+    <div class="row g-2 mb-3">
+        <div class="col-6 col-md-3">
+            <label class="unraf-form-label" for="ci_carrera">Carrera <small class="text-muted">(opcional)</small></label>
+            <input type="text" id="ci_carrera" name="carrera" class="unraf-form-control{{ err.carrera is defined ? ' is-invalid' }}"
+                   value="{{ v.carrera ?? '' }}" maxlength="60" placeholder="Ej: AGI">
+            {% if err.carrera is defined %}<p class="spui-campo-error">{{ err.carrera }}</p>{% endif %}
+        </div>
+        <div class="col-6 col-md-3">
+            <label class="unraf-form-label" for="ci_anio">Año <small class="text-muted">(opcional)</small></label>
+            <input type="text" id="ci_anio" name="anio" class="unraf-form-control{{ err.anio is defined ? ' is-invalid' }}"
+                   value="{{ v.anio ?? '' }}" maxlength="40" placeholder="Ej: 2.º">
+            {% if err.anio is defined %}<p class="spui-campo-error">{{ err.anio }}</p>{% endif %}
+        </div>
+        <div class="col-12 col-md-6">
+            <label class="unraf-form-label" for="ci_docente">Docente o responsable <small class="text-muted">(opcional)</small></label>
+            <input type="text" id="ci_docente" name="docente" class="unraf-form-control{{ err.docente is defined ? ' is-invalid' }}"
+                   value="{{ v.docente ?? '' }}" maxlength="255" placeholder="Ej: Ariado, L. / Bianchini, C.">
+            {% if err.docente is defined %}<p class="spui-campo-error">{{ err.docente }}</p>{% endif %}
+        </div>
+    </div>
+
+    <div class="row g-3 mb-3">
+        <div class="col-6 spui-hora-field">
+            <label class="unraf-form-label" for="ci_hi">Hora inicio <span class="text-danger">*</span></label>
+            <input type="time" id="ci_hi" name="hora_inicio" class="unraf-form-control{{ err.hora_inicio is defined ? ' is-invalid' }}"
+                   value="{{ v.hora_inicio ?? '' }}" required>
+            {% if err.hora_inicio is defined %}<p class="spui-campo-error">{{ err.hora_inicio }}</p>{% endif %}
+        </div>
+        <div class="col-6 spui-hora-field">
+            {# Sin required: en un evento puede quedar vacía (lo valida el servidor). #}
+            <label class="unraf-form-label" for="ci_hf">Hora fin <span class="text-danger" data-spui-si-tipo-item="clase actividad" {{ tipo == 'evento' ? 'hidden' }}>*</span></label>
+            <input type="time" id="ci_hf" name="hora_fin" class="unraf-form-control{{ err.hora_fin is defined ? ' is-invalid' }}"
+                   value="{{ v.hora_fin ?? '' }}"
+                   data-spui-validar-posterior="#ci_hi"
+                   data-spui-validar-mensaje="{{ constant('SPUI\\Controller\\Cms\\CronogramaCmsController::MSG_FIN_POSTERIOR') }}">
+            {% if err.hora_fin is defined %}<p class="spui-campo-error">{{ err.hora_fin }}</p>{% endif %}
+            <small class="text-muted d-block mt-1" data-spui-si-tipo-item="evento" {{ tipo != 'evento' ? 'hidden' }}>
+                En un evento puede quedar vacía: se muestra "Desde las…".
+            </small>
+        </div>
+    </div>
+
+    <div class="mb-3" data-spui-campo data-spui-si-tipo-item="clase actividad" {{ tipo == 'evento' ? 'hidden' }}>
+        <span class="unraf-form-label d-block">Días de la semana</span>
+        <div class="spui-dias-switches mt-2{{ err.dias is defined ? ' is-invalid' }}"
+             data-spui-requiere-alguno="{{ constant('SPUI\\Form\\ProgramacionType::MSG_DIAS_REQUERIDOS') }}">
+            {% set diasOpciones = {'Lun': 0, 'Mar': 1, 'Mié': 2, 'Jue': 3, 'Vie': 4, 'Sáb': 5, 'Dom': 6} %}
+            {% set diasActivos = v.dias ?? [0, 1, 2, 3, 4] %}
+            {% for label, bit in diasOpciones %}
+                <div class="spui-dia-switch">
+                    <label class="spui-dia-label" for="ci_dia_{{ bit }}">{{ label }}</label>
+                    <div class="form-switch d-flex justify-content-center">
+                        <input class="form-check-input" type="checkbox" name="dias[]"
+                               id="ci_dia_{{ bit }}" value="{{ bit }}" role="switch"
+                               {{ bit in diasActivos ? 'checked' }}>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+        {% if err.dias is defined %}<p class="spui-campo-error">{{ err.dias }}</p>{% endif %}
+    </div>
+
+    <div class="mb-3" data-spui-si-tipo-item="evento" {{ tipo != 'evento' ? 'hidden' }}>
+        <label class="unraf-form-label" for="ci_fecha">Fecha <span class="text-danger">*</span></label>
+        <input type="date" id="ci_fecha" name="fecha" class="unraf-form-control{{ err.fecha is defined ? ' is-invalid' }}"
+               value="{{ v.fecha ?? '' }}" style="max-width:12rem">
+        {% if err.fecha is defined %}<p class="spui-campo-error">{{ err.fecha }}</p>{% endif %}
+        <small class="text-muted d-block mt-1">El evento aparece en el cronograma sólo ese día, junto con las clases.</small>
+    </div>
+
+    {# Switch de estado. Este form no usa FormType, así que el id va literal y
+       el span _lbl se arma a mano; switch-toggle.js lo engancha por
+       data-spui-switch. Un ítem nuevo arranca activo. #}
+    <div class="mb-3 d-flex flex-column" style="max-width:110px">
+        <label class="unraf-form-label mb-1" for="ci_activo">Estado</label>
+        <div class="d-flex align-items-center gap-2">
+            <div class="form-switch m-0">
+                <input class="form-check-input spui-switch-input" type="checkbox"
+                       name="activo" id="ci_activo" value="1" role="switch"
+                       data-spui-switch="1" data-switch-on="Activo" data-switch-off="Inactivo"
+                       {{ (v.activo ?? true) ? 'checked' }}>
+            </div>
+            <span class="spui-switch-status {{ (v.activo ?? true) ? 'on' : 'off' }}" id="ci_activo_lbl">{{ (v.activo ?? true) ? 'Activo' : 'Inactivo' }}</span>
+        </div>
+    </div>
+
+    <div class="d-flex justify-content-end gap-2 pt-3 border-top">
+        <button type="button" class="unraf-btn spui-btn-back" data-spui-close>Cancelar</button>
+        <button type="submit" class="unraf-btn {{ boton|default('spui-btn-crear') }}">Guardar</button>
+    </div>
+</form>

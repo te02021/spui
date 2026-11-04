@@ -15,7 +15,9 @@
 //
 //   data-spui-validar-posterior="#id-del-otro"   el valor tiene que ser mayor
 //   data-spui-validar-mensaje="..."               que el del otro campo (horas
-//                                                 HH:MM, se comparan como texto)
+//                                                 HH:MM o fechas Y-m-d, se
+//                                                 comparan como texto)
+//   data-spui-permitir-igual                      (opcional) también vale igual
 //
 //   data-spui-max-bytes="N"                       el archivo elegido no puede
 //                                                 pesar más de N bytes
@@ -121,7 +123,10 @@
         // la regla de obligatorio, no ésta.
         if (!otro || !campo.value || !otro.value) return true;
 
-        if (campo.value <= otro.value) {
+        // data-spui-permitir-igual: el mismo valor también vale (una vigencia
+        // de un solo día), sólo uno anterior es error.
+        var igualOk = campo.hasAttribute('data-spui-permitir-igual');
+        if (igualOk ? campo.value < otro.value : campo.value <= otro.value) {
             mostrar(campo, campo.dataset.spuiValidarMensaje || 'Tiene que ser posterior.');
             return false;
         }
@@ -210,6 +215,14 @@
             mostrar(campo, 'El archivo pesa ' + formatear(archivo.size) + ' y el máximo es ' + formatear(max) + '. Elegí uno más liviano.');
             return false;
         }
+
+        // Lo que se sabe recién después de leer el archivo (video-archivo.js:
+        // la resolución de un video) queda marcado en el campo, para que
+        // Guardar no lo envíe igual.
+        if (campo.dataset.spuiArchivoInvalido) {
+            mostrar(campo, campo.dataset.spuiArchivoInvalido);
+            return false;
+        }
         return true;
     }
 
@@ -263,7 +276,28 @@
     // avisa). Pasaba con el último campo de un formulario, cuyo Tab cae justo
     // en Cancelar.
     var presionado = null;
-    document.addEventListener('pointerdown', function (e) { presionado = e.target; }, true);
+
+    // Con el mouse, el campo pierde el foco al APRETAR el botón y el clic se
+    // completa al soltarlo. Si el aviso de obligatorio aparece en el medio,
+    // empuja el formulario y el clic cae en otro lugar (pasaba al tocar un día
+    // del cronograma con el Nombre vacío). Mientras haya un clic en curso, el
+    // aviso espera a que termine. Con Tab no hay clic: sale en el acto.
+    var clicEnCurso = false;
+    var pendientes = [];
+
+    function revisarPendientes() {
+        clicEnCurso = false;
+        var lista = pendientes;
+        pendientes = [];
+        lista.forEach(function (c) { if (c.isConnected) revisar(c, true); });
+    }
+
+    document.addEventListener('pointerdown', function (e) { presionado = e.target; clicEnCurso = true; }, true);
+    // setTimeout: después de que el clic hizo lo suyo (marcar la casilla, abrir
+    // el selector). El segundo timeout cubre un clic que nunca llega (se soltó
+    // fuera del elemento, o el gesto terminó en arrastre).
+    document.addEventListener('click', function () { setTimeout(revisarPendientes, 0); }, true);
+    document.addEventListener('pointerup', function () { setTimeout(revisarPendientes, 400); }, true);
 
     // Al salir de un campo: si es obligatorio y quedó vacío, se avisa ya. Sólo
     // cuando el foco pasa a OTRO elemento de la página (Tab, clic en otro
@@ -276,6 +310,10 @@
         if (!destino) return;
         var cerrar = destino.closest && destino.closest('[data-spui-close], .spui-abm-modal-close');
         if (cerrar && presionado && cerrar.contains(presionado)) return;
+        if (clicEnCurso) {
+            if (pendientes.indexOf(t) === -1) pendientes.push(t);
+            return;
+        }
         revisar(t, true);
     }
 
@@ -293,6 +331,9 @@
             .filter(function (c) { return activo(c) || c.type === 'file'; });
         var malos = campos.filter(function (c) { return !revisar(c, true); });
         Array.from(e.target.querySelectorAll('[data-spui-requiere-alguno]')).forEach(function (g) {
+            // Un grupo oculto no se pide (los días de un evento especial, que
+            // usa una fecha): mismo criterio que con los campos sueltos.
+            if (g.closest('[hidden]')) return;
             if (!validarGrupo(g)) malos.push(g.querySelector('input[type="checkbox"]'));
         });
         if (malos.length) {
@@ -305,4 +346,8 @@
 
     window.spui = window.spui || {};
     window.spui.formatearTamano = formatear;
+    // Para reglas que se resuelven fuera de este archivo (video-archivo.js):
+    // mismo lugar y mismo aspecto que cualquier otro error de campo.
+    window.spui.errorDeCampo = mostrar;
+    window.spui.limpiarErrorDeCampo = limpiar;
 }());

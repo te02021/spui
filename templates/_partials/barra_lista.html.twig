@@ -1,0 +1,31 @@
+{# Barra de un listado (30/10/2026): el buscador a la izquierda y los chips de
+   filtro a la derecha; si no entran juntos, los chips bajan, alineados a la
+   derecha (en celular, a todo el ancho).
+
+   Uso: {{ include('@SPUI/_partials/barra_lista.html.twig', {
+            filtros: filtros, que: 'edificios', placeholder: 'Buscar por nombre o descripción',
+            refrescar: false }) }}
+
+   El buscador filtra a medida que se escribe (core/busqueda-lista.js, que
+   vuelve a pedir la página con ?q= y reemplaza las zonas
+   data-spui-busqueda-zona: los chips, porque sus cantidades respetan la
+   búsqueda, y la lista). Sin JS es un formulario GET común: Enter busca. Los
+   campos ocultos conservan los chips elegidos.
+   refrescar: los chips también entran en el refresco automático (Reproductores,
+   donde las cantidades cambian solas). #}
+{% set q = busqueda|default('') %}
+<div class="spui-barra-lista">
+    <form class="spui-buscador" role="search" method="get" action="{{ path(app.request.attributes.get('_route')) }}" data-spui-busqueda>
+        {% for k, v in app.request.query.all|filter((v, k) => k not in ['q', 'pagina'] and v is not iterable) %}
+            <input type="hidden" name="{{ k }}" value="{{ v }}">
+        {% endfor %}
+        <label class="visually-hidden" for="spui-buscar">{{ placeholder }}</label>
+        <img src="{{ asset('unraf-ui/icons/magnifying-glass.svg') }}" class="spui-buscador-lupa" alt="">
+        <input type="search" id="spui-buscar" name="q" value="{{ q }}" class="spui-buscador-campo"
+               placeholder="{{ placeholder }}" maxlength="100" autocomplete="off" spellcheck="false" enterkeyhint="search">
+        <button type="button" class="spui-buscador-limpiar" data-spui-busqueda-limpiar aria-label="Limpiar búsqueda" title="Limpiar"{{ q ? '' : ' hidden' }}>×</button>
+    </form>
+    <div id="spui-filtros-zona" class="spui-barra-filtros" data-spui-busqueda-zona{{ refrescar|default(false) ? ' data-spui-refresh' : '' }}>
+        {%- if filtros|length %}{{ include('@SPUI/_partials/filtros.html.twig', {grupos: filtros, que: que}) }}{% endif -%}
+    </div>
+</div>

@@ -15,10 +15,4 @@ class PlaylistRepository extends ServiceEntityRepository
     {
         parent::__construct($registry, Playlist::class);
     }
-
-    /** @return Playlist[] */
-    public function findActivas(): array
-    {
-        return $this->findBy(['activo' => true], ['nombre' => 'ASC']);
-    }
 }

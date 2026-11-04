@@ -8,6 +8,7 @@ use DateTimeImmutable;
 use Doctrine\DBAL\Connection;
 use Doctrine\Persistence\ManagerRegistry;
 use SPUI\Repository\TelemetriaHoraRepository;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
 /**
  * Agrega la telemetría cruda en resúmenes horarios (telemetria_hora).
@@ -36,9 +37,14 @@ final class TelemetriaRollupService
      */
     private const HORAS_SOLAPE = 3;
 
+    /** Margen para un rollup que tarda o un daemon que recién arrancó. */
+    private const MARGEN_AVISO_SEG = 600;
+
     public function __construct(
         private readonly ManagerRegistry $doctrine,
         private readonly TelemetriaHoraRepository $rollupRepo,
+        #[Autowire('%env(int:default:spui_intervalo_rollup_default:SPUI_INTERVALO_ROLLUP_SEG)%')]
+        private readonly int $intervaloRollupSeg = 3600,
     ) {
     }
 
@@ -121,30 +127,40 @@ final class TelemetriaRollupService
      * Aviso de "staleness" para el dashboard: ¿el scheduler interno del
      * demonio (tarea 1.7/1.5) dejó de correr?
      *
-     * No compara contra "ahora": eso daría falsos positivos apenas arranca
-     * cada hora nueva, antes de que le toque el rollup (que a propósito no
-     * agrega la hora en curso). Compara la lectura cruda más reciente contra
-     * la última hora ya agregada — si hay telemetría entrando pero el rollup
-     * no avanza, es que el demonio se cayó o algo lo está bloqueando; si no
-     * hay telemetría cruda en absoluto (sin reproductores activos), no hay
-     * nada que agregar y no es un problema de este servicio.
+     * Avisa sólo si hay una lectura cruda que el rollup YA tendría que haber
+     * agregado y no lo hizo. Una lectura de las t queda en la hora que cierra
+     * en ceil(t); la primera pasada después de ese cierre la agrega, y las
+     * pasadas son cada intervaloRollupSeg. Así que, con el daemon andando,
+     * ninguna lectura más vieja que 1 h + intervalo queda sin agregar.
+     *
+     * Antes comparaba la lectura más reciente contra el COMIENZO de la última
+     * hora agregada, con un umbral fijo de 2 h: según el minuto en que corría
+     * el rollup, durante un rato de cada hora decía "detenido" con el daemon
+     * funcionando, y también después de cualquier corte de telemetría (la
+     * hora en curso no se agrega hasta que cierra). Mateo lo veía aparecer y
+     * desaparecer sin motivo (29/10/2026).
      */
     public function estaDesactualizado(): bool
     {
-        $ultimaCruda = $this->conexion()
-            ->executeQuery('SELECT MAX(registrado_en) FROM telemetria')
-            ->fetchOne();
+        $ultimaAgregada = $this->rollupRepo->ultimaHoraAgregada();
+        $finAgregado = $ultimaAgregada !== null
+            ? $ultimaAgregada->modify('+1 hour')
+            : new DateTimeImmutable('@0');
+        $limite = new DateTimeImmutable(sprintf('-%d seconds', 3600 + $this->intervaloRollupSeg + self::MARGEN_AVISO_SEG));
 
-        if (!$ultimaCruda) {
+        if ($finAgregado >= $limite) {
             return false;
         }
 
-        $ultimaCruda    = new DateTimeImmutable((string) $ultimaCruda);
-        $ultimaAgregada = $this->rollupRepo->ultimaHoraAgregada();
-
-        $referencia = $ultimaAgregada ?? new DateTimeImmutable('@0');
-
-        return ($ultimaCruda->getTimestamp() - $referencia->getTimestamp()) > 7200;
+        return (bool) $this->conexion()
+            ->executeQuery(
+                'SELECT 1 FROM telemetria WHERE registrado_en >= :fin AND registrado_en < :limite LIMIT 1',
+                [
+                    'fin'    => $finAgregado->format('Y-m-d H:i:s'),
+                    'limite' => $limite->format('Y-m-d H:i:s'),
+                ],
+            )
+            ->fetchOne();
     }
 
     private function conexion(): Connection

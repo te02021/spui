@@ -41,9 +41,11 @@ Por default, ningún `.md` se trackea (ver `.gitignore`) — son notas de trabaj
 - `docs/07_manual_uso_cms.md`
 - `docs/08_pendientes_vm.md`
 - `docs/09_instalacion_raspberry.md`
+- `docs/10_pruebas.md` (y los informes de `docs/pruebas/`)
 - `docs/README.md`
+- `docs/archivo/auditorias.md` (historial)
 
-Esos cinco sí se trackean porque se auditaron contra el código real (ver `docs/README.md` §1 para el criterio y el proceso de mantenerlos al día). Si un cambio de código vuelve desactualizado a alguno de estos, corregirlo es parte del mismo PR — no un TODO para después.
+Esos sí se trackean porque se auditaron contra el código real (ver `docs/README.md` §1 para el criterio y el proceso de mantenerlos al día). Si un cambio de código vuelve desactualizado a alguno de estos, corregirlo es parte del mismo PR — no un TODO para después.
 
 ## CMS y pi-client, un solo repo
 

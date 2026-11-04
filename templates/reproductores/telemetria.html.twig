@@ -1,215 +1,233 @@
 {% extends '@SPUI/base.html.twig' %}
-{% import '@SPUI/_macros/texto.html.twig' as texto %}
 {% block title %}Telemetría — {{ reproductor.hostname }} — SPUI{% endblock %}
 
 {#
-  Gráficos en SVG inline, sin librería.
-  Motivo: la red del campus puede no tener salida a internet, y una dependencia
-  por CDN dejaría la pantalla vacía justo cuando se la quiere mostrar.
-  Temperatura y RAM van en gráficos separados a propósito: son escalas distintas
-  (°C y %), y un eje doble haría que dos series se vean comparables sin serlo.
+  Telemetría de un reproductor (rehecha el 29/10/2026, pedido de Mateo).
+
+  - Gráficos con ECharts (canvas), COPIADO en assets/spui/vendor/echarts y no
+    por CDN: la red del campus puede no tener salida a internet. Se cambió de
+    ApexCharts porque éste redibuja el SVG entero en cada movimiento y el
+    arrastre y el zoom se sentían trabados. Temperatura, RAM y disco van en
+    gráficos separados con escala fija (°C, %, GB): un eje doble haría que dos
+    series se vean comparables sin serlo.
+  - Histórico: trae los últimos 60 días; 24 h / 7 d / 30 d eligen la ventana
+    de los tres. Arrastrar mueve la vista, la rueda del mouse hace zoom (suave,
+    centrado en el puntero). Cada gráfico es independiente: lo que se hace en
+    uno no mueve a los otros. Nunca más allá de ahora.
+  - En vivo: mientras la página está abierta, la Pi publica temperatura, CPU y RAM
+    cada 1 s por MQTT directo al navegador (no se guarda). El panel tiene su
+    lugar reservado desde el principio, con un spinner, para que no empuje la
+    página al llegar el primer dato. Sin broker alcanzable no aparece.
+  - Exportar: botón del encabezado → modal estándar con formato (Excel, CSV,
+    PDF) y rango de fechas, hasta export_dias días atrás.
 #}
 
-{% macro grafico(serie, campo, campo2, color, color2, unidad, umbral) %}
-    {% set valores = serie|map(p => p[campo]) %}
-    {% if campo2 %}{% set valores = valores|merge(serie|map(p => p[campo2])) %}{% endif %}
-    {% set vmin = min(valores) %}
-    {% set vmax = max(valores) %}
-    {% if umbral %}{% set vmax = max([vmax, umbral]) %}{% endif %}
-    {# Margen del 10% arriba y abajo para que la línea no toque los bordes #}
-    {% set span = (vmax - vmin) > 0 ? (vmax - vmin) : 1 %}
-    {% set lo   = vmin - span * 0.1 %}
-    {% set hi   = vmax + span * 0.1 %}
-    {% set n    = serie|length %}
-
-    <svg viewBox="0 0 800 220" preserveAspectRatio="none"
-         style="width:100%;height:220px;display:block" role="img"
-         aria-label="Serie temporal de {{ campo }}">
-        {# Grilla horizontal recesiva #}
-        {% for i in 0..4 %}
-            {% set y = 15 + i * 45 %}
-            <line x1="52" y1="{{ y }}" x2="792" y2="{{ y }}" stroke="#e9ecef" stroke-width="1"/>
-            <text x="46" y="{{ y + 4 }}" text-anchor="end" font-size="11" fill="#6c757d">
-                {{ (hi - (hi - lo) * i / 4)|number_format(0) }}
-            </text>
-        {% endfor %}
-
-        {# Umbral de alerta, si aplica #}
-        {% if umbral and umbral >= lo and umbral <= hi %}
-            {% set yu = 15 + (hi - umbral) / (hi - lo) * 180 %}
-            <line x1="52" y1="{{ yu }}" x2="792" y2="{{ yu }}"
-                  stroke="#FF223D" stroke-width="2" stroke-dasharray="6 4" opacity=".75"/>
-            <text x="788" y="{{ yu - 6 }}" text-anchor="end" font-size="11" fill="#FF223D" font-weight="600">
-                umbral {{ umbral|number_format(0) }}{{ unidad }}
-            </text>
-        {% endif %}
-
-        {% if n > 1 %}
-            {% if campo2 %}
-                <polyline fill="none" stroke="{{ color2 }}" stroke-width="2"
-                          stroke-linejoin="round" stroke-linecap="round"
-                          points="{% for p in serie %}{{ 52 + loop.index0 * 740 / (n - 1) }},{{ 15 + (hi - p[campo2]) / (hi - lo) * 180 }} {% endfor %}"/>
-            {% endif %}
-            <polyline fill="none" stroke="{{ color }}" stroke-width="2"
-                      stroke-linejoin="round" stroke-linecap="round"
-                      points="{% for p in serie %}{{ 52 + loop.index0 * 740 / (n - 1) }},{{ 15 + (hi - p[campo]) / (hi - lo) * 180 }} {% endfor %}"/>
-        {% elseif n == 1 %}
-            <circle cx="422" cy="{{ 15 + (hi - serie[0][campo]) / (hi - lo) * 180 }}" r="4" fill="{{ color }}"/>
-        {% endif %}
-
-        {# Extremos del eje temporal #}
-        {% if n > 0 %}
-            <text x="52" y="212" font-size="11" fill="#6c757d">{{ serie|first.periodo|slice(5, 11) }}</text>
-            <text x="792" y="212" text-anchor="end" font-size="11" fill="#6c757d">{{ serie|last.periodo|slice(5, 11) }}</text>
-        {% endif %}
-    </svg>
-{% endmacro %}
-
-{% import _self as g %}
+{% import '@SPUI/_macros/graficos.html.twig' as t %}
 
 {% block body %}
+{% set cfg_vivo = spui_mqtt_web.paraNavegador(app.request, topic_vivo) %}
+
+<div id="spui-telemetria"
+     data-url-datos="{{ path('spui_cms_reproductores_telemetria_datos', {id: reproductor.id}) }}"
+     data-url-vivo="{{ path('spui_cms_reproductores_telemetria_vivo', {id: reproductor.id}) }}"
+     data-umbral="{{ temp_umbral }}"
+     data-vivo-seg="{{ vivo_seg }}"
+     data-hostname="{{ reproductor.hostname }}"
+     {# Con el reproductor desconectado, el modo en vivo no le pide nada: espera
+        el aviso de que volvió (spui/cms/conexion/{id}, ConexionPublisherService). #}
+     data-conectado="{{ reproductor.estadoCalculado(spui_umbral_conexion).value == 'conectado' ? '1' : '0' }}"
+     data-mqtt-topic-conexion="{{ constant('SPUI\\Service\\ConexionPublisherService::TOPIC_BASE') ~ reproductor.id }}"
+     {% if cfg_vivo %}
+     data-mqtt-url="{{ cfg_vivo.url }}"
+     data-mqtt-usuario="{{ cfg_vivo.usuario }}"
+     data-mqtt-password="{{ cfg_vivo.password }}"
+     data-mqtt-topic="{{ cfg_vivo.topic }}"
+     {% endif %}>
+
 <div class="d-flex justify-content-between align-items-center mb-4 gap-2 flex-wrap spui-header-actions">
     <div>
         <h1 class="mb-0" style="color:var(--unraf-azul);font-family:var(--unraf-font-principal)">
             {{ reproductor.hostname }}
         </h1>
         <p class="text-muted mb-0 small">
-            Telemetría del nodo
+            Telemetría del reproductor
             {% for p in reproductor.pantallas %}· {{ p.nombre }}{% endfor %}
         </p>
     </div>
-    <div class="d-flex gap-2 flex-shrink-0">
-        <button type="button" data-spui-refresh-btn
-                class="unraf-btn unraf-btn-light d-flex align-items-center gap-1"
-                style="font-size:.8rem;padding:.3rem .6rem"
-                title="Actualizar datos">
-            <img src="{{ asset('unraf-ui/icons/arrows-clockwise.svg') }}" style="width:.85rem;height:.85rem;flex-shrink:0" alt=""> Actualizar
+    {# Sin flex-shrink-0: en celular los tres botones no entraban en un renglón
+       y el último se salía 6 px de la pantalla; ahora bajan. #}
+    <div class="d-flex gap-2 align-items-center flex-wrap">
+        {% if cfg_vivo %}
+            <button type="button" class="spui-tel-vivo" data-tel-vivo-btn aria-pressed="true"
+                    title="Temperatura, CPU y RAM actualizadas cada segundo">
+                <span class="spui-tel-vivo-punto" aria-hidden="true"></span>
+                <span data-tel-vivo-texto>Conectando…</span>
+            </button>
+        {% endif %}
+        <button type="button" class="unraf-btn unraf-btn-light d-inline-flex align-items-center gap-1 spui-tel-exportar"
+                data-spui-form="{{ path('spui_cms_reproductores_telemetria_exportar_form', {id: reproductor.id}) }}"
+                data-spui-title="Exportar telemetría de {{ reproductor.hostname }}"
+                title="Descargar el detalle por hora en Excel, CSV o PDF">
+            <img src="{{ asset('unraf-ui/icons/export.svg') }}" class="spui-action-icon" alt=""> Exportar
         </button>
         <a href="{{ path('spui_cms_reproductores_index') }}" class="unraf-btn spui-btn-back">← Reproductores</a>
     </div>
 </div>
 
-{# ── Rango ── #}
-<div class="d-flex gap-2 mb-4 flex-wrap">
-    {% for r in rangos %}
-        <a href="{{ path('spui_cms_reproductores_telemetria', {id: reproductor.id, rango: r}) }}"
-           class="unraf-btn unraf-btn-sm {{ rango == r ? 'unraf-btn-institucion' : 'unraf-btn-light' }}">
-            {{ r == '24h' ? 'Últimas 24 h' : (r == '7d' ? 'Últimos 7 días' : 'Últimos 30 días') }}
-        </a>
-    {% endfor %}
+{# ── Indicadores: lo último que se sabe (en vivo, si está activo) ── #}
+<div class="row g-3 mb-4">
+    <div class="col-12 col-sm-6 col-xl-3">
+        <div class="unraf-card spui-tel-indicador h-100">
+            <div class="spui-tel-indicador-titulo">Temperatura del procesador</div>
+            <div data-tel-gauge="temp" class="spui-tel-gauge"></div>
+            <div class="spui-tel-indicador-pie">
+                <span>Promedio <strong data-tel-res="temp_prom">—</strong></span>
+                <span>Máxima <strong data-tel-res="temp_max">—</strong></span>
+            </div>
+        </div>
+    </div>
+    {# Uso de CPU (03/11/2026): promedio de cada minuto que manda la Pi. #}
+    <div class="col-12 col-sm-6 col-xl-3">
+        <div class="unraf-card spui-tel-indicador h-100">
+            <div class="spui-tel-indicador-titulo">Uso del procesador</div>
+            <div data-tel-gauge="cpu" class="spui-tel-gauge"></div>
+            <div class="spui-tel-indicador-pie">
+                <span>Promedio <strong data-tel-res="cpu_prom">—</strong></span>
+                <span>Máximo <strong data-tel-res="cpu_max">—</strong></span>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-sm-6 col-xl-3">
+        <div class="unraf-card spui-tel-indicador h-100">
+            <div class="spui-tel-indicador-titulo">Memoria RAM en uso</div>
+            <div data-tel-gauge="ram" class="spui-tel-gauge"></div>
+            <div class="spui-tel-indicador-pie">
+                <span>Promedio <strong data-tel-res="ram_prom">—</strong></span>
+                <span>Máxima <strong data-tel-res="ram_max">—</strong></span>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-sm-6 col-xl-3">
+        <div class="unraf-card spui-tel-indicador h-100">
+            <div class="spui-tel-indicador-titulo">Disco en uso</div>
+            <div data-tel-gauge="disco" class="spui-tel-gauge"></div>
+            <div class="spui-tel-indicador-pie">
+                <span><span data-tel-disco-etq>En uso</span> <strong data-tel-numero="disco">—</strong></span>
+                <span>Total <strong data-tel-numero="disco_total">—</strong></span>
+                <span data-tel-disco-max hidden>Máximo del período <strong>—</strong></span>
+            </div>
+        </div>
+    </div>
 </div>
+<p class="text-muted small mb-4" data-tel-ultima>&nbsp;</p>
 
-{# El SVG se genera en el servidor, así que refrescarlo es traer el fragmento y
-   reemplazarlo: no hay estado en JS que actualizar. La serie es horaria y
-   cambia lento, pero la tarjeta de "última lectura" sí se mueve cada minuto. #}
-<div id="telemetria-zona" data-spui-refresh>
-
-{% if resumen is null %}
-    <div class="unraf-card p-5 text-center text-muted">
-        <p class="mb-1">Este nodo todavía no envió telemetría en este período.</p>
-        <small>
-            El cliente Python publica métricas por MQTT cada 60 s. Verificá que el nodo esté
-            encendido y que el consumidor <code>spui:mqtt:subscribe</code> esté corriendo.
-        </small>
+{# ── En vivo: lugar reservado desde el principio, con spinner hasta el primer dato ── #}
+{% if cfg_vivo %}
+<div class="unraf-card mb-4" data-tel-vivo-panel>
+    <div class="p-3 border-bottom d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <strong>En vivo · últimos minutos</strong>
+        <small class="text-muted">Una lectura por segundo. No se guarda: es para mirar en el momento.</small>
     </div>
-{% else %}
-
-    {# ── Resumen ── #}
-    <div class="row g-3 mb-4">
-        <div class="col-6 col-md-3">
-            <div class="unraf-card p-3 h-100">
-                <div class="text-muted small">Temp. promedio</div>
-                <div class="fs-4 fw-bold" style="color:var(--unraf-azul)">{{ resumen.temp_prom }}°C</div>
-            </div>
-        </div>
-        <div class="col-6 col-md-3">
-            <div class="unraf-card p-3 h-100">
-                <div class="text-muted small">Temp. máxima</div>
-                <div class="fs-4 fw-bold {{ resumen.temp_max >= temp_umbral ? 'text-danger' : '' }}">
-                    {{ resumen.temp_max }}°C
+    <div class="spui-tel-vivo-cuerpo">
+        <div class="row g-0">
+            <div class="col-12 col-lg-4 p-2 p-md-3" data-tel-vivo-grafico>
+                <div class="d-flex justify-content-between align-items-center gap-2 mb-1">
+                    <strong class="small">Temperatura</strong>
+                    {{ t.herramientas('vivo') }}
                 </div>
-                {% if resumen.temp_max >= temp_umbral %}
-                    <small class="text-danger">Superó el umbral</small>
-                {% endif %}
+                <div class="spui-tel-lienzo spui-tel-lienzo-vivo" data-tel-chart="vivo_temp"></div>
             </div>
-        </div>
-        <div class="col-6 col-md-3">
-            <div class="unraf-card p-3 h-100">
-                <div class="text-muted small">RAM máxima</div>
-                <div class="fs-4 fw-bold" style="color:var(--unraf-azul)">{{ resumen.ram_max }}%</div>
-            </div>
-        </div>
-        <div class="col-6 col-md-3">
-            <div class="unraf-card p-3 h-100">
-                <div class="text-muted small">Disco libre mínimo</div>
-                <div class="fs-4 fw-bold {{ resumen.disco_min < 500 ? 'text-danger' : '' }}">
-                    {{ (resumen.disco_min / 1024)|number_format(1) }} GB
+            <div class="col-12 col-lg-4 p-2 p-md-3" data-tel-vivo-grafico>
+                <div class="d-flex justify-content-between align-items-center gap-2 mb-1">
+                    <strong class="small">CPU</strong>
+                    {{ t.herramientas('vivo') }}
                 </div>
+                <div class="spui-tel-lienzo spui-tel-lienzo-vivo" data-tel-chart="vivo_cpu"></div>
+            </div>
+            <div class="col-12 col-lg-4 p-2 p-md-3" data-tel-vivo-grafico>
+                <div class="d-flex justify-content-between align-items-center gap-2 mb-1">
+                    <strong class="small">RAM</strong>
+                    {{ t.herramientas('vivo') }}
+                </div>
+                <div class="spui-tel-lienzo spui-tel-lienzo-vivo" data-tel-chart="vivo_ram"></div>
             </div>
         </div>
-    </div>
-
-    {# ── Temperatura ── #}
-    <div class="unraf-card mb-4">
-        <div class="p-3 border-bottom d-flex justify-content-between align-items-center flex-wrap gap-2">
-            <strong>Temperatura del procesador</strong>
-            <div class="d-flex gap-3 small text-muted">
-                <span><span style="display:inline-block;width:14px;height:2px;background:#3387EF;vertical-align:middle"></span> Promedio</span>
-                <span><span style="display:inline-block;width:14px;height:2px;background:#C77F0A;vertical-align:middle"></span> Máxima</span>
-            </div>
-        </div>
-        <div class="p-3">
-            {{ g.grafico(serie, 'temp_prom', 'temp_max', '#3387EF', '#C77F0A', '°C', temp_umbral) }}
+        <div class="spui-tel-espera" data-tel-vivo-espera>
+            <div class="spinner-border" role="status" data-tel-vivo-spinner></div>
+            <span data-tel-vivo-espera-texto>Esperando los datos del reproductor…</span>
         </div>
     </div>
-
-    {# ── RAM ── #}
-    <div class="unraf-card mb-4">
-        <div class="p-3 border-bottom">
-            <strong>Uso de memoria RAM (promedio por hora, %)</strong>
-        </div>
-        <div class="p-3">
-            {{ g.grafico(serie, 'ram_prom', null, '#3387EF', null, '%', null) }}
-        </div>
-    </div>
-
-    {# ── Tabla: la misma información sin depender del color ni de la forma ── #}
-    <div class="unraf-card">
-        <div class="p-3 border-bottom d-flex justify-content-between align-items-center">
-            <strong>Detalle por hora</strong>
-            <small class="text-muted">{{ texto.plural(resumen.lecturas, 'lectura', 'lecturas') }} en el período</small>
-        </div>
-        <div class="unraf-table-responsive" style="max-height:22rem;overflow-y:auto">
-            <table class="unraf-table unraf-table-striped w-100 spui-tabla-cards">
-                <thead>
-                    <tr>
-                        <th class="p-2">Hora</th>
-                        <th class="p-2">Temp. prom.</th>
-                        <th class="p-2">Temp. máx.</th>
-                        <th class="p-2">RAM prom.</th>
-                        <th class="p-2">Disco mín.</th>
-                        <th class="p-2">Lecturas</th>
-                    </tr>
-                </thead>
-                <tbody>
-                {% for p in serie|reverse %}
-                    <tr>
-                        <td class="p-2" data-label="Hora">{{ p.periodo }}</td>
-                        <td class="p-2" data-label="Temp. prom.">{{ p.temp_prom }}°C</td>
-                        <td class="p-2" data-label="Temp. máx.">
-                            <span class="{{ p.temp_max >= temp_umbral ? 'text-danger fw-bold' : '' }}">{{ p.temp_max }}°C</span>
-                        </td>
-                        <td class="p-2" data-label="RAM prom.">{{ p.ram_prom }}%</td>
-                        <td class="p-2" data-label="Disco mín.">{{ (p.disco_min / 1024)|number_format(1) }} GB</td>
-                        <td class="p-2" data-label="Lecturas">{{ p.lecturas }}</td>
-                    </tr>
-                {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </div>
-
+</div>
 {% endif %}
 
-</div>{# /telemetria-zona #}
+{# ── Histórico ── #}
+<div class="d-flex justify-content-between align-items-center gap-2 mb-3 flex-wrap">
+    <div>
+        <h2 class="h5 mb-0" style="color:var(--unraf-azul)">Histórico por hora</h2>
+        <small class="text-muted">Arrastrá un gráfico para moverte en el tiempo y usá la rueda del mouse para acercar o alejar.</small>
+    </div>
+    <div class="d-flex gap-2 flex-wrap" role="group" aria-label="Período">
+        {% for r in rangos %}
+            <button type="button" data-tel-rango="{{ r }}"
+                    class="unraf-btn unraf-btn-sm {{ rango == r ? 'unraf-btn-institucion' : 'unraf-btn-light' }}"
+                    aria-pressed="{{ rango == r ? 'true' : 'false' }}">
+                {{ r == '24h' ? 'Últimas 24 h' : (r == '7d' ? 'Últimos 7 días' : 'Últimos 30 días') }}
+            </button>
+        {% endfor %}
+    </div>
+</div>
+
+<div class="unraf-card p-5 text-center text-muted mb-4" data-tel-vacio hidden>
+    <p class="mb-1">Este reproductor no envió telemetría en los últimos 60 días.</p>
+    <small>Cada reproductor manda sus datos una vez por minuto mientras está encendido y conectado.</small>
+</div>
+
+<div data-tel-graficos>
+    <div class="unraf-card mb-4">
+        <div class="p-3 border-bottom d-flex justify-content-between align-items-center gap-2">
+            <strong>Temperatura del procesador (°C)</strong>
+            {{ t.herramientas('historico') }}
+        </div>
+        <div class="p-2 p-md-3"><div class="spui-tel-lienzo spui-tel-lienzo-alto" data-tel-chart="temp"></div></div>
+    </div>
+    <div class="row g-3 mb-4">
+        <div class="col-12 col-lg-6">
+            <div class="unraf-card h-100">
+                <div class="p-3 border-bottom d-flex justify-content-between align-items-center gap-2">
+                    <strong>Uso del procesador (%)</strong>
+                    {{ t.herramientas('historico') }}
+                </div>
+                <div class="p-2 p-md-3"><div class="spui-tel-lienzo" data-tel-chart="cpu"></div></div>
+            </div>
+        </div>
+        <div class="col-12 col-lg-6">
+            <div class="unraf-card h-100">
+                <div class="p-3 border-bottom d-flex justify-content-between align-items-center gap-2">
+                    <strong>Memoria RAM en uso (%)</strong>
+                    {{ t.herramientas('historico') }}
+                </div>
+                <div class="p-2 p-md-3"><div class="spui-tel-lienzo" data-tel-chart="ram"></div></div>
+            </div>
+        </div>
+        <div class="col-12">
+            <div class="unraf-card h-100">
+                <div class="p-3 border-bottom d-flex justify-content-between align-items-center gap-2">
+                    <strong>{{ reproductor.discoTotalMb ? 'Disco en uso (GB, máximo de cada hora)' : 'Espacio libre en disco (GB, mínimo de cada hora)' }}</strong>
+                    {{ t.herramientas('historico') }}
+                </div>
+                <div class="p-2 p-md-3"><div class="spui-tel-lienzo" data-tel-chart="disco"></div></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script type="application/json" data-tel-datos>{{ datos|json_encode|raw }}</script>
+</div>{# /spui-telemetria #}
+{% endblock %}
+
+{% block javascripts %}
+    <script src="{{ asset('spui/vendor/echarts/echarts.min.js') }}"></script>
+    <script src="{{ asset('spui/js/core/graficos-tiempo.js') }}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mqtt@5.10.1/dist/mqtt.min.js"></script>
+    <script src="{{ asset('spui/js/reproductores/telemetria.js') }}"></script>
 {% endblock %}

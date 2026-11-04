@@ -79,12 +79,16 @@ class TelemetriaController extends AbstractController
         $ram     = (float) $body['uso_ram_porcentaje'];
         $disco   = (int) $body['espacio_disco_libre_mb'];
         $latencia = isset($body['latencia_red_ms']) ? (int) $body['latencia_red_ms'] : null;
+        // Uso de CPU (03/11/2026): opcional, una Pi sin actualizar no lo manda.
+        $cpu      = isset($body['uso_cpu_porcentaje']) && is_numeric($body['uso_cpu_porcentaje']) ? (float) $body['uso_cpu_porcentaje'] : null;
 
         $error = match (true) {
             $temp < self::TEMP_MIN_C || $temp > self::TEMP_MAX_C
                 => sprintf('temperatura_soc_celsius fuera de rango (%.1f a %.1f).', self::TEMP_MIN_C, self::TEMP_MAX_C),
             $ram < self::RAM_MIN_PCT || $ram > self::RAM_MAX_PCT
                 => 'uso_ram_porcentaje debe estar entre 0 y 100.',
+            $cpu !== null && ($cpu < 0 || $cpu > 100)
+                => 'uso_cpu_porcentaje debe estar entre 0 y 100.',
             $disco < 0 || $disco > self::DISCO_MAX_MB
                 => 'espacio_disco_libre_mb fuera de rango.',
             $latencia !== null && ($latencia < 0 || $latencia > self::LATENCIA_MAX_MS)
@@ -99,8 +103,13 @@ class TelemetriaController extends AbstractController
         $telemetria->setReproductor($reproductor);
         $telemetria->setTemperaturaSocCelsius($temp);
         $telemetria->setUsoRamPorcentaje($ram);
+        $telemetria->setUsoCpuPorcentaje($cpu);
         $telemetria->setLatenciaRedMs($latencia);
         $telemetria->setEspacioDiscoLibreMb($disco);
+        $total = isset($body['espacio_disco_total_mb']) ? (int) $body['espacio_disco_total_mb'] : 0;
+        if ($total > 0 && $total <= self::DISCO_MAX_MB) {
+            $reproductor->setDiscoTotalMb($total);
+        }
 
         $em = $this->doctrine->getManager('SPUI');
         $em->persist($telemetria);

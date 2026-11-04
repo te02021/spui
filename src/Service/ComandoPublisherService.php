@@ -67,6 +67,20 @@ final class ComandoPublisherService
         return $enviados;
     }
 
+    /**
+     * Pide a un reproductor que publique temperatura y RAM cada 1 s durante
+     * $segundos, en spui/telemetria/vivo/{id} (no se guarda: va directo al
+     * navegador). La página de telemetría lo renueva mientras está abierta;
+     * si deja de renovarlo, la Pi vuelve sola a publicar cada minuto.
+     */
+    public function pedirTelemetriaVivo(Reproductor $reproductor, int $segundos): bool
+    {
+        return $this->publicarMqtt(
+            self::MQTT_TOPIC_REPRODUCTOR . $reproductor->getId(),
+            ['accion' => 'telemetria_vivo', 'segundos' => $segundos],
+        );
+    }
+
     // -------------------------------------------------------------------------
 
     private function conexion(): ConnectionSettings
@@ -90,7 +104,7 @@ final class ComandoPublisherService
             $client->publish($topic, json_encode($payload), MqttClient::QOS_AT_MOST_ONCE, false);
             $client->disconnect();
 
-            $this->logger->info('MQTT comando publicado.', ['topic' => $topic, 'motivo' => $payload['motivo']]);
+            $this->logger->info('MQTT comando publicado.', ['topic' => $topic, 'motivo' => $payload['motivo'] ?? $payload['accion']]);
             return true;
         } catch (\Throwable $e) {
             // No bloquear la operación del CMS si el broker no está disponible.

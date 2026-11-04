@@ -1,0 +1,157 @@
+{# Importar cronograma, paso 2: qué se leyó y a dónde va (noviembre 2026).
+   Nada se guarda hasta Guardar. core/importar-cronograma.js muestra el
+   título o los avisos según el destino elegido (data-spui-si-destino).
+
+   Variables: token, plan (ImportadorCronogramaService::interpretar),
+   archivo, elegido, err, destinos, edificios. #}
+{% set err = err|default({}) %}
+<form method="post" action="{{ path('spui_cms_contenidos_importar_guardar') }}" data-spui-ajax="1" novalidate class="spui-importar">
+    <input type="hidden" name="_token" value="{{ csrf_token('spui_action') }}">
+    <input type="hidden" name="token" value="{{ token }}">
+
+    {% if err.general is defined %}<div class="alert alert-danger mb-3">{{ err.general }}</div>{% endif %}
+
+    <p class="spui-importar-archivo">
+        <img src="{{ asset('unraf-ui/icons/file-arrow-up.svg') }}" alt="">
+        <span><strong>{{ archivo }}</strong> · {{ plan.hojas|length }} {{ plan.hojas|length == 1 ? 'hoja' : 'hojas' }} de horarios{{ plan.eventos ? ' y eventos especiales' }}</span>
+    </p>
+    <p class="text-muted small mb-3">Revisá a dónde va cada hoja. No se guarda nada hasta que toques Guardar.</p>
+
+    <div class="row g-2 mb-3">
+        <div class="col-6 col-md-4" data-spui-campo>
+            <label class="unraf-form-label" for="imp_desde">Vigente desde</label>
+            <input type="date" id="imp_desde" name="vigencia_desde" value="{{ elegido.desde }}"
+                   class="unraf-form-control{{ err.vigencia_desde is defined ? ' is-invalid' }}">
+            {% if err.vigencia_desde is defined %}<p class="spui-campo-error">{{ err.vigencia_desde }}</p>{% endif %}
+        </div>
+        <div class="col-6 col-md-4" data-spui-campo>
+            <label class="unraf-form-label" for="imp_hasta">Hasta</label>
+            <input type="date" id="imp_hasta" name="vigencia_hasta" value="{{ elegido.hasta }}"
+                   class="unraf-form-control{{ err.vigencia_hasta is defined ? ' is-invalid' }}"
+                   data-spui-validar-posterior="#imp_desde" data-spui-permitir-igual
+                   data-spui-validar-mensaje="{{ constant('SPUI\\Service\\PresentacionContenidoService::MSG_VIGENCIA') }}">
+            {% if err.vigencia_hasta is defined %}<p class="spui-campo-error">{{ err.vigencia_hasta }}</p>{% endif %}
+        </div>
+        <div class="col-12 col-md-4 d-flex align-items-end">
+            <small class="text-muted">El cuatrimestre: fuera de esas fechas el cronograma no se muestra. Vacío, rige siempre.</small>
+        </div>
+    </div>
+
+    {% for h in plan.hojas %}
+        {% set i = loop.index0 %}
+        {% set op = elegido.hojas[h.nombre] %}
+        <section class="spui-importar-hoja" data-spui-importar-hoja>
+            <header class="spui-importar-hoja-cab">
+                <h3>{{ h.nombre }}</h3>
+                <span class="spui-importar-cuenta">{{ h.items|length }} {{ h.items|length == 1 ? 'actividad' : 'actividades' }}</span>
+                <span class="spui-importar-dias">
+                    {% for dia, n in h.por_dia %}<span class="spui-chip">{{ dia }} {{ n }}</span>{% endfor %}
+                </span>
+            </header>
+
+            <div class="row g-2">
+                <div class="col-12 col-md-5" data-spui-campo>
+                    <label class="unraf-form-label" for="imp_destino_{{ i }}">Va a</label>
+                    <select id="imp_destino_{{ i }}" name="hojas[{{ i }}][destino]" data-spui-destino
+                            class="unraf-form-select{{ err['hojas[' ~ i ~ '][destino]'] is defined ? ' is-invalid' }}">
+                        <option value="nuevo" {{ op.destino == 'nuevo' ? 'selected' }}>Un cronograma nuevo</option>
+                        {% if destinos %}
+                            <optgroup label="Reemplazar las clases de">
+                                {% for d in destinos %}
+                                    <option value="{{ d.contenido.id }}" {{ op.destino == d.contenido.id ~ '' ? 'selected' }}>{{ d.contenido.titulo }}</option>
+                                {% endfor %}
+                            </optgroup>
+                        {% endif %}
+                        <option value="omitir" {{ op.destino == 'omitir' ? 'selected' }}>No importar esta hoja</option>
+                    </select>
+                    {% if err['hojas[' ~ i ~ '][destino]'] is defined %}<p class="spui-campo-error">{{ err['hojas[' ~ i ~ '][destino]'] }}</p>{% endif %}
+                </div>
+                <div class="col-12 col-md-4" data-spui-campo data-spui-si-destino="nuevo" {{ op.destino != 'nuevo' ? 'hidden' }}>
+                    <label class="unraf-form-label" for="imp_titulo_{{ i }}">Título</label>
+                    <input type="text" id="imp_titulo_{{ i }}" name="hojas[{{ i }}][titulo]" maxlength="200"
+                           value="{{ op.titulo ?: 'Cronograma ' ~ h.nombre }}"
+                           class="unraf-form-control{{ err['hojas[' ~ i ~ '][titulo]'] is defined ? ' is-invalid' }}">
+                    {% if err['hojas[' ~ i ~ '][titulo]'] is defined %}<p class="spui-campo-error">{{ err['hojas[' ~ i ~ '][titulo]'] }}</p>{% endif %}
+                </div>
+                <div class="col-12 col-md-3" data-spui-si-destino-no="omitir" {{ op.destino == 'omitir' ? 'hidden' }}>
+                    <label class="unraf-form-label" for="imp_edificio_{{ i }}">Edificio</label>
+                    <select id="imp_edificio_{{ i }}" name="hojas[{{ i }}][edificio]" class="unraf-form-select">
+                        <option value="">— ninguno —</option>
+                        {% for e in edificios %}
+                            <option value="{{ e.id }}" {{ op.edificio == e.id ~ '' ? 'selected' }}>{{ e.nombre }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            {# Qué pasa con el cronograma que se reemplaza. #}
+            {% for d in destinos %}
+                <div class="spui-importar-aviso" data-spui-si-destino="{{ d.contenido.id }}" {{ op.destino != d.contenido.id ~ '' ? 'hidden' }}>
+                    Se reemplazan sus {{ d.items }} {{ d.items == 1 ? 'actividad' : 'actividades' }} actuales{% if d.eventos %}, incluidos {{ d.eventos }} {{ d.eventos == 1 ? 'evento especial' : 'eventos especiales' }}{% endif %}.
+                    {% if d.caidos %}
+                        <br>Lo muestran pantallas desconectadas ({{ d.caidos|join(', ') }}): lo van a recibir cuando se reconecten.
+                    {% endif %}
+                </div>
+            {% endfor %}
+
+            {% if h.correcciones %}
+                <details class="spui-importar-detalle">
+                    <summary>Se corrigió solo · {{ h.correcciones|length }}</summary>
+                    <ul>{% for c in h.correcciones %}<li><span>Fila {{ c.fila }}</span> {{ c.texto }}</li>{% endfor %}</ul>
+                </details>
+            {% endif %}
+            {% if h.errores %}
+                <details class="spui-importar-detalle is-error" open>
+                    <summary>No se pudo leer · {{ h.errores|length }}</summary>
+                    <ul>{% for e in h.errores %}<li><span>Fila {{ e.fila }}</span> {{ e.texto }}</li>{% endfor %}</ul>
+                </details>
+            {% endif %}
+        </section>
+    {% endfor %}
+
+    {% if plan.eventos %}
+        <section class="spui-importar-hoja">
+            <header class="spui-importar-hoja-cab">
+                <h3>{{ plan.eventos.nombre }}</h3>
+                <span class="text-muted small">Cada grupo se suma, ese día, al cronograma de la hoja que elijas.</span>
+            </header>
+            {% for g in plan.eventos.grupos %}
+                {% set j = loop.index0 %}
+                {% set destino = elegido.eventos[g.edificio] ?? '' %}
+                <div class="spui-importar-evento">
+                    <label class="spui-importar-evento-nombre" for="imp_eventos_{{ j }}">
+                        <strong>{{ g.edificio }}</strong>
+                        <span>{{ g.items|length }} por venir{% if g.pasados %} · {{ g.pasados }} ya {{ g.pasados == 1 ? 'pasó y no se importa' : 'pasaron y no se importan' }}{% endif %}</span>
+                    </label>
+                    <select id="imp_eventos_{{ j }}" name="eventos[{{ j }}]" class="unraf-form-select" {{ not g.items ? 'disabled' }}>
+                        <option value="">— no importar —</option>
+                        {% for h in plan.hojas %}
+                            <option value="{{ loop.index0 }}" {{ destino == h.nombre ? 'selected' }}>Con {{ h.nombre }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            {% endfor %}
+            {% if plan.eventos.correcciones %}
+                <details class="spui-importar-detalle">
+                    <summary>Se corrigió solo · {{ plan.eventos.correcciones|length }}</summary>
+                    <ul>{% for c in plan.eventos.correcciones %}<li><span>Fila {{ c.fila }}</span> {{ c.texto }}</li>{% endfor %}</ul>
+                </details>
+            {% endif %}
+            {% if plan.eventos.errores %}
+                <details class="spui-importar-detalle is-error" open>
+                    <summary>No se pudo leer · {{ plan.eventos.errores|length }}</summary>
+                    <ul>{% for e in plan.eventos.errores %}<li><span>Fila {{ e.fila }}</span> {{ e.texto }}</li>{% endfor %}</ul>
+                </details>
+            {% endif %}
+        </section>
+    {% endif %}
+
+    {% if plan.ignoradas %}
+        <p class="text-muted small">No se importan (no tienen los títulos de una hoja de horarios): {{ plan.ignoradas|join(', ') }}.</p>
+    {% endif %}
+
+    <div class="d-flex justify-content-end gap-2 pt-3 border-top">
+        <button type="button" class="unraf-btn spui-btn-back" data-spui-close>Cancelar</button>
+        <button type="submit" class="unraf-btn spui-btn-crear">Guardar</button>
+    </div>
+</form>

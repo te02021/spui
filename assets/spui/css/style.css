@@ -105,7 +105,10 @@ textarea.is-invalid,
 }
 
 /* ----- Badges de estado de contenido ----- */
-.spui-badge-publicado {
+/* "disponible" es el estado de un contenido (EstadoContenido); "publicado"
+   quedó como el verde genérico que usan Activa/Activo en otros listados. */
+.spui-badge-publicado,
+.spui-badge-disponible {
     background-color: var(--unraf-success, #4A9930);
     color: #fff;
     font-size: .75rem;
@@ -136,18 +139,6 @@ textarea.is-invalid,
 /* Las variantes .spui-btn-confirm-success / -warning se reemplazaron por el
    sistema de acciones (más abajo): el botón del modal ahora toma la clase de
    la acción que lo abrió, así que no hacen falta variantes propias. */
-
-/* ----- Banner de alerta activa ----- */
-.spui-alerta-activa-banner {
-    background: linear-gradient(135deg, var(--unraf-error, #FF223D), #b02a37);
-    color: #fff;
-    padding: .6rem 1.5rem;
-    font-weight: 600;
-    display: flex;
-    align-items: center;
-    gap: .5rem;
-    flex-wrap: wrap;
-}
 
 /* ----- Flash container ----- */
 .flash-container {
@@ -385,48 +376,204 @@ textarea.is-invalid,
 .spui-aviso-problemas ul { margin: .35rem 0 0; padding-left: 1.1rem; }
 .spui-aviso-problemas li + li { margin-top: .25rem; }
 
-/* Columna Mensaje del listado de alertas: se acota para que un mensaje largo
-   no empuje al resto de las columnas. El texto completo está en el title y en
-   el modal Ver. */
-.spui-col-mensaje {
-    max-width: 22rem;
-    min-width: 10rem;
+/* ============================================================================
+   Listados en tarjetas — todas las secciones del CMS (30/10/2026)
+   ----------------------------------------------------------------------------
+   Nació en Alertas y se generalizó. Cada registro es una tarjeta con:
+     · franja izquierda por estado (is-ok verde, is-grave rojo, is-aviso ámbar,
+       is-neutro gris, is-apagado gris y atenuado);
+     · cabecera: etiqueta de estado + título;
+     · detalle de hasta dos renglones (el completo, en Ver);
+     · chips con los datos (algunos son botones con desplegable, .spui-desp);
+     · acciones a la derecha, abajo en celular.
+   Las acciones de una tarjeta apagada van a color pleno: si se atenuaran
+   parecerían deshabilitadas.
+   ========================================================================== */
+.spui-lista { display: flex; flex-direction: column; gap: .75rem; }
+.spui-lista > .unraf-card { margin-bottom: 0; }
+.spui-item {
+    display: flex; align-items: center; gap: .5rem 1rem; flex-wrap: wrap;
+    padding: .9rem 1.25rem; border-left: 4px solid #adb5bd;
+    /* Los desplegables de los chips salen de la tarjeta: unraf-card los cortaría. */
+    overflow: visible; position: relative;
+}
+.spui-item.is-ok { border-left-color: #4A9930; }
+.spui-item.is-grave { border-left-color: #FF223D; background: #fff7f8; border-color: #ffd3da; border-left-color: #FF223D; }
+.spui-item.is-aviso { border-left-color: #C77F0A; }
+.spui-item.is-apagado { border-left-color: #ced4da; }
+/* Inactiva: sólo la franja y la etiqueta en gris. Nada atenuado: un gris
+   parejo se lee como "deshabilitado", y además un opacity < 1 dejaba los
+   desplegables de la tarjeta detrás de la siguiente. */
+.spui-item-cuerpo { flex: 1 1 18rem; min-width: 0; }
+.spui-item-cab { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
+.spui-item-titulo { font-weight: 700; font-size: 1.05rem; color: #2b3a4a; overflow-wrap: anywhere; margin: 0; font-family: var(--unraf-font-texto); }
+.spui-item-detalle {
+    margin: .25rem 0 .5rem; color: #5b6b7f; font-size: .88rem; overflow-wrap: anywhere;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.spui-item-detalle:empty { display: none; }
+.spui-item-cab + .spui-chips { margin-top: .5rem; }
+/* Se puede achicar: si no entran al lado de los datos, flex-wrap las reparte
+   en más renglones en vez de desbordar la tarjeta (pasaba entre 769 y 800 px,
+   con el sidebar abierto). Cuando bajan debajo de los datos se centran:
+   lista-acciones.js marca la tarjeta con .is-apilada. */
+.spui-item-acciones { flex: 0 1 auto; max-width: 100%; justify-content: flex-end; }
+.spui-item.is-apilada .spui-item-acciones { flex-basis: 100%; justify-content: center; }
+/* Con un desplegable abierto, la tarjeta se pinta sobre las siguientes. */
+.spui-item:has([data-spui-desp][aria-expanded="true"]) { z-index: 20; }
+
+/* Menú ⋮ de acciones de cada tarjeta (03/11/2026): Ver queda a la vista y el
+   resto va acá, como una lista. Son los mismos botones de siempre: se les
+   saca el relleno de color y quedan como filas. */
+.spui-menu-acciones { position: relative; display: inline-flex; }
+.spui-btn-menu.unraf-btn { background: #fff; border: 1px solid #cfd8e0; color: #2b3a4a; }
+.spui-btn-menu.unraf-btn:hover, .spui-btn-menu[aria-expanded="true"] { background: #eef4fa; border-color: #9fb6cc; color: #2b3a4a; }
+/* Tan ancho como su opción más larga, no un ancho fijo con espacio de sobra. */
+.spui-desp-panel.spui-menu-panel { left: auto; right: 0; min-width: 0; width: max-content; padding: .3rem; }
+.spui-menu-panel .unraf-btn.unraf-btn {
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-start; gap: .15rem .65rem; width: 100%; margin: 0;
+    padding: .55rem .65rem; border: 0; border-radius: 6px; box-shadow: none;
+    background: none; color: #2b3a4a; font-size: .88rem; font-weight: 600; text-align: left;
+    white-space: normal; text-decoration: none;
+}
+.spui-menu-panel .unraf-btn.unraf-btn:hover, .spui-menu-panel .unraf-btn.unraf-btn:focus-visible { background: #f1f5f9; color: #2b3a4a; }
+.spui-menu-panel .unraf-btn .spui-action-icon { filter: none; opacity: .75; }
+/* Eliminar, al final, separado y en rojo. */
+.spui-menu-panel .spui-btn-eliminar.unraf-btn { color: #b3142a; border-top: 1px solid #f0f2f5; border-radius: 0 0 6px 6px; margin-top: .2rem; }
+.spui-menu-panel .spui-btn-eliminar.unraf-btn:hover { background: #fdf0f2; color: #b3142a; }
+.spui-menu-panel .spui-btn-eliminar .spui-action-icon {
+    filter: invert(14%) sepia(83%) saturate(5000%) hue-rotate(345deg) brightness(85%); opacity: 1;
+}
+/* Una acción bloqueada (reproductor desconectado) se ve y dice por qué. */
+.spui-menu-panel .spui-accion-bloqueada.unraf-btn { opacity: .7; }
+.spui-menu-panel .spui-accion-bloqueada[data-spui-bloqueado]::after {
+    content: attr(data-spui-bloqueado); flex-basis: 100%; padding-left: 1.65rem;
+    font-size: .76rem; font-weight: 400; color: #6c757d;
 }
 @media (max-width: 768px) {
-    /* Como tarjeta ya no hay columnas que empujar. */
-    .spui-col-mensaje { max-width: none; min-width: 0; }
+    .spui-item { padding: .85rem 1rem; }
 }
 
-/* Filas del listado de alertas: se distingue el estado con el borde izquierdo,
-   igual que hacían las tarjetas viejas, pero ahora sobre la tabla estándar
-   (que en mobile se convierte sola en tarjetas). */
-.spui-tabla-cards tr.spui-alerta-fila-activa > td:first-child {
-    box-shadow: inset 4px 0 0 0 var(--unraf-error, #FF223D);
+.spui-etiqueta {
+    display: inline-flex; align-items: center; gap: .35rem; flex-shrink: 0;
+    font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
+    padding: .18rem .55rem; border-radius: 1rem; background: #f1f3f5; color: #6c757d;
 }
-.spui-tabla-cards tr.spui-alerta-fila-expirada > td:first-child {
-    box-shadow: inset 4px 0 0 0 #6c757d;
+.spui-etiqueta.is-ok { background: #eaf5e5; color: #2f6d1c; }
+.spui-etiqueta.is-aviso { background: #fff4de; color: #8a5806; }
+.spui-etiqueta.is-grave { background: #FF223D; color: #fff; }
+.spui-etiqueta-latido {
+    width: .45rem; height: .45rem; border-radius: 50%; background: currentColor;
+    animation: spui-etiqueta-latido 1.4s ease-out infinite;
 }
-.spui-tabla-cards tr.spui-alerta-fila-activa {
-    background-color: rgba(255, 34, 61, .05);
+@keyframes spui-etiqueta-latido {
+    0% { box-shadow: 0 0 0 0 rgba(255, 255, 255, .8); }
+    100% { box-shadow: 0 0 0 .45rem rgba(255, 255, 255, 0); }
 }
-/* La fila expirada se atenúa para que se lea como "ya pasó", pero las acciones
-   que siguen disponibles (Ver, Eliminar) van a color pleno: si se apagaran
-   junto con el resto parecerían deshabilitadas, que es justo lo contrario. */
-.spui-tabla-cards tr.spui-alerta-fila-expirada > td:not(:last-child) { opacity: .75; }
-.spui-tabla-cards tr.spui-alerta-fila-expirada .spui-acciones { opacity: 1; }
+@media (prefers-reduced-motion: reduce) { .spui-etiqueta-latido { animation: none; } }
 
-@media (max-width: 768px) {
-    /* Como tarjeta, el indicador va en el borde de toda la fila. */
-    .spui-tabla-cards tr.spui-alerta-fila-activa > td:first-child,
-    .spui-tabla-cards tr.spui-alerta-fila-expirada > td:first-child {
-        box-shadow: none;
-    }
-    .spui-tabla-cards tr.spui-alerta-fila-activa {
-        border-left: 4px solid var(--unraf-error, #FF223D);
-    }
-    .spui-tabla-cards tr.spui-alerta-fila-expirada {
-        border-left: 4px solid #6c757d;
-    }
+.spui-chips { display: flex; flex-wrap: wrap; gap: .35rem; align-items: center; }
+.spui-chip {
+    display: inline-flex; align-items: center; gap: .3rem; max-width: 100%;
+    font-size: .78rem; color: #4a5a6b; background: #f4f6f8; border-radius: 6px; padding: .18rem .55rem;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border: 1px solid transparent;
+}
+.spui-chip img { width: .85rem; height: .85rem; opacity: .65; flex-shrink: 0; }
+.spui-chip.is-ok { background: #eaf5e5; color: #2f6d1c; }
+.spui-chip.is-grave { background: #fff1f3; color: #b3142a; }
+.spui-chip.is-aviso { background: #fff4de; color: #8a5806; }
+code.spui-chip { font-family: var(--bs-font-monospace, monospace); }
+
+/* Chip que abre un desplegable (core/desplegable.js). */
+.spui-desp { position: relative; display: inline-flex; max-width: 100%; }
+.spui-chip-btn { cursor: pointer; border-color: #dfe5eb; background: #fff; font-family: inherit; }
+.spui-chip-btn::after { content: '▾'; font-size: .7rem; opacity: .6; margin-left: .1rem; }
+.spui-chip-btn:hover { border-color: #9fb6cc; background: #f4f7fa; }
+.spui-chip-btn[aria-expanded="true"] { border-color: var(--unraf-azul); background: #eef4fa; color: #2b3a4a; }
+.spui-chip-btn:focus-visible { outline: 3px solid rgba(51, 135, 239, .4); outline-offset: 1px; }
+.spui-desp-panel {
+    display: none; position: absolute; top: calc(100% + .35rem); left: 0; z-index: 1030;
+    min-width: 14rem; width: max-content; max-width: min(22rem, calc(100vw - 32px)); max-height: 18rem; overflow-y: auto;
+    background: #fff; border: 1px solid #e0e4e8; border-radius: 10px; box-shadow: 0 12px 30px rgba(20, 30, 45, .16);
+    padding: .35rem; text-align: left; white-space: normal;
+}
+[data-spui-desp][aria-expanded="true"] + .spui-desp-panel { display: block; animation: spui-dash-desplegar .15s ease-out; }
+.spui-desp-titulo { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: #6c757d; padding: .35rem .5rem .25rem; margin: 0; }
+.spui-desp-lista { list-style: none; margin: 0; padding: 0; }
+.spui-desp-lista > li { padding: .4rem .5rem; border-radius: 6px; font-size: .85rem; color: #2b3a4a; overflow-wrap: anywhere; }
+.spui-desp-lista > li + li { border-top: 1px solid #f1f3f5; }
+.spui-desp-lista small { display: block; color: #6c757d; font-size: .76rem; }
+.spui-desp-lista .spui-desp-accion {
+    display: flex; flex-direction: column; width: 100%; text-align: left; background: none; border: 0; padding: 0;
+    color: inherit; font: inherit; cursor: pointer;
+}
+.spui-desp-lista > li:has(.spui-desp-accion):hover { background: #f4f7fa; }
+.spui-desp-accion strong::after { content: ' →'; color: var(--unraf-azul); font-weight: 400; }
+
+/* Botón-ícono de una tarjeta (p. ej. el diagnóstico de un reproductor). */
+.spui-item-icono {
+    width: 34px; height: 34px; border-radius: 8px; flex-shrink: 0; cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: #fff8eb; border: 1px solid #f0d49c; padding: 0;
+}
+.spui-item-icono img { width: 1.05rem; height: 1.05rem; }
+.spui-item-icono.is-ok { background: #f1f8ee; border-color: #cfe5c6; }
+.spui-item-icono::after { content: none; }
+.spui-item-icono { position: relative; }
+.spui-item-icono-cuenta {
+    position: absolute; top: -6px; right: -6px; min-width: 1.1rem; height: 1.1rem; padding: 0 .25rem;
+    border-radius: 1rem; background: #C77F0A; color: #fff; font-size: .65rem; font-weight: 700;
+    display: inline-flex; align-items: center; justify-content: center;
+}
+.spui-chip small { font-size: inherit; }
+.spui-chip small.is-stale { color: #b3142a; font-weight: 600; }
+
+/* Paginación (_partials/paginacion.html.twig) */
+.spui-paginacion { display: flex; justify-content: space-between; align-items: center; gap: .75rem; flex-wrap: wrap; margin-top: 1rem; }
+.spui-paginacion-resumen { color: #6c757d; font-size: .85rem; }
+.spui-paginacion-lista { display: flex; gap: .3rem; list-style: none; margin: 0; padding: 0; flex-wrap: wrap; }
+.spui-paginacion-btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: .25rem;
+    min-width: 34px; height: 34px; padding: 0 .6rem; border-radius: 8px;
+    border: 1px solid #dfe5eb; background: #fff; color: var(--unraf-azul);
+    font-weight: 600; font-size: .85rem; text-decoration: none;
+}
+a.spui-paginacion-btn:hover { background: #eef4fa; border-color: #9fb6cc; color: var(--unraf-azul); }
+.spui-paginacion-btn.is-actual { background: var(--unraf-azul); border-color: var(--unraf-azul); color: #fff; }
+.spui-paginacion-btn.is-off { color: #adb5bd; background: #f8f9fa; }
+.spui-paginacion-btn.is-hueco { border-color: transparent; background: none; color: #6c757d; min-width: 1.2rem; padding: 0; }
+@media (max-width: 575.98px) {
+    .spui-paginacion { justify-content: center; }
+    .spui-paginacion-txt { display: none; }
+}
+
+/* Vista previa de la alerta tal como la dibuja el reproductor
+   (pi-client/spui/player.py, _generar_imagen_alerta, lienzo de 1920x1080):
+   banda oscura de 170 px con el título, el adjunto estirado debajo, el
+   mensaje centrado y el pie institucional. Las medidas van en cqw para
+   escalar en proporción al ancho, igual que la imagen real. */
+.spui-alerta-pantalla {
+    container-type: inline-size; position: relative; aspect-ratio: 16 / 9; width: 100%;
+    background: #FF223D; color: #fff; border-radius: 6px; overflow: hidden;
+    box-shadow: 0 0 0 6px #1d232a, 0 8px 20px rgba(0, 0, 0, .25);
+    font-family: 'DejaVu Sans', 'Verdana', sans-serif; font-weight: 700; text-align: center;
+}
+.spui-alerta-pantalla-banda {
+    position: absolute; inset: 0 0 auto 0; height: 15.74%; background: #9C1425;
+    display: flex; align-items: center; justify-content: center; padding: 0 4cqw;
+    font-size: 3.02cqw; line-height: 1.25; overflow: hidden;
+}
+.spui-alerta-pantalla-region {
+    position: absolute; left: 0; right: 0; top: 15.74%; bottom: 8.33%;
+    display: flex; align-items: center; justify-content: center; padding: 0 4cqw;
+}
+.spui-alerta-pantalla-region > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: fill; }
+.spui-alerta-pantalla-mensaje { position: relative; line-height: 1.3; overflow-wrap: anywhere; white-space: pre-line; }
+.spui-alerta-pantalla-region.con-imagen .spui-alerta-pantalla-mensaje { background: rgba(0, 0, 0, .51); padding: 1.25cqw; }
+.spui-alerta-pantalla-pie { position: absolute; left: 0; right: 0; bottom: 2.2%; font-size: 1.46cqw; font-weight: 400; }
+.spui-alerta-pantalla-video {
+    position: absolute; top: 1.5cqw; right: 1.5cqw; font-size: 1.3cqw; font-weight: 600;
+    background: rgba(0, 0, 0, .45); padding: .3cqw .8cqw; border-radius: 3px;
 }
 
 /* Selector de pantallas destinatarias en el alta/edición de alerta.
@@ -603,74 +750,71 @@ textarea.is-invalid,
     margin: 0;
 }
 
-/* ----- Visor de media a pantalla completa (Contenido, y lo que se sume
-   después). Blur claro sobre el CMS, no un negro tapa-todo — mismo criterio
-   de "segundo nivel de modal" que .spui-abm-overlay-2 pero más claro
-   todavía, porque acá el fondo es la app entera, no otro modal. ----- */
+/* ----- Visor a pantalla completa (rediseñado el 02/11/2026,
+   core/media-viewer.js): fondo oscuro como una sala de proyección, para que
+   lo que se mira (el archivo o el TV) sea lo único que resalta. Pestañas
+   Archivo / En pantalla. Va por encima de los modales ABM. ----- */
 .spui-visor-overlay {
     display: none;
     position: fixed;
     inset: 0;
     z-index: 10020;
-    background: rgba(255, 255, 255, .55);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
+    background: rgba(14, 22, 32, .94);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
     flex-direction: column;
+    color: #fff;
 }
-.spui-visor-overlay.is-open {
-    display: flex;
-}
+.spui-visor-overlay.is-open { display: flex; }
 
 .spui-visor-header {
     flex-shrink: 0;
-    display: flex;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
     align-items: center;
-    justify-content: space-between;
     gap: 1rem;
-    padding: .75rem 1.25rem;
+    padding: .7rem 1.25rem;
+    background: rgba(255, 255, 255, .04);
+    border-bottom: 1px solid rgba(255, 255, 255, .08);
 }
+.spui-visor-titulo { display: flex; flex-direction: column; min-width: 0; }
 .spui-visor-nombre {
-    font-size: .9rem;
-    font-weight: 600;
-    color: var(--unraf-azul, #446687);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    min-width: 0;
+    font-size: .95rem; font-weight: 700; color: #fff;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-.spui-visor-herramientas {
-    display: flex;
-    align-items: center;
-    gap: .4rem;
-    flex-shrink: 0;
+.spui-visor-meta { font-size: .78rem; color: rgba(255, 255, 255, .6); }
+
+.spui-visor-pestanas {
+    display: inline-flex; padding: 3px; border-radius: 10px; background: rgba(255, 255, 255, .08);
 }
+.spui-visor-pestanas button {
+    border: 0; background: none; color: rgba(255, 255, 255, .75); font-size: .85rem; font-weight: 600;
+    padding: .35rem .95rem; border-radius: 8px; cursor: pointer; transition: background-color .15s ease, color .15s ease;
+}
+.spui-visor-pestanas button:hover { color: #fff; }
+.spui-visor-pestanas button.is-activa { background: #fff; color: #24394f; }
+.spui-visor-pestanas button:focus-visible { outline: 2px solid var(--unraf-amarillo, #FEAA20); outline-offset: 1px; }
+
+/* Columna fija: sin pestañas (sólo la vista en el TV) las herramientas no
+   tienen que correrse al centro. */
+.spui-visor-pestanas { grid-column: 2; }
+.spui-visor-herramientas { grid-column: 3; display: flex; align-items: center; justify-content: flex-end; gap: .35rem; }
+.spui-visor-zoom { display: inline-flex; align-items: center; gap: .15rem; margin-right: .35rem; }
+.spui-visor-btn {
+    display: inline-grid; place-items: center; width: 36px; height: 36px; padding: 0;
+    border: 0; border-radius: 8px; background: rgba(255, 255, 255, .08); cursor: pointer;
+    transition: background-color .15s ease;
+}
+.spui-visor-btn:hover { background: rgba(255, 255, 255, .18); }
+.spui-visor-btn:focus-visible { outline: 2px solid var(--unraf-amarillo, #FEAA20); outline-offset: 1px; }
+.spui-visor-btn img { width: 18px; height: 18px; filter: invert(1); }
+.spui-visor-cerrar { background: rgba(255, 255, 255, .14); }
+.spui-visor-cerrar:hover { background: #d6334a; }
 .spui-visor-zoom-pct {
-    font-size: .78rem;
-    color: #495057;
-    min-width: 3rem;
-    text-align: center;
-    user-select: none;
+    min-width: 3.4rem; height: 36px; border: 0; background: none; color: rgba(255, 255, 255, .85);
+    font-size: .8rem; font-weight: 600; cursor: pointer; border-radius: 8px;
 }
-/* Mismo problema de especificidad que el resto de los botones ícono de esta
-   hoja — acá también hace falta pisar el width:100% de .unraf-btn. */
-.spui-visor-header .unraf-btn-icon {
-    display: inline-grid;
-    place-items: center;
-    line-height: 1;
-    width: 32px;
-    flex-shrink: 0;
-}
-.spui-visor-header .unraf-btn-icon img {
-    display: block;
-    margin: 0;
-}
-/* El video trae su propia barra de controles nativa; el zoom del visor sólo
-   tiene sentido para imágenes. */
-.spui-visor-sin-zoom [data-spui-visor-zoom-in],
-.spui-visor-sin-zoom [data-spui-visor-zoom-out],
-.spui-visor-sin-zoom .spui-visor-zoom-pct {
-    display: none;
-}
+.spui-visor-zoom-pct:hover { background: rgba(255, 255, 255, .08); }
 
 .spui-visor-viewport {
     flex: 1 1 auto;
@@ -679,28 +823,55 @@ textarea.is-invalid,
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 1rem;
+    padding: 1.25rem;
+    position: relative;
 }
-.spui-visor-contenido {
-    margin: auto;
-}
+.spui-visor-contenido { margin: auto; }
 .spui-visor-contenido img,
 .spui-visor-contenido video {
     display: block;
-    max-width: min(92vw, 92%);
-    max-height: 78vh;
+    max-width: min(94vw, 100%);
+    max-height: calc(100vh - 8rem);
+    border-radius: 6px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, .45);
     transition: transform .05s linear;
 }
 /* OJO: max-width/max-height se dejan SIEMPRE puestos, zoomeada o no.
-   transform:scale() agranda el resultado visual sin importarle esos topes
-   (son límites de layout, no de pintado) — sacarlos acá fue el bug real: la
-   imagen volvía a su tamaño nativo completo (mucho más grande que el
-   recuadro de 100%) y RECIÉN ahí se le aplicaba el 110%, un salto brusco en
-   vez de un zoom gradual. Con el tope siempre puesto, escalar desde ahí es
-   liso: 100%→110%→120%… crecen del mismo punto de partida cada vez. */
-.spui-visor-contenido img.is-zoomed,
-.spui-visor-contenido video.is-zoomed {
-    cursor: grab;
+   transform:scale() agranda el resultado visual sin importarle esos topes:
+   sacarlos hacía que la imagen volviera a su tamaño nativo y recién ahí se
+   escalara (un salto en vez de un zoom gradual). */
+.spui-visor-contenido img.is-zoomed { cursor: grab; }
+/* Fondo a cuadros: se ve si la imagen tiene partes transparentes. */
+.spui-visor-cuadros {
+    background-color: #fff;
+    background-image:
+        linear-gradient(45deg, #e3e7ec 25%, transparent 25%), linear-gradient(-45deg, #e3e7ec 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #e3e7ec 75%), linear-gradient(-45deg, transparent 75%, #e3e7ec 75%);
+    background-size: 20px 20px;
+    background-position: 0 0, 0 10px, 10px -10px, -10px 0;
+}
+
+.spui-visor-estado {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: .6rem;
+    color: rgba(255, 255, 255, .75); font-size: .95rem; pointer-events: none;
+}
+.spui-visor-tv .spui-visor-estado { position: static; padding: 3rem 0; }
+.spui-visor-spinner {
+    width: 22px; height: 22px; border-radius: 50%;
+    border: 3px solid rgba(255, 255, 255, .2); border-top-color: #fff; animation: spui-girar .8s linear infinite;
+}
+@keyframes spui-girar { to { transform: rotate(360deg); } }
+
+/* El TV tan grande como entre en la ventana, siempre en 16:9. */
+.spui-visor-tv { width: min(94vw, calc((100vh - 8rem) * 16 / 9)); }
+.spui-visor-tv .spui-tv-escala { border-radius: 10px; box-shadow: 0 20px 60px rgba(0, 0, 0, .5); }
+
+@media (max-width: 768px) {
+    .spui-visor-header { grid-template-columns: minmax(0, 1fr) auto; padding: .6rem .75rem; }
+    .spui-visor-pestanas { grid-column: 1 / -1; grid-row: 2; justify-self: center; }
+    .spui-visor-herramientas { grid-column: 2; }
+    .spui-visor-zoom { display: none; }
+    .spui-visor-viewport { padding: .75rem; }
 }
 
 /* ----- Badges de días de la semana ----- */
@@ -807,12 +978,12 @@ textarea.is-invalid,
      · Las tres acciones comunes a todos los ABM van SÓLIDAS, y son las únicas
        que usan estos tres colores — así se reconocen de un vistazo:
            Ver / Crear  azul       Editar  amarillo       Eliminar  rojo
-     · El resto va en OUTLINE, con un color propio que no se repite. El relleno
-       queda reservado a las tres de arriba, que son las que mandan la jerarquía.
+     · El resto, también relleno (desde el 30/10/2026), con un color propio que
+       no se repite. Al hover, todos oscurecen su color.
 
-   Al hover los outline se rellenan con su color y el ícono se invierte a blanco
-   (ver .spui-action-icon más abajo): por eso los templates NO deben llevar
-   style="filter:invert(1)" inline, que era lo que se hacía antes.
+   El ícono va en blanco sobre cualquier relleno oscuro (ver .spui-action-icon
+   más abajo): por eso los templates NO deben llevar style="filter:invert(1)"
+   inline, que era lo que se hacía antes.
    -------------------------------------------------------------------------- */
 
 /* ----- Acciones comunes: sólidas ----- */
@@ -851,7 +1022,10 @@ textarea.is-invalid,
     color: #fff;
 }
 
-/* ----- Acciones secundarias: outline, un color único cada una ----- */
+/* ----- Acciones secundarias: rellenas, un color único cada una -----
+   Desde el 30/10/2026 van rellenas como Ver/Editar/Eliminar (antes outline,
+   que en blanco parecían de otra familia). Cada una define su --btn; el
+   hover oscurece ese mismo color. */
 .spui-btn-activar,
 .spui-btn-desactivar,
 .spui-btn-publicar,
@@ -864,7 +1038,7 @@ textarea.is-invalid,
 .spui-btn-energia,
 .spui-btn-items,
 .spui-btn-copiar {
-    background: transparent;
+    background-color: var(--btn); border: 1px solid var(--btn); color: #fff;
 }
 .spui-btn-activar:hover,
 .spui-btn-desactivar:hover,
@@ -878,44 +1052,22 @@ textarea.is-invalid,
 .spui-btn-energia:hover,
 .spui-btn-items:hover,
 .spui-btn-copiar:hover {
+    background-color: color-mix(in srgb, var(--btn) 82%, #000);
+    border-color: color-mix(in srgb, var(--btn) 82%, #000);
     color: #fff;
 }
-
-.spui-btn-activar      { color: #6D3FBF; border: 1px solid #6D3FBF; }
-.spui-btn-activar:hover      { background-color: #6D3FBF; border-color: #6D3FBF; }
-
-.spui-btn-desactivar   { color: #727376; border: 1px solid #727376; }
-.spui-btn-desactivar:hover   { background-color: #727376; border-color: #727376; }
-
-.spui-btn-publicar     { color: #4A9930; border: 1px solid #4A9930; }
-.spui-btn-publicar:hover     { background-color: #4A9930; border-color: #4A9930; }
-
-.spui-btn-despublicar  { color: #A1662F; border: 1px solid #A1662F; }
-.spui-btn-despublicar:hover  { background-color: #A1662F; border-color: #A1662F; }
-
-.spui-btn-archivar     { color: #6B4E3D; border: 1px solid #6B4E3D; }
-.spui-btn-archivar:hover     { background-color: #6B4E3D; border-color: #6B4E3D; }
-
-.spui-btn-desarchivar  { color: #1CA1A7; border: 1px solid #1CA1A7; }
-.spui-btn-desarchivar:hover  { background-color: #1CA1A7; border-color: #1CA1A7; }
-
-.spui-btn-clave        { color: #3F51B5; border: 1px solid #3F51B5; }
-.spui-btn-clave:hover        { background-color: #3F51B5; border-color: #3F51B5; }
-
-.spui-btn-telemetria   { color: #0E7490; border: 1px solid #0E7490; }
-.spui-btn-telemetria:hover   { background-color: #0E7490; border-color: #0E7490; }
-
-.spui-btn-sincronizar   { color: #2E7D32; border: 1px solid #2E7D32; }
-.spui-btn-sincronizar:hover   { background-color: #2E7D32; border-color: #2E7D32; }
-
-.spui-btn-energia      { color: #D9601A; border: 1px solid #D9601A; }
-.spui-btn-energia:hover      { background-color: #D9601A; border-color: #D9601A; }
-
-.spui-btn-items        { color: #8E3A64; border: 1px solid #8E3A64; }
-.spui-btn-items:hover        { background-color: #8E3A64; border-color: #8E3A64; }
-
-.spui-btn-copiar       { color: #4A5A6A; border: 1px solid #4A5A6A; }
-.spui-btn-copiar:hover       { background-color: #4A5A6A; border-color: #4A5A6A; }
+.spui-btn-activar      { --btn: #6D3FBF; }
+.spui-btn-desactivar   { --btn: #727376; }
+.spui-btn-publicar     { --btn: #4A9930; }
+.spui-btn-despublicar  { --btn: #A1662F; }
+.spui-btn-archivar     { --btn: #6B4E3D; }
+.spui-btn-desarchivar  { --btn: #1CA1A7; }
+.spui-btn-clave        { --btn: #3F51B5; }
+.spui-btn-telemetria   { --btn: #0E7490; }
+.spui-btn-sincronizar  { --btn: #2E7D32; }
+.spui-btn-energia      { --btn: #D9601A; }
+.spui-btn-items        { --btn: #8E3A64; }
+.spui-btn-copiar       { --btn: #4A5A6A; }
 
 /* .unraf-btn-danger y .unraf-btn-success existían acá porque unraf-ui no las
    define. Ya no quedan usos en los templates: las reemplazó el sistema de
@@ -941,20 +1093,19 @@ textarea.is-invalid,
 }
 /* Editar es amarillo con texto oscuro: el ícono acompaña en oscuro. */
 
-/* Los outline arrancan con el ícono en su color y lo pasan a blanco al
-   rellenarse. El filtro que sigue lleva un SVG negro a blanco puro. */
-.spui-btn-activar:hover .spui-action-icon,
-.spui-btn-desactivar:hover .spui-action-icon,
-.spui-btn-publicar:hover .spui-action-icon,
-.spui-btn-despublicar:hover .spui-action-icon,
-.spui-btn-archivar:hover .spui-action-icon,
-.spui-btn-desarchivar:hover .spui-action-icon,
-.spui-btn-clave:hover .spui-action-icon,
-.spui-btn-telemetria:hover .spui-action-icon,
-.spui-btn-sincronizar:hover .spui-action-icon,
-.spui-btn-energia:hover .spui-action-icon,
-.spui-btn-items:hover .spui-action-icon,
-.spui-btn-copiar:hover .spui-action-icon {
+/* Las acciones secundarias también son rellenas: ícono blanco siempre. */
+.spui-btn-activar .spui-action-icon,
+.spui-btn-desactivar .spui-action-icon,
+.spui-btn-publicar .spui-action-icon,
+.spui-btn-despublicar .spui-action-icon,
+.spui-btn-archivar .spui-action-icon,
+.spui-btn-desarchivar .spui-action-icon,
+.spui-btn-clave .spui-action-icon,
+.spui-btn-telemetria .spui-action-icon,
+.spui-btn-sincronizar .spui-action-icon,
+.spui-btn-energia .spui-action-icon,
+.spui-btn-items .spui-action-icon,
+.spui-btn-copiar .spui-action-icon {
     filter: invert(1) brightness(2);
 }
 /* unraf-btn-icon solo define font-size, no dimensiona <img>; corregimos acá */
@@ -1027,7 +1178,11 @@ textarea.is-invalid,
        resuelta (max-height de acá abajo, con scroll propio si hace falta) —
        lo que se amplía es el ancho, y de acá salen TODOS los modales sin
        .modal-sm/.modal-lg explícito, así quedan parejos entre sí. */
-    max-width: 720px;
+    /* Desde el 02/11/2026 TODO modal con información (formularios, vistas,
+       listados de ítems, importar) tiene el mismo ancho, más amplio: crecen
+       hacia los costados y no hacia abajo. Sólo las confirmaciones van
+       angostas (.modal-sm). .modal-lg queda como sinónimo. */
+    max-width: 1040px;
     max-height: calc(100dvh - 2.5rem);
     display: flex;
     flex-direction: column;
@@ -1043,7 +1198,7 @@ textarea.is-invalid,
     transform: translateY(0) scale(1);
     opacity: 1;
 }
-.spui-abm-modal.modal-lg { max-width: 820px; }
+.spui-abm-modal.modal-lg { max-width: 1040px; }
 .spui-abm-modal.modal-sm { max-width: 460px; }
 
 /* ---- Segundo nivel de modal ----
@@ -1664,38 +1819,60 @@ textarea.is-invalid,
     font-variant-numeric: tabular-nums;
 }
 
-/* ---- Tarjetas de día de la semana como switch ---- */
+/* ---- Tarjetas de día de la semana como switch ----
+   Grilla pareja: los siete en una fila en escritorio y 4 + 3 en celular. Con
+   flex-wrap, "Dom" quedaba sola en una segunda línea (28/10/2026). */
 .spui-dias-switches {
-    display: flex;
-    gap: .6rem;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: .5rem;
+}
+@media (max-width: 575.98px) {
+    .spui-dias-switches { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
 .spui-dia-switch {
     display: flex;
-    flex-direction: column;
     align-items: center;
-    gap: .3rem;
-    padding: .4rem .5rem;
+    justify-content: center;
+    padding: .5rem .25rem;
     border-radius: .5rem;
     background: #f8f9fa;
     border: 1px solid #dee2e6;
-    min-width: 3rem;
     transition: background .15s, border-color .15s;
     cursor: pointer;
 }
+.spui-dia-switch .form-check-label {
+    font-size: .85rem;
+    font-weight: 600;
+    color: #495057;
+    cursor: pointer;
+    user-select: none;
+}
+
+/* ---- Interruptores sin la sangría de Bootstrap ----
+   El tema de formularios envuelve cada checkbox en un .form-check, que le
+   suma un padding-left y corre el input con margin-left negativo: dentro de
+   una tarjeta o debajo de una etiqueta, el interruptor quedaba desplazado.
+   Acá el input y su texto van en una fila, alineados. */
+.spui-switch-limpio .form-check {
+    display: flex;
+    align-items: center;
+    gap: .45rem;
+    padding-left: 0;
+    margin: 0;
+    min-height: 0;
+}
+.spui-switch-limpio .form-check-input {
+    float: none;
+    margin: 0;
+}
+.spui-switch-limpio .form-check-label:empty { display: none; }
+/* .form-switch suma además su propio padding-left de 2.5em. */
+.spui-switch-limpio .spui-switch-fila .form-switch { padding-left: 0; }
+.spui-switch-limpio .spui-switch-fila { min-height: 2.4rem; }
 .spui-dia-switch:has(input:checked) {
     background: rgba(74, 153, 48, .1);
     border-color: var(--unraf-success, #4A9930);
-}
-.spui-dia-label {
-    font-size: .7rem;
-    font-weight: 700;
-    color: #495057;
-    cursor: pointer;
-    text-transform: uppercase;
-    letter-spacing: .04em;
-    margin: 0;
-    user-select: none;
 }
 .spui-dia-switch .form-switch {
     padding-left: 0;
@@ -1749,9 +1926,12 @@ textarea.is-invalid,
 }
 /* Hora y fecha ya traen su propio ícono (reloj / calendario): el "!" de
    Bootstrap para inválido les comía el ancho y en celular cortaba la fecha
-   ("dd/mm/yyy"). El borde rojo y el mensaje de abajo ya marcan el error. */
+   ("dd/mm/yyy"). El borde rojo y el mensaje de abajo ya marcan el error.
+   .spui-fecha-field es lo mismo con la etiqueta a la izquierda (Programación). */
 .spui-hora-field input[type="time"].is-invalid,
-.spui-hora-field input[type="date"].is-invalid {
+.spui-hora-field input[type="date"].is-invalid,
+.spui-fecha-field input[type="time"].is-invalid,
+.spui-fecha-field input[type="date"].is-invalid {
     background-image: none;
     padding-right: .75rem;
 }
@@ -1893,4 +2073,915 @@ textarea.is-invalid,
     letter-spacing: .03em;
     color: #6c757d;
     min-width: 4.6rem;
+}
+
+/* ----- Telemetría de un reproductor (reproductores/telemetria.html.twig) ----- */
+.spui-tel-indicador {
+    padding: 1rem 1rem .9rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+}
+.spui-tel-indicador-titulo {
+    font-weight: 600;
+    color: var(--unraf-azul);
+    font-size: .95rem;
+}
+.spui-tel-gauge { width: 100%; max-width: 260px; height: 200px; margin: 0 auto; }
+.spui-tel-numero {
+    flex-grow: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 170px;
+    font-size: 2.6rem;
+    font-weight: 700;
+    color: #2b3a4a;
+}
+.spui-tel-numero small { font-size: 1.1rem; font-weight: 600; color: #6c757d; margin-left: .3rem; }
+.spui-tel-indicador-pie {
+    display: flex;
+    gap: 1.2rem;
+    justify-content: center;
+    flex-wrap: wrap;
+    font-size: .85rem;
+    color: #6c757d;
+}
+.spui-tel-indicador-pie strong { color: #2b3a4a; }
+
+/* Botón "En vivo": punto que late mientras llegan datos. */
+.spui-tel-vivo {
+    display: inline-flex;
+    align-items: center;
+    gap: .45rem;
+    border: 1px solid #ced4da;
+    background: #fff;
+    color: #495057;
+    border-radius: 999px;
+    padding: .3rem .8rem;
+    font-size: .85rem;
+    font-weight: 600;
+}
+.spui-tel-vivo-punto { width: .6rem; height: .6rem; border-radius: 50%; background: #adb5bd; }
+.spui-tel-vivo.is-vivo { border-color: #4A9930; color: #2f6d1c; }
+.spui-tel-vivo.is-vivo .spui-tel-vivo-punto { background: #4A9930; animation: spui-tel-latido 1.4s ease-out infinite; }
+.spui-tel-vivo.is-sin-datos { border-color: #C77F0A; color: #8a5806; }
+.spui-tel-vivo.is-sin-datos .spui-tel-vivo-punto { background: #C77F0A; }
+.spui-tel-vivo.is-pausado .spui-tel-vivo-punto { background: #adb5bd; }
+.spui-tel-vivo:disabled { opacity: .7; cursor: default; }
+@keyframes spui-tel-latido {
+    0%   { box-shadow: 0 0 0 0 rgba(74, 153, 48, .55); }
+    100% { box-shadow: 0 0 0 .55rem rgba(74, 153, 48, 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+    .spui-tel-vivo.is-vivo .spui-tel-vivo-punto { animation: none; }
+}
+
+
+/* Modal de exportación: formato como tarjetas elegibles (radio). */
+.spui-tel-formatos { display: grid; grid-template-columns: repeat(3, 1fr); gap: .6rem; }
+@media (max-width: 575.98px) { .spui-tel-formatos { grid-template-columns: 1fr; } }
+.spui-tel-formato { position: relative; cursor: pointer; margin: 0; }
+.spui-tel-formato input { position: absolute; opacity: 0; pointer-events: none; }
+.spui-tel-formato-caja {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: .15rem;
+    padding: .8rem .5rem;
+    border: 2px solid #dee2e6;
+    border-radius: .5rem;
+    text-align: center;
+    transition: border-color .15s, background-color .15s;
+}
+.spui-tel-formato-caja img { width: 2rem; height: 2rem; }
+.spui-tel-formato-caja small { color: #6c757d; font-size: .75rem; }
+.spui-tel-formato:hover .spui-tel-formato-caja { border-color: #9fb6cc; }
+.spui-tel-formato input:checked + .spui-tel-formato-caja { border-color: var(--unraf-azul); background: #eef4fa; }
+.spui-tel-formato input:focus-visible + .spui-tel-formato-caja { outline: 3px solid rgba(51, 135, 239, .35); outline-offset: 2px; }
+
+/* Lienzos de ECharts: alto fijo desde el principio, así nada empuja la
+   página cuando llegan los datos (telemetria.js). */
+.spui-tel-lienzo { width: 100%; height: 270px; cursor: grab; }
+.spui-tel-lienzo:active { cursor: grabbing; }
+.spui-tel-lienzo-alto { height: 330px; }
+.spui-tel-lienzo-vivo { height: 230px; }
+
+/* Barra de zoom de cada gráfico. */
+.spui-tel-herramientas { display: inline-flex; gap: .25rem; flex-shrink: 0; }
+.spui-tel-herramientas button {
+    width: 2rem; height: 2rem;
+    display: inline-flex; align-items: center; justify-content: center;
+    border: 1px solid #dee2e6; border-radius: .4rem; background: #fff; padding: 0;
+    transition: background-color .15s, border-color .15s;
+}
+.spui-tel-herramientas button:hover { background: #eef4fa; border-color: #9fb6cc; }
+.spui-tel-herramientas img { width: 1rem; height: 1rem; opacity: .75; }
+
+/* Panel en vivo: su lugar está reservado; hasta la segunda lectura, un velo
+   con spinner encima de los gráficos (ya dibujados, con sus ejes). */
+.spui-tel-vivo-cuerpo { position: relative; }
+.spui-tel-espera {
+    position: absolute; inset: 0; z-index: 2;
+    display: flex; align-items: center; justify-content: center; gap: .75rem;
+    padding: 1rem; text-align: center;
+    background: rgba(255, 255, 255, .82);
+    color: #495057; font-size: .9rem;
+}
+.spui-tel-espera[hidden] { display: none; }
+.spui-tel-espera .spinner-border { color: var(--unraf-azul); width: 1.6rem; height: 1.6rem; border-width: .2rem; }
+
+/* ===== Dashboard (rehecho el 29/10 y el 30/10/2026) ===== */
+.spui-dash .unraf-card { margin-bottom: 0; }
+.spui-dash .min-w-0 { min-width: 0; }
+.spui-dash-h1 { color: var(--unraf-azul); font-family: var(--unraf-font-principal); margin: 0; }
+.spui-dash-h2 { font-family: var(--unraf-font-texto); font-size: 1rem; font-weight: 700; color: #2b3a4a; margin: 0; }
+.spui-dash-h2-seccion { font-family: var(--unraf-font-principal); font-size: clamp(1.05rem, 3.6vw, 1.25rem); color: var(--unraf-azul); }
+.spui-dash-actualizar { font-size: .8rem; padding: .3rem .6rem; }
+.spui-dash-actualizar img { width: .85rem; height: .85rem; flex-shrink: 0; }
+.spui-dash-punto { width: .6rem; height: .6rem; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+
+/* Alerta de emergencia en curso: lo primero que se ve. */
+.spui-dash-alerta {
+    display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;
+    padding: 1rem 1.25rem; border-radius: 8px; color: #fff;
+    background: linear-gradient(135deg, #FF223D, #b3142a);
+    box-shadow: 0 6px 18px rgba(255, 34, 61, .25);
+}
+.spui-dash-alerta-icono {
+    width: 3rem; height: 3rem; border-radius: 50%; flex-shrink: 0;
+    background: rgba(255, 255, 255, .18); display: flex; align-items: center; justify-content: center;
+    animation: spui-dash-pulso 1.8s ease-out infinite;
+}
+.spui-dash-alerta-icono img { width: 1.6rem; height: 1.6rem; filter: brightness(0) invert(1); }
+.spui-dash-alerta-rotulo { font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; opacity: .85; font-weight: 600; }
+.spui-dash-alerta-titulo { font-family: var(--unraf-font-principal); font-weight: 700; font-size: 1.25rem; line-height: 1.2; overflow-wrap: anywhere; }
+.spui-dash-alerta-mensaje { opacity: .92; margin-top: .15rem; overflow-wrap: anywhere; }
+.spui-dash-alerta-meta { display: flex; flex-wrap: wrap; gap: .25rem 1rem; font-size: .8rem; opacity: .85; margin-top: .35rem; }
+.spui-dash-alerta-btn { background: #fff; color: #b3142a; border-color: #fff; }
+.spui-dash-alerta-btn:hover { background: #ffe5e9; color: #8f0f21; }
+@keyframes spui-dash-pulso {
+    0% { box-shadow: 0 0 0 0 rgba(255, 255, 255, .45); }
+    100% { box-shadow: 0 0 0 .9rem rgba(255, 255, 255, 0); }
+}
+
+/* Cabecera: título a la izquierda; Avisos y Actualizar a la derecha (debajo
+   del título en celular). */
+.spui-dash-cabecera { display: flex; justify-content: space-between; align-items: flex-start; gap: .75rem 1rem; flex-wrap: wrap; }
+.spui-dash-acciones { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
+
+/* Botón de avisos: verde sin nada, ámbar con avisos, rojo si alguno es grave. */
+.spui-dash-avisos { position: relative; }
+.spui-dash-avisos-btn {
+    display: inline-flex; align-items: center; gap: .4rem;
+    font-family: var(--unraf-font-principal); font-weight: 600; font-size: .8rem;
+    padding: .3rem .45rem .3rem .6rem; border-radius: 4px; cursor: pointer;
+    background: #f1f8ee; color: #2f6d1c; border: 1px solid #cfe5c6;
+}
+.spui-dash-avisos-btn img { width: .95rem; height: .95rem; }
+.spui-dash-avisos-btn:focus-visible { outline: 3px solid rgba(51, 135, 239, .4); outline-offset: 2px; }
+.spui-dash-avisos-cuenta {
+    min-width: 1.3rem; height: 1.3rem; border-radius: 1rem; padding: 0 .35rem;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: .72rem; font-weight: 700; background: #4A9930; color: #fff;
+}
+.spui-dash-avisos-btn.is-hay { background: #fff8eb; color: #8a5806; border-color: #f0d49c; }
+.spui-dash-avisos-btn.is-hay .spui-dash-avisos-cuenta { background: #C77F0A; }
+.spui-dash-avisos-btn.is-grave { background: #fff1f3; color: #b3142a; border-color: #ffc2cb; }
+.spui-dash-avisos-btn.is-grave .spui-dash-avisos-cuenta { background: #FF223D; animation: spui-dash-aviso-latido 1.8s ease-out infinite; }
+.spui-dash-avisos-btn:hover { filter: brightness(.97); }
+@keyframes spui-dash-aviso-latido {
+    0% { box-shadow: 0 0 0 0 rgba(255, 34, 61, .45); }
+    100% { box-shadow: 0 0 0 .45rem rgba(255, 34, 61, 0); }
+}
+@media (prefers-reduced-motion: reduce) { .spui-dash-avisos-btn.is-grave .spui-dash-avisos-cuenta { animation: none; } }
+
+/* Desplegable: flota debajo del botón, alineado a su derecha; con muchos
+   avisos se desplaza por dentro, nunca estira la página. */
+.spui-dash-avisos-panel {
+    display: none; position: absolute; top: calc(100% + .5rem); right: 0; z-index: 1040;
+    width: min(26rem, calc(100vw - 32px)); max-height: min(70vh, 32rem);
+    flex-direction: column; background: #fff; border: 1px solid #e0e4e8; border-radius: 10px;
+    box-shadow: 0 14px 34px rgba(20, 30, 45, .18); overflow: hidden;
+}
+.spui-dash-avisos-btn[aria-expanded="true"] + .spui-dash-avisos-panel { display: flex; animation: spui-dash-desplegar .15s ease-out; }
+@keyframes spui-dash-desplegar { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+.spui-dash-avisos-cab { display: flex; align-items: center; gap: .5rem; padding: .6rem .5rem .55rem .9rem; border-bottom: 1px solid #eef1f4; flex-shrink: 0; }
+.spui-dash-avisos-cab .spui-dash-h2 { font-size: .92rem; }
+.spui-dash-avisos-lista { list-style: none; margin: 0; padding: .4rem; overflow-y: auto; display: flex; flex-direction: column; gap: .35rem; }
+.spui-dash-avisos-ok { display: flex; gap: .6rem; align-items: center; margin: 0; padding: .8rem .9rem; color: #2f6d1c; font-size: .85rem; }
+.spui-dash-enorden-icono {
+    width: 1.5rem; height: 1.5rem; border-radius: 50%; flex-shrink: 0;
+    background: #4A9930; color: #fff; font-weight: 700; font-size: .85rem;
+    display: inline-flex; align-items: center; justify-content: center;
+}
+/* En celular la cabecera se apila: el desplegable se abre desde la izquierda,
+   que es donde queda el botón. */
+@media (max-width: 575.98px) {
+    .spui-dash-cabecera { position: relative; }
+    .spui-dash-avisos { position: static; }
+    .spui-dash-avisos-panel { left: 0; right: 0; width: auto; top: 100%; margin-top: .5rem; }
+}
+
+/* Cada aviso de la lista. */
+.spui-dash-aviso {
+    display: flex; gap: .65rem; align-items: flex-start;
+    padding: .55rem .7rem; border-radius: 7px; overflow-wrap: anywhere;
+    background: #fff8eb; border-left: 4px solid #C77F0A;
+}
+.spui-dash-aviso-icono {
+    width: 1.4rem; height: 1.4rem; border-radius: 50%; flex-shrink: 0; margin-top: .05rem;
+    background: #C77F0A; color: #fff; font-weight: 800; font-size: .85rem;
+    display: inline-flex; align-items: center; justify-content: center;
+}
+.spui-dash-aviso.is-grave { background: #fff1f3; border-left-color: #FF223D; }
+.spui-dash-aviso.is-grave .spui-dash-aviso-icono { background: #FF223D; }
+.spui-dash-aviso-titulo { color: #2b3a4a; font-size: .88rem; line-height: 1.3; }
+.spui-dash-aviso-detalle { color: #495057; font-size: .8rem; margin-top: .1rem; }
+.spui-dash-aviso-ayuda { color: #6c757d; font-size: .74rem; margin-top: .15rem; }
+
+/* Cuatro tarjetas idénticas: misma grilla, misma altura (la fila se estira
+   a la más alta) y las mismas cuatro partes en el mismo orden. */
+.spui-dash-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1rem; }
+@media (max-width: 1199.98px) { .spui-dash-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 339.98px) { .spui-dash-kpis { grid-template-columns: minmax(0, 1fr); } }
+.spui-dash-kpi {
+    display: flex; flex-direction: column; gap: .45rem; padding: .85rem 1rem;
+    text-decoration: none; color: inherit; border-top: 3px solid var(--kpi);
+}
+.spui-dash-kpi:hover { color: inherit; }
+.spui-dash-kpi:focus-visible { outline: 3px solid rgba(51, 135, 239, .4); outline-offset: 2px; }
+.spui-dash-kpi.is-alerta { background: #fff7f8; }
+.spui-dash-kpi-cab { display: flex; align-items: center; gap: .5rem; font-weight: 700; color: #2b3a4a; font-size: .9rem; }
+.spui-dash-kpi-icono {
+    width: 1.75rem; height: 1.75rem; border-radius: 7px; flex-shrink: 0;
+    background: color-mix(in srgb, var(--kpi) 12%, #fff);
+    display: inline-flex; align-items: center; justify-content: center;
+}
+.spui-dash-kpi-icono img { width: 1rem; height: 1rem; opacity: .8; }
+.spui-dash-kpi-cifra { color: #6c757d; font-size: .85rem; line-height: 1.2; }
+.spui-dash-kpi-cifra strong {
+    font-family: var(--unraf-font-principal); font-size: 1.75rem; line-height: 1;
+    color: #2b3a4a; margin-right: .2rem;
+}
+.spui-dash-kpi-barra { display: flex; gap: 2px; height: 6px; border-radius: 3px; background: #edf0f3; overflow: hidden; }
+.spui-dash-kpi-barra > span { min-width: 0; }
+.spui-dash-kpi-pie {
+    color: #6c757d; font-size: .78rem; line-height: 1.35; margin-top: auto;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.spui-dash-kpi-tipo { display: inline-flex; align-items: center; gap: .25rem; margin-right: .55rem; white-space: nowrap; }
+.spui-dash-kpi-tipo .spui-dash-punto { width: .45rem; height: .45rem; }
+/* Va después de las reglas base de la tarjeta para poder pisarlas. */
+@media (max-width: 575.98px) {
+    .spui-dash-kpis { gap: .6rem; }
+    .spui-dash-kpi { padding: .7rem .75rem; }
+    .spui-dash-kpi-cifra strong { font-size: 1.5rem; }
+    .spui-dash-kpi-cab { font-size: .82rem; gap: .4rem; min-width: 0; }
+    .spui-dash-kpi-icono { width: 1.4rem; height: 1.4rem; }
+    .spui-dash-kpi-icono img { width: .85rem; height: .85rem; }
+}
+
+/* Estado de los reproductores */
+.spui-dash-tarjeta { padding: 1rem; display: flex; flex-direction: column; gap: .5rem; container-type: inline-size; }
+.spui-dash-estado-cuerpo { display: flex; align-items: center; gap: 1rem; flex: 1; }
+.spui-dash-dona { width: 150px; height: 150px; flex-shrink: 0; }
+/* Encabezado del gráfico: el título no se aprieta contra la barra de botones;
+   si no entran juntos, la barra baja a su propio renglón. */
+.spui-dash-graf-cab { display: flex; justify-content: space-between; align-items: center; gap: .5rem 1rem; flex-wrap: wrap; }
+.spui-dash-graf-cab > .min-w-0 { flex: 1 1 16rem; }
+.spui-dash-leyenda { flex: 1; min-width: 0; }
+.spui-dash-leyenda-btn {
+    width: 100%; display: flex; align-items: center; gap: .5rem;
+    background: none; border: 0; border-radius: 6px; padding: .4rem .5rem; color: #2b3a4a; font-size: .9rem;
+    white-space: nowrap; padding-right: .75rem;
+}
+.spui-dash-leyenda-btn:not(:disabled):hover { background: #f1f4f7; }
+.spui-dash-leyenda-btn:focus-visible { outline: 3px solid rgba(51, 135, 239, .4); }
+.spui-dash-leyenda-btn:disabled { color: #9aa4ae; cursor: default; }
+.spui-dash-leyenda-btn strong { font-size: 1.05rem; min-width: 1.5rem; text-align: right; font-variant-numeric: tabular-nums; }
+.spui-dash-nota { color: #6c757d; font-size: .78rem; }
+/* Dona y leyenda lado a lado sólo si entran cómodas en la tarjeta (no en la
+   pantalla): entre 992 y 1400 px la tarjeta es angosta y el número de
+   "Desconectados" quedaba pegado al borde o afuera (03/11/2026). Si no
+   entran, la dona va arriba y la leyenda abajo. */
+@container (max-width: 25rem) {
+    .spui-dash-estado-cuerpo { flex-direction: column; align-items: stretch; }
+    .spui-dash-dona { margin: 0 auto; }
+}
+
+/* Globo con los reproductores de un sector de la dona: flota encima, con
+   la punta hacia donde se tocó. */
+.spui-dash-globo {
+    position: absolute; z-index: 1050; width: min(300px, calc(100vw - 32px));
+    background: #fff; border: 1px solid #e0e4e8; border-top: 4px solid var(--globo, #adb5bd);
+    border-radius: 10px; box-shadow: 0 12px 30px rgba(20, 30, 45, .18);
+    opacity: 0; transform: translateY(6px); transition: opacity .15s ease, transform .15s ease;
+}
+.spui-dash-globo[hidden] { display: none; }
+.spui-dash-globo.is-abajo { transform: translateY(-6px); }
+.spui-dash-globo.is-visible { opacity: 1; transform: none; }
+.spui-dash-globo-flecha {
+    position: absolute; left: var(--flecha, 50%); bottom: -8px; width: 14px; height: 14px; margin-left: -7px;
+    background: #fff; border-right: 1px solid #e0e4e8; border-bottom: 1px solid #e0e4e8; transform: rotate(45deg);
+}
+.spui-dash-globo.is-abajo .spui-dash-globo-flecha {
+    bottom: auto; top: -11px; border: 0; background: var(--globo, #adb5bd);
+}
+.spui-dash-globo-cab { display: flex; align-items: center; gap: .45rem; padding: .6rem .5rem .5rem .8rem; border-bottom: 1px solid #eef1f4; }
+.spui-dash-globo-cuenta { background: #f1f3f5; color: #495057; font-size: .75rem; font-weight: 700; border-radius: 1rem; padding: .05rem .45rem; }
+.spui-dash-globo-cerrar {
+    margin-left: auto; background: none; border: 0; font-size: 1.3rem; line-height: 1;
+    color: #6c757d; width: 2rem; height: 2rem; border-radius: 6px;
+}
+.spui-dash-globo-cerrar:hover { background: #f1f3f5; color: #2b3a4a; }
+.spui-dash-globo-lista { list-style: none; margin: 0; padding: .3rem; max-height: 260px; overflow-y: auto; }
+.spui-dash-globo-lista a {
+    display: flex; flex-direction: column; padding: .45rem .55rem; border-radius: 6px;
+    text-decoration: none; color: inherit;
+}
+.spui-dash-globo-lista a:hover, .spui-dash-globo-lista a:focus-visible { background: #f4f7fa; }
+.spui-dash-globo-nombre { font-weight: 700; color: #2b3a4a; overflow-wrap: anywhere; }
+.spui-dash-globo-detalle { font-size: .78rem; color: #6c757d; overflow-wrap: anywhere; }
+.spui-dash-globo-vacio { margin: 0; padding: .75rem .8rem; color: #6c757d; font-size: .85rem; }
+
+/* Subtítulos de grupo del detalle por reproductor */
+.spui-dash-grupo { margin-top: 1.5rem; }
+.spui-dash-grupo:first-child { margin-top: .75rem; }
+.spui-dash-grupo-titulo {
+    display: flex; align-items: center; gap: .45rem; margin: 0;
+    font-family: var(--unraf-font-texto); font-size: .82rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .05em; color: #495057;
+    padding-bottom: .35rem; border-bottom: 1px solid #e3e7eb;
+}
+.spui-dash-grupo .spui-dash-punto { background: #adb5bd; }
+.spui-dash-grupo.is-desconectado .spui-dash-punto { background: #FF223D; }
+.spui-dash-grupo.is-conectado .spui-dash-punto { background: #4A9930; }
+
+/* Tarjetas de reproductor */
+.spui-dash-repro { padding: 1rem 1.1rem; border-left: 4px solid #adb5bd; display: flex; flex-direction: column; }
+.spui-dash-repro.is-conectado { border-left-color: #4A9930; }
+.spui-dash-repro.is-desconectado { border-left-color: #FF223D; }
+/* Las métricas de un equipo caído son las de su última señal, no de ahora. */
+.spui-dash-repro.is-desconectado .spui-dash-metricas { opacity: .55; filter: grayscale(1); }
+.spui-dash-repro-nombre { font-family: var(--unraf-font-texto); font-weight: 700; font-size: 1.05rem; color: #2b3a4a; overflow-wrap: anywhere; margin: 0; }
+.spui-dash-estado {
+    display: inline-flex; align-items: center; gap: .35rem; flex-shrink: 0;
+    font-size: .75rem; font-weight: 600; padding: .2rem .6rem; border-radius: 1rem;
+    background: #f1f3f5; color: #6c757d;
+}
+.spui-dash-estado .spui-dash-punto { background: #adb5bd; }
+.spui-dash-estado.is-conectado { background: #eaf5e5; color: #2f6d1c; }
+.spui-dash-estado.is-conectado .spui-dash-punto { background: #4A9930; }
+.spui-dash-estado.is-desconectado { background: #fff1f3; color: #b3142a; }
+.spui-dash-estado.is-desconectado .spui-dash-punto { background: #FF223D; }
+.spui-dash-metricas { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .75rem; margin-top: .9rem; }
+
+/* Gráfico único de la red (03/11/2026): qué mirar, el período y los equipos. */
+.spui-dash-graf-controles {
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .6rem 1rem;
+    padding: .75rem 1rem 0;
+}
+.spui-dash-variables { display: flex; flex-wrap: wrap; gap: .35rem; }
+.spui-dash-variable {
+    padding: .3rem .8rem; border: 1px solid #d6dde4; border-radius: 2rem; background: #fff;
+    font-size: .82rem; font-weight: 600; color: #4a5866; cursor: pointer; white-space: nowrap;
+}
+.spui-dash-variable:hover { border-color: #9fb6cc; background: #f4f7fa; }
+.spui-dash-variable[aria-pressed="true"] { background: var(--unraf-azul); border-color: var(--unraf-azul); color: #fff; }
+.spui-dash-variable:focus-visible { outline: 3px solid rgba(51, 135, 239, .4); outline-offset: 1px; }
+.spui-dash-equipos { min-width: 15rem; padding: .35rem; }
+.spui-dash-desde-derecha .spui-desp-panel { left: auto; right: 0; }
+.spui-dash-equipo {
+    display: flex; align-items: center; gap: .55rem; padding: .4rem .5rem; border-radius: 6px;
+    font-size: .86rem; color: #2b3a4a; cursor: pointer; margin: 0;
+}
+.spui-dash-equipo:hover { background: #f1f5f9; }
+.spui-dash-equipo input { width: 1rem; height: 1rem; margin: 0; accent-color: var(--unraf-azul); flex: none; }
+.spui-dash-equipo .spui-dash-punto { flex: none; }
+.spui-dash-equipo small { margin-left: auto; color: #8a96a3; font-size: .74rem; }
+.spui-dash-equipo.is-todos { font-weight: 700; border-bottom: 1px solid #f0f2f5; border-radius: 6px 6px 0 0; }
+.spui-dash-graf-vacio {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    text-align: center; padding: 1rem; margin: 0; background: rgba(255, 255, 255, .85);
+}
+.spui-dash-graf-vacio[hidden] { display: none; }
+[data-dash-chart="metricas"].is-cargando { opacity: .5; transition: opacity .2s; }
+@media (max-width: 576px) {
+    .spui-dash-metricas { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+.spui-dash-metrica { display: flex; flex-direction: column; gap: .15rem; min-width: 0; }
+.spui-dash-metrica > span { font-size: .78rem; color: #6c757d; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.spui-dash-metrica > strong { font-size: 1rem; color: #2b3a4a; }
+.spui-dash-barra { height: 5px; border-radius: 3px; background: #edf0f3; overflow: hidden; }
+.spui-dash-barra > div { height: 100%; border-radius: 3px; transition: width .4s ease; }
+.spui-dash-repro-pie { margin-top: auto; padding-top: .9rem; display: flex; justify-content: flex-end; }
+
+/* ============================================================================
+   Botones unificados (30/10/2026): radio de 8 px y dos tamaños.
+     · de fila / secundarios: 34 px de alto;
+     · principales (Nuevo…, los del pie de los modales): 40 px.
+   Van al final para pisar los radios y alturas sueltos de más arriba.
+   ========================================================================== */
+.unraf-btn { border-radius: 8px; }
+.unraf-btn-sm,
+.spui-acciones .unraf-btn,
+.spui-acciones a.unraf-btn,
+.spui-dash-actualizar,
+.spui-dash-avisos-btn {
+    min-height: 34px; padding: .3rem .75rem; font-size: .85rem; border-radius: 8px;
+    display: inline-flex; align-items: center; justify-content: center; gap: .35rem;
+}
+.spui-btn-crear,
+.spui-header-actions > .unraf-btn,
+.spui-header-actions > div > .unraf-btn,
+.spui-btn-back,
+button[type="submit"].unraf-btn:not(.unraf-btn-sm),
+[data-spui-close].unraf-btn {
+    min-height: 40px; padding: .45rem 1.05rem; font-size: .95rem; border-radius: 8px;
+    display: inline-flex; align-items: center; justify-content: center; gap: .4rem;
+}
+.spui-tel-herramientas button { border-radius: 8px; }
+
+/* Valor que no se edita dentro de un formulario (el tipo de un contenido, la
+   duración de un video): con la altura de un input, para que la fila de
+   campos quede pareja. */
+.spui-campo-fijo {
+    display: flex; align-items: center; min-height: 45px;
+    padding: .3rem .75rem; border-radius: 4px; background: #f4f6f8; color: #2b3a4a;
+    font-weight: 600; font-size: .95rem;
+}
+/* El título de un valor fijo es un <span> (no hay input al que apuntar): sin
+   esto le faltaba el margen de abajo de un <label> y la caja quedaba 8 px más
+   arriba que los inputs de al lado (alta de contenido, 02/11/2026). */
+span.unraf-form-label.d-block { margin-bottom: .5rem; }
+
+/* Semana de una regla de programación (desplegable del chip de días). */
+.spui-semana { display: grid; grid-template-columns: repeat(7, 2.4rem); gap: .3rem; list-style: none; margin: 0; padding: .25rem .4rem .4rem; }
+.spui-semana li {
+    height: 2.4rem; border-radius: 8px; display: flex; align-items: center; justify-content: center;
+    font-size: .78rem; font-weight: 700;
+}
+.spui-semana li.is-si { background: var(--unraf-turquesa); color: #fff; }
+.spui-semana li.is-no { background: #f1f3f5; color: #adb5bd; text-decoration: line-through; }
+
+/* Filtros de los listados (_partials/filtros.html.twig): un chip por grupo
+   con la opción elegida y una flecha; el menú (core/desplegable.js) trae
+   las demás, con su cantidad y una tilde en la elegida. Un chip con una
+   opción que no es la de por defecto queda marcado en azul: hay un filtro
+   puesto. */
+.spui-filtros { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
+.spui-selector {
+    display: inline-flex; align-items: center; gap: .45rem; white-space: nowrap;
+    min-height: 34px; padding: .2rem .55rem .2rem .85rem; border-radius: 2rem; cursor: pointer;
+    border: 1px solid #dfe5eb; background: #fff; color: #2b3a4a; font-size: .85rem;
+    transition: border-color .15s ease, background-color .15s ease;
+}
+.spui-selector:hover { border-color: #9fb6cc; background: #f7f9fb; }
+.spui-selector:focus-visible { outline: 3px solid rgba(51, 135, 239, .4); outline-offset: 1px; }
+.spui-selector[aria-expanded="true"] { border-color: var(--unraf-azul); }
+.spui-selector-etiqueta { font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: #8a96a3; }
+.spui-selector-valor { font-weight: 600; }
+.spui-selector-flecha { width: .8rem; height: .8rem; opacity: .55; transition: transform .2s ease; }
+.spui-selector[aria-expanded="true"] .spui-selector-flecha { transform: rotate(180deg); }
+.spui-selector.is-activo { background: #eef4fa; border-color: #9fb6cc; }
+.spui-selector.is-activo .spui-selector-valor { color: var(--unraf-azul); }
+.spui-filtro-cuenta {
+    min-width: 1.35rem; height: 1.35rem; padding: 0 .35rem; border-radius: 1rem;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: .72rem; font-weight: 600; background: #eef1f4; color: #495057;
+}
+.spui-selector-menu { min-width: 13rem; padding: .3rem; }
+.spui-selector-menu .spui-desp-lista > li { padding: 0; }
+.spui-selector-menu .spui-desp-lista > li + li { border-top: 0; }
+.spui-selector-opcion {
+    display: flex; align-items: center; gap: .5rem; padding: .45rem .55rem; border-radius: 6px;
+    color: #2b3a4a; text-decoration: none; font-size: .88rem;
+    /* En los filtros de ítems la opción es un <button> (en los listados, un
+       enlace): sin esto no ocupaba todo el ancho y traía fondo y borde propios. */
+    width: 100%; border: 0; background: none; font-family: inherit; text-align: left; cursor: pointer;
+}
+.spui-selector-opcion:hover, .spui-selector-opcion:focus-visible { background: #f1f5f9; color: #2b3a4a; }
+.spui-selector-check { width: .9rem; color: var(--unraf-azul); font-weight: 700; visibility: hidden; }
+.spui-selector-opcion.is-elegida { font-weight: 700; }
+.spui-selector-opcion.is-elegida .spui-selector-check { visibility: visible; }
+.spui-selector-texto { flex: 1; }
+
+/* ============================================================================
+   Sidebar plegable (30/10/2026) — sólo escritorio (> 768 px)
+   ----------------------------------------------------------------------------
+   Un único botón fixed: con el sidebar abierto queda a la derecha de
+   "Principal" (el sidebar es sticky bajo el header, así que coinciden);
+   cerrado, flota arriba a la izquierda sobre el contenido. El contenido
+   conserva su ancho y queda centrado (ver más abajo).
+   ========================================================================== */
+.spui-sidebar-plegar {
+    position: fixed; top: 76px; left: calc(250px - 2.6rem); z-index: 101;
+    width: 30px; height: 30px; border-radius: 8px; padding: 0;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: #fff; border: 1px solid #dfe5eb; cursor: pointer;
+    transition: left .3s ease, box-shadow .2s ease, background-color .2s ease;
+}
+.spui-sidebar-plegar img { width: .95rem; height: .95rem; opacity: .7; }
+.spui-sidebar-plegar:hover { background: #eef4fa; border-color: #9fb6cc; }
+.spui-sidebar-plegar:focus-visible { outline: 3px solid rgba(51, 135, 239, .4); outline-offset: 2px; }
+html.spui-sidebar-plegado .spui-sidebar-plegar { left: 12px; box-shadow: 0 4px 14px rgba(20, 30, 45, .18); }
+/* Plegado, la flecha apunta hacia afuera: el mismo ícono girado (cambiarle
+   el archivo no sirve, AssetMapper le pone un hash al nombre). */
+.spui-sidebar-plegar img { transition: transform .3s ease; }
+html.spui-sidebar-plegado .spui-sidebar-plegar img { transform: rotate(180deg); }
+/* El contenido NO cambia de ancho al plegar (pedido de Mateo, 30/10/2026):
+   el sidebar se desliza hacia afuera (margin-left −250 px) y el contenido
+   suma la mitad de esos 250 px a cada lado, con la misma duración y curva.
+   Lo que gana de ancho el contenedor lo absorben los márgenes, así que el
+   texto y los gráficos sólo se desplazan, suave, hasta quedar centrados.
+   --spui-pad es el padding propio de cada <main> (p-4 = 1.5rem; el
+   Dashboard no tiene). */
+@media (min-width: 769px) {
+    .unraf-sidebar { transition: margin-left .3s ease, visibility 0s linear 0s; }
+    .unraf-main-content main { --spui-pad: 0px; transition: padding .3s ease; }
+    .unraf-main-content main.p-4 { --spui-pad: 1.5rem; }
+    html.spui-sidebar-plegado .unraf-sidebar {
+        margin-left: -250px;
+        /* Fuera de la pantalla tampoco se puede llegar con Tab; el retardo
+           deja que termine de deslizarse antes de ocultarlo. */
+        visibility: hidden; transition: margin-left .3s ease, visibility 0s linear .3s;
+    }
+    html.spui-sidebar-plegado .unraf-main-content main {
+        padding-left: calc(125px + var(--spui-pad)) !important;
+        padding-right: calc(125px + var(--spui-pad)) !important;
+    }
+}
+@media (max-width: 768px) { .spui-sidebar-plegar { display: none; } }
+
+/* Barra de un listado: buscador a la izquierda, chips a la derecha
+   (_partials/barra_lista.html.twig). Si no entran juntos, los chips bajan
+   alineados a la derecha. */
+.spui-barra-lista { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-start; gap: .75rem 1rem; margin-bottom: 1rem; }
+.spui-barra-lista.is-apilada, .spui-barra-lista.is-apilada .spui-barra-filtros, .spui-barra-lista.is-apilada .spui-filtros { justify-content: center; }
+.spui-buscador {
+    position: relative; display: flex; align-items: center; gap: .5rem;
+    flex: 1 1 16rem; max-width: 24rem; min-height: 34px;
+    border-bottom: 2px solid #cfd8e0; transition: border-color .2s ease;
+}
+.spui-buscador:focus-within { border-bottom-color: var(--unraf-azul); }
+.spui-buscador-lupa { width: 1rem; height: 1rem; opacity: .55; flex-shrink: 0; }
+.spui-buscador:focus-within .spui-buscador-lupa { opacity: .85; }
+.spui-buscador-campo {
+    flex: 1; min-width: 0; border: 0; outline: 0; background: transparent;
+    padding: .35rem 1.9rem .35rem 0; font-size: .92rem; color: #2b3a4a;
+}
+.spui-buscador-campo::placeholder { color: #8a96a3; }
+/* La X nativa de type=search se oculta: va la propia, igual en todos los navegadores. */
+.spui-buscador-campo::-webkit-search-cancel-button { -webkit-appearance: none; display: none; }
+.spui-buscador-limpiar {
+    position: absolute; right: 0; top: 50%; transform: translateY(-50%);
+    width: 24px; height: 24px; border-radius: 50%; border: 0; padding: 0;
+    background: #e9edf1; color: #495057; font-size: 1rem; line-height: 1; cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center;
+}
+.spui-buscador-limpiar[hidden] { display: none; }
+.spui-buscador-limpiar:hover { background: #dbe2e8; color: #2b3a4a; }
+.spui-buscador-limpiar:focus-visible { outline: 3px solid rgba(51, 135, 239, .4); }
+.spui-barra-filtros { display: flex; min-width: 0; max-width: 100%; }
+.spui-barra-filtros:empty { display: none; }
+
+@media (max-width: 575.98px) {
+    .spui-buscador { flex-basis: 100%; max-width: none; }
+    .spui-barra-filtros { width: 100%; justify-content: center; }
+}
+
+/* ============================================================================
+   Pie (30/10/2026): marca a la izquierda, dos columnas de enlaces y una barra
+   inferior con los créditos. Pisa el .unraf-footer de unraf-ui.
+   ========================================================================== */
+.spui-footer { background: #24384c; color: #c9d4df; padding: 0; margin-top: 0; font-size: .88rem; }
+.spui-footer-cuerpo {
+    max-width: 1200px; margin: 0 auto; padding: 2.25rem 1.5rem 1.75rem;
+    display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr); gap: 2rem 3rem;
+}
+.spui-footer-logo { display: inline-flex; align-items: center; gap: .75rem; text-decoration: none; color: #fff; }
+.spui-footer-logo img { width: 40px; height: 40px; object-fit: contain; }
+.spui-footer-logo strong { display: block; font-family: var(--unraf-font-principal); font-size: 1.3rem; letter-spacing: .04em; line-height: 1.1; }
+.spui-footer-logo small { display: block; color: #9fb2c4; font-size: .78rem; }
+.spui-footer-marca p { margin: .85rem 0 0; max-width: 30rem; line-height: 1.55; color: #aebdcb; }
+.spui-footer-col h2 {
+    margin: 0 0 .7rem; font-family: var(--unraf-font-texto); font-size: .72rem; font-weight: 700;
+    letter-spacing: .08em; text-transform: uppercase; color: var(--unraf-amarillo);
+}
+.spui-footer-col ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .45rem; }
+.spui-footer-col a { color: #dbe4ec; text-decoration: none; display: inline-flex; align-items: center; gap: .35rem; }
+.spui-footer-col a:hover { color: #fff; text-decoration: underline; text-underline-offset: 3px; }
+.spui-footer-col a:focus-visible, .spui-footer-logo:focus-visible { outline: 2px solid var(--unraf-amarillo); outline-offset: 3px; border-radius: 2px; }
+.spui-footer-externo { width: .8rem; height: .8rem; filter: invert(1); opacity: .7; }
+.spui-footer-base {
+    border-top: 1px solid rgba(255, 255, 255, .1);
+    max-width: 1200px; margin: 0 auto; padding: .9rem 1.5rem;
+    display: flex; justify-content: space-between; flex-wrap: wrap; gap: .25rem 1rem;
+    font-size: .78rem; color: #8ea2b5;
+}
+@media (max-width: 767.98px) {
+    .spui-footer-cuerpo { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 1.5rem; padding: 1.75rem 1rem 1.25rem; }
+    .spui-footer-marca { grid-column: 1 / -1; }
+    .spui-footer-base { justify-content: center; text-align: center; padding: .8rem 1rem; }
+}
+
+/* Listado vacío (_partials/vacio.html.twig). */
+.spui-vacio { padding: 2.5rem 1.5rem; text-align: center; display: flex; flex-direction: column; align-items: center; }
+.spui-vacio-icono {
+    width: 3.5rem; height: 3.5rem; border-radius: 50%; background: #eef3f8; margin-bottom: .9rem;
+    display: inline-flex; align-items: center; justify-content: center;
+}
+.spui-vacio-icono img { width: 1.6rem; height: 1.6rem; opacity: .55; }
+.spui-vacio-titulo { font-family: var(--unraf-font-principal); font-size: 1.15rem; color: #2b3a4a; margin: 0 0 .35rem; }
+.spui-vacio-texto { color: #5b6b7f; margin: 0; max-width: 32rem; overflow-wrap: anywhere; }
+.spui-vacio-ayuda { color: #8a96a3; font-size: .85rem; margin: .35rem 0 0; }
+.spui-vacio-acciones { display: flex; gap: .5rem; flex-wrap: wrap; justify-content: center; margin-top: 1.1rem; }
+.spui-vacio-acciones:empty { display: none; }
+
+
+/* Ítem de un desplegable con botón propio (los de una playlist). */
+.spui-desp-lista > li.spui-desp-item { display: flex; align-items: center; gap: .6rem; }
+.spui-desp-item-texto { flex: 1; min-width: 0; }
+.spui-desp-item-texto strong { display: block; overflow-wrap: anywhere; }
+.spui-desp-ver {
+    width: 30px; height: 30px; border-radius: 8px; flex-shrink: 0; padding: 0; cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: var(--unraf-azul); border: 0;
+}
+.spui-desp-ver img { width: .95rem; height: .95rem; filter: invert(1); }
+.spui-desp-ver:hover { background: #35506b; }
+.spui-desp-ver:focus-visible { outline: 3px solid rgba(51, 135, 239, .4); outline-offset: 1px; }
+
+/* ============================================================================
+   Encabezado (30/10/2026). Pisa el .unraf-header de unraf-ui (60 px, azul).
+   ========================================================================== */
+.spui-header {
+    height: 60px; padding: 0 1.25rem 0 1rem; gap: 1rem;
+    background: linear-gradient(90deg, #3d5d7c 0%, var(--unraf-azul) 55%, #4b7096 100%);
+    box-shadow: 0 2px 12px rgba(20, 35, 55, .22);
+    border-bottom: 3px solid var(--unraf-amarillo);
+}
+.spui-header-izq, .spui-header-der { display: flex; align-items: center; gap: .75rem; min-width: 0; }
+.spui-header .unraf-menu-toggle img { width: 1.4rem; height: 1.4rem; filter: invert(1); }
+.spui-header-marca { display: flex; align-items: center; gap: .75rem; text-decoration: none; color: #fff; min-width: 0; }
+.spui-header-logo { height: 34px; width: auto; }
+.spui-header-divisor { width: 1px; height: 30px; background: rgba(255, 255, 255, .35); }
+.spui-header-titulo { display: flex; flex-direction: column; line-height: 1.05; min-width: 0; }
+.spui-header-titulo strong { font-family: var(--unraf-font-principal); font-size: 1.35rem; letter-spacing: .05em; }
+.spui-header-titulo small { font-size: .68rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: rgba(255, 255, 255, .75); white-space: nowrap; }
+.spui-header-marca:focus-visible, .spui-usuario-btn:focus-visible { outline: 2px solid var(--unraf-amarillo); outline-offset: 3px; border-radius: 6px; }
+
+.spui-usuario-btn {
+    display: inline-flex; align-items: center; gap: .5rem; height: 40px; padding: 0 .55rem 0 .3rem;
+    background: rgba(255, 255, 255, .1); border: 1px solid rgba(255, 255, 255, .18); border-radius: 2rem;
+    color: #fff; cursor: pointer; transition: background-color .15s ease; max-width: 16rem;
+}
+.spui-usuario-btn:hover, .spui-usuario-btn[aria-expanded="true"] { background: rgba(255, 255, 255, .2); }
+.spui-avatar {
+    width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: var(--unraf-amarillo); color: #2b3a4a; font-weight: 800; font-size: .8rem; letter-spacing: .02em;
+}
+.spui-avatar-grande { width: 40px; height: 40px; font-size: .95rem; }
+.spui-usuario-nombre { font-size: .85rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.spui-usuario-flecha { width: .75rem; height: .75rem; filter: invert(1); opacity: .8; transition: transform .2s ease; }
+.spui-usuario-btn[aria-expanded="true"] .spui-usuario-flecha { transform: rotate(180deg); }
+/* El menú abre hacia la izquierda, alineado al borde derecho del botón. */
+.spui-usuario-menu { left: auto; right: 0; min-width: 16rem; padding: .35rem; }
+.spui-usuario-cab { display: flex; align-items: center; gap: .65rem; padding: .55rem .55rem .7rem; border-bottom: 1px solid #eef1f4; margin-bottom: .3rem; }
+.spui-usuario-cab strong { display: block; color: #2b3a4a; }
+.spui-usuario-cab small { display: block; color: #6c757d; font-size: .78rem; overflow-wrap: anywhere; }
+.spui-usuario-menu .spui-desp-lista > li { padding: 0; }
+.spui-usuario-menu .spui-desp-lista > li + li { border-top: 0; }
+.spui-usuario-icono { width: .95rem; height: .95rem; opacity: .65; }
+
+@media (max-width: 768px) {
+    .spui-header { padding: 0 .75rem; }
+    .spui-usuario-nombre, .spui-usuario-flecha { display: none; }
+    .spui-usuario-btn { padding: 0 .25rem; height: 40px; background: none; border: 0; }
+}
+@media (max-width: 400px) {
+    .spui-header-titulo small, .spui-header-divisor { display: none; }
+    .spui-header-logo { height: 30px; }
+}
+
+/* ============================================================================
+   "Cómo se ve en pantalla" del formulario de contenidos (02/11/2026,
+   contenidos/_presentacion.html.twig): plantilla, tema y datos del cronograma.
+   ========================================================================== */
+.spui-presentacion {
+    border: 1px solid #e3e8ee; border-radius: 10px; padding: 1rem 1rem 1.1rem; background: #fafbfc;
+}
+/* El float del reboot de Bootstrap (y el clear de lo que sigue) es lo que
+   saca a la leyenda del borde y la deja adentro del recuadro. */
+.spui-presentacion-titulo {
+    float: left; width: 100%; margin: 0 0 .75rem; padding: 0;
+    font-size: .78rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #6c7a89;
+}
+.spui-presentacion-crono { padding-top: 1rem; border-top: 1px solid #e3e8ee; }
+
+/* Opciones excluyentes como un control segmentado: radios reales (teclado y
+   lectores de pantalla), con la etiqueta como botón. */
+.spui-opciones { display: inline-flex; flex-wrap: wrap; border: 1px solid #cfd8e1; border-radius: 8px; overflow: hidden; background: #fff; max-width: 100%; }
+.spui-opcion-input { position: absolute; opacity: 0; width: 1px; height: 1px; pointer-events: none; }
+.spui-opcion {
+    margin: 0; padding: .45rem .9rem; font-size: .9rem; font-weight: 600; color: #2b3a4a; cursor: pointer;
+    border-left: 1px solid #cfd8e1; transition: background-color .15s ease, color .15s ease; user-select: none;
+}
+.spui-opcion-input:first-child + .spui-opcion { border-left: 0; }
+.spui-opcion:hover { background: #f1f5f9; }
+.spui-opcion-input:checked + .spui-opcion { background: var(--unraf-azul); color: #fff; }
+.spui-opcion-input:focus-visible + .spui-opcion { outline: 3px solid rgba(51, 135, 239, .45); outline-offset: -3px; }
+
+/* ----- Importar cronograma (02/11/2026, contenidos/importar/*) ----- */
+.spui-cabecera-acciones { display: flex; flex-wrap: wrap; gap: .5rem; justify-content: flex-end; }
+.spui-importar-zona {
+    display: flex; flex-direction: column; align-items: center; gap: .25rem; padding: 1.75rem 1rem; margin: 0;
+    border: 2px dashed #b8c7d6; border-radius: 12px; background: #f7fafc; cursor: pointer; text-align: center;
+    transition: border-color .15s ease, background-color .15s ease;
+}
+.spui-importar-zona:hover, .spui-importar-zona:focus-within { border-color: var(--unraf-azul); background: #eef4fa; }
+.spui-importar-zona img { width: 2rem; height: 2rem; opacity: .6; }
+.spui-importar-zona strong { color: var(--unraf-azul); }
+.spui-importar-zona span { font-size: .85rem; color: #6c7a89; }
+.spui-importar-zona.is-invalid { border-color: #d6334a; }
+.spui-importar-leyendo { font-weight: 600; color: var(--unraf-azul) !important; }
+.spui-importar-ayuda summary { cursor: pointer; font-size: .9rem; color: var(--unraf-azul); }
+.spui-importar-ayuda ul { font-size: .85rem; color: #4a5866; margin-top: .5rem; }
+
+.spui-importar-archivo { display: flex; align-items: center; gap: .5rem; margin: 0 0 .15rem; }
+.spui-importar-archivo img { width: 1.2rem; height: 1.2rem; opacity: .6; }
+.spui-importar-hoja { border: 1px solid #e3e8ee; border-radius: 10px; padding: .9rem 1rem; margin-bottom: .75rem; background: #fff; }
+.spui-importar-hoja.is-omitida { background: #f7f8fa; }
+.spui-importar-hoja.is-omitida .spui-importar-hoja-cab h3 { color: #8a96a3; }
+.spui-importar-hoja-cab { display: flex; flex-wrap: wrap; align-items: center; gap: .35rem .75rem; margin-bottom: .6rem; }
+.spui-importar-hoja-cab h3 { font-size: 1rem; font-weight: 700; color: var(--unraf-azul); margin: 0; }
+.spui-importar-cuenta { font-size: .85rem; font-weight: 600; color: #2b3a4a; }
+.spui-importar-dias { display: flex; flex-wrap: wrap; gap: .25rem; }
+.spui-importar-dias .spui-chip { font-size: .72rem; padding: .1rem .5rem; }
+.spui-importar-aviso { margin-top: .6rem; padding: .5rem .75rem; border-radius: 8px; background: #fff7e6; color: #7a5200; font-size: .85rem; }
+.spui-importar-detalle { margin-top: .6rem; font-size: .85rem; }
+.spui-importar-detalle summary { cursor: pointer; font-weight: 600; color: #4a5866; }
+.spui-importar-detalle.is-error summary { color: #b3142a; }
+.spui-importar-detalle ul { list-style: none; padding: .4rem 0 0; margin: 0; max-height: 12rem; overflow: auto; }
+.spui-importar-detalle li { padding: .2rem 0; border-bottom: 1px solid #f0f2f5; }
+.spui-importar-detalle li span { display: inline-block; min-width: 3.6rem; color: #8a96a3; font-variant-numeric: tabular-nums; }
+.spui-importar-evento { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .4rem 1rem; padding: .45rem 0; border-top: 1px solid #f0f2f5; }
+.spui-importar-evento-nombre { display: flex; flex-direction: column; margin: 0; }
+.spui-importar-evento-nombre span { font-size: .8rem; color: #6c7a89; }
+.spui-importar-evento .unraf-form-select { width: auto; min-width: 12rem; }
+
+/* Buscador y filtros de la ventana de ítems (cronograma-items.js). */
+.spui-items-filtros { margin-bottom: .5rem; }
+.spui-items-filtros .spui-selector-menu { min-width: 12rem; }
+.spui-items-fecha { display: flex; flex-direction: column; gap: .35rem; padding: .4rem; }
+/* Selector de hora de los filtros de ítems (03/11/2026): hora y minutos en
+   dos columnas que se desplazan, la elegida resaltada, y Aplicar. */
+/* El panel no se corta: las listas cortas tienen un alto máximo, el selector no. */
+.spui-desp-panel:has(.spui-reloj) { max-height: none; overflow: visible; }
+.spui-reloj { display: flex; flex-direction: column; gap: .55rem; padding: .5rem; width: 15rem; max-width: 100%; }
+.spui-reloj-ayuda { margin: 0; font-size: .8rem; color: #6c7a89; }
+.spui-reloj-columnas { display: flex; align-items: center; justify-content: center; gap: .4rem; }
+.spui-reloj-col {
+    flex: 1; height: 11.5rem; overflow-y: auto; scroll-behavior: auto; overscroll-behavior: contain;
+    display: flex; flex-direction: column; gap: 2px; padding: .25rem; border: 1px solid #e3e8ee; border-radius: 10px;
+    background: #f8fafc; scrollbar-width: thin;
+}
+.spui-reloj-col:focus-visible { outline: 3px solid rgba(51, 135, 239, .35); outline-offset: 1px; }
+.spui-reloj-sep { font-size: 1.6rem; font-weight: 700; color: #2b3a4a; }
+.spui-reloj-num {
+    flex: none; padding: .35rem 0; border: 0; border-radius: 7px; background: none; cursor: pointer;
+    font-family: var(--unraf-font-principal); font-size: 1.05rem; font-weight: 600; color: #4a5866;
+    font-variant-numeric: tabular-nums; text-align: center;
+}
+.spui-reloj-num:hover { background: #eef4fa; color: #2b3a4a; }
+.spui-reloj-num.is-elegido { background: var(--unraf-azul); color: #fff; }
+.spui-reloj-ahora {
+    align-self: flex-start; padding: .2rem .55rem; border: 1px solid #cfd8e0; border-radius: 1rem; background: #fff;
+    font-size: .8rem; font-weight: 600; color: var(--unraf-azul); cursor: pointer;
+}
+.spui-reloj-ahora:hover { background: #eef4fa; }
+.spui-reloj-acciones { display: flex; gap: .5rem; }
+.spui-reloj-acciones .unraf-btn { flex: 1 1 0; justify-content: center; }
+/* Destino del QR: uno o dos enlaces, uno por renglón, sin cortarlos. */
+.spui-qr-destinos { resize: vertical; min-height: 4.2rem; white-space: pre; overflow-x: auto; font-size: .92rem; }
+.spui-importar-desde-alta {
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .5rem 1rem;
+    margin-top: .75rem; padding-top: .75rem; border-top: 1px solid #d5e5f3;
+}
+.spui-reloj > .spui-selector-opcion { border-top: 1px solid #f0f2f5; border-radius: 0; padding-top: .55rem; }
+.spui-items-vacio {
+    display: flex; flex-direction: column; align-items: center; gap: .35rem; padding: 2rem 1rem;
+    text-align: center; color: #6c7a89; border: 1px dashed #d6dde4; border-radius: 10px;
+}
+.spui-items-vacio strong { color: #2b3a4a; }
+
+/* Ítems de un cronograma que no son una clase (cronograma/_items). */
+.spui-item-tipo { display: inline-block; margin-left: .4rem; padding: .1rem .5rem; border-radius: 1rem; font-size: .72rem; font-weight: 700; vertical-align: .1rem; }
+.spui-item-tipo-actividad { background: #e7f6f6; color: #137277; }
+.spui-item-tipo-evento { background: #fff1d6; color: #8a5a00; }
+.spui-fecha-badge { display: inline-block; padding: .2rem .6rem; border-radius: 1rem; background: #446687; color: #fff; font-size: .78rem; font-weight: 700; white-space: nowrap; }
+
+@media (max-width: 576px) {
+    /* En celular las opciones se reparten el ancho en vez de cortarse. */
+    .spui-opciones { display: flex; }
+    .spui-opcion { flex: 1 1 auto; text-align: center; padding: .5rem .5rem; }
+}
+
+/* ============================================================================
+   Botones y modales según el tamaño de la pantalla (02/11/2026).
+   Ícono + texto en todo botón de acción (los de los modales los completa
+   modal.js); lo que cambia con el ancho es el tamaño y, en celular, que las
+   acciones de las filas dentro de un modal queden sólo con el ícono.
+   ========================================================================== */
+/* Cancelar (borde azul): el ícono acompaña el color, y en blanco al hover. */
+.spui-btn-back .spui-action-icon { opacity: .75; }
+.spui-btn-back:hover .spui-action-icon { filter: invert(1); opacity: 1; }
+.unraf-btn-institucion .spui-action-icon { filter: invert(1); }
+
+/* Acciones de cada fila dentro de un modal (modal.js, soloIconos): sólo el
+   ícono, en un cuadrado; el nombre aparece en un cartel arriba al pasar el
+   mouse o al llegar con el teclado. font-size 0 oculta el texto sin tocar el
+   ícono, y el texto sigue ahí para los lectores de pantalla (aria-label). */
+.spui-abm-modal-body .unraf-btn.spui-solo-icono,
+.spui-abm-modal-body .spui-acciones .unraf-btn.spui-solo-icono {
+    position: relative; font-size: 0; gap: 0; width: 34px; min-width: 34px; min-height: 34px; height: 34px; padding: 0;
+    display: inline-flex; align-items: center; justify-content: center;
+}
+.spui-solo-icono .spui-action-icon, .spui-solo-icono .unraf-icon-svg { width: 1.05rem; height: 1.05rem; }
+.spui-solo-icono:not(.spui-btn-submitting)::after {
+    content: attr(data-spui-tip);
+    position: absolute; bottom: calc(100% + 7px); left: 50%; z-index: 20;
+    width: max-content; max-width: 16rem; padding: .3rem .55rem; border-radius: 6px;
+    background: #24394f; color: #fff; font-size: .75rem; font-weight: 600; line-height: 1.3; text-align: center; white-space: normal;
+    box-shadow: 0 4px 12px rgba(20, 35, 55, .25);
+    opacity: 0; pointer-events: none; transform: translate(-50%, 3px); transition: opacity .12s ease, transform .12s ease;
+}
+.spui-solo-icono:not(.spui-btn-submitting):hover::after, .spui-solo-icono:not(.spui-btn-submitting):focus-visible::after { opacity: 1; transform: translate(-50%, 0); }
+/* La flechita del cartel. */
+.spui-solo-icono:not(.spui-btn-submitting)::before {
+    content: ''; position: absolute; bottom: calc(100% + 2px); left: 50%; z-index: 20;
+    border: 5px solid transparent; border-top-color: #24394f; transform: translateX(-50%);
+    opacity: 0; pointer-events: none; transition: opacity .12s ease;
+}
+.spui-solo-icono:not(.spui-btn-submitting):hover::before, .spui-solo-icono:not(.spui-btn-submitting):focus-visible::before { opacity: 1; }
+
+/* Vistas con una vista previa (Ver de una alerta o de un contenido): con el
+   modal ancho, la previa a la izquierda y los datos a la derecha, en vez de
+   una previa del ancho entero que hacía el modal más alto. Apiladas abajo
+   de 992 px. */
+.spui-view-dos { display: grid; gap: 0 1.75rem; }
+@media (min-width: 992px) {
+    .spui-view-dos { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); align-items: start; }
+    .spui-view-dos > .spui-vista-previa-ver { margin-bottom: 0; }
+}
+/* Pantallas de una alerta: en columnas, ahora que hay ancho. */
+.spui-alerta-destinos { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
+
+/* Pantallas bajas (una notebook de 768 px de alto): menos margen alrededor
+   del contenido del modal, para que entre más sin scroll. */
+@media (max-height: 820px) {
+    .spui-abm-overlay { padding: .75rem; }
+    .spui-abm-modal { max-height: calc(100dvh - 1.5rem); }
+    .spui-abm-modal-header { padding: .8rem 1.4rem .7rem; }
+    .spui-abm-modal-body { padding: 1.15rem 1.4rem; }
+}
+
+/* Tablet y celular: botones un escalón más chicos. */
+@media (max-width: 768px) {
+    .spui-btn-crear,
+    .spui-header-actions > .unraf-btn,
+    .spui-header-actions > div > .unraf-btn,
+    .spui-btn-back,
+    button[type="submit"].unraf-btn:not(.unraf-btn-sm),
+    [data-spui-close].unraf-btn,
+    .spui-cabecera-acciones .unraf-btn {
+        min-height: 38px; padding: .4rem .9rem; font-size: .9rem;
+    }
+}
+
+@media (max-width: 576px) {
+    .spui-abm-overlay { padding: .5rem; }
+    .spui-abm-modal { max-height: calc(100dvh - 1rem); border-radius: .75rem; }
+    .spui-abm-modal-header { padding: .8rem 1rem .65rem; }
+    .spui-abm-modal-title { font-size: .98rem; }
+    .spui-abm-modal-body { padding: 1rem; }
+
+    .unraf-btn-sm,
+    .spui-acciones .unraf-btn,
+    .spui-acciones a.unraf-btn {
+        min-height: 32px; padding: .25rem .6rem; font-size: .8rem;
+    }
+
+    /* El pie de un modal (Cancelar / Guardar, o Cancelar / la acción): los
+       botones se reparten el ancho en partes iguales. */
+    .spui-abm-modal-body .border-top.justify-content-end > .unraf-btn { flex: 1 1 0; }
+
+    /* Las acciones de la cabecera de una sección (Importar / Nuevo): una
+       debajo de la otra (lado a lado, "Importar cronograma" no entra en media
+       pantalla sin partirse en dos renglones), del mismo ancho entre sí pero
+       sólo el que pide la más larga, no toda la pantalla (03/11/2026). */
+    .spui-cabecera-acciones { display: inline-flex; width: auto; flex-direction: column; align-items: stretch; }
 }

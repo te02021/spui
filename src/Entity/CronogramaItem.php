@@ -6,6 +6,7 @@ namespace SPUI\Entity;
 
 use DateTimeImmutable;
 use Doctrine\ORM\Mapping as ORM;
+use SPUI\Enum\TipoItemCronograma;
 use SPUI\Repository\CronogramaItemRepository;
 
 #[ORM\Entity(repositoryClass: CronogramaItemRepository::class)]
@@ -31,12 +32,42 @@ class CronogramaItem
     #[ORM\Column(type: 'time_immutable')]
     private ?DateTimeImmutable $horaInicio = null;
 
-    #[ORM\Column(type: 'time_immutable')]
+    /**
+     * Sólo un evento especial puede no tenerla (el Excel trae eventos con
+     * "-"): en el TV dice "Desde las 18:00" y sigue en curso hasta que
+     * termina el día. Una clase o actividad la tiene siempre.
+     */
+    #[ORM\Column(type: 'time_immutable', nullable: true)]
     private ?DateTimeImmutable $horaFin = null;
 
-    /** Bitmask: bit0=Lun…bit6=Dom — igual que Programacion.diasSemana */
+    /**
+     * Bitmask: bit0=Lun…bit6=Dom — igual que Programacion.diasSemana. Un
+     * cronograma se carga una vez por semana (como el Excel): cada clase
+     * lleva los días en que se dicta. No se usa en un evento especial.
+     */
     #[ORM\Column(type: 'smallint', options: ['unsigned' => true])]
     private int $diasSemana = 127;
+
+    // ── Noviembre 2026: los datos del Excel de horarios ────────────────────
+
+    #[ORM\Column(length: 20, enumType: TipoItemCronograma::class, options: ['default' => 'clase'])]
+    private TipoItemCronograma $tipo = TipoItemCronograma::Clase;
+
+    /** Sólo un evento especial: el día en que ocurre (en vez de días de la semana). */
+    #[ORM\Column(type: 'date_immutable', nullable: true)]
+    private ?DateTimeImmutable $fecha = null;
+
+    /** Sigla de la carrera, tal como viene en el Excel ("AGI", "AGI/GT"). */
+    #[ORM\Column(length: 60, nullable: true)]
+    private ?string $carrera = null;
+
+    /** Año de cursado ya normalizado ("1.º", "2.º y 4.º"). */
+    #[ORM\Column(length: 40, nullable: true)]
+    private ?string $anio = null;
+
+    /** Docentes, o el responsable de un evento ("Ariado, L. / Bianchini, C."). */
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $docente = null;
 
     #[ORM\Column]
     private bool $activo = true;
@@ -79,9 +110,33 @@ class CronogramaItem
     // anterior; el NotBlank del FormType es el que avisa "obligatorio".
     public function setOrden(?int $orden): static { if ($orden !== null) { $this->orden = $orden; } return $this; }
 
+    public function getTipo(): TipoItemCronograma { return $this->tipo; }
+    public function setTipo(TipoItemCronograma $tipo): static { $this->tipo = $tipo; return $this; }
+
+    public function getFecha(): ?DateTimeImmutable { return $this->fecha; }
+    public function setFecha(?DateTimeImmutable $fecha): static { $this->fecha = $fecha; return $this; }
+
+    public function getCarrera(): ?string { return $this->carrera; }
+    public function setCarrera(?string $carrera): static { $this->carrera = $carrera; return $this; }
+
+    public function getAnio(): ?string { return $this->anio; }
+    public function setAnio(?string $anio): static { $this->anio = $anio; return $this; }
+
+    public function getDocente(): ?string { return $this->docente; }
+    public function setDocente(?string $docente): static { $this->docente = $docente; return $this; }
+
     public function aplicaHoy(): bool
     {
-        $bit = (int)(new DateTimeImmutable())->format('N') - 1;
+        return $this->aplicaEl(new DateTimeImmutable());
+    }
+
+    /** Un evento, en su fecha; una clase o actividad, en sus días de la semana. */
+    public function aplicaEl(DateTimeImmutable $dia): bool
+    {
+        if ($this->tipo->tieneFecha()) {
+            return $this->fecha !== null && $this->fecha->format('Y-m-d') === $dia->format('Y-m-d');
+        }
+        $bit = (int) $dia->format('N') - 1;
         return (bool)($this->diasSemana & (1 << $bit));
     }
 }

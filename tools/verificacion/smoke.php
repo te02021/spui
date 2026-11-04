@@ -68,11 +68,16 @@ function resolverParametros(string $path, array $ids): ?array
     }
     if ($ids[$clave] === null) return null;
     $p['id'] = $ids[$clave];
+    // Exportar sin fechas responde 422 a propósito: se prueba con las últimas 24 h.
+    if (str_ends_with($path, '/telemetria/exportar')) {
+        $p['desde'] = (new DateTimeImmutable('-24 hours'))->format('Y-m-d\TH:00');
+        $p['hasta'] = (new DateTimeImmutable())->format('Y-m-d\TH:00');
+    }
     return $p;
 }
 
 /** Rutas que no son pantallas ni modales: archivos binarios o sólo navegación. */
-const NO_HTML = ['spui_cms_alertas_sonido_preview', 'spui_cms_contenidos_archivo_preview'];
+const NO_HTML = ['spui_cms_alertas_sonido_preview', 'spui_cms_contenidos_archivo_preview', 'spui_cms_reproductores_telemetria_exportar'];
 
 $router  = $kernel->getContainer()->get('router');
 $fallos  = [];
@@ -90,11 +95,14 @@ foreach ($router->getRouteCollection()->all() as $nombre => $ruta) {
 
     // Las páginas se piden como navegación; las acciones que existen para un
     // modal (ver, nuevo, editar, ítems, energía) se piden también como XHR.
-    $esModal = (bool) preg_match('#/(ver|nuevo|nueva|nueva-regla|editar|items|cronograma|energia|agregar)(/|$)#', $ruta->getPath())
+    $esModal = (bool) preg_match('#/(ver|nuevo|nueva|nueva-regla|editar|items|cronograma|energia|agregar|pantalla|importar)(/|$)#', $ruta->getPath())
         || str_contains($nombre, '_items') || str_contains($nombre, '_energia_') || str_contains($nombre, '_cronograma_');
 
     foreach ($esModal ? [true] : [false] as $xhr) {
-        $r = spuiHttp('GET', $url, $sesion, $xhr);
+        // Las vistas previas de archivos bajan el archivo entero de S3 antes
+        // de responder: un video de 110 MB tardó 70 s en la red del trabajo
+        // (29/10/2026). Se les da más tiempo para no confundirlo con Apache caído.
+        $r = spuiHttp('GET', $url, $sesion, $xhr, [], in_array($nombre, NO_HTML, true) ? 180 : 60);
         $problema = spuiProblemaDeRespuesta($r, $xhr, in_array($nombre, NO_HTML, true));
         $etiqueta = sprintf('%-48s %s%s', $nombre, $xhr ? '[XHR] ' : '', substr($url, strlen($base)));
         if ($problema === null) { $ok++; echo "  OK    $etiqueta\n"; }

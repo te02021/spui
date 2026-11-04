@@ -45,7 +45,7 @@
     </div>
     {% endif %}
     <div class="spui-view-row">
-        <span class="spui-view-row-label">Último heartbeat</span>
+        <span class="spui-view-row-label">Última señal</span>
         <span class="spui-view-row-value">
             {% if reproductor.ultimoHeartbeat %}
                 {{ reproductor.ultimoHeartbeat|date('d/m/Y H:i:s') }}
@@ -71,7 +71,7 @@
         <span class="spui-view-row-value">Cada {{ texto.duracion_minutos(reproductor.intervaloSyncMin) }}</span>
     </div>
     <div class="spui-view-row">
-        <span class="spui-view-row-label">Último sync</span>
+        <span class="spui-view-row-label">Última sincronización</span>
         <span class="spui-view-row-value">
             {% if reproductor.ultimoSync %}
                 {{ reproductor.ultimoSync|date('d/m/Y H:i:s') }}

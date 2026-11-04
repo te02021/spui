@@ -1,5 +1,6 @@
 {% extends '@SPUI/base.html.twig' %}
 {% block title %}Reproductores — SPUI{% endblock %}
+{% block descripcion %}Raspberry Pi que reproducen el contenido de las pantallas digitales de la UNRaf: estado, actividad y diagnóstico.{% endblock %}
 
 {% import '@SPUI/_macros/bloqueo.html.twig' as bloqueo %}
 {% import '@SPUI/_macros/texto.html.twig' as texto %}
@@ -26,173 +27,165 @@
     </div>
 </div>
 
-{# El estado de conexión y el último heartbeat cambian cada minuto sin que
-   nadie toque nada, así que esta zona se refresca sola. #}
-<div id="spui-table-body" data-spui-refresh>
-<div class="unraf-card">
-    <div class="unraf-table-responsive">
-        <table class="unraf-table unraf-table-striped w-100 text-nowrap spui-tabla-cards">
-            <thead>
-                <tr>
-                    <th class="p-3">Nombre de host</th>
-                    <th class="p-3">Pantallas asignadas</th>
-                    <th class="p-3">Estado</th>
-                    <th class="p-3">Última actividad</th>
-                    <th class="p-3">Diagnóstico</th>
-                    <th class="p-3">Acciones</th>
-                </tr>
-            </thead>
-            <tbody>
-            {% for r in reproductores %}
-                {# Motivo de bloqueo de esta fila, resuelto una sola vez.
-                   null = el equipo responde y las acciones van habilitadas. #}
-                {% set motivo = spui_alcance.motivoDe(r, ids_offline|default({})) %}
-                <tr>
-                    <td class="p-3" data-label="Nombre de host"><strong>{{ r.hostname }}</strong></td>
-                    <td class="p-3" data-label="Pantallas asignadas">
-                        {% if r.pantallas|length > 0 %}
-                            {% for p in r.pantallas %}
-                                <span class="spui-badge-borrador">{{ p.nombre }}</span>
-                            {% endfor %}
-                        {% else %}
-                            <span class="text-muted small">Sin pantallas</span>
-                        {% endif %}
-                    </td>
-                    {# La versión de firmware se ve en Ver: como columna casi siempre decía "—"
-                       y su ancho dejaba "Acciones" fuera de la vista en 1366 px. #}
-                    <td class="p-3" data-label="Estado">
-                        {# Estado CALCULADO, no la columna: no depende de que el cron
-                           de mantenimiento haya corrido. #}
-                        {% set est = r.estadoCalculado(spui_umbral_conexion) %}
-                        <span class="spui-badge-{{ est.value }}">{{ est.etiqueta }}</span>
-                        {% if r.tieneProblemas %}
-                            <br><span class="spui-badge-problema" title="{{ r.diagnostico|join(' · ') }}">
-                                {{ r.diagnostico|length }} problema{{ r.diagnostico|length == 1 ? '' : 's' }}
-                            </span>
-                        {% endif %}
-                    </td>
-                    {# Heartbeat y sync en una sola columna: con una columna por dato la
-                       tabla ya no entraba en 1366 px y "Acciones" quedaba fuera de la
-                       vista. La hora exacta va en el title y en Ver.
-                       tiempo-relativo.js recalcula el "hace…" y le pone .is-stale:
-                       el heartbeat pasado el umbral de conexión; el sync pasado el
-                       doble de su intervalo. Los umbrales del Twig replican los del JS. #}
-                    <td class="p-3" data-label="Última actividad">
-                        <div class="spui-actividad">
-                            <span class="spui-actividad-label">Heartbeat</span>
-                            {% if r.ultimoHeartbeat %}
-                                {% set seg = "now"|date("U") - r.ultimoHeartbeat|date("U") %}
-                                <small title="{{ r.ultimoHeartbeat|date('d/m/Y H:i:s') }}"
-                                       data-spui-desde="{{ r.ultimoHeartbeat|date('c') }}"
-                                       class="{{ seg > spui_umbral_conexion ? 'is-stale' : '' }}">
-                                    {%- if seg < 90 -%}hace instantes
-                                    {%- elseif seg < 3600 -%}hace {{ (seg / 60)|round }} min
-                                    {%- elseif seg < 86400 -%}hace {{ (seg / 3600)|round }} h
-                                    {%- else -%}hace {{ (seg / 86400)|round }} días
-                                    {%- endif -%}
-                                </small>
-                            {% else %}
-                                <small class="text-muted">nunca</small>
-                            {% endif %}
-                        </div>
-                        <div class="spui-actividad">
-                            <span class="spui-actividad-label">Sync</span>
-                            {% if r.ultimoSync %}
-                                {% set segS = "now"|date("U") - r.ultimoSync|date("U") %}
-                                <small title="{{ r.ultimoSync|date('d/m/Y H:i:s') }} · sincroniza cada {{ texto.duracion_minutos(r.intervaloSyncMin) }}"
-                                       data-spui-desde="{{ r.ultimoSync|date('c') }}"
-                                       data-spui-atrasado-seg="{{ r.intervaloSyncMin * 120 }}"
-                                       class="{{ segS > r.intervaloSyncMin * 120 ? 'is-stale' : '' }}">
-                                    {%- if segS < 90 -%}hace instantes
-                                    {%- elseif segS < 3600 -%}hace {{ (segS / 60)|round }} min
-                                    {%- elseif segS < 86400 -%}hace {{ (segS / 3600)|round }} h
-                                    {%- else -%}hace {{ (segS / 86400)|round }} días
-                                    {%- endif -%}
-                                </small>
-                            {% else %}
-                                <small class="text-muted">nunca</small>
-                            {% endif %}
-                        </div>
-                    </td>
-                    <td class="p-3 spui-col-diagnostico" data-label="Diagnóstico">
-                        {% if r.tieneProblemas %}
-                            <ul class="spui-diagnostico-lista">
+{# Tarjetas (30/10/2026). El estado y la última actividad cambian cada minuto
+   sin que nadie toque nada, así que la zona se refresca sola.
+   El diagnóstico ya no es una columna: es el botón-ícono de cada tarjeta, que
+   abre lo que informa el equipo (core/desplegable.js), ámbar si hay
+   problemas y verde si no. #}
+{{ include('@SPUI/_partials/barra_lista.html.twig', {filtros: filtros, que: 'reproductores', placeholder: 'Buscar por nombre o pantalla', refrescar: true}) }}
+<div id="spui-table-body" data-spui-refresh data-spui-busqueda-zona>
+<div class="spui-lista">
+{% for r in reproductores %}
+    {# Motivo de bloqueo de esta fila, resuelto una sola vez.
+       null = el equipo responde y las acciones van habilitadas. #}
+    {% set motivo = spui_alcance.motivoDe(r, ids_offline|default({})) %}
+    {# Estado CALCULADO, no la columna: no depende de que el cron de
+       mantenimiento haya corrido. #}
+    {% set est = r.estadoCalculado(spui_umbral_conexion) %}
+    {% set clase = {conectado: 'is-ok', desconectado: 'is-grave', sin_registrar: 'is-neutro'}[est.value] %}
+    <article class="unraf-card spui-item {{ clase }}">
+        <div class="spui-item-cuerpo">
+            <div class="spui-item-cab">
+                <span class="spui-etiqueta {{ clase }}">{% if est.value == 'desconectado' %}<span class="spui-etiqueta-latido"></span>{% endif %}{{ est.etiqueta }}</span>
+                <h2 class="spui-item-titulo">{{ r.hostname }}</h2>
+            </div>
+            <div class="spui-chips">
+                {% for p in r.pantallas %}
+                    <span class="spui-chip"><img src="{{ asset('unraf-ui/icons/monitor.svg') }}" alt=""> {{ p.nombre }}</span>
+                {% else %}
+                    <span class="spui-chip">Sin pantallas</span>
+                {% endfor %}
+                {# tiempo-relativo.js recalcula el "hace…" y le pone .is-stale: el
+                   heartbeat pasado el umbral de conexión; el sync pasado el doble
+                   de su intervalo. Los umbrales del Twig replican los del JS. #}
+                <span class="spui-chip" title="Último aviso de vida del equipo (cada 60 s)">Última señal
+                    {% if r.ultimoHeartbeat %}
+                        {% set seg = "now"|date("U") - r.ultimoHeartbeat|date("U") %}
+                        <small title="{{ r.ultimoHeartbeat|date('d/m/Y H:i:s') }}"
+                               data-spui-desde="{{ r.ultimoHeartbeat|date('c') }}"
+                               class="{{ seg > spui_umbral_conexion ? 'is-stale' : '' }}">
+                            {%- if seg < 90 -%}hace instantes
+                            {%- elseif seg < 3600 -%}hace {{ (seg / 60)|round }} min
+                            {%- elseif seg < 86400 -%}hace {{ (seg / 3600)|round }} h
+                            {%- else -%}hace {{ (seg / 86400)|round }} días
+                            {%- endif -%}
+                        </small>
+                    {% else %}
+                        <small>nunca</small>
+                    {% endif %}
+                </span>
+                <span class="spui-chip" title="Última vez que bajó su programación y contenidos">Sincronizado
+                    {% if r.ultimoSync %}
+                        {% set segS = "now"|date("U") - r.ultimoSync|date("U") %}
+                        <small title="{{ r.ultimoSync|date('d/m/Y H:i:s') }} · sincroniza cada {{ texto.duracion_minutos(r.intervaloSyncMin) }}"
+                               data-spui-desde="{{ r.ultimoSync|date('c') }}"
+                               data-spui-atrasado-seg="{{ r.intervaloSyncMin * 120 }}"
+                               class="{{ segS > r.intervaloSyncMin * 120 ? 'is-stale' : '' }}">
+                            {%- if segS < 90 -%}hace instantes
+                            {%- elseif segS < 3600 -%}hace {{ (segS / 60)|round }} min
+                            {%- elseif segS < 86400 -%}hace {{ (segS / 3600)|round }} h
+                            {%- else -%}hace {{ (segS / 86400)|round }} días
+                            {%- endif -%}
+                        </small>
+                    {% else %}
+                        <small>nunca</small>
+                    {% endif %}
+                </span>
+                {# Diagnóstico: lo que informa el propio equipo en su último aviso,
+                   en la misma fila que el resto de sus datos. #}
+                <span class="spui-desp">
+                    <button type="button" class="spui-chip spui-chip-btn {{ r.tieneProblemas ? 'is-aviso' : 'is-ok' }}" data-spui-desp
+                            aria-expanded="false" aria-controls="repro-{{ r.id }}-diagnostico"
+                            data-spui-sync="aria-label"
+                            aria-label="Diagnóstico de {{ r.hostname }}: {{ r.tieneProblemas ? texto.plural(r.diagnostico|length, 'problema', 'problemas') : 'sin problemas' }}">
+                        <img src="{{ asset('unraf-ui/icons/' ~ (r.tieneProblemas ? 'stethoscope.svg' : 'heartbeat.svg')) }}" alt="" data-spui-sync="src">
+                        {{ r.tieneProblemas ? texto.plural(r.diagnostico|length, 'problema', 'problemas') : 'Diagnóstico' }}
+                    </button>
+                    <div id="repro-{{ r.id }}-diagnostico" class="spui-desp-panel" role="region" aria-label="Diagnóstico de {{ r.hostname }}">
+                        <p class="spui-desp-titulo">Diagnóstico de {{ r.hostname }}</p>
+                        <ul class="spui-desp-lista">
                             {% for problema in r.diagnostico %}
                                 <li>{{ problema }}</li>
+                            {% else %}
+                                <li>{{ r.ultimoHeartbeat ? 'Sin problemas informados.' : 'Todavía no envió ningún reporte.' }}
+                                    {% if r.diagnosticoEn %}<small>Último reporte: {{ r.diagnosticoEn|date('d/m/Y H:i') }}</small>{% endif %}</li>
                             {% endfor %}
-                            </ul>
-                        {% elseif r.ultimoHeartbeat %}
-                            <small class="text-success">Sin problemas</small>
-                        {% else %}
-                            <small class="text-muted">Sin reportes todavía</small>
-                        {% endif %}
-                    </td>
-                    <td class="p-3" data-label="Acciones">
-                        <div class="spui-acciones">
-                            <button type="button"
-                                    class="unraf-btn spui-btn-ver unraf-btn-sm"
-                                    data-spui-form="{{ path('spui_cms_reproductores_ver', {id: r.id}) }}"
-                                    data-spui-title="{{ r.hostname }}"
-                                    title="Ver detalle">
-                                <img src="{{ asset('unraf-ui/icons/eye.svg') }}" class="spui-action-icon" alt=""> Ver
-                            </button>
-                            <a href="{{ path('spui_cms_reproductores_telemetria', {id: r.id}) }}"
-                               class="unraf-btn spui-btn-telemetria unraf-btn-sm"
-                               title="Histórico de temperatura, RAM y disco">
-                                <img src="{{ asset('unraf-ui/icons/chart-line.svg') }}" class="spui-action-icon" alt=""> Telemetría
-                            </a>
-                            <button type="button"
-                                    class="unraf-btn spui-btn-sincronizar unraf-btn-sm {{ bloqueo.clase(motivo) }}"
-                                    data-spui-action="{{ path('spui_cms_reproductores_sincronizar', {id: r.id}) }}"
-                                    data-spui-title="Sincronizar ahora"
-                                    data-spui-message="¿Pedirle a «{{ r.hostname }}» que sincronice ahora con el CMS? Sincroniza solo cada {{ texto.duracion_minutos(r.intervaloSyncMin) }}."
-                                    data-spui-variant="sincronizar"
-                                    data-spui-confirm-label="Sincronizar"
-                                    {% if motivo %}{{ bloqueo.attrs(motivo) }}{% else %}title="Pedir que sincronice ahora con el CMS"{% endif %}>
-                                <img src="{{ asset('unraf-ui/icons/arrows-clockwise.svg') }}" class="spui-action-icon" alt=""> Sincronizar
-                            </button>
-                            <button type="button"
-                                    class="unraf-btn spui-btn-editar unraf-btn-sm {{ bloqueo.clase(motivo) }}"
-                                    data-spui-form="{{ path('spui_cms_reproductores_editar', {id: r.id}) }}"
-                                    data-spui-title="Editar: {{ r.hostname }}"
-                                    {% if motivo %}{{ bloqueo.attrs(motivo) }}{% else %}title="Editar"{% endif %}>
-                                <img src="{{ asset('unraf-ui/icons/pencil.svg') }}" class="spui-action-icon" alt=""> Editar
-                            </button>
-                            <button type="button"
-                                    class="unraf-btn spui-btn-clave unraf-btn-sm {{ bloqueo.clase(motivo) }}"
-                                    data-spui-action="{{ path('spui_cms_reproductores_regenerar_clave', {id: r.id}) }}"
-                                    data-spui-title="Regenerar clave API"
-                                    data-spui-message="¿Regenerar la API key de «{{ r.hostname }}»? La clave anterior quedará inválida de inmediato."
-                                    data-spui-variant="clave"
-                                    data-spui-confirm-label="Regenerar"
-                                    {% if motivo %}{{ bloqueo.attrs(motivo) }}{% else %}title="Regenerar API key"{% endif %}>
-                                <img src="{{ asset('unraf-ui/icons/key.svg') }}" class="spui-action-icon" alt=""> Clave
-                            </button>
-                            {# Sin bloqueo por conectividad a propósito: dar de baja un
-                               equipo es lo que se hace cuando se rompió y no vuelve.
-                               Ver el comentario en ReproductorCmsController::eliminar(). #}
-                            <button type="button"
-                                    class="unraf-btn spui-btn-eliminar unraf-btn-sm"
-                                    data-spui-action="{{ path('spui_cms_reproductores_eliminar', {id: r.id}) }}"
-                                    data-spui-title="Eliminar reproductor"
-                                    data-spui-message="¿Eliminar «{{ r.hostname }}»? El Pi dejará de poder comunicarse con el sistema."
-                                    data-spui-variant="eliminar"
-                                    title="Eliminar">
-                                <img src="{{ asset('unraf-ui/icons/trash.svg') }}" class="spui-action-icon" alt=""> Eliminar
-                            </button>
-                        </div>
-                    </td>
-                </tr>
-            {% else %}
-                <tr>
-                    <td colspan="6" class="p-4 text-center text-muted">
-                        No hay reproductores registrados.
-                    </td>
-                </tr>
-            {% endfor %}
-            </tbody>
-        </table>
-    </div>
+                            {% if r.diagnostico|length and r.diagnosticoEn %}<li><small>Informado el {{ r.diagnosticoEn|date('d/m/Y H:i') }}</small></li>{% endif %}
+                        </ul>
+                    </div>
+                </span>
+            </div>
+        </div>
+
+        <div class="spui-acciones spui-item-acciones">
+            <button type="button"
+                    class="unraf-btn spui-btn-ver unraf-btn-sm"
+                    data-spui-form="{{ path('spui_cms_reproductores_ver', {id: r.id}) }}"
+                    data-spui-title="{{ r.hostname }}"
+                    title="Ver detalle">
+                <img src="{{ asset('unraf-ui/icons/eye.svg') }}" class="spui-action-icon" alt=""> Ver
+            </button>
+            {# El resto de las acciones, en el menú ⋮ (03/11/2026, pedido de Mateo):
+               Ver queda a la vista. Los botones son los mismos de siempre (sus
+               data-spui-* no cambian) y una acción bloqueada muestra el motivo. #}
+            <span class="spui-desp spui-menu-acciones">
+                <button type="button" class="unraf-btn unraf-btn-sm spui-btn-menu" data-spui-desp aria-expanded="false"
+                        aria-controls="acciones-reproductores-{{ r.id }}" aria-haspopup="true" title="Más acciones">
+                    <img src="{{ asset('unraf-ui/icons/dots-three-vertical.svg') }}" class="spui-action-icon" alt=""> Más
+                </button>
+                <div id="acciones-reproductores-{{ r.id }}" class="spui-desp-panel spui-menu-panel" role="group" aria-label="Más acciones">
+                    <a href="{{ path('spui_cms_reproductores_telemetria', {id: r.id}) }}"
+                       class="unraf-btn spui-btn-telemetria unraf-btn-sm"
+                       title="Histórico de temperatura, RAM y disco">
+                        <img src="{{ asset('unraf-ui/icons/chart-line.svg') }}" class="spui-action-icon" alt=""> Telemetría
+                    </a>
+                    <button type="button"
+                            class="unraf-btn spui-btn-sincronizar unraf-btn-sm {{ bloqueo.clase(motivo) }}"
+                            data-spui-action="{{ path('spui_cms_reproductores_sincronizar', {id: r.id}) }}"
+                            data-spui-title="Sincronizar ahora"
+                            data-spui-message="¿Pedirle a «{{ r.hostname }}» que sincronice ahora con el CMS? Sincroniza solo cada {{ texto.duracion_minutos(r.intervaloSyncMin) }}."
+                            data-spui-variant="sincronizar"
+                            data-spui-confirm-label="Sincronizar"
+                            {% if motivo %}{{ bloqueo.attrs(motivo) }}{% else %}title="Pedir que sincronice ahora con el CMS"{% endif %}>
+                        <img src="{{ asset('unraf-ui/icons/arrows-clockwise.svg') }}" class="spui-action-icon" alt=""> Sincronizar
+                    </button>
+                    <button type="button"
+                            class="unraf-btn spui-btn-editar unraf-btn-sm {{ bloqueo.clase(motivo) }}"
+                            data-spui-form="{{ path('spui_cms_reproductores_editar', {id: r.id}) }}"
+                            data-spui-title="Editar: {{ r.hostname }}"
+                            {% if motivo %}{{ bloqueo.attrs(motivo) }}{% else %}title="Editar"{% endif %}>
+                        <img src="{{ asset('unraf-ui/icons/pencil.svg') }}" class="spui-action-icon" alt=""> Editar
+                    </button>
+                    <button type="button"
+                            class="unraf-btn spui-btn-clave unraf-btn-sm {{ bloqueo.clase(motivo) }}"
+                            data-spui-action="{{ path('spui_cms_reproductores_regenerar_clave', {id: r.id}) }}"
+                            data-spui-title="Regenerar clave API"
+                            data-spui-message="¿Regenerar la API key de «{{ r.hostname }}»? La clave anterior quedará inválida de inmediato."
+                            data-spui-variant="clave"
+                            data-spui-confirm-label="Regenerar"
+                            {% if motivo %}{{ bloqueo.attrs(motivo) }}{% else %}title="Regenerar API key"{% endif %}>
+                        <img src="{{ asset('unraf-ui/icons/key.svg') }}" class="spui-action-icon" alt=""> Clave
+                    </button>
+                    {# Sin bloqueo por conectividad a propósito: dar de baja un
+                       equipo es lo que se hace cuando se rompió y no vuelve.
+                       Ver el comentario en ReproductorCmsController::eliminar(). #}
+                    <button type="button"
+                            class="unraf-btn spui-btn-eliminar unraf-btn-sm"
+                            data-spui-action="{{ path('spui_cms_reproductores_eliminar', {id: r.id}) }}"
+                            data-spui-title="Eliminar reproductor"
+                            data-spui-message="¿Eliminar «{{ r.hostname }}»? El Pi dejará de poder comunicarse con el sistema."
+                            data-spui-variant="eliminar"
+                            title="Eliminar">
+                        <img src="{{ asset('unraf-ui/icons/trash.svg') }}" class="spui-action-icon" alt=""> Eliminar
+                    </button>
+                </div>
+            </span>
+        </div>
+    </article>
+{% else %}
+    {{ include('@SPUI/_partials/vacio.html.twig', {que: 'reproductores', icono: 'cpu.svg', mensaje: 'Registrá una Raspberry Pi con «Nuevo reproductor» para obtener su clave.'}) }}
+{% endfor %}
 </div>
+{{ include('@SPUI/_partials/paginacion.html.twig', {pag: paginacion, que: 'reproductores'}) }}
 </div>
 {% endblock %}

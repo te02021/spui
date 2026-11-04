@@ -66,6 +66,17 @@ class TelemetriaHora
     #[ORM\Column(type: 'integer', options: ['unsigned' => true])]
     private int $discoMin;
 
+    /** Uso de CPU (%), desde el 03/11/2026: null en las horas anteriores. */
+    #[ORM\Column(type: 'decimal', precision: 5, scale: 2, nullable: true)]
+    private ?string $cpuProm = null;
+
+    #[ORM\Column(type: 'decimal', precision: 5, scale: 2, nullable: true)]
+    private ?string $cpuMax = null;
+
+    /** Latencia de red promedio (ms): el crudo se purga a los 7 días y el Dashboard la muestra en 30. */
+    #[ORM\Column(type: 'decimal', precision: 7, scale: 1, nullable: true)]
+    private ?string $latProm = null;
+
     /**
      * Cuántas lecturas crudas se agregaron en esta hora. Con el intervalo por
      * defecto deberían ser ~60; un valor mucho menor delata que el equipo
@@ -96,6 +107,10 @@ class TelemetriaHora
 
     public function getDiscoMin(): int { return $this->discoMin; }
     public function setDiscoMin(int $discoMin): static { $this->discoMin = $discoMin; return $this; }
+
+    public function getCpuProm(): ?float { return $this->cpuProm !== null ? (float) $this->cpuProm : null; }
+    public function getCpuMax(): ?float { return $this->cpuMax !== null ? (float) $this->cpuMax : null; }
+    public function getLatProm(): ?float { return $this->latProm !== null ? (float) $this->latProm : null; }
 
     public function getLecturas(): int { return $this->lecturas; }
     public function setLecturas(int $lecturas): static { $this->lecturas = $lecturas; return $this; }

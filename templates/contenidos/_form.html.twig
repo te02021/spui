@@ -11,70 +11,105 @@
     <div class="alert alert-danger mb-3">{{ e.message }}</div>
 {% endfor %}
 
-<div class="row g-2 mb-3">
-    <div class="col">
+{# Título, tipo y duración en una fila (30/10/2026): en escritorio, título a
+   la mitad y tipo y duración a un cuarto cada uno; en celular, el título
+   arriba y los otros dos lado a lado. #}
+<div class="row g-2 mb-1 align-items-start">
+    <div class="col-12 col-md-6">
         {{ form_label(form.titulo) }}
         {{ form_widget(form.titulo) }}
         {% for e in form.titulo.vars.errors %}
             <p class="spui-campo-error">{{ e.message }}</p>
         {% endfor %}
     </div>
-    <div class="col-12 col-sm-auto" style="min-width:160px">
+    <div class="col-6 col-md-3">
         {{ form_label(form.tipo) }}
         {{ form_widget(form.tipo) }}
         {% for e in form.tipo.vars.errors %}
             <p class="spui-campo-error">{{ e.message }}</p>
         {% endfor %}
     </div>
-</div>
-
-<div class="mb-3">
-    {{ form_label(form.duracionSegundos) }}
-    <div class="spui-input-with-addon">
-        {{ form_widget(form.duracionSegundos) }}
-        <span class="spui-input-addon">seg <small class="text-muted">(vacío = permanente)</small></span>
+    <div class="col-6 col-md-3">
+        {# content-type-fields.js oculta el campo en un video: su duración la lee
+           el CMS del archivo al guardarlo, y se muestra la nota en su lugar. #}
+        <div id="campoDuracion">
+            {{ form_label(form.duracionSegundos) }}
+            {# La etiqueta ya dice "(segundos)": sin sufijo, que en la columna angosta no entraba. #}
+            {{ form_widget(form.duracionSegundos) }}
+            {% for e in form.duracionSegundos.vars.errors %}
+                <p class="spui-campo-error">{{ e.message }}</p>
+            {% endfor %}
+        </div>
+        <div id="notaDuracionVideo" hidden>
+            <span class="unraf-form-label d-block">Duración</span>
+            <span class="spui-campo-fijo">La del archivo</span>
+        </div>
+        <div id="notaDuracionCronograma" hidden>
+            <span class="unraf-form-label d-block">Duración</span>
+            <span class="spui-campo-fijo">Según sus páginas</span>
+        </div>
     </div>
-    {% for e in form.duracionSegundos.vars.errors %}
-        <p class="spui-campo-error">{{ e.message }}</p>
-    {% endfor %}
-    <small class="text-muted d-block mt-1">Dura lo mismo en todas las playlists donde esté.</small>
+</div>
+<div class="mb-3">
+    <small class="text-muted d-block" id="ayudaDuracion">{{ include('@SPUI/contenidos/_ayuda_duracion.html.twig') }}</small>
+    <small class="text-muted d-block" id="ayudaDuracionVideo" hidden>Un video dura lo que dura el archivo: el CMS la lee al guardarlo y la playlist lo muestra completo.</small>
+    <small class="text-muted d-block" id="ayudaDuracionCronograma" hidden>Un cronograma dura lo que tardan en pasar sus páginas, que depende de cuántas actividades quedan en el día.</small>
 </div>
 
 {# data-spui-campo: los errores del archivo (del servidor y de validacion-vivo.js,
    que avisa apenas se elige uno demasiado pesado) van al final de este bloque. #}
-<div id="campoArchivo" class="mb-3" style="display:none" data-spui-campo>
+<div id="campoArchivo" class="mb-3" hidden data-spui-campo>
     <label class="unraf-form-label" for="archivoInput">Archivo <span class="text-danger">*</span></label>
     {# Formatos según el tipo elegido: content-type-fields.js toma de
        data-spui-formatos-por-tipo el accept, las extensiones que valida
        validacion-vivo.js y el texto de ayuda de abajo. #}
     <input type="file" name="archivo" id="archivoInput" class="form-control{{ err.archivo is defined ? ' is-invalid' }}"
            data-spui-formatos-por-tipo="{{ constant('SPUI\\Service\\MediaStorageService::FORMATOS')|json_encode }}"
+           data-spui-video-max="{{ constant('SPUI\\Service\\VideoInspectorService::LADO_MAYOR_MAXIMO') }}x{{ constant('SPUI\\Service\\VideoInspectorService::LADO_MENOR_MAXIMO') }}"
            {% if max_bytes_archivo is defined %}data-spui-max-bytes="{{ max_bytes_archivo }}"{% endif %}>
     <small class="text-muted" id="archivoAyuda"></small>
     {% if err.archivo is defined %}<p class="spui-campo-error">{{ err.archivo }}</p>{% endif %}
 </div>
 
-<div id="campoTexto" class="mb-3" style="display:none">
+<div id="campoTexto" class="mb-3" hidden>
     <label class="unraf-form-label" id="labelTexto">Texto <span class="text-danger">*</span></label>
     <textarea name="contenido_texto" id="textareaTexto" class="unraf-form-control{{ err.contenido_texto is defined ? ' is-invalid' }}" rows="4" placeholder="Ingresá el texto a mostrar…">{{ contenido_texto|default('') }}</textarea>
     {% if err.contenido_texto is defined %}<p class="spui-campo-error">{{ err.contenido_texto }}</p>{% endif %}
 </div>
 
-<div id="campoCronograma" class="mb-3" style="display:none">
+<div id="campoCronograma" class="mb-3" hidden>
     <div class="p-3" style="background:#f0f7ff;border:1px solid #b8d4ec;border-radius:.5rem">
         <strong style="color:var(--unraf-azul)">Cronograma de actividades</strong><br>
         <small class="text-muted">Al guardar se abre el listado de ítems, donde se cargan los horarios, materias y eventos.</small>
+        {# Desde el 03/11/2026 importar vive acá y no en la cabecera de
+           Contenidos: sólo tiene sentido para un cronograma. Abre el asistente
+           en esta misma ventana (data-spui-abrir). #}
+        <div class="spui-importar-desde-alta">
+            <span class="text-muted small">¿Tenés los horarios en el Excel del cuatrimestre?</span>
+            <button type="button" class="unraf-btn spui-btn-back unraf-btn-sm"
+                    data-spui-abrir="{{ path('spui_cms_contenidos_importar') }}"
+                    data-spui-title="Importar cronograma" data-spui-size="modal-lg"
+                    title="Cargar los horarios desde el Excel">
+                <img src="{{ asset('unraf-ui/icons/file-arrow-up.svg') }}" class="spui-action-icon" alt=""> Importar desde Excel
+            </button>
+        </div>
     </div>
 </div>
 
 {# El código QR se carga acá mismo: no hay que crearlo antes en ningún otro
    lado. La etiqueta del código la toma del título del contenido. #}
-<div id="campoQr" style="display:none">
+<div id="campoQr" hidden>
     <div class="mb-3">
         <label class="unraf-form-label" for="qrUrlDestino">URL destino <span class="text-danger">*</span></label>
-        <input type="url" name="qr_url_destino" id="qrUrlDestino" class="unraf-form-control{{ err.qr_url_destino is defined ? ' is-invalid' }}"
-               maxlength="500" placeholder="https://…" value="{{ qr_url_destino|default('') }}">
+        {# Uno o dos enlaces (03/11/2026): con los de las dos tiendas, cada
+           teléfono va a la suya (CodigoQr::destinoPara). #}
+        <textarea name="qr_url_destino" id="qrUrlDestino" rows="2" class="unraf-form-control spui-qr-destinos{{ err.qr_url_destino is defined ? ' is-invalid' }}"
+                  maxlength="1001" placeholder="https://…" spellcheck="false" autocomplete="off">{{ qr_url_destino|default('') }}</textarea>
         {% if err.qr_url_destino is defined %}<p class="spui-campo-error">{{ err.qr_url_destino }}</p>{% endif %}
+        <small class="text-muted d-block mt-1" data-spui-qr-app-ayuda>
+            ¿Es una app? Pegá los dos enlaces, uno por renglón (Google Play y App Store, en cualquier orden):
+            cada teléfono va a su tienda con un solo código.
+        </small>
         <small class="text-muted d-block mt-1">
             A dónde llega quien escanea. La imagen del QR se genera sola, y se puede cambiar el
             destino después sin reimprimir nada.
@@ -88,6 +123,11 @@
         {% if err.qr_expira_en is defined %}<p class="spui-campo-error">{{ err.qr_expira_en }}</p>{% endif %}
         <small class="text-muted d-block mt-1">Pasada esa fecha el código deja de redirigir. Vacío = sin vencimiento.</small>
     </div>
+</div>
+
+{# Hasta elegir un tipo no hay nada que presentar. #}
+<div data-spui-solo-tipos="texto imagen video qr cronograma" hidden>
+    {{ include('@SPUI/contenidos/_presentacion.html.twig', {pv: presentacion, err: err, edificios: edificios}) }}
 </div>
 
 <div class="d-flex justify-content-end gap-2 pt-3 border-top">

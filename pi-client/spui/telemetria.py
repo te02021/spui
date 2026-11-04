@@ -4,6 +4,8 @@ TelemetriaPublisher — publica métricas del sistema vía MQTT cada N segundos.
 Métricas recopiladas:
   temperatura_soc_celsius : sensor térmico del Pi (/sys/class/thermal) o psutil.
                             None en Windows/simulación sin sensor.
+  uso_cpu_porcentaje      : uso de CPU en %, promedio desde la lectura anterior
+                            (noviembre 2026; un CMS viejo lo ignora).
   uso_ram_porcentaje      : RAM usada en % (psutil).
   espacio_disco_libre_mb  : espacio libre en la partición raíz en MB (psutil).
   latencia_red_ms         : TCP connect al host del CMS, en ms (NetworkMonitor).
@@ -11,12 +13,21 @@ Métricas recopiladas:
 
 El reproductor_id se establece externamente vía set_reproductor_id() después del primer sync.
 El thread no publica hasta tener un reproductor_id válido.
+
+Modo en vivo (29/10/2026): mientras alguien mira la telemetría de este
+reproductor en el CMS, el CMS manda el comando 'telemetria_vivo' y este hilo
+publica además temperatura, CPU y RAM cada 1 s en spui/telemetria/vivo/{id}. Ese
+topic tiene dos niveles después de spui/telemetria/, así que el daemon del CMS
+(suscrito a spui/telemetria/+) no lo guarda: va directo al navegador. El CMS
+renueva el pedido mientras la página está abierta; si deja de renovarlo, el
+modo en vivo vence solo y queda la publicación normal de cada minuto.
 """
 
 import json
 import logging
 import os
 import threading
+import time
 
 logger = logging.getLogger('spui.telemetria')
 
@@ -27,6 +38,40 @@ except ImportError:
     _PSUTIL_OK = False
     logger.warning('psutil no disponible — métricas de RAM/disco simuladas en 0.')
 
+class MedidorCpu:
+    """
+    Uso de CPU entre una lectura y la anterior, en %.
+
+    Con su propio punto de partida y no con psutil.cpu_percent(), que guarda
+    uno solo para todo el proceso: la lectura en vivo (cada 1 s) le robaría
+    el intervalo a la de cada minuto, que dejaría de ser el promedio del minuto.
+    """
+
+    def __init__(self, tiempos=None):
+        self._tiempos = tiempos or (psutil.cpu_times if _PSUTIL_OK else None)
+        self._anterior = self._leer_tiempos()
+
+    def _leer_tiempos(self):
+        if self._tiempos is None:
+            return None
+        try:
+            t = self._tiempos()
+            ocioso = t.idle + getattr(t, 'iowait', 0.0)
+            return sum(t), ocioso
+        except Exception:
+            return None
+
+    def leer(self) -> float | None:
+        actual = self._leer_tiempos()
+        anterior, self._anterior = self._anterior, actual
+        if actual is None or anterior is None:
+            return None
+        total, ocioso = actual[0] - anterior[0], actual[1] - anterior[1]
+        if total <= 0:
+            return None
+        return round(max(0.0, min(100.0, 100.0 * (1 - ocioso / total))), 1)
+
+
 try:
     import paho.mqtt.client as mqtt          # noqa: F401 — chequeo de disponibilidad
     from .mqtt_listener import nuevo_cliente_mqtt
@@ -34,6 +79,12 @@ try:
 except ImportError:
     _MQTT_OK = False
 
+
+#: Tope de un pedido de modo en vivo: aunque el CMS pida más, a los 5 min
+#: sin renovar se vuelve a la publicación normal (una página que quedó abierta
+#: en otra pestaña no puede dejar a la Pi publicando cada segundo para siempre).
+VIVO_MAX_SEG = 300
+VIVO_INTERVALO_SEG = 1.0
 
 #: Publicaciones MQTT fallidas seguidas antes de recurrir a HTTP.
 #: Tres ciclos (3 min con el intervalo por defecto) es suficiente para
@@ -78,12 +129,38 @@ class TelemetriaPublisher(threading.Thread):
         self._network  = network_monitor
         self._fallos_mqtt = 0
         self._usando_http = False
+        # Uso de CPU: uno para la publicación de cada minuto y otro para la
+        # en vivo, así cada uno promedia su propio intervalo (MedidorCpu).
+        self._cpu = MedidorCpu()
+        self._cpu_vivo = MedidorCpu()
+        # Modo en vivo: hasta cuándo (time.monotonic()) publicar cada segundo.
+        self._vivo_hasta = 0.0
+        # Despierta el ciclo antes de tiempo: al detener o al pedir modo en vivo.
+        self._senal = threading.Event()
 
     def set_reproductor_id(self, reproductor_id: int) -> None:
         self._reproductor_id = reproductor_id
 
     def detener(self) -> None:
         self._stop.set()
+        self._senal.set()
+
+    def vivo(self, segundos) -> None:
+        """Publicar temperatura y RAM cada 1 s durante `segundos` (comando del CMS)."""
+        try:
+            segundos = float(segundos)
+        except (TypeError, ValueError):
+            segundos = 60.0
+        segundos = max(1.0, min(segundos, VIVO_MAX_SEG))
+        nuevo = time.monotonic() + segundos
+        if nuevo > self._vivo_hasta:
+            if not self.en_vivo():
+                logger.info('Telemetría en vivo: cada %.0f s durante %.0f s.', VIVO_INTERVALO_SEG, segundos)
+            self._vivo_hasta = nuevo
+        self._senal.set()
+
+    def en_vivo(self) -> bool:
+        return time.monotonic() < self._vivo_hasta
 
     def run(self) -> None:
         if not _MQTT_OK:
@@ -124,7 +201,17 @@ class TelemetriaPublisher(threading.Thread):
         logger.info('TelemetriaPublisher iniciado — publicando cada %ds a %s:%d.',
                     self._interval, self._host, self._port)
 
-        while not self._stop.wait(timeout=self._interval):
+        proxima = time.monotonic() + self._interval
+        estaba_en_vivo = False
+        while not self._stop.is_set():
+            ahora = time.monotonic()
+            espera = proxima - ahora
+            if self.en_vivo():
+                espera = min(espera, VIVO_INTERVALO_SEG)
+            self._senal.wait(timeout=max(0.0, espera))
+            self._senal.clear()
+            if self._stop.is_set():
+                break
             if self._reproductor_id is None:
                 continue  # esperar al primer sync exitoso
 
@@ -133,8 +220,15 @@ class TelemetriaPublisher(threading.Thread):
             # la telemetría dejaría de publicarse para siempre, sin que el
             # proceso principal se entere ni quede nada en el log.
             try:
-                payload = self._recopilar()
-                self._publicar(client, payload)
+                if time.monotonic() >= proxima:
+                    proxima = time.monotonic() + self._interval
+                    self._publicar(client, self._recopilar())
+                if self.en_vivo():
+                    self._publicar_vivo(client)
+                    estaba_en_vivo = True
+                elif estaba_en_vivo:
+                    estaba_en_vivo = False
+                    logger.info('Telemetría en vivo terminada: nadie la está mirando. Se vuelve a cada %d s.', self._interval)
             except Exception as exc:
                 logger.warning('Error publicando telemetría: %s', exc)
 
@@ -177,10 +271,11 @@ class TelemetriaPublisher(threading.Thread):
                     self._usando_http = False
                 self._fallos_mqtt = 0
                 logger.debug(
-                    'Telemetría → %s | temp=%s°C ram=%.1f%% disco=%dMB',
+                    'Telemetría → %s | temp=%s°C cpu=%s%% ram=%.1f%% disco=%dMB',
                     topic,
                     f'{payload["temperatura_soc_celsius"]:.1f}'
                     if payload['temperatura_soc_celsius'] is not None else 'N/A',
+                    payload.get('uso_cpu_porcentaje') if payload.get('uso_cpu_porcentaje') is not None else 'N/A',
                     payload['uso_ram_porcentaje'],
                     payload['espacio_disco_libre_mb'],
                 )
@@ -223,14 +318,37 @@ class TelemetriaPublisher(threading.Thread):
         else:
             logger.warning('Telemetría perdida: fallaron MQTT y HTTP.')
 
+    def _publicar_vivo(self, client) -> None:
+        """
+        Una muestra del modo en vivo: sólo MQTT, QoS 0 y sin respaldo HTTP. Es
+        para mirar en el momento; una muestra perdida se reemplaza al segundo.
+        """
+        if client is None:
+            return
+        payload = {
+            'temperatura_soc_celsius': self._leer_temperatura(),
+            'uso_cpu_porcentaje':      self._cpu_vivo.leer(),
+            'uso_ram_porcentaje':      self._leer_ram(),
+            'espacio_disco_libre_mb':  self._leer_disco(),
+            'espacio_disco_total_mb':  self._leer_disco_total(),
+            'ts':                      round(time.time(), 1),
+        }
+        client.publish(f'spui/telemetria/vivo/{self._reproductor_id}', json.dumps(payload), qos=0)
+
     # ── Recopilación de métricas ──────────────────────────────────────────────
 
     def _recopilar(self) -> dict:
         return {
             'reproductor_id':         self._reproductor_id,
             'temperatura_soc_celsius': self._leer_temperatura(),
+            # Promedio desde la publicación anterior (un minuto). Opcional:
+            # un CMS viejo lo ignora.
+            'uso_cpu_porcentaje':     self._cpu.leer(),
             'uso_ram_porcentaje':     self._leer_ram(),
             'espacio_disco_libre_mb': self._leer_disco(),
+            # Para el indicador circular del CMS (% usado). Opcional: un CMS
+            # viejo lo ignora.
+            'espacio_disco_total_mb': self._leer_disco_total(),
             'latencia_red_ms':        self._network.medir_latencia_ms() if self._network else None,
         }
 
@@ -273,3 +391,12 @@ class TelemetriaPublisher(threading.Thread):
             except Exception:
                 pass
         return 0
+
+    def _leer_disco_total(self) -> int | None:
+        if _PSUTIL_OK:
+            try:
+                particion = '/' if os.name != 'nt' else 'C:\\'
+                return psutil.disk_usage(particion).total // (1024 * 1024)
+            except Exception:
+                pass
+        return None

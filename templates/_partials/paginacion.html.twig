@@ -1,0 +1,48 @@
+{# Paginación de un listado (SPUI\Service\Paginador).
+
+   Uso: {{ include('@SPUI/_partials/paginacion.html.twig', {pag: paginacion, que: 'edificios'}) }}
+
+   Sólo aparece con más de una página. Los enlaces conservan el resto de la
+   query (?pagina=N se suma a lo que ya haya). Muestra la primera, la última y
+   dos a cada lado de la actual; el resto, con "…". #}
+{% if pag.paginas > 1 %}
+    {% set ruta = app.request.attributes.get('_route') %}
+    {% set params = app.request.attributes.get('_route_params')|merge(app.request.query.all) %}
+    <nav class="spui-paginacion" aria-label="Paginación de {{ que|default('la lista') }}">
+        <p class="spui-paginacion-resumen mb-0">
+            {{ pag.desde }}–{{ pag.hasta }} de {{ pag.total }}{% if que is defined %} {{ que }}{% endif %}
+        </p>
+        <ul class="spui-paginacion-lista">
+            <li>
+                {% if pag.pagina > 1 %}
+                    <a class="spui-paginacion-btn" href="{{ path(ruta, params|merge({pagina: pag.pagina - 1})) }}" rel="prev" aria-label="Página anterior">‹ <span class="spui-paginacion-txt">Anterior</span></a>
+                {% else %}
+                    <span class="spui-paginacion-btn is-off" aria-hidden="true">‹ <span class="spui-paginacion-txt">Anterior</span></span>
+                {% endif %}
+            </li>
+            {% set hueco = false %}
+            {% for n in 1..pag.paginas %}
+                {% if n == 1 or n == pag.paginas or (n >= pag.pagina - 2 and n <= pag.pagina + 2) %}
+                    {% set hueco = false %}
+                    <li>
+                        {% if n == pag.pagina %}
+                            <span class="spui-paginacion-btn is-actual" aria-current="page">{{ n }}</span>
+                        {% else %}
+                            <a class="spui-paginacion-btn" href="{{ path(ruta, params|merge({pagina: n})) }}" aria-label="Página {{ n }}">{{ n }}</a>
+                        {% endif %}
+                    </li>
+                {% elseif not hueco %}
+                    {% set hueco = true %}
+                    <li><span class="spui-paginacion-btn is-hueco" aria-hidden="true">…</span></li>
+                {% endif %}
+            {% endfor %}
+            <li>
+                {% if pag.pagina < pag.paginas %}
+                    <a class="spui-paginacion-btn" href="{{ path(ruta, params|merge({pagina: pag.pagina + 1})) }}" rel="next" aria-label="Página siguiente"><span class="spui-paginacion-txt">Siguiente</span> ›</a>
+                {% else %}
+                    <span class="spui-paginacion-btn is-off" aria-hidden="true"><span class="spui-paginacion-txt">Siguiente</span> ›</span>
+                {% endif %}
+            </li>
+        </ul>
+    </nav>
+{% endif %}

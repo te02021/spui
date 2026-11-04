@@ -8,13 +8,19 @@
 
 {% set swId = form.activo.vars.id %}
 
+{# Edificio, sector y estado en una fila con el modal ancho (02/11/2026). #}
 <div class="row g-3 mb-3">
-    <div class="col">
+    <div class="col-12 col-md">
         {{ form_label(form.edificio) }}
         {{ form_widget(form.edificio) }}
         {% for e in form.edificio.vars.errors %}
             <p class="spui-campo-error">{{ e.message }}</p>
         {% endfor %}
+    </div>
+    <div class="col col-md">
+        {{ form_label(form.sector) }}
+        {{ form_widget(form.sector) }}
+        <small class="text-muted d-block mt-1">Ej: Hall de Entrada, Pasillo Planta Alta, Recepción.</small>
     </div>
     <div class="col-auto d-flex flex-column align-items-center" style="min-width:110px">
         <label class="unraf-form-label mb-2 text-center" for="{{ swId }}">Estado</label>
@@ -25,12 +31,6 @@
             <span class="spui-switch-status {{ form.activo.vars.checked ? 'on' : 'off' }}" id="{{ swId }}_lbl">{{ form.activo.vars.checked ? 'Activa' : 'Inactiva' }}</span>
         </div>
     </div>
-</div>
-
-<div class="mb-3">
-    {{ form_label(form.sector) }}
-    {{ form_widget(form.sector) }}
-    <small class="text-muted d-block mt-1">Ej: Hall de Entrada, Pasillo Planta Alta, Recepción.</small>
 </div>
 
 <div class="mb-4">

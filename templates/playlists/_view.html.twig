@@ -7,9 +7,6 @@
         <p class="spui-view-title">{{ playlist.nombre }}</p>
         <p class="spui-view-subtitle">Creada el {{ playlist.creadoEn|date('d/m/Y') }} a las {{ playlist.creadoEn|date('H:i') }}</p>
     </div>
-    <span class="{{ playlist.activo ? 'spui-badge-publicado' : 'spui-badge-archivado' }} flex-shrink-0">
-        {{ playlist.activo ? 'Activa' : 'Inactiva' }}
-    </span>
 </div>
 
 <div class="spui-view-section">

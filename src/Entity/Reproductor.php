@@ -26,6 +26,14 @@ class Reproductor
     #[ORM\Column(length: 50, nullable: true)]
     private ?string $versionFirmware = null;
 
+    /**
+     * Tamaño total del disco de la Pi, que manda con su telemetría desde el
+     * 29/10/2026. Va acá y no en cada lectura: casi nunca cambia. Lo usa el
+     * indicador circular de disco (% usado). Null hasta la primera lectura.
+     */
+    #[ORM\Column(type: 'integer', nullable: true, options: ['unsigned' => true])]
+    private ?int $discoTotalMb = null;
+
     /** SHA-256 de la API key generada — nunca se almacena la key en claro */
     #[ORM\Column(length: 64)]
     private string $apiKeyHash;
@@ -127,6 +135,9 @@ class Reproductor
     public function getVersionFirmware(): ?string { return $this->versionFirmware; }
     public function setVersionFirmware(?string $v): static { $this->versionFirmware = $v; return $this; }
 
+    public function getDiscoTotalMb(): ?int { return $this->discoTotalMb; }
+    public function setDiscoTotalMb(?int $mb): static { $this->discoTotalMb = $mb; return $this; }
+
     public function getApiKeyHash(): string { return $this->apiKeyHash; }
     public function setApiKeyHash(string $hash): static { $this->apiKeyHash = $hash; return $this; }
 
@@ -136,7 +147,7 @@ class Reproductor
     public function registrarSync(DateTimeImmutable $cuando): static { $this->ultimoSync = $cuando; return $this; }
 
     public function getIntervaloSyncMin(): int { return $this->intervaloSyncMin; }
-    /** Acepta null y lo ignora: el form mapea antes de validar (ver docs/README.md §3.2). */
+    /** Acepta null y lo ignora: el form mapea antes de validar (ver docs/archivo/auditorias.md §3.2). */
     public function setIntervaloSyncMin(?int $minutos): static
     {
         if ($minutos !== null) {
@@ -321,12 +332,11 @@ class Reproductor
     /**
      * Usuario con el que este reproductor se conecta al broker.
      *
-     * Los permisos del broker son por ROL (spui-reproductor), no por equipo:
-     * las ACL no usan el patrón %u porque se expande a este usuario
-     * ("spui-repro-17") y el topic lleva sólo el id ("spui/telemetria/17"),
-     * así que nunca coincidirían. Consecuencia: un reproductor podría publicar
-     * telemetría en el topic de otro (no alertas). Ver
-     * config/mosquitto/README.md, "Roles y permisos".
+     * Los permisos son por equipo desde el 29/10/2026: cada reproductor tiene
+     * su propio rol (MqttSecurityService::rolDe(), "spui-repro-17-rol") con su
+     * id escrito en cada topic. No se usa el patrón %u de las ACL porque se
+     * expande a este usuario ("spui-repro-17") y el topic lleva sólo el id
+     * ("spui/telemetria/17"), así que nunca coincidiría.
      */
     public function mqttUsuario(): string
     {

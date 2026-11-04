@@ -46,8 +46,9 @@ _TOPIC_ALERTA_REPRODUCTOR = 'spui/alertas/reproductor/{}'
 # no puede detectar rápido.
 _TOPIC_ESTADO_REPRODUCTOR = 'spui/estado/reproductor/{}'
 
-# Comandos dirigidos a este reproductor (tarea 1.5 — push instantáneo). Hoy
-# sólo existe 'sync_ahora': el CMS lo publica cuando algo que nos afecta
+# Comandos dirigidos a este reproductor (tarea 1.5 — push instantáneo).
+# 'telemetria_vivo' pide publicar temperatura y RAM cada 1 s mientras alguien
+# las mira en el CMS (ver telemetria.py). 'sync_ahora': el CMS lo publica cuando algo que nos afecta
 # cambió (programación, playlist, contenido, pantalla), para no esperar el
 # próximo ciclo de sync (hasta 300s). El payload NO trae el dato nuevo, sólo
 # el aviso — seguimos pidiéndolo por HTTP, con nuestra propia auth y
@@ -74,11 +75,11 @@ def nuevo_cliente_mqtt(
     documentada por paho.
 
     Si se pasa reproductor_id, se configuran las credenciales: el broker ya no
-    acepta conexiones anónimas. El usuario es spui-repro-<id>. Los permisos del
-    broker son por rol, no por equipo: las ACL no usan %u (se expandiría al
-    usuario y el topic lleva sólo el id), así que un reproductor podría publicar
-    telemetría en el topic de otro, aunque nunca alertas. Ver
-    config/mosquitto/README.md, "Roles y permisos".
+    acepta conexiones anónimas. El usuario es spui-repro-<id>. Desde el
+    29/10/2026 los permisos son por equipo: el CMS le arma a cada reproductor
+    su rol spui-repro-<id>-rol, con su id escrito en cada topic, así que sólo
+    publica su telemetría y su estado y sólo recibe sus alertas y comandos
+    (más la alerta global). Ver MqttSecurityService::comandosPermisos().
     """
     try:
         from paho.mqtt.enums import CallbackAPIVersion   # sólo existe en 2.x
@@ -114,6 +115,7 @@ class MqttListener(threading.Thread):
         on_alerta: Callable[[dict], None],
         on_desactivar: Callable[[], None],
         on_sync_ahora: Callable[[dict], None] | None = None,
+        on_telemetria_vivo: Callable[[dict], None] | None = None,
     ):
         super().__init__(daemon=True, name='mqtt-listener')
         self._host = host
@@ -121,6 +123,7 @@ class MqttListener(threading.Thread):
         self._on_alerta = on_alerta
         self._on_desactivar = on_desactivar
         self._on_sync_ahora = on_sync_ahora
+        self._on_telemetria_vivo = on_telemetria_vivo
         self._client = None
         # Se conoce recién después del primer sync, igual que en telemetría.
         self._reproductor_id: int | None = None
@@ -297,6 +300,12 @@ class MqttListener(threading.Thread):
                 if self._on_sync_ahora is not None:
                     logger.info('MQTT: sync inmediato pedido (motivo=%s).', payload.get('motivo'))
                     self._lanzar('sync inmediato', self._on_sync_ahora, payload)
+
+            elif accion == 'telemetria_vivo':
+                # Llega cada ~60 s mientras alguien mira la telemetría en el
+                # CMS: no se loguea cada uno (lo hace telemetria.py al empezar).
+                if self._on_telemetria_vivo is not None:
+                    self._on_telemetria_vivo(payload)
 
             else:
                 logger.warning('MQTT: payload desconocido: %s', payload)

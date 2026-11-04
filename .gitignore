@@ -9,6 +9,7 @@
 !docs/07_manual_uso_cms.md
 !docs/08_pendientes_vm.md
 !docs/09_instalacion_raspberry.md
+!docs/10_pruebas.md
 !docs/README.md
 !CONTRIBUTING.md
 !pi-client/README.md
@@ -31,4 +32,17 @@ config/mosquitto/certs/*.key
 
 # Documentacion util solamente para desarrollo local
 docs/Evaluacion Final Plan PF IC - Rivero Mateo.pdf
-docs/Plan de Proyecto - Rivero Mateo.docx
+# Plan e Informe en Word (docs/*.docx) y los logos originales: pi-client/assets tiene sus propias copias.
+docs/*.docx
+docs/logos/
+
+# Lo que el Informe ya cubre: copia local. Sólo se versiona el historial de auditorías, que cita el código.
+docs/archivo/*
+!docs/archivo/auditorias.md
+
+# Bytecode de Python (el simulador y los tests lo generan al correr)
+__pycache__/
+
+# El Excel del cronograma (tiene nombres de docentes): se importa desde el CMS, no se versiona.
+docs/*.xlsx
+docs/~$*

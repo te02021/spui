@@ -6,7 +6,11 @@
     {# Leído una vez por modal.js para los POST de un solo botón (activar/eliminar/
        toggle/etc.) que no pasan por un Symfony Form — ver CsrfProtegidoTrait. #}
     <meta name="spui-csrf-token" content="{{ csrf_token('spui_action') }}">
+    {# Sidebar plegado (30/10/2026): se aplica antes de pintar, para que no
+       aparezca abierto un instante y se cierre. La elección la guarda sidebar.js. #}
+    <script>try { if (localStorage.getItem('spui.sidebar.plegado') === '1') document.documentElement.classList.add('spui-sidebar-plegado'); } catch (e) {}</script>
     <title>{% block title %}SPUI — Pantallas Digitales{% endblock %} | UNRaf</title>
+    <meta name="description" content="{% block descripcion %}SPUI, Sistema de Pantallas Informativas Universitarias de la UNRaf: administración de la cartelería digital del campus.{% endblock %}">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 128 128%22><text y=%221.2em%22 font-size=%2296%22>🖥️</text></svg>">
 
     {% block stylesheets %}
@@ -14,36 +18,63 @@
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
         <link rel="stylesheet" href="{{ asset('unraf-ui/css/unraf-estilos.min.css') }}">
         <link rel="stylesheet" href="{{ asset('spui/css/style.css') }}">
+    <link rel="stylesheet" href="{{ asset('spui/css/pantalla-tv.css') }}">
     {% endblock %}
 </head>
 <body>
 <div class="unraf-dashboard">
 
     {# ── Header ── #}
-    <header class="unraf-header">
-        <div style="display:flex;align-items:center;gap:1rem;">
-            <button id="btnMenuToggle" class="unraf-menu-toggle" aria-label="Menú">
-                <img src="{{ asset('unraf-ui/icons/list.svg') }}" style="width:1.4rem;height:1.4rem;filter:invert(1)" alt="">
+    {# Encabezado (30/10/2026): la marca a la izquierda; a la derecha el menú
+       del usuario (iniciales + nombre armado con el email, que es el único
+       dato que trae el usuario de la Intranet). El menú es un desplegable
+       (core/desplegable.js), como el resto del CMS, y su única salida es
+       volver a la Intranet: el CMS no tiene cierre de sesión propio. #}
+    {% set email = app.user ? app.user.userIdentifier : '' %}
+    {% set partes = (email|split('@')|first)|replace({'_': '.', '-': '.'})|split('.')|filter(p => p != '') %}
+    {% set nombre_usuario = partes|map(p => p|capitalize)|join(' ') %}
+    {% set iniciales = (partes|slice(0, 2)|map(p => p|first|upper)|join('')) ?: '?' %}
+    <header class="unraf-header spui-header">
+        <div class="spui-header-izq">
+            <button id="btnMenuToggle" class="unraf-menu-toggle" aria-label="Abrir el menú de secciones" aria-controls="spui-sidebar">
+                <img src="{{ asset('unraf-ui/icons/list.svg') }}" alt="">
             </button>
-            <a href="{{ path('spui_cms_dashboard') }}" class="unraf-brand unraf-brand-header">
-                <div class="brand-top">
-                    <img src="{{ asset('unraf-ui/icons/UNRaf-transparente.png') }}" alt="Logo UNRaf" class="brand-logo">
-                    <span class="brand-divisor"></span>
-                    <span class="brand-iniciales">SPUI</span>
-                </div>
-                <div class="brand-nombre">Sistema de Pantallas Digitales</div>
+            <a href="{{ path('spui_cms_dashboard') }}" class="spui-header-marca" aria-label="SPUI — ir al Dashboard">
+                <img src="{{ asset('unraf-ui/icons/UNRaf-transparente.png') }}" alt="UNRaf" class="spui-header-logo">
+                <span class="spui-header-divisor" aria-hidden="true"></span>
+                <span class="spui-header-titulo">
+                    <strong>SPUI</strong>
+                    <small>Sistema de Pantallas Digitales</small>
+                </span>
             </a>
         </div>
-        <a href="{{ path('sistemas') }}" class="d-none d-md-inline-flex align-items-center"
-           style="color:rgba(255,255,255,.8);font-size:.85rem;text-decoration:none;border:1px solid rgba(255,255,255,.3);padding:.4rem .8rem;border-radius:4px;">
-            ← Volver a Intranet
-        </a>
+        <div class="spui-header-der">
+            {% if app.user %}
+                <span class="spui-desp spui-usuario">
+                    <button type="button" class="spui-usuario-btn" data-spui-desp aria-expanded="false" aria-controls="spui-menu-usuario"
+                            aria-label="Cuenta de {{ nombre_usuario ?: email }}">
+                        <span class="spui-avatar" aria-hidden="true">{{ iniciales }}</span>
+                        <span class="spui-usuario-nombre">{{ nombre_usuario ?: email }}</span>
+                        <img src="{{ asset('unraf-ui/icons/caret-down.svg') }}" class="spui-usuario-flecha" alt="">
+                    </button>
+                    <div id="spui-menu-usuario" class="spui-desp-panel spui-usuario-menu" role="region" aria-label="Cuenta">
+                        <div class="spui-usuario-cab">
+                            <span class="spui-avatar spui-avatar-grande" aria-hidden="true">{{ iniciales }}</span>
+                            <span class="min-w-0"><strong>{{ nombre_usuario ?: email }}</strong><small>{{ email }}</small></span>
+                        </div>
+                        <ul class="spui-desp-lista">
+                            <li><a class="spui-selector-opcion" href="{{ path('sistemas') }}"><img src="{{ asset('unraf-ui/icons/arrow-left.svg') }}" alt="" class="spui-usuario-icono"> Volver a la Intranet</a></li>
+                        </ul>
+                    </div>
+                </span>
+            {% endif %}
+        </div>
     </header>
 
     <div class="unraf-body-wrapper">
 
         {# ── Sidebar ── #}
-        <aside class="unraf-sidebar d-flex flex-column">
+        <aside id="spui-sidebar" class="unraf-sidebar d-flex flex-column" aria-label="Secciones del CMS">
             <div class="flex-grow-1">
                 <p class="unraf-nav-separator">Principal</p>
                 <a href="{{ path('spui_cms_dashboard') }}" class="unraf-nav-item {{ app.request.get('_route') == 'spui_cms_dashboard' ? 'active' : '' }}">
@@ -87,6 +118,14 @@
             </div>
         </aside>
 
+        {# Plegar/desplegar el sidebar (sólo escritorio; en celular sigue la
+           hamburguesa del header). Fixed: abierto queda a la derecha de
+           "Principal"; cerrado flota arriba a la izquierda, sin ocupar lugar. #}
+        <button type="button" id="spui-sidebar-plegar" class="spui-sidebar-plegar"
+                aria-controls="spui-sidebar" aria-expanded="true" aria-label="Ocultar menú" title="Ocultar menú">
+            <img src="{{ asset('unraf-ui/icons/caret-double-left.svg') }}" alt="">
+        </button>
+
         <div id="sidebarOverlay" class="unraf-sidebar-overlay"></div>
 
         {# ── Flash messages ── #}
@@ -109,14 +148,45 @@
     </div>
 </div>
 
-<footer class="unraf-footer">
-    <div class="unraf-footer-content">
-        <div class="unraf-footer-section">
-            <h4>Universidad Nacional de Rafaela</h4>
-            <p>SPUI — Sistema de Pantallas de Información Universitaria</p>
+{# Pie (30/10/2026): marca, accesos a las secciones y la universidad; abajo,
+   los créditos. Tres columnas en escritorio, apiladas en celular. #}
+<footer class="unraf-footer spui-footer">
+    <div class="spui-footer-cuerpo">
+        <div class="spui-footer-marca">
+            <a href="{{ path('spui_cms_dashboard') }}" class="spui-footer-logo" aria-label="SPUI — ir al Dashboard">
+                <img src="{{ asset('unraf-ui/icons/UNRaf-transparente.png') }}" alt="" width="40" height="40">
+                <span>
+                    <strong>SPUI</strong>
+                    <small>Sistema de Pantallas Informativas Universitarias</small>
+                </span>
+            </a>
+            <p>Gestión de la cartelería digital del campus: contenidos, programación, alertas de emergencia y estado de cada pantalla, en tiempo real.</p>
+        </div>
+
+        <nav class="spui-footer-col" aria-labelledby="pie-secciones">
+            <h2 id="pie-secciones">Secciones</h2>
+            <ul>
+                <li><a href="{{ path('spui_cms_dashboard') }}">Dashboard</a></li>
+                <li><a href="{{ path('spui_cms_pantallas_index') }}">Pantallas</a></li>
+                <li><a href="{{ path('spui_cms_contenidos_index') }}">Contenidos</a></li>
+                <li><a href="{{ path('spui_cms_programacion_index') }}">Programación</a></li>
+                <li><a href="{{ path('spui_cms_alertas_index') }}">Alertas</a></li>
+            </ul>
+        </nav>
+
+        <div class="spui-footer-col">
+            <h2>Universidad</h2>
+            <ul>
+                <li><a href="https://www.unraf.edu.ar" target="_blank" rel="noopener">Universidad Nacional de Rafaela <img src="{{ asset('unraf-ui/icons/arrow-square-out.svg') }}" alt="(se abre en otra pestaña)" class="spui-footer-externo"></a></li>
+                <li><a href="{{ path('sistemas') }}">Volver a la Intranet</a></li>
+                <li><span>Departamento de Desarrollo</span></li>
+            </ul>
         </div>
     </div>
-    <div class="unraf-footer-bottom">&copy; {{ "now"|date("Y") }} UNRaf — Departamento de Desarrollo</div>
+    <div class="spui-footer-base">
+        <span>&copy; {{ "now"|date("Y") }} Universidad Nacional de Rafaela</span>
+        <span>SPUI · Departamento de Desarrollo</span>
+    </div>
 </footer>
 
 {# ── Modal ABM unificado ── #}
@@ -156,7 +226,13 @@
 <script src="{{ asset('spui/js/core/content-type-fields.js') }}"></script>
 <script src="{{ asset('spui/js/core/alerta-sonido-field.js') }}"></script>
 <script src="{{ asset('spui/js/core/contenido-archivo-field.js') }}"></script>
+{# Antes que validacion-vivo.js: al elegir otro video, tiene que borrar la marca
+   de inválido del anterior antes de que validacion-vivo.js revise el campo. #}
+<script src="{{ asset('spui/js/core/video-archivo.js') }}"></script>
 <script src="{{ asset('spui/js/core/validacion-vivo.js') }}"></script>
+{# Después de validacion-vivo.js: el archivo se envía sólo si pasó sus reglas. #}
+<script src="{{ asset('spui/js/core/importar-cronograma.js') }}"></script>
+<script src="{{ asset('spui/js/core/cronograma-items.js') }}"></script>
 {# AssetMapper versiona los .svg con un hash: media-viewer.js no puede
    armar esas URLs por su cuenta, así que se las pasamos acá. #}
 <script>
@@ -165,9 +241,13 @@
         magnifyingGlassPlus: "{{ asset('unraf-ui/icons/magnifying-glass-plus.svg') }}",
         magnifyingGlassMinus: "{{ asset('unraf-ui/icons/magnifying-glass-minus.svg') }}",
         download: "{{ asset('unraf-ui/icons/download.svg') }}",
+        // Guardar / Cancelar de los modales (modal.js, decorarBotones).
+        check: "{{ asset('unraf-ui/icons/check.svg') }}",
         x: "{{ asset('unraf-ui/icons/x.svg') }}"
     };
 </script>
+{# Vista previa del TV (pantalla/_tv.html.twig); el visor la usa en su pestaña "En pantalla". #}
+<script src="{{ asset('spui/js/core/vista-tv.js') }}"></script>
 <script src="{{ asset('spui/js/core/media-viewer.js') }}"></script>
 <script src="{{ asset('spui/js/core/modal.js') }}"></script>
 
@@ -176,6 +256,9 @@
    que acaba de reemplazar. #}
 <script src="{{ asset('spui/js/core/tiempo-relativo.js') }}"></script>
 <script src="{{ asset('spui/js/core/auto-refresh.js') }}"></script>
+<script src="{{ asset('spui/js/core/desplegable.js') }}"></script>
+<script src="{{ asset('spui/js/core/lista-acciones.js') }}"></script>
+<script src="{{ asset('spui/js/core/busqueda-lista.js') }}"></script>
 
 {# SortableJS + la lista de ítems de playlist. Van acá y no en la página del
    listado porque la lista vive dentro de un modal, que se abre desde cualquier

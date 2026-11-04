@@ -26,16 +26,15 @@ class CronogramaItemRepository extends ServiceEntityRepository
      */
     public function findByContenidoOrdenado(Contenido $contenido): array
     {
-        // Se descartan los ítems sin horario: horaInicio/horaFin son nullable en
-        // la entidad (para que el formulario pueda mapear antes de validar) y el
-        // sync hace ->format() sobre ellos. Una fila incompleta rompería el sync
-        // de ese reproductor. El listado del CMS usa findAllByContenidoOrdenado,
-        // que sí las muestra para poder corregirlas.
+        // Se descartan los ítems sin hora de inicio (una fila incompleta). La
+        // hora de fin sí puede faltar desde el 02/11/2026: un evento especial
+        // sin hora de fin ("Desde las 18:00"); quien la use tiene que
+        // contemplarlo. El listado del CMS usa findAllByContenidoOrdenado,
+        // que muestra todo para poder corregirlo.
         return $this->createQueryBuilder('ci')
             ->where('ci.contenido = :contenido')
             ->andWhere('ci.activo = true')
             ->andWhere('ci.horaInicio IS NOT NULL')
-            ->andWhere('ci.horaFin IS NOT NULL')
             ->setParameter('contenido', $contenido)
             ->orderBy('ci.horaInicio', 'ASC')
             ->addOrderBy('ci.orden', 'ASC')

@@ -22,7 +22,7 @@ class IntervaloDesdeSyncTest(unittest.TestCase):
         self.assertEqual(intervalo_desde_sync({'proxima_sync_seg': 7 * 24 * 3600}, 300), 7 * 24 * 3600)
 
     def test_por_debajo_del_minimo_se_sube_al_minimo(self):
-        # El CMS acepta 2 syncs por minuto: menos de 30 s terminaría en 429.
+        # El CMS acepta 4 syncs por minuto; menos de 30 s no tiene sentido y deja poco margen para los avisos.
         self.assertEqual(intervalo_desde_sync({'proxima_sync_seg': 5}, 300), MINIMO_SYNC_SEG)
 
     def test_sin_dato_o_invalido_sigue_con_el_actual(self):

@@ -20,6 +20,14 @@ class CodigoQr
     #[ORM\Column(length: 500)]
     private string $urlDestino;
 
+    /**
+     * El segundo enlace de un QR de app (03/11/2026): uno es de Google Play y
+     * el otro del App Store, en cualquier orden, y quien escanea va a la
+     * tienda de su teléfono (destinoPara). Null: un solo destino, como antes.
+     */
+    #[ORM\Column(length: 500, nullable: true)]
+    private ?string $urlDestinoAlternativa = null;
+
     #[ORM\Column(length: 200)]
     private string $etiqueta;
 
@@ -59,6 +67,61 @@ class CodigoQr
 
     public function getUrlDestino(): string { return $this->urlDestino; }
     public function setUrlDestino(string $urlDestino): static { $this->urlDestino = $urlDestino; return $this; }
+
+    public function getUrlDestinoAlternativa(): ?string { return $this->urlDestinoAlternativa; }
+    public function setUrlDestinoAlternativa(?string $url): static { $this->urlDestinoAlternativa = $url; return $this; }
+
+    /** Los destinos como se cargan en el formulario: uno por renglón. */
+    public function getDestinosTexto(): string
+    {
+        return $this->urlDestino . ($this->urlDestinoAlternativa ? "\n" . $this->urlDestinoAlternativa : '');
+    }
+
+    /** 'android' si es un enlace de Google Play, 'ios' si es del App Store; null si es otra cosa. */
+    public static function tiendaDe(string $url): ?string
+    {
+        $host = strtolower((string) parse_url($url, PHP_URL_HOST));
+        return match (true) {
+            $host === 'play.google.com'                              => 'android',
+            in_array($host, ['apps.apple.com', 'itunes.apple.com'], true) => 'ios',
+            default                                                  => null,
+        };
+    }
+
+    /** El enlace de cada tienda, si el QR es de una app (los dos cargados). */
+    public function enlacesDeTienda(): ?array
+    {
+        if ($this->urlDestinoAlternativa === null) {
+            return null;
+        }
+        $porTienda = [];
+        foreach ([$this->urlDestino, $this->urlDestinoAlternativa] as $url) {
+            $porTienda[self::tiendaDe($url) ?? 'otra'] = $url;
+        }
+        return isset($porTienda['android'], $porTienda['ios']) ? $porTienda : null;
+    }
+
+    /**
+     * A dónde va quien escanea, según su teléfono (el User-Agent): Android a
+     * Google Play, iPhone/iPod a App Store. Null cuando no se sabe con
+     * certeza (una computadora, o un iPad: desde iPadOS 13 Safari se presenta
+     * como una Mac): ahí se muestra la página con los dos botones. Con un
+     * solo destino, siempre ese.
+     */
+    public function destinoPara(string $userAgent): ?string
+    {
+        $tiendas = $this->enlacesDeTienda();
+        if ($tiendas === null) {
+            return $this->urlDestino;
+        }
+        if (stripos($userAgent, 'Android') !== false) {
+            return $tiendas['android'];
+        }
+        if (preg_match('/iPhone|iPad|iPod/i', $userAgent)) {
+            return $tiendas['ios'];
+        }
+        return null;
+    }
 
     public function getEtiqueta(): string { return $this->etiqueta; }
     public function setEtiqueta(string $etiqueta): static { $this->etiqueta = $etiqueta; return $this; }

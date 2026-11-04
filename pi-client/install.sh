@@ -101,7 +101,17 @@ sudo "$INSTALL_DIR/venv/bin/pip" install --quiet -r "$(dirname "$0")/requirement
 # 3. Copiar cliente
 echo "[3/5] Copiando cliente a $INSTALL_DIR..."
 sudo mkdir -p "$INSTALL_DIR"
+# /opt/spui queda igual a lo que se copia: copiar encima dejaba los archivos
+# que ya no existen (pasó con spui/youtube.py, 02/11/2026). Se borra todo
+# menos el venv, que tarda en armarse y ya está al día del paso 2.
+case "$INSTALL_DIR" in
+    /opt/*) sudo find "$INSTALL_DIR" -mindepth 1 -maxdepth 1 ! -name venv -exec rm -rf {} + ;;
+esac
 sudo cp -r "$(dirname "$0")"/* "$INSTALL_DIR/"
+# Ni el caché de desarrollo de la PC (pi-client/cache, el de verdad está en
+# /var/cache/spui) ni el bytecode viejo: Python lo regenera.
+sudo rm -rf "$INSTALL_DIR/cache"
+sudo find "$INSTALL_DIR" -path "$INSTALL_DIR/venv" -prune -o -name __pycache__ -type d -exec rm -rf {} +
 sudo chown -R "$RUN_USER:$RUN_GROUP" "$INSTALL_DIR"
 
 # 4. Crear archivo de entorno
@@ -118,9 +128,15 @@ SPUI_API_URL=http://TU_SERVIDOR/api/spui
 # API Key del nodo (generada desde el CMS al crear el nodo)
 SPUI_API_KEY=PEGAR_API_KEY_AQUI
 
-# MQTT (mismo host que el CMS generalmente)
-MQTT_HOST=127.0.0.1
-MQTT_PORT=1883
+# MQTT, sólo por TLS: el broker no acepta el 1883 sin cifrar desde la red.
+# MQTT_HOST es el nombre que figura en el certificado del broker (agregarlo
+# al /etc/hosts con la IP del servidor), no una IP: con una IP falla la
+# verificación del certificado. ca.crt se copia del CMS
+# (config/mosquitto/certs/ca.crt), ver docs/09 §11.
+MQTT_HOST=spui-broker.unraf.local
+MQTT_PORT=8883
+MQTT_TLS=true
+MQTT_CA_CERT=/etc/spui/ca.crt
 
 # Salt para la credencial MQTT. TIENE QUE SER IDÉNTICO al SPUI_MQTT_SALT del
 # CMS (está en su .env.local.php): la contraseña con la que este equipo se
@@ -145,6 +161,10 @@ SPUI_LOG_LEVEL=INFO
 # Sólo cambiarlo si la pantalla queda en negro aunque el log diga "VLC listo":
 # alternativas xcb_xv, gl, glx.
 # SPUI_VOUT=xcb_x11
+
+# Resolución fija, para un TV que no le informa a la Pi sus resoluciones y
+# queda en 1024x768 con franjas negras (docs/09_instalacion_raspberry.md §14):
+# SPUI_RESOLUCION=1920x1080
 EOF
     sudo chmod 640 "$ENV_FILE"
     echo "  IMPORTANTE: editar $ENV_FILE con los valores reales antes de iniciar."

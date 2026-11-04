@@ -53,10 +53,18 @@ final class MediaStorageService
      */
     private const CATEGORIAS = ['imagenes', 'videos', 'qr', 'alertas'];
 
-    /** Tipos MIME aceptados. El sistema sólo reproduce imágenes y videos. */
-    private const MIME_PERMITIDOS = [
-        'image/jpeg', 'image/png', 'image/gif', 'image/webp',
-        'video/mp4', 'video/webm', 'video/ogg', 'video/quicktime',
+    /**
+     * Tipos MIME aceptados por tipo de contenido. El sistema sólo reproduce
+     * imágenes y videos.
+     *
+     * Videos: sólo MP4 y MOV. WebM (VP8/VP9) y OGG (Theora) se dejaron de
+     * aceptar en octubre de 2026: la Raspberry Pi los decodifica por software y
+     * se ven trabados. Además, en un MP4/MOV VideoInspectorService puede leer
+     * el códec, la resolución y la duración antes de guardar nada.
+     */
+    private const MIME_POR_TIPO = [
+        'imagen' => ['image/jpeg', 'image/png', 'image/gif', 'image/webp'],
+        'video'  => ['video/mp4', 'video/quicktime'],
     ];
 
     /** Tamaño máximo por archivo (bytes). Los videos institucionales entran holgados. */
@@ -66,7 +74,7 @@ final class MediaStorageService
      * Formatos admitidos por tipo de contenido, tal como los ve el navegador:
      * extensiones (validacion-vivo.js las chequea apenas se elige un archivo),
      * cómo nombrarlas en el texto de ayuda y en el error, y el accept del
-     * input. Tienen que corresponder con MIME_PERMITIDOS, que es lo que el
+     * input. Tienen que corresponder con MIME_POR_TIPO, que es lo que el
      * servidor valida de verdad (por contenido, no por extensión).
      */
     public const FORMATOS = [
@@ -76,9 +84,9 @@ final class MediaStorageService
             'accept'      => 'image/jpeg,image/png,image/gif,image/webp,.jpg,.jpeg,.png,.gif,.webp',
         ],
         'video' => [
-            'extensiones' => 'mp4,webm,ogg,ogv,mov',
-            'texto'       => 'MP4, WebM, OGG o MOV',
-            'accept'      => 'video/mp4,video/webm,video/ogg,video/quicktime,.mp4,.webm,.ogg,.ogv,.mov',
+            'extensiones' => 'mp4,mov',
+            'texto'       => 'MP4 o MOV en H.264, hasta 1920×1080 y 30 cuadros por segundo',
+            'accept'      => 'video/mp4,video/quicktime,.mp4,.mov',
         ],
     ];
 
@@ -100,9 +108,14 @@ final class MediaStorageService
     /**
      * Valida tipo y tamaño antes de guardar nada.
      *
+     * @param string $tipo 'imagen' o 'video': el archivo tiene que ser de ese
+     *                     tipo. Antes se aceptaba cualquiera de los dos para
+     *                     cualquier contenido, y un video subido como imagen
+     *                     pasaba la validación.
+     *
      * @return string|null Mensaje de error en español, o null si el archivo sirve.
      */
-    public function validar(UploadedFile $archivo): ?string
+    public function validar(UploadedFile $archivo, string $tipo): ?string
     {
         if (!$archivo->isValid()) {
             // getErrorMessage() es útil para el log (dice justo qué directiva
@@ -137,8 +150,10 @@ final class MediaStorageService
         }
 
         $mime = $archivo->getMimeType();
-        if (!in_array($mime, self::MIME_PERMITIDOS, true)) {
-            return 'Formato no admitido. Se aceptan imágenes (JPG, PNG, GIF, WEBP) y videos (MP4, WEBM, OGG, MOV).';
+        if (!in_array($mime, self::MIME_POR_TIPO[$tipo] ?? [], true)) {
+            return 'Formato no admitido: '
+                 . ($tipo === 'video' ? 'los videos tienen que ser ' : 'las imágenes tienen que ser ')
+                 . (self::FORMATOS[$tipo]['texto'] ?? '') . '.';
         }
 
         return null;

@@ -85,14 +85,14 @@ API_KEY = _texto('SPUI_API_KEY', '')   # OBLIGATORIO en producción
 
 # ── MQTT (alertas de emergencia en tiempo real) ───────────────────────────────
 MQTT_HOST  = _texto('MQTT_HOST', '127.0.0.1')
-MQTT_PORT  = _entero('MQTT_PORT', 1883)
 
-# TLS (tarea 1.0.e) — false por defecto: el broker real todavía sirve por
-# 1883 sin cifrar (1.0.d escrito, no desplegado). Para migrar esta Pi cuando
-# el broker ya tenga 8883 activo: MQTT_TLS=true, MQTT_PORT=8883, y
-# MQTT_CA_CERT apuntando al ca.crt copiado desde el CMS (mismo archivo que
-# generar-certificados.ps1 deja en config/mosquitto/certs/ca.crt).
-MQTT_TLS     = _booleano('MQTT_TLS', False)
+# TLS por defecto desde el 28/10/2026 (tarea C2): el broker ya no escucha el
+# 1883 sin cifrar desde la red, así que una Pi sin TLS no recibiría alertas.
+# MQTT_CA_CERT apunta al ca.crt del broker copiado a la Pi (el mismo que
+# generar-certificados.ps1 deja en config/mosquitto/certs/ca.crt); sin él, la
+# Pi no puede validar el certificado propio del broker y no conecta.
+MQTT_TLS     = _booleano('MQTT_TLS', True)
+MQTT_PORT    = _entero('MQTT_PORT', 8883 if MQTT_TLS else 1883)
 MQTT_CA_CERT = _texto('MQTT_CA_CERT', '')
 
 # El broker exige credenciales: sin esto, cualquiera en la red del campus podría
@@ -158,6 +158,21 @@ ALERTA_SONIDO_PAUSA_SEG = max(0, _entero('SPUI_ALERTA_SONIDO_INTERVALO_SEG', 0))
 # en qué volumen haya quedado el equipo de una prueba anterior.
 ALERTA_SONIDO_VOLUMEN     = max(0, min(100, _entero('SPUI_ALERTA_SONIDO_VOLUMEN', 100)))
 
+# ── Ventana del TV (noviembre 2026) ───────────────────────────────────────────
+# Texto, imagen, QR y cronograma se dibujan con su plantilla en una ventana
+# propia (spui/ventana.py), con las páginas del cronograma deslizándose.
+# VENTANA=false vuelve al método anterior (cada contenido como imagen de VLC,
+# sin animación): sólo para descartar un problema de la ventana en un equipo.
+VENTANA     = _booleano('SPUI_VENTANA', True)
+# Resolución que se impone a la pantalla ("1920x1080"), para un TV que no le
+# informa a la Pi sus resoluciones y arranca en 1024x768 con franjas negras
+# (spui/resolucion.py). Vacía: la que elija el sistema, como siempre.
+RESOLUCION_TEXTO = _texto('SPUI_RESOLUCION', '')
+
+# Presentar la ventana con la GPU. Apagado por defecto: en la Pi 4 lo basado
+# en OpenGL ya dejó la pantalla en negro una vez (ver spui/ventana.py).
+ACELERACION = _booleano('SPUI_ACELERACION', False)
+
 # ── Telemetría ────────────────────────────────────────────────────────────────
 # 80 °C: valor documentado en la tesis y punto donde la Pi 4 hace throttling.
 # Tiene que coincidir con spui_temp_alerta_default del CMS.
@@ -170,6 +185,18 @@ _BASE = os.path.dirname(os.path.abspath(__file__))
 CACHE_DIR = _texto('SPUI_CACHE_DIR', os.path.join(_BASE, 'cache'))
 MEDIA_DIR = os.path.join(CACHE_DIR, 'media')
 DB_PATH   = os.path.join(CACHE_DIR, 'spui.db')
+
+# Commit desplegado: deploy.ps1 lo escribe en /opt/spui/VERSION y main.py lo
+# muestra al arrancar, para saber qué código corre de verdad (los archivos en
+# disco pueden ser más nuevos que el proceso si el reinicio no se hizo).
+def _version(base: str = _BASE) -> str:
+    try:
+        with open(os.path.join(base, 'VERSION'), encoding='utf-8') as f:
+            return f.read().strip() or 'desconocida'
+    except OSError:
+        return 'desconocida'
+
+VERSION = _version()
 
 # ── Logging ──────────────────────────────────────────────────────────────────
 LOG_LEVEL = _texto('SPUI_LOG_LEVEL', 'INFO')

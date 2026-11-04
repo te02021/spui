@@ -54,7 +54,6 @@
                                     data-spui-form2="{{ path('spui_cms_energia_editar', {id: pantalla.id, dia: num}) }}"
                                     data-spui-subvista
                                     data-spui-title="{{ nombre }} — {{ pantalla.nombre }}"
-                                    data-spui-size="modal-sm"
                                     {% if motivo %}{{ bloqueo.attrs(motivo) }}{% else %}title="{{ regla ? 'Editar horario' : 'Configurar horario' }}"{% endif %}>
                                 <img src="{{ asset(regla ? 'unraf-ui/icons/pencil.svg' : 'unraf-ui/icons/plus.svg') }}"
                                      class="spui-action-icon" alt="">

@@ -1,0 +1,47 @@
+{# Modal de exportación de la telemetría (botón Exportar de la pantalla de
+   telemetría). No es un form data-spui-ajax: lo que vuelve es un archivo, no
+   JSON. Lo envía reproductores/telemetria.js, que muestra los errores debajo
+   de cada campo (422 con un mapa por campo) y cierra el modal al descargar. #}
+<form data-tel-exportar
+      action="{{ path('spui_cms_reproductores_telemetria_exportar', {id: reproductor.id}) }}"
+      novalidate>
+
+    <div class="mb-4" data-spui-campo>
+        <span class="unraf-form-label d-block mb-2">Formato</span>
+        <div class="spui-tel-formatos" role="radiogroup" aria-label="Formato del archivo">
+            {% for ext, etiqueta in formatos %}
+                <label class="spui-tel-formato">
+                    <input type="radio" name="formato" value="{{ ext }}" {{ loop.first ? 'checked' }}>
+                    <span class="spui-tel-formato-caja">
+                        <img src="{{ asset('unraf-ui/icons/' ~ (ext == 'pdf' ? 'file-pdf.svg' : (ext == 'csv' ? 'file-csv.svg' : 'file-xls.svg'))) }}" alt="">
+                        <strong>{{ etiqueta }}</strong>
+                        <small>{{ ext == 'xlsx' ? 'Planilla con filtros' : (ext == 'csv' ? 'Texto separado por ;' : 'Informe para imprimir') }}</small>
+                    </span>
+                </label>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="row g-3">
+        <div class="col-12 col-sm-6" data-spui-campo>
+            <label class="unraf-form-label" for="tel_desde">Desde</label>
+            <input type="datetime-local" id="tel_desde" name="desde" class="unraf-form-control" step="3600"
+                   value="{{ desde }}" min="{{ minimo }}" max="{{ hasta }}" required>
+        </div>
+        <div class="col-12 col-sm-6" data-spui-campo>
+            <label class="unraf-form-label" for="tel_hasta">Hasta</label>
+            <input type="datetime-local" id="tel_hasta" name="hasta" class="unraf-form-control" step="3600"
+                   value="{{ hasta }}" min="{{ minimo }}" required
+                   data-spui-validar-posterior="#tel_desde" data-spui-validar-mensaje="Tiene que ser posterior a «Desde».">
+        </div>
+    </div>
+    <p class="small text-muted mt-2 mb-0">
+        Una fila por hora con promedio y máximo. Se conservan los últimos {{ dias }} días; la hora en curso entra recién cuando termina.
+    </p>
+    <p class="spui-campo-error mt-3 mb-0" data-tel-exportar-error hidden></p>
+
+    <div class="d-flex justify-content-end gap-2 pt-3 mt-3 border-top">
+        <button type="button" class="unraf-btn spui-btn-back" data-spui-close>Cancelar</button>
+        <button type="submit" class="unraf-btn spui-btn-crear" data-tel-exportar-btn>Descargar</button>
+    </div>
+</form>

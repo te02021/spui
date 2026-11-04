@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace SPUI\Controller\Cms;
 
+use SPUI\Service\FiltroListado;
+use SPUI\Service\BusquedaListado;
+use SPUI\Service\Paginador;
 use Doctrine\Persistence\ManagerRegistry;
 use SPUI\Entity\Programacion;
 use SPUI\Form\ProgramacionType;
@@ -36,10 +39,32 @@ class ProgramacionCmsController extends AbstractController
     }
 
     #[Route('', name: 'spui_cms_programacion_index', methods: ['GET'])]
-    public function index(): Response
+    public function index(Request $request, Paginador $paginador, FiltroListado $filtro, BusquedaListado $busqueda): Response
     {
+        // Buscador (?q=, a medida que se escribe: core/busqueda-lista.js), sobre
+        // pl.nombre, pa.nombre, u.sector, ue.nombre, ed.nombre.
+        $q      = $busqueda->texto($request);
+        $campos = ['pl.nombre', 'pa.nombre', 'u.sector', 'ue.nombre', 'ed.nombre'];
+        $joins  = ['pl' => 'e.playlist', 'pa' => 'e.pantalla', 'u' => 'e.ubicacion', 'ue' => 'u.edificio', 'ed' => 'e.edificio'];
+        $contar = $busqueda->contador($this->repo, $q, $campos, $joins);
+        // Chips de filtro (?estado=…) y de orden (?orden=…), que se combinan;
+        // paginado en el servidor, de a Paginador::POR_PAGINA (?pagina=N).
+        $estado = $filtro->grupo($contar, $request, 'estado', 'Estado', [
+            ''          => ['Todas', []],
+            'activas'   => ['Activas', ['activo' => true]],
+            'inactivas' => ['Inactivas', ['activo' => false]],
+        ]);
+        $orden = $filtro->orden($request, 'orden', 'Orden', [
+            ''      => ['Mayor prioridad primero', ['prioridad' => 'DESC', 'creadoEn' => 'DESC']],
+            'menor' => ['Menor prioridad primero', ['prioridad' => 'ASC', 'creadoEn' => 'DESC']],
+        ]);
+        $paginacion = $paginador->paginarConsulta($busqueda->consulta($this->repo, $estado['criterio'], $q, $campos, $joins, $orden['orden']), $request);
+
         return $this->render('@SPUI/programacion/index.html.twig', [
-            'programaciones' => $this->repo->findBy([], ['prioridad' => 'DESC', 'creadoEn' => 'DESC']),
+            'programaciones' => $paginacion['items'],
+            'filtros'        => [$estado, $orden],
+            'paginacion'      => $paginacion,
+            'busqueda'        => $q,
             'dias'           => ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'],
             'ids_offline'    => $this->alcance->idsOfflineDeUnaVez(),
         ]);
