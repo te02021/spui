@@ -1,79 +1,38 @@
-{# Detalle de una pantalla. Las filas opcionales se omiten si no hay dato. #}
-<div class="spui-view-header">
-    <div>
-        <p class="spui-view-title">{{ pantalla.nombre }}</p>
-        <p class="spui-view-subtitle">{{ pantalla.ubicacion.edificio.nombre }}{% if pantalla.ubicacion.sector %} · {{ pantalla.ubicacion.sector }}{% endif %}</p>
-    </div>
-    <span class="{{ pantalla.activa ? 'spui-badge-conectado' : 'spui-badge-sin_registrar' }} flex-shrink-0">{{ pantalla.estado.etiqueta }}</span>
-</div>
+{% import '@SPUI/_macros/ver.html.twig' as ver %}
+{# Detalle de una pantalla. El título es el del modal. #}
+<div class="spui-ver">
+    <section class="spui-ver-seccion" aria-labelledby="spui-ver-detalles">
+        <h5 class="spui-ver-titulo" id="spui-ver-detalles">Detalles</h5>
+        <dl class="spui-ver-datos spui-ver-bloque">
+            <div><dt>Estado</dt><dd><span class="{{ pantalla.activa ? 'spui-badge-conectado' : 'spui-badge-sin_registrar' }}">{{ pantalla.estado.etiqueta }}</span></dd></div>
+            <div class="spui-ver-dato-largo"><dt>Ubicación</dt><dd>{{ pantalla.ubicacion.edificio.nombre }}{% if pantalla.ubicacion.sector %} · {{ pantalla.ubicacion.sector }}{% endif %}</dd></div>
+            <div class="spui-ver-dato-largo"><dt>Reproductor</dt><dd>{{ pantalla.reproductor ? pantalla.reproductor.hostname : 'Sin asignar' }}</dd></div>
+            {% if pantalla.playlistFallback %}<div class="spui-ver-dato-largo"><dt>Playlist de respaldo</dt><dd>{{ pantalla.playlistFallback.nombre }}</dd></div>{% endif %}
+            <div class="spui-ver-dato-largo"><dt>Alta</dt><dd>{{ pantalla.creadoEn|date('d/m/Y H:i') }}</dd></div>
+            <div class="spui-ver-dato-largo"><dt>Última modificación</dt><dd>{{ pantalla.actualizadoEn|date('d/m/Y H:i') }}</dd></div>
+        </dl>
+    </section>
 
-<div class="spui-view-section">
-    <p class="spui-view-section-title">Pantalla</p>
-    <div class="spui-view-row">
-        <span class="spui-view-row-label">Estado</span>
-        <span class="spui-view-row-value">{{ pantalla.estado.etiqueta }}</span>
-    </div>
-    <div class="spui-view-row">
-        <span class="spui-view-row-label">Reproductor</span>
-        <span class="spui-view-row-value">
-            {% if pantalla.reproductor %}
-                <span class="spui-badge-borrador">{{ pantalla.reproductor.hostname }}</span>
-            {% else %}
-                <span class="text-muted">Sin asignar</span>
-            {% endif %}
-        </span>
-    </div>
-    {% if pantalla.playlistFallback %}
-    <div class="spui-view-row">
-        <span class="spui-view-row-label">Playlist fallback</span>
-        <span class="spui-view-row-value">{{ pantalla.playlistFallback.nombre }}</span>
-    </div>
-    {% endif %}
-    <div class="spui-view-row">
-        <span class="spui-view-row-label">Alta</span>
-        <span class="spui-view-row-value">{{ pantalla.creadoEn|date('d/m/Y H:i') }}</span>
-    </div>
-    <div class="spui-view-row">
-        <span class="spui-view-row-label">Última modificación</span>
-        <span class="spui-view-row-value">{{ pantalla.actualizadoEn|date('d/m/Y H:i') }}</span>
-    </div>
-</div>
+    <section class="spui-ver-seccion" aria-labelledby="spui-ver-reglas">
+        <h5 class="spui-ver-titulo" id="spui-ver-reglas">Reglas de programación · {{ pantalla.programaciones|length }}</h5>
+        {{ ver.reglas(pantalla.programaciones, 'Sin reglas propias: usa las de su ubicación, su edificio o las globales.') }}
+    </section>
 
-<div class="spui-view-section">
-    <p class="spui-view-section-title">Reglas de programación · {{ pantalla.programaciones|length }}</p>
-    {% if pantalla.programaciones|length > 0 %}
-        <div class="spui-view-list">
-        {% for prog in pantalla.programaciones %}
-            <div class="spui-view-list-item">
-                <span class="spui-view-list-bullet"></span>
-                <span>{{ prog.playlist ? prog.playlist.nombre : 'Sin playlist' }}</span>
-                <span class="spui-view-list-meta">
-                    {{ prog.horaInicio ? prog.horaInicio|date('H:i') : '—' }}–{{ prog.horaFin ? prog.horaFin|date('H:i') : '—' }}
-                    · {{ prog.activo ? 'Activa' : 'Inactiva' }}
-                </span>
+    <section class="spui-ver-seccion" aria-labelledby="spui-ver-energia">
+        <h5 class="spui-ver-titulo" id="spui-ver-energia">Horarios de encendido · {{ pantalla.programacionesEnergeticas|length }}</h5>
+        {% if pantalla.programacionesEnergeticas|length > 0 %}
+            <div class="spui-ver-bloque">
+                <ul class="spui-ver-usos">
+                    {% for energia in pantalla.programacionesEnergeticas %}
+                        <li>
+                            <span>{{ ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'][energia.diaSemana - 1] ?? 'Día ' ~ energia.diaSemana }}</span>
+                            <small>{{ energia.horaEncendido ? energia.horaEncendido|date('H:i') : '—' }} a {{ energia.horaApagado ? energia.horaApagado|date('H:i') : '—' }}</small>
+                        </li>
+                    {% endfor %}
+                </ul>
             </div>
-        {% endfor %}
-        </div>
-    {% else %}
-        <p class="spui-view-empty">Sin reglas propias (usa las de su ubicación, edificio o las globales)</p>
-    {% endif %}
-</div>
-
-<div class="spui-view-section">
-    <p class="spui-view-section-title">Horarios de encendido · {{ pantalla.programacionesEnergeticas|length }}</p>
-    {% if pantalla.programacionesEnergeticas|length > 0 %}
-        <div class="spui-view-list">
-        {% for energia in pantalla.programacionesEnergeticas %}
-            <div class="spui-view-list-item">
-                <span class="spui-view-list-bullet"></span>
-                <span>{{ ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'][energia.diaSemana - 1] ?? 'Día ' ~ energia.diaSemana }}</span>
-                <span class="spui-view-list-meta">
-                    {{ energia.horaEncendido ? energia.horaEncendido|date('H:i') : '—' }}–{{ energia.horaApagado ? energia.horaApagado|date('H:i') : '—' }}
-                </span>
-            </div>
-        {% endfor %}
-        </div>
-    {% else %}
-        <p class="spui-view-empty">Sin horarios configurados (la pantalla queda siempre encendida)</p>
-    {% endif %}
+        {% else %}
+            {{ ver.vacio('Sin horarios configurados: la pantalla queda siempre encendida.') }}
+        {% endif %}
+    </section>
 </div>

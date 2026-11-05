@@ -198,13 +198,16 @@
         error.hidden = true;
         cargando.hidden = false;
         estado.dimension = '';
+        var media;
 
         if (estado.tipo === 'video') {
             el = document.createElement('video');
             el.controls = true;
             el.autoplay = true;
-            el.addEventListener('loadedmetadata', function () {
-                estado.dimension = el.videoWidth + ' × ' + el.videoHeight + ' · ' + duracion(el.duration);
+            media = el;
+            media.addEventListener('loadedmetadata', function () {
+                if (el !== media) return;   // se cerró el visor antes de que cargara
+                estado.dimension = media.videoWidth + ' × ' + media.videoHeight + ' · ' + duracion(media.duration);
                 cargando.hidden = true;
                 actualizarMeta();
             });
@@ -212,16 +215,19 @@
             el = document.createElement('img');
             el.alt = estado.nombre || 'Vista previa';
             el.className = 'spui-visor-cuadros';
-            el.addEventListener('load', function () {
-                estado.dimension = el.naturalWidth + ' × ' + el.naturalHeight + ' px';
+            media = el;
+            media.addEventListener('load', function () {
+                if (el !== media) return;
+                estado.dimension = media.naturalWidth + ' × ' + media.naturalHeight + ' px';
                 cargando.hidden = true;
                 actualizarMeta();
             });
         }
-        el.addEventListener('error', function () {
+        media.addEventListener('error', function () {
+            if (el !== media) return;
             cargando.hidden = true;
             error.hidden = false;
-            el.hidden = true;
+            media.hidden = true;
         });
         el.src = estado.url;
         cont.appendChild(el);
@@ -287,6 +293,19 @@
     window.spui.abrirVisorPantalla = function (html, titulo) {
         abrir(null, null, titulo, { pantallaHtml: html, pestana: 'pantalla' });
     };
+
+    // "Ampliar" en el modal Ver de una alerta: su vista previa y, si tiene un
+    // archivo adjunto, también la pestaña Archivo.
+    document.addEventListener('click', function (e) {
+        var b = e.target.closest && e.target.closest('[data-spui-ampliar-alerta]');
+        if (!b) return;
+        var vista = b.closest('.spui-ver-previa').querySelector('.spui-alerta-pantalla');
+        var url = b.getAttribute('data-spui-archivo-url');
+        abrir(url, url ? b.getAttribute('data-spui-archivo-tipo') : null, b.getAttribute('data-spui-titulo') || '', {
+            pantallaHtml: vista.outerHTML,
+            pestana: 'pantalla',
+        });
+    });
 
     // Delegado en document: funciona también con íconos que llegan dentro de
     // HTML inyectado por los modales AJAX, sin tener que re-bindear nada.

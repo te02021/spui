@@ -1,122 +1,89 @@
 {% import '@SPUI/_macros/texto.html.twig' as texto %}
-{# Detalle de una alerta.
-   A diferencia del listado, acá el mensaje se muestra completo. #}
-<div class="spui-view-header">
-    <div>
-        <p class="spui-view-title">{{ alerta.titulo }}</p>
-        <p class="spui-view-subtitle">Alerta · Prioridad {{ alerta.prioridad }}</p>
-    </div>
-    {% if alerta.activa %}
-        <span class="spui-badge-desconectado flex-shrink-0">Activa</span>
-    {% elseif alerta.haExpirado %}
-        <span class="spui-badge-archivado flex-shrink-0">Expirada</span>
-    {% else %}
-        <span class="spui-badge-borrador flex-shrink-0">Inactiva</span>
-    {% endif %}
-</div>
-
-{# Así la dibuja el reproductor. El tamaño del mensaje imita al del player,
-   que lo achica de 88 a 36 px hasta que entra: acá va por tramos de largo,
-   así que es una aproximación, no una captura. #}
+{# Detalle de una alerta. El título es el del modal. Abajo, a todo el ancho, cómo
+   la dibuja el reproductor; "Ampliar" la abre en el visor (core/media-viewer.js). #}
+{# El tamaño del mensaje imita al del player, que lo achica de 88 a 36 px hasta
+   que entra: acá va por tramos de largo, así que es una aproximación. #}
 {% set largo = alerta.mensaje|length %}
 {% set tam_mensaje = largo <= 60 ? 4.58 : (largo <= 140 ? 3.6 : (largo <= 260 ? 2.8 : 1.9)) %}
-{% set imagen = alerta.contenido and alerta.contenido.tipo.value == 'imagen' and alerta.contenido.rutaArchivo %}
-{# Con el modal ancho (02/11/2026): la vista previa y el estado lado a lado;
-   en pantallas angostas, uno debajo del otro. #}
-<div class="spui-view-dos">
-<div class="spui-view-section">
-    <p class="spui-view-section-title">Así se ve en las pantallas</p>
-    <div class="spui-alerta-pantalla" role="img" aria-label="Vista previa de la alerta en pantalla">
-        <div class="spui-alerta-pantalla-banda">{{ alerta.titulo|default('ALERTA DE EMERGENCIA') }}</div>
-        <div class="spui-alerta-pantalla-region{{ imagen ? ' con-imagen' : '' }}">
-            {% if imagen %}<img src="{{ path('spui_cms_contenidos_archivo_preview', {id: alerta.contenido.id}) }}" alt="">{% endif %}
-            {% if alerta.mensaje %}<div class="spui-alerta-pantalla-mensaje" style="font-size:{{ tam_mensaje }}cqw">{{ alerta.mensaje }}</div>{% endif %}
-        </div>
-        {% if alerta.contenido and alerta.contenido.tipo.value == 'video' %}
-            <span class="spui-alerta-pantalla-video">Con video adjunto</span>
-        {% endif %}
-        <div class="spui-alerta-pantalla-pie">UNRaf · Sistema de Pantallas Informativas</div>
-    </div>
-</div>
+{% set adjunto = alerta.contenido %}
+{% set imagen = adjunto and adjunto.tipo.value == 'imagen' and adjunto.rutaArchivo %}
+<div class="spui-ver">
+    <section class="spui-ver-seccion" aria-labelledby="spui-ver-detalles">
+        <h5 class="spui-ver-titulo" id="spui-ver-detalles">Detalles</h5>
+        <dl class="spui-ver-datos spui-ver-bloque">
+            <div>
+                <dt>Estado</dt>
+                <dd>
+                    {% if alerta.activa %}
+                        <span class="spui-badge-desconectado">Activa</span>
+                    {% elseif alerta.haExpirado %}
+                        <span class="spui-badge-archivado">Expirada</span>
+                    {% else %}
+                        <span class="spui-badge-borrador">Inactiva</span>
+                    {% endif %}
+                </dd>
+            </div>
+            <div><dt>Prioridad</dt><dd>{{ alerta.prioridad }}</dd></div>
+            <div class="spui-ver-dato-largo"><dt>Alcance</dt><dd>{%- if alerta.esGlobal %}Todas las pantallas{% else %}{{ texto.plural(alerta.pantallas|length, 'pantalla seleccionada', 'pantallas seleccionadas') }}{% endif -%}</dd></div>
+            <div class="spui-ver-dato-largo"><dt>Creada</dt><dd>{{ alerta.creadaEn|date('d/m/Y H:i') }}</dd></div>
+            {% if alerta.activadaEn %}<div class="spui-ver-dato-largo"><dt>Activada</dt><dd>{{ alerta.activadaEn|date('d/m/Y H:i') }}</dd></div>{% endif %}
+            <div class="spui-ver-dato-largo"><dt>Vencimiento</dt><dd>{{ alerta.expiraEn ? alerta.expiraEn|date('d/m/Y H:i') : 'Sin vencimiento' }}</dd></div>
+            <div class="spui-ver-dato-largo"><dt>Creada por</dt><dd>{{ creado_por_email|default('Usuario #' ~ alerta.creadoPorId) }}</dd></div>
+            {% if adjunto %}<div class="spui-ver-dato-largo"><dt>Contenido adjunto</dt><dd>{{ adjunto.titulo }} ({{ adjunto.tipo.etiqueta }})</dd></div>{% endif %}
+        </dl>
+    </section>
 
-<div class="spui-view-section">
-    <p class="spui-view-section-title">Estado</p>
-    <div class="spui-view-row">
-        <span class="spui-view-row-label">Situación</span>
-        <span class="spui-view-row-value">
-            {%- if alerta.activa %}Activa{% elseif alerta.haExpirado %}Expirada{% else %}Inactiva{% endif -%}
-        </span>
-    </div>
-    <div class="spui-view-row">
-        <span class="spui-view-row-label">Prioridad</span>
-        <span class="spui-view-row-value">{{ alerta.prioridad }}</span>
-    </div>
-    <div class="spui-view-row">
-        <span class="spui-view-row-label">Alcance</span>
-        <span class="spui-view-row-value">
-            {%- if alerta.esGlobal %}Todas las pantallas{% else %}{{ texto.plural(alerta.pantallas|length, 'pantalla seleccionada', 'pantallas seleccionadas') }}{% endif -%}
-        </span>
-    </div>
-    <div class="spui-view-row">
-        <span class="spui-view-row-label">Creada</span>
-        <span class="spui-view-row-value">{{ alerta.creadaEn|date('d/m/Y H:i') }}</span>
-    </div>
-    {% if alerta.activadaEn %}
-    <div class="spui-view-row">
-        <span class="spui-view-row-label">Activada</span>
-        <span class="spui-view-row-value">{{ alerta.activadaEn|date('d/m/Y H:i') }}</span>
-    </div>
+    {% if not alerta.esGlobal %}
+        <section class="spui-ver-seccion" aria-labelledby="spui-ver-pantallas">
+            <h5 class="spui-ver-titulo" id="spui-ver-pantallas">Pantallas destinatarias · {{ alerta.pantallas|length }}</h5>
+            <div class="spui-ver-bloque">
+                <ul class="spui-ver-usos">
+                    {% for p in alerta.pantallas %}
+                        <li><span>{{ p.nombre }}</span><small>{{ p.ubicacion.edificio.nombre }}{% if p.ubicacion.sector %} · {{ p.ubicacion.sector }}{% endif %}</small></li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </section>
     {% endif %}
-    <div class="spui-view-row">
-        <span class="spui-view-row-label">Expira</span>
-        <span class="spui-view-row-value">
-            {%- if alerta.expiraEn %}{{ alerta.expiraEn|date('d/m/Y H:i') }}{% else %}Sin vencimiento{% endif -%}
-        </span>
-    </div>
-    <div class="spui-view-row">
-        <span class="spui-view-row-label">Creada por</span>
-        <span class="spui-view-row-value">{{ creado_por_email|default('Usuario #' ~ alerta.creadoPorId) }}</span>
-    </div>
-</div>
-</div>
 
-{% if not alerta.esGlobal %}
-<div class="spui-view-section">
-    <p class="spui-view-section-title">Pantallas destinatarias · {{ alerta.pantallas|length }}</p>
-    <div class="spui-view-list">
-    {% for p in alerta.pantallas %}
-        <div class="spui-view-list-item">
-            <span class="spui-view-list-bullet"></span>
-            <span>{{ p.nombre }}</span>
-            <span class="spui-view-list-meta">{{ p.ubicacion.edificio.nombre }}{% if p.ubicacion.sector %} · {{ p.ubicacion.sector }}{% endif %}</span>
+    <section class="spui-ver-seccion" aria-labelledby="spui-ver-sonido">
+        <h5 class="spui-ver-titulo" id="spui-ver-sonido">Sonido</h5>
+        <div class="spui-ver-bloque">
+            {% if alerta.sonidoArchivo %}
+                <div class="spui-ver-sonido">
+                    <span>{{ alerta.sonidoNombreOriginal ?? 'Sonido personalizado' }}</span>
+                    <audio controls preload="none" src="{{ path('spui_cms_alertas_sonido_preview', {id: alerta.id}) }}"></audio>
+                </div>
+            {% else %}
+                <p class="spui-ver-texto">Sin personalizar: el reproductor emite el tono por defecto.</p>
+            {% endif %}
         </div>
-    {% endfor %}
-    </div>
-</div>
-{% endif %}
+    </section>
 
-{% if alerta.contenido %}
-<div class="spui-view-section">
-    <p class="spui-view-section-title">Contenido adjunto</p>
-    <div class="spui-view-row">
-        <span class="spui-view-row-label">Título</span>
-        <span class="spui-view-row-value">{{ alerta.contenido.titulo }}</span>
-    </div>
-    <div class="spui-view-row">
-        <span class="spui-view-row-label">Tipo</span>
-        <span class="spui-view-row-value">{{ alerta.contenido.tipo.etiqueta }}</span>
-    </div>
-</div>
-{% endif %}
-
-<div class="spui-view-section">
-    <p class="spui-view-section-title">Sonido</p>
-    {% if alerta.sonidoArchivo %}
-        <div class="d-flex align-items-center gap-2">
-            <audio controls preload="none" style="height:2.25rem" src="{{ path('spui_cms_alertas_sonido_preview', {id: alerta.id}) }}"></audio>
-            <span class="text-muted small">{{ alerta.sonidoNombreOriginal ?? 'sonido personalizado' }}</span>
+    <section class="spui-ver-seccion spui-ver-previa" aria-labelledby="spui-ver-previa-titulo">
+        <h5 class="spui-ver-titulo" id="spui-ver-previa-titulo">Vista previa</h5>
+        <div class="spui-vista-previa-acciones">
+            <button type="button" class="unraf-btn spui-btn-back unraf-btn-sm" data-spui-ampliar-alerta
+                    data-spui-titulo="{{ alerta.titulo }}"
+                    {% if adjunto and adjunto.rutaArchivo %}
+                        data-spui-archivo-url="{{ path('spui_cms_contenidos_archivo_preview', {id: adjunto.id}) }}"
+                        data-spui-archivo-tipo="{{ adjunto.tipo.value }}"
+                    {% endif %}
+                    title="Ver la vista previa en grande">
+                <img src="{{ asset('unraf-ui/icons/arrows-out.svg') }}" class="spui-action-icon" alt=""> Ampliar
+            </button>
         </div>
-    {% else %}
-        <p class="spui-view-empty mb-0">Sin personalizar — el reproductor emite el tono por defecto.</p>
-    {% endif %}
+        <p class="spui-tv-leyenda spui-ver-previa-leyenda">Así se ve en las pantallas.</p>
+        <div class="spui-alerta-pantalla" role="img" aria-label="Vista previa de la alerta en pantalla">
+            <div class="spui-alerta-pantalla-banda">{{ alerta.titulo|default('ALERTA DE EMERGENCIA') }}</div>
+            <div class="spui-alerta-pantalla-region{{ imagen ? ' con-imagen' : '' }}">
+                {% if imagen %}<img src="{{ path('spui_cms_contenidos_archivo_preview', {id: adjunto.id}) }}" alt="">{% endif %}
+                {% if alerta.mensaje %}<div class="spui-alerta-pantalla-mensaje" style="font-size:{{ tam_mensaje }}cqw">{{ alerta.mensaje }}</div>{% endif %}
+            </div>
+            {% if adjunto and adjunto.tipo.value == 'video' %}
+                <span class="spui-alerta-pantalla-video">Con video adjunto</span>
+            {% endif %}
+            <div class="spui-alerta-pantalla-pie">UNRaf · Sistema de Pantallas Informativas</div>
+        </div>
+    </section>
 </div>

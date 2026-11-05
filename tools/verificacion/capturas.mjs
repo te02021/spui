@@ -121,13 +121,36 @@ async function revisarDom(page, alcance, esCelular) {
                 .slice(0, 3).map(describir);
             desborde = { ancho: document.documentElement.scrollWidth, ventana: window.innerWidth, culpables };
         }
-        return { hiddenVisibles, imgsRotas, basura, desborde, tablasAnchas };
+        // Modales Ver: cada bloque a todo el ancho y cada fila de datos hasta el
+        // borde, sin huecos (pedido de Mateo, 05/11/2026; style.css, .spui-ver).
+        const verConHuecos = [];
+        raiz.querySelectorAll('.spui-ver-bloque').forEach((b) => {
+            const seccion = b.closest('.spui-ver-seccion');
+            if (!visible(b) || !seccion) return;
+            if (seccion.getBoundingClientRect().width - b.getBoundingClientRect().width > 1) verConHuecos.push('un bloque no ocupa todo el ancho');
+            const grillas = [...b.querySelectorAll('.spui-ver-datos')];
+            if (b.matches('.spui-ver-datos')) grillas.push(b);
+            grillas.forEach((dl) => {
+                const borde = dl.getBoundingClientRect().right - parseFloat(getComputedStyle(dl).paddingRight);
+                const filas = {};
+                [...dl.children].forEach((c) => {
+                    const r = c.getBoundingClientRect();
+                    const fila = Math.round(r.top);
+                    filas[fila] = Math.max(filas[fila] || 0, r.right);
+                });
+                Object.values(filas).forEach((x) => {
+                    if (borde - x > 1) verConHuecos.push(`una fila de ${dl.children.length} datos deja ${Math.round(borde - x)}px sin llenar`);
+                });
+            });
+        });
+        return { hiddenVisibles, imgsRotas, basura, desborde, tablasAnchas, verConHuecos };
     }, { alcance });
 
     if (r.sinRaiz) { falla(`no aparece ${alcance}`); return; }
     for (const h of r.hiddenVisibles) falla(`elemento con [hidden] que igual se ve: ${h}`);
     for (const i of r.imgsRotas) falla(`imagen rota: ${i}`);
     for (const b of r.basura) falla(`texto sospechoso en pantalla: "${b}"`);
+    for (const h of r.verConHuecos) falla(`modal Ver: ${h}`);
     if (!esCelular) for (const t of r.tablasAnchas) falla(`la tabla no entra y esconde columnas detrás de un scroll horizontal (${t})`);
     if (r.desborde && esCelular) aviso(`scroll horizontal: la página mide ${r.desborde.ancho}px en una ventana de ${r.desborde.ventana}px (${r.desborde.culpables.join(', ')})`);
 }

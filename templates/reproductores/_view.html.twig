@@ -1,122 +1,103 @@
 {% import '@SPUI/_macros/texto.html.twig' as texto %}
-{# Detalle de un reproductor (Raspberry Pi).
+{% import '@SPUI/_macros/ver.html.twig' as ver %}
+{# Detalle de un reproductor (Raspberry Pi). El título es el del modal.
    La clave API nunca se muestra: en la base sólo queda su hash SHA-256. #}
-<div class="spui-view-header">
-    <div>
-        <p class="spui-view-title">{{ reproductor.hostname }}</p>
-        <p class="spui-view-subtitle">Reproductor · Raspberry Pi</p>
-    </div>
-    {# Estado CALCULADO por heartbeat, igual que el listado: la columna guardada
-       podía decir otra cosa en el mismo momento. #}
-    {% set est = reproductor.estadoCalculado(spui_umbral_conexion) %}
-    <span class="spui-badge-{{ est.value }} flex-shrink-0">
-        {{ est.etiqueta }}
-    </span>
-</div>
-
-{# Lo primero que se ve: si el reproductor reporta algo, tiene que saltar a la
-   vista antes que cualquier otro dato. #}
-{% if reproductor.tieneProblemas %}
-<div class="spui-view-section">
-    <div class="spui-aviso-problemas">
-        <strong>Este reproductor reportó {{ reproductor.diagnostico|length }} problema{{ reproductor.diagnostico|length == 1 ? '' : 's' }}</strong>
-        <ul>
-        {% for problema in reproductor.diagnostico %}
-            <li>{{ problema }}</li>
-        {% endfor %}
-        </ul>
-        {% if reproductor.diagnosticoEn %}
-            <small class="d-block mt-2 text-muted">Informado el {{ reproductor.diagnosticoEn|date('d/m/Y H:i:s') }}</small>
-        {% endif %}
-    </div>
-</div>
-{% endif %}
-
-<div class="spui-view-section">
-    <p class="spui-view-section-title">Dispositivo</p>
-    <div class="spui-view-row">
-        <span class="spui-view-row-label">Estado</span>
-        <span class="spui-view-row-value">{{ est.etiqueta }}</span>
-    </div>
-    {% if reproductor.versionFirmware %}
-    <div class="spui-view-row">
-        <span class="spui-view-row-label">Versión firmware</span>
-        <span class="spui-view-row-value">{{ reproductor.versionFirmware }}</span>
-    </div>
-    {% endif %}
-    <div class="spui-view-row">
-        <span class="spui-view-row-label">Última señal</span>
-        <span class="spui-view-row-value">
-            {% if reproductor.ultimoHeartbeat %}
-                {{ reproductor.ultimoHeartbeat|date('d/m/Y H:i:s') }}
-                {% set diff = "now"|date("U") - reproductor.ultimoHeartbeat|date("U") %}
-                {% if diff > spui_umbral_conexion %}
-                    <br><small class="text-danger fw-semibold">Hace más de {{ texto.duracion_minutos((spui_umbral_conexion / 60)|round(0, 'ceil')) }}</small>
-                {% endif %}
-            {% else %}
-                <span class="text-muted">Nunca</span>
+{# Estado CALCULADO por heartbeat, igual que el listado: la columna guardada
+   podía decir otra cosa en el mismo momento. #}
+{% set est = reproductor.estadoCalculado(spui_umbral_conexion) %}
+<div class="spui-ver">
+    {# Lo primero que se ve: si el reproductor reporta algo, tiene que saltar a la
+       vista antes que cualquier otro dato. #}
+    {% if reproductor.tieneProblemas %}
+        <div class="spui-aviso-problemas">
+            <strong>Este reproductor reportó {{ reproductor.diagnostico|length }} problema{{ reproductor.diagnostico|length == 1 ? '' : 's' }}</strong>
+            <ul>
+                {% for problema in reproductor.diagnostico %}
+                    <li>{{ problema }}</li>
+                {% endfor %}
+            </ul>
+            {% if reproductor.diagnosticoEn %}
+                <small class="d-block mt-2 text-muted">Informado el {{ reproductor.diagnosticoEn|date('d/m/Y H:i:s') }}</small>
             {% endif %}
-        </span>
-    </div>
-    <div class="spui-view-row">
-        <span class="spui-view-row-label">Lecturas de telemetría</span>
-        <span class="spui-view-row-value">{{ reproductor.telemetrias|length }}</span>
-    </div>
-</div>
-
-<div class="spui-view-section">
-    <p class="spui-view-section-title">Sincronización con el CMS</p>
-    <div class="spui-view-row">
-        <span class="spui-view-row-label">Intervalo</span>
-        <span class="spui-view-row-value">Cada {{ texto.duracion_minutos(reproductor.intervaloSyncMin) }}</span>
-    </div>
-    <div class="spui-view-row">
-        <span class="spui-view-row-label">Última sincronización</span>
-        <span class="spui-view-row-value">
-            {% if reproductor.ultimoSync %}
-                {{ reproductor.ultimoSync|date('d/m/Y H:i:s') }}
-                <br><small class="text-muted" data-spui-desde="{{ reproductor.ultimoSync|date('c') }}"
-                           data-spui-atrasado-seg="{{ reproductor.intervaloSyncMin * 120 }}">
-                    {%- set segS = "now"|date("U") - reproductor.ultimoSync|date("U") -%}
-                    {%- if segS < 90 -%}hace instantes
-                    {%- elseif segS < 3600 -%}hace {{ (segS / 60)|round }} min
-                    {%- elseif segS < 86400 -%}hace {{ (segS / 3600)|round }} h
-                    {%- else -%}hace {{ (segS / 86400)|round }} días
-                    {%- endif -%}
-                </small>
-            {% else %}
-                <span class="text-muted">Nunca</span>
-            {% endif %}
-        </span>
-    </div>
-    {% if reproductor.proximoSyncEstimado %}
-    <div class="spui-view-row">
-        <span class="spui-view-row-label">Próximo sync (estimado)</span>
-        <span class="spui-view-row-value">
-            {% if reproductor.proximoSyncEstimado|date('U') < "now"|date('U') %}
-                <span class="text-danger fw-semibold">Atrasado: debía sincronizar a las {{ reproductor.proximoSyncEstimado|date('d/m/Y H:i') }}</span>
-            {% else %}
-                {{ reproductor.proximoSyncEstimado|date('d/m/Y H:i:s') }}
-            {% endif %}
-            <br><small class="text-muted">Además sincroniza al instante cada vez que se guarda algo que afecta a sus pantallas.</small>
-        </span>
-    </div>
-    {% endif %}
-</div>
-
-<div class="spui-view-section">
-    <p class="spui-view-section-title">Pantallas asignadas · {{ reproductor.pantallas|length }}</p>
-    {% if reproductor.pantallas|length > 0 %}
-        <div class="spui-view-list">
-        {% for p in reproductor.pantallas %}
-            <div class="spui-view-list-item">
-                <span class="spui-view-list-bullet"></span>
-                <span><strong>{{ p.nombre }}</strong></span>
-                <span class="spui-view-list-meta">{{ p.ubicacion.edificio.nombre }}{% if p.ubicacion.sector %} · {{ p.ubicacion.sector }}{% endif %}</span>
-            </div>
-        {% endfor %}
         </div>
-    {% else %}
-        <p class="spui-view-empty">Sin pantallas asignadas</p>
     {% endif %}
+
+    <section class="spui-ver-seccion" aria-labelledby="spui-ver-dispositivo">
+        <h5 class="spui-ver-titulo" id="spui-ver-dispositivo">Dispositivo</h5>
+        <dl class="spui-ver-datos spui-ver-bloque">
+            <div><dt>Estado</dt><dd><span class="spui-badge-{{ est.value }}">{{ est.etiqueta }}</span></dd></div>
+            {% if reproductor.versionFirmware %}<div><dt>Versión de firmware</dt><dd>{{ reproductor.versionFirmware }}</dd></div>{% endif %}
+            <div class="spui-ver-dato-largo">
+                <dt>Última señal</dt>
+                <dd>
+                    {% if reproductor.ultimoHeartbeat %}
+                        {{ reproductor.ultimoHeartbeat|date('d/m/Y H:i:s') }}
+                        {% set diff = "now"|date("U") - reproductor.ultimoHeartbeat|date("U") %}
+                        {% if diff > spui_umbral_conexion %}
+                            <small class="text-danger fw-semibold">Hace más de {{ texto.duracion_minutos((spui_umbral_conexion / 60)|round(0, 'ceil')) }}</small>
+                        {% endif %}
+                    {% else %}
+                        Nunca
+                    {% endif %}
+                </dd>
+            </div>
+            <div class="spui-ver-dato-largo"><dt>Lecturas de telemetría</dt><dd>{{ reproductor.telemetrias|length }}</dd></div>
+        </dl>
+    </section>
+
+    <section class="spui-ver-seccion" aria-labelledby="spui-ver-sync">
+        <h5 class="spui-ver-titulo" id="spui-ver-sync">Sincronización con el CMS</h5>
+        <div class="spui-ver-bloque">
+            <dl class="spui-ver-datos spui-ver-datos-solos">
+                <div><dt>Intervalo</dt><dd>Cada {{ texto.duracion_minutos(reproductor.intervaloSyncMin) }}</dd></div>
+                <div class="spui-ver-dato-largo">
+                    <dt>Última sincronización</dt>
+                    <dd>
+                        {% if reproductor.ultimoSync %}
+                            {{ reproductor.ultimoSync|date('d/m/Y H:i:s') }}
+                            <small data-spui-desde="{{ reproductor.ultimoSync|date('c') }}"
+                                   data-spui-atrasado-seg="{{ reproductor.intervaloSyncMin * 120 }}">
+                                {%- set segS = "now"|date("U") - reproductor.ultimoSync|date("U") -%}
+                                {%- if segS < 90 -%}hace instantes
+                                {%- elseif segS < 3600 -%}hace {{ (segS / 60)|round }} min
+                                {%- elseif segS < 86400 -%}hace {{ (segS / 3600)|round }} h
+                                {%- else -%}hace {{ (segS / 86400)|round }} días
+                                {%- endif -%}
+                            </small>
+                        {% else %}
+                            Nunca
+                        {% endif %}
+                    </dd>
+                </div>
+                {% if reproductor.proximoSyncEstimado %}
+                    <div class="spui-ver-dato-largo">
+                        <dt>Próxima sincronización (estimada)</dt>
+                        <dd>
+                            {% if reproductor.proximoSyncEstimado|date('U') < "now"|date('U') %}
+                                <span class="text-danger">Atrasada: debía ser a las {{ reproductor.proximoSyncEstimado|date('d/m/Y H:i') }}</span>
+                            {% else %}
+                                {{ reproductor.proximoSyncEstimado|date('d/m/Y H:i:s') }}
+                            {% endif %}
+                        </dd>
+                    </div>
+                {% endif %}
+            </dl>
+            <p class="spui-ver-nota">Además sincroniza al instante cada vez que se guarda algo que afecta a sus pantallas.</p>
+        </div>
+    </section>
+
+    <section class="spui-ver-seccion" aria-labelledby="spui-ver-pantallas">
+        <h5 class="spui-ver-titulo" id="spui-ver-pantallas">Pantallas asignadas · {{ reproductor.pantallas|length }}</h5>
+        {% if reproductor.pantallas|length > 0 %}
+            <div class="spui-ver-bloque">
+                <ul class="spui-ver-usos">
+                    {% for p in reproductor.pantallas %}
+                        <li><span>{{ p.nombre }}</span><small>{{ p.ubicacion.edificio.nombre }}{% if p.ubicacion.sector %} · {{ p.ubicacion.sector }}{% endif %}</small></li>
+                    {% endfor %}
+                </ul>
+            </div>
+        {% else %}
+            {{ ver.vacio('Sin pantallas asignadas.') }}
+        {% endif %}
+    </section>
 </div>

@@ -2928,15 +2928,6 @@ html.spui-sidebar-plegado .spui-sidebar-plegar img { transform: rotate(180deg); 
 }
 .spui-solo-icono:not(.spui-btn-submitting):hover::before, .spui-solo-icono:not(.spui-btn-submitting):focus-visible::before { opacity: 1; }
 
-/* Vistas con una vista previa (Ver de una alerta o de un contenido): con el
-   modal ancho, la previa a la izquierda y los datos a la derecha, en vez de
-   una previa del ancho entero que hacía el modal más alto. Apiladas abajo
-   de 992 px. */
-.spui-view-dos { display: grid; gap: 0 1.75rem; }
-@media (min-width: 992px) {
-    .spui-view-dos { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); align-items: start; }
-    .spui-view-dos > .spui-vista-previa-ver { margin-bottom: 0; }
-}
 /* Pantallas de una alerta: en columnas, ahora que hay ancho. */
 .spui-alerta-destinos { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
 
@@ -2986,7 +2977,7 @@ html.spui-sidebar-plegado .spui-sidebar-plegar img { transform: rotate(180deg); 
     .spui-cabecera-acciones { display: inline-flex; width: auto; flex-direction: column; align-items: stretch; }
 }
 
-/* ---- Modal Ver de un contenido (05/11/2026) ----
+/* ---- Modales Ver (05/11/2026) ----
    Regla (pedido de Mateo): cada bloque va a todo el ancho, sin un marco por dato,
    y lo que tiene adentro lo llena, sin huecos. */
 .spui-ver { display: flex; flex-direction: column; gap: 1.25rem; }
@@ -3013,17 +3004,20 @@ html.spui-sidebar-plegado .spui-sidebar-plegar img { transform: rotate(180deg); 
     .spui-ver-datos:has(> :last-child:nth-child(3)),
     .spui-ver-datos:has(> :last-child:nth-child(6)),
     .spui-ver-datos:has(> :last-child:nth-child(9)) { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-    .spui-ver-datos:has(> :last-child:nth-child(5)) { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+    .spui-ver-datos:has(> :last-child:nth-child(5)) { grid-template-columns: repeat(6, minmax(0, 1fr)); }
     .spui-ver-datos:has(> :last-child:nth-child(1)) > *,
     .spui-ver-datos:has(> :last-child:nth-child(2)) > *,
     .spui-ver-datos:has(> :last-child:nth-child(3)) > *,
-    .spui-ver-datos:has(> :last-child:nth-child(5)) > *,
     .spui-ver-datos:has(> :last-child:nth-child(6)) > *,
     .spui-ver-datos:has(> :last-child:nth-child(9)) > * { grid-column: auto; }
+    /* 5 datos en 6 columnas: tres de a dos y dos de a tres. */
+    .spui-ver-datos:has(> :last-child:nth-child(5)) > * { grid-column: span 2; }
+    .spui-ver-datos:has(> :last-child:nth-child(5)) > :nth-last-child(-n + 2) { grid-column: span 3; }
 }
 .spui-ver-datos > div { min-width: 0; }
 .spui-ver-datos dt { margin-bottom: .1rem; font-size: .75rem; font-weight: 400; color: #5f6b76; }
 .spui-ver-datos dd { margin: 0; font-size: .9rem; font-weight: 600; color: #2b3a4a; overflow-wrap: anywhere; }
+.spui-ver-datos dd small { display: block; font-size: .75rem; font-weight: 400; color: #5f6b76; }
 
 /* Enlaces del QR: dos mitades; uno solo, todo el ancho. Los botones, al borde. */
 .spui-ver-enlaces { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .6rem 1.5rem; }
@@ -3042,6 +3036,15 @@ html.spui-sidebar-plegado .spui-sidebar-plegar img { transform: rotate(180deg); 
 .spui-ver-icono-btn.is-copiado { background: #e8f4e4; border-color: var(--unraf-success, #4A9930); }
 .spui-ver-nota { margin: .6rem 0 0; font-size: .8rem; color: #5f6b76; }
 .spui-ver-bloque > .spui-ver-datos { margin-top: .85rem; padding-top: .85rem; border-top: 1px solid #e9ecef; }
+.spui-ver-bloque > .spui-ver-datos-solos { margin-top: 0; padding-top: 0; border-top: 0; }
+/* Días de una regla: los siete de lado a lado. */
+.spui-ver-dias { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: .35rem; margin: .85rem 0 0; padding: .85rem 0 0; list-style: none; border-top: 1px solid #e9ecef; }
+.spui-ver-dias li { padding: .3rem 0; font-size: .8rem; font-weight: 600; color: #5f6b76; text-align: center; background: #e9ecef; border-radius: .35rem; }
+.spui-ver-dias li.is-activo { color: #fff; background: var(--unraf-azul, #446687); }
+/* Sonido de una alerta: el nombre a la izquierda y el reproductor llena el resto. */
+.spui-ver-sonido { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem 1rem; }
+.spui-ver-sonido span { font-size: .9rem; font-weight: 600; color: #2b3a4a; overflow-wrap: anywhere; }
+.spui-ver-sonido audio { flex: 1 1 16rem; min-width: 0; height: 2.25rem; }
 .spui-ver-texto { margin: 0; font-size: .9rem; line-height: 1.55; color: #2b3a4a; white-space: pre-line; overflow-wrap: anywhere; }
 
 /* Dónde se usa: una fila de lado a lado por cada uso. */
@@ -3056,7 +3059,11 @@ html.spui-sidebar-plegado .spui-sidebar-plegar img { transform: rotate(180deg); 
 .spui-ver-previa { position: relative; }
 .spui-ver-previa .spui-ver-titulo { display: flex; align-items: center; min-height: 2.375rem; margin-bottom: 0; }
 .spui-ver-previa .spui-vista-previa { display: flex; flex-direction: column; }
+/* La alerta lleva un filete oscuro por fuera: que no se salga del modal. */
+.spui-ver-previa .spui-alerta-pantalla { width: calc(100% - 12px); max-width: none; margin: 6px; }
+.spui-visor-tv .spui-alerta-pantalla { width: 100%; max-width: none; margin: 0; }
 .spui-ver-previa .spui-vista-previa-pie { order: -1; margin: 0 0 .6rem; }
+.spui-ver-previa-leyenda { margin: 0 0 .6rem; }
 .spui-ver-previa .spui-vista-previa-acciones { position: absolute; top: 0; right: 0; height: 2.375rem; margin: 0; }
 .spui-ver-previa .spui-vista-previa-acciones .unraf-btn { min-height: 2.125rem; padding-top: .2rem; padding-bottom: .2rem; }
 
@@ -3065,7 +3072,9 @@ html.spui-sidebar-plegado .spui-sidebar-plegar img { transform: rotate(180deg); 
 @media (max-width: 575.98px) {
     .spui-ver-bloque { padding: .75rem .85rem; }
     .spui-ver-datos > .spui-ver-dato-largo { grid-column: 1 / -1; }
-    .spui-ver-datos > :last-child:nth-child(odd) { grid-column: 1 / -1; }
+    /* Un dato corto sin pareja (el siguiente es largo, o es el último) también. */
+    .spui-ver-datos > :nth-child(odd of :not(.spui-ver-dato-largo)):has(+ .spui-ver-dato-largo),
+    .spui-ver-datos > :nth-child(odd of :not(.spui-ver-dato-largo)):last-child { grid-column: 1 / -1; }
     .spui-ver-enlaces { grid-template-columns: minmax(0, 1fr); }
     /* Con el selector de edificio no entran junto al título: bajan de renglón. */
     .spui-ver-previa .spui-vista-previa-acciones:has(select) { position: static; height: auto; }

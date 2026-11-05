@@ -79,7 +79,7 @@
         <div class="spui-acciones spui-item-acciones">
             <button type="button" class="unraf-btn spui-btn-ver unraf-btn-sm"
                     data-spui-form="{{ path('spui_cms_programacion_ver', {id: prog.id}) }}"
-                    data-spui-title="Regla de programación"
+                    data-spui-title="{{ prog.playlist ? prog.playlist.nombre : 'Regla de programación' }}"
                     title="Ver detalle">
                 <img src="{{ asset('unraf-ui/icons/eye.svg') }}" class="spui-action-icon" alt=""> Ver
             </button>

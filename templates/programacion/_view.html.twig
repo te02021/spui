@@ -1,85 +1,49 @@
-{% set diasNombres     = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'] %}
+{# Detalle de una regla de programación. El título del modal es su playlist. #}
+{% set diasNombres      = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'] %}
 {% set diasNombresLargo = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'] %}
-{% set diasMasks       = [1, 2, 4, 8, 16, 32, 64] %}
+{% set diasMasks        = [1, 2, 4, 8, 16, 32, 64] %}
+<div class="spui-ver">
+    <section class="spui-ver-seccion" aria-labelledby="spui-ver-detalles">
+        <h5 class="spui-ver-titulo" id="spui-ver-detalles">Detalles</h5>
+        <dl class="spui-ver-datos spui-ver-bloque">
+            <div><dt>Estado</dt><dd><span class="{{ prog.activo ? 'spui-badge-publicado' : 'spui-badge-archivado' }}">{{ prog.activo ? 'Activa' : 'Inactiva' }}</span></dd></div>
+            <div><dt>Prioridad</dt><dd>{{ prog.prioridad }}</dd></div>
+            <div class="spui-ver-dato-largo"><dt>Creada</dt><dd>{{ prog.creadoEn|date('d/m/Y H:i') }}</dd></div>
+            <div class="spui-ver-dato-largo"><dt>Creada por</dt><dd>{{ creado_por_email|default('Usuario #' ~ prog.creadoPorId) }}</dd></div>
+        </dl>
+    </section>
 
-<div class="spui-view-header">
-    <div>
-        <p class="spui-view-title">{{ prog.playlist ? prog.playlist.nombre : 'Sin playlist' }}</p>
-        <p class="spui-view-subtitle">Regla de programación · Prioridad {{ prog.prioridad }}</p>
-    </div>
-    {% if prog.activo %}
-        <span class="spui-badge-publicado flex-shrink-0">Activa</span>
-    {% else %}
-        <span class="spui-badge-archivado flex-shrink-0">Inactiva</span>
-    {% endif %}
-</div>
-
-<div class="spui-view-section">
-    <p class="spui-view-section-title">Destino</p>
-    <div class="spui-view-row">
-        <span class="spui-view-row-label">Alcance</span>
-        <span class="spui-view-row-value">
-            {% if prog.pantalla %}
-                {{ prog.pantalla.nombre }}
-            {% elseif prog.ubicacion %}
-                {{ prog.ubicacion.edificio.nombre }}{% if prog.ubicacion.sector %} · {{ prog.ubicacion.sector }}{% endif %}
-            {% elseif prog.edificio %}
-                {{ prog.edificio.nombre }}
-            {% else %}
-                <span class="text-muted">Global · todas las pantallas</span>
-            {% endif %}
-        </span>
-    </div>
-</div>
-
-<div class="spui-view-section">
-    <p class="spui-view-section-title">Horario y vigencia</p>
-    <div class="spui-view-row">
-        <span class="spui-view-row-label">Horario</span>
-        <span class="spui-view-row-value">
-            {{ prog.horaInicio ? prog.horaInicio|date('H:i') : '—' }} – {{ prog.horaFin ? prog.horaFin|date('H:i') : '—' }}
-        </span>
-    </div>
-    <div class="spui-view-row">
-        <span class="spui-view-row-label">Vigencia</span>
-        <span class="spui-view-row-value">
-            {{ prog.fechaInicio ? prog.fechaInicio|date('d/m/Y') : '—' }} → {% if prog.fechaFin %}{{ prog.fechaFin|date('d/m/Y') }}{% else %}<span class="text-muted">Sin vencimiento</span>{% endif %}
-        </span>
-    </div>
-    <div class="spui-view-row">
-        <span class="spui-view-row-label">Repetición</span>
-        <span class="spui-view-row-value">{{ prog.repetirSemanal ? 'Semanal' : 'Una sola vez' }}</span>
-    </div>
-</div>
-
-<div class="spui-view-section">
-    <p class="spui-view-section-title">Días activos</p>
-    <div class="d-flex gap-2 flex-wrap">
-        {% for i in 0..6 %}
-            <span class="spui-dia-badge {{ (prog.diasSemana // diasMasks[i]) is odd ? 'spui-dia-activo' : 'spui-dia-inactivo' }}"
-                  title="{{ diasNombresLargo[i] }}">
-                {{ diasNombres[i] }}
-            </span>
-        {% endfor %}
-    </div>
-</div>
-
-<div class="spui-view-section">
-    <p class="spui-view-section-title">Detalle</p>
-    <div class="spui-view-row">
-        <span class="spui-view-row-label">Estado</span>
-        <span class="spui-view-row-value">{{ prog.activo ? 'Activa' : 'Inactiva' }}</span>
-    </div>
-    <div class="spui-view-row">
-        <span class="spui-view-row-label">Prioridad</span>
-        <span class="spui-view-row-value">{{ prog.prioridad }}</span>
-    </div>
-    <div class="spui-view-row">
-        <span class="spui-view-row-label">Creada</span>
-        <span class="spui-view-row-value">{{ prog.creadoEn|date('d/m/Y H:i') }}</span>
-    </div>
-    <div class="spui-view-row">
-        <span class="spui-view-row-label">Creada por</span>
-        <span class="spui-view-row-value">{{ creado_por_email|default('Usuario #' ~ prog.creadoPorId) }}</span>
-    </div>
+    <section class="spui-ver-seccion" aria-labelledby="spui-ver-cuando">
+        <h5 class="spui-ver-titulo" id="spui-ver-cuando">Dónde y cuándo</h5>
+        <div class="spui-ver-bloque">
+            <dl class="spui-ver-datos spui-ver-datos-solos">
+                <div><dt>Horario</dt><dd>{{ prog.horaInicio ? prog.horaInicio|date('H:i') : '—' }} a {{ prog.horaFin ? prog.horaFin|date('H:i') : '—' }}</dd></div>
+                <div><dt>Repetición</dt><dd>{{ prog.repetirSemanal ? 'Semanal' : 'Una sola vez' }}</dd></div>
+                <div class="spui-ver-dato-largo">
+                    <dt>Alcance</dt>
+                    <dd>
+                        {% if prog.pantalla %}
+                            {{ prog.pantalla.nombre }}
+                        {% elseif prog.ubicacion %}
+                            {{ prog.ubicacion.edificio.nombre }}{% if prog.ubicacion.sector %} · {{ prog.ubicacion.sector }}{% endif %}
+                        {% elseif prog.edificio %}
+                            {{ prog.edificio.nombre }}
+                        {% else %}
+                            Todas las pantallas
+                        {% endif %}
+                    </dd>
+                </div>
+                <div class="spui-ver-dato-largo">
+                    <dt>Vigencia</dt>
+                    <dd>{{ prog.fechaInicio ? 'Desde el ' ~ prog.fechaInicio|date('d/m/Y') : 'Desde siempre' }}{{ prog.fechaFin ? ' hasta el ' ~ prog.fechaFin|date('d/m/Y') : ', sin vencimiento' }}</dd>
+                </div>
+            </dl>
+            <ul class="spui-ver-dias" aria-label="Días de la semana">
+                {% for i in 0..6 %}
+                    {% set activo = (prog.diasSemana // diasMasks[i]) is odd %}
+                    <li class="{{ activo ? 'is-activo' }}" title="{{ diasNombresLargo[i] }}{{ activo ? ': sí' : ': no' }}">{{ diasNombres[i] }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </section>
 </div>
