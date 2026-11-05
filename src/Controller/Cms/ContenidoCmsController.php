@@ -13,7 +13,6 @@ use Psr\Cache\CacheItemPoolInterface;
 use SPUI\Entity\CodigoQr;
 use SPUI\Entity\Contenido;
 use SPUI\Enum\EstadoContenido;
-use SPUI\Enum\OrigenCronograma;
 use SPUI\Enum\TipoContenido;
 use SPUI\Form\ContenidoType;
 use SPUI\Repository\ContenidoRepository;
@@ -539,8 +538,7 @@ class ContenidoCmsController extends AbstractController
             $this->em()->persist($contenido);
             $this->em()->flush();
 
-            // Uno "del edificio de la pantalla" no tiene ítems que cargar.
-            if ($tipo === TipoContenido::Cronograma && $contenido->getCronogramaOrigen() === OrigenCronograma::Propio) {
+            if ($tipo === TipoContenido::Cronograma) {
                 // Recién creado está vacío: se sigue directo en el listado de
                 // sus ítems, en el mismo modal (modal.js, data.abrir).
                 $msg = 'Cronograma "' . $contenido->getTitulo() . '" creado. Ahora agregá los ítems.';

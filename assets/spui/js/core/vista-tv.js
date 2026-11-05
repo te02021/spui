@@ -153,17 +153,13 @@
         var url = cont.getAttribute('data-spui-vista-previa-url');
         var form = cont.closest('form');
         var opciones = { headers: { 'X-Requested-With': 'XMLHttpRequest' }, credentials: 'same-origin' };
-        var edificio = cont.querySelector('[data-spui-tv-edificio]');
 
         if (form) {
             var datos = new FormData(form);
             datos.delete('archivo');   // el archivo lo muestra el navegador, no se sube
             if (cont.dataset.spuiVistaId) datos.set('vista_id', cont.dataset.spuiVistaId);
-            if (edificio) datos.set('vista_edificio', edificio.value);
             opciones.method = 'POST';
             opciones.body = datos;
-        } else if (edificio) {
-            url += (url.indexOf('?') === -1 ? '?' : '&') + 'edificio=' + encodeURIComponent(edificio.value);
         }
 
         var pedido = (cont._spuiPedido || 0) + 1;
@@ -234,7 +230,6 @@
         if (!form) return;
         var cont = form.querySelector('[data-spui-vista-previa-url]');
         if (!cont) return;
-        if (e.target.matches('[data-spui-tv-edificio]')) { pedir(cont); return; }
         clearTimeout(esperas.get(cont));
         esperas.set(cont, setTimeout(function () { pedir(cont); }, e.type === 'input' ? ESPERA_MS : 0));
     }
@@ -245,12 +240,6 @@
     document.addEventListener('input', function (e) {
         // Lo que se escribe (título, texto) espera a que se deje de tipear.
         if (e.target && e.target.matches && e.target.matches('input[type="text"], textarea')) alCambiarFormulario(e);
-    });
-    // El selector de edificio de la vista del modal Ver (fuera de un form).
-    document.addEventListener('change', function (e) {
-        if (!e.target.matches || !e.target.matches('[data-spui-tv-edificio]') || e.target.form) return;
-        var cont = e.target.closest('[data-spui-vista-previa-url]');
-        if (cont) pedir(cont);
     });
 
     document.addEventListener('click', function (e) {

@@ -65,6 +65,8 @@ function spuiProblemaDeRespuesta(array $r, bool $xhr, bool $binario = false): ?s
         if ($html === '') return 'JSON sin html';
     }
     if ($m = spuiMensajeExcepcion($html)) return 'página de excepción' . $m;
+    // Un comentario de Twig mal cerrado se imprime tal cual en la pantalla (05/11/2026).
+    if (str_contains($html, '#}')) return 'comentario de Twig a la vista';
     return null;
 }
 

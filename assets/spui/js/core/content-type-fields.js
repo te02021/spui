@@ -5,7 +5,6 @@
 // Desde noviembre 2026 también maneja la parte "Cómo se ve en pantalla"
 // (contenidos/_presentacion), con atributos genéricos:
 //   data-spui-solo-tipos="a b"   visible sólo con esos tipos de contenido
-//   data-spui-si-origen="x"      visible sólo con ese origen de cronograma
 // y, en el ítem de un cronograma, data-spui-si-tipo-item (días o fecha).
 (function () {
     // El select lo renderiza Symfony con su propio id (contenido_tipo), así que
@@ -81,7 +80,6 @@
 
     function actualizarPresentacion(form, tipo, animar) {
         alternar(form, 'data-spui-solo-tipos', tipo, animar);
-        alternar(form, 'data-spui-si-origen', elegido(form, 'cronograma_origen') || 'propio', animar);
     }
 
     function actualizarCampos(form, animar) {
@@ -195,8 +193,8 @@
             actualizarCampos(t.form, true);
         } else if (t.name === 'tipo_item') {
             actualizarItem(t.form, true);
-        } else if (t.name === 'plantilla' || t.name === 'cronograma_origen') {
-            if (t.name === 'plantilla') t.form.dataset.spuiPlantillaElegida = '1';
+        } else if (t.name === 'plantilla') {
+            t.form.dataset.spuiPlantillaElegida = '1';
             actualizarCampos(t.form, true);
         }
     });

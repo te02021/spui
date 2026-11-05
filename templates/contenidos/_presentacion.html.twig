@@ -1,11 +1,10 @@
-{
-   de dónde salen sus clases y cómo pasan las páginas.
+{# Cómo se ve el contenido en el TV: plantilla, tema y, en un cronograma, su
+   edificio, su vigencia y cómo pasan las páginas.
 
    Lo incluyen el alta (_form) y la edición (_edit_form); los campos los lee y
    valida PresentacionContenidoService. Qué parte se ve según el tipo y lo
    elegido lo resuelve content-type-fields.js con estos atributos:
      data-spui-solo-tipos="a b"     sólo con esos tipos de contenido
-     data-spui-si-origen="x"        sólo con ese origen de cronograma
    En la edición el tipo no cambia: va fijo en data-spui-tipo-fijo.
 
    Variables: pv (PresentacionContenidoService::valores), err, edificios,
@@ -45,18 +44,8 @@
 
         {# ── Sólo cronogramas ── #}
         <div class="spui-form-separado" data-spui-solo-tipos="cronograma" hidden>
-            <span class="unraf-form-label d-block" id="{{ uid }}_origen_lbl">¿Qué cronograma muestra?</span>
-            <div class="spui-opciones" role="radiogroup" aria-labelledby="{{ uid }}_origen_lbl">
-                {% for op in enum('SPUI\\Enum\\OrigenCronograma').cases() %}
-                    <input type="radio" class="spui-opcion-input" name="cronograma_origen" id="{{ uid }}_origen_{{ op.value }}"
-                           value="{{ op.value }}" {{ pv.cronograma_origen == op.value ? 'checked' }}>
-                    <label class="spui-opcion" for="{{ uid }}_origen_{{ op.value }}">{{ op.etiqueta }}</label>
-                {% endfor %}
-            </div>
-            <small class="spui-form-ayuda" data-spui-si-origen="edificio" hidden>Cada pantalla muestra el cronograma vigente del edificio donde está.</small>
-
-            <div class="spui-form-fila spui-form-fila-4 mt-3">
-                <div data-spui-si-origen="propio">
+            <div class="spui-form-fila spui-form-fila-4">
+                <div>
                     <label class="unraf-form-label" for="{{ uid }}_edificio">Edificio (opcional)</label>
                     <select id="{{ uid }}_edificio" name="cronograma_edificio" class="unraf-form-select{{ err.cronograma_edificio is defined ? ' is-invalid' }}">
                         <option value="">— ninguno —</option>
@@ -66,13 +55,13 @@
                     </select>
                     {% if err.cronograma_edificio is defined %}<p class="spui-campo-error">{{ err.cronograma_edificio }}</p>{% endif %}
                 </div>
-                <div class="spui-fecha-field" data-spui-campo data-spui-si-origen="propio">
+                <div class="spui-fecha-field" data-spui-campo>
                     <label class="unraf-form-label" for="{{ uid }}_vig_desde">Vigente desde</label>
                     <input type="date" id="{{ uid }}_vig_desde" name="vigencia_desde" value="{{ pv.vigencia_desde }}"
                            class="unraf-form-control{{ err.vigencia_desde is defined ? ' is-invalid' }}">
                     {% if err.vigencia_desde is defined %}<p class="spui-campo-error">{{ err.vigencia_desde }}</p>{% endif %}
                 </div>
-                <div class="spui-fecha-field" data-spui-campo data-spui-si-origen="propio">
+                <div class="spui-fecha-field" data-spui-campo>
                     <label class="unraf-form-label" for="{{ uid }}_vig_hasta">Hasta</label>
                     <input type="date" id="{{ uid }}_vig_hasta" name="vigencia_hasta" value="{{ pv.vigencia_hasta }}"
                            class="unraf-form-control{{ err.vigencia_hasta is defined ? ' is-invalid' }}"
@@ -89,7 +78,7 @@
                     {% if err.segundos_por_pagina is defined %}<p class="spui-campo-error">{{ err.segundos_por_pagina }}</p>{% endif %}
                 </div>
             </div>
-            <small class="spui-form-ayuda" data-spui-si-origen="propio">El edificio es para que lo encuentren los cronogramas "del edificio de la pantalla". Sin vigencia, rige siempre.</small>
+            <small class="spui-form-ayuda">El edificio es el título del cronograma en el TV; sin edificio, va el título del contenido. Sin vigencia, rige siempre.</small>
         </div>
     </div>
 </section>

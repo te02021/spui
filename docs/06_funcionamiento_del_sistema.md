@@ -202,7 +202,6 @@ La migración `Version20261028190000` borró los contenidos de ese tipo que hab�
 - **Por qué la semana entera.** El sync manda en `contenido.cronograma` las clases (con su máscara de días) y los eventos de hoy a 7 días, más la vigencia. La Pi elige el día y la hora con las mismas reglas que `PantallaTvService` (`tv.filas_del_dia()`).
   - Así pasa sola de un día al otro.
   - Sin conexión con el CMS sigue mostrando lo que corresponde con lo que tiene en caché.
-  - El "del edificio de la pantalla" se resuelve en el CMS con el edificio de cada pantalla.
   - El campo anterior, `cronograma_items` (sólo lo de hoy), se sigue mandando para una Pi sin actualizar.
 - **La hora en vivo** (desde el 03/11/2026, 24 h, sin segundos): con plantilla, grande en la cabecera con la fecha debajo; sin plantilla, en una píldora oscura arriba a la derecha (no sobre un video, que lo dibuja VLC). Es la hora que confirma el CMS (`spui/reloj.py`).
   - **Cómo se actualiza:** la lámina guarda el recuadro de la hora (`Lamina.zona_hora`) y la ventana repinta sólo ese recuadro al cambiar el minuto, sin redibujar la pantalla.

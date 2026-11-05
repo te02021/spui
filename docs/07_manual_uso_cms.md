@@ -176,7 +176,6 @@ El modal **Ver** del contenido muestra lo elegido.
 - **Modal Ver:** arriba, los **Detalles**; después el **Código QR**, si lo es, con **Copiar** y **Abrir** en cada enlace; **Dónde se usa**, y abajo la única vista previa, a todo el ancho. En un cronograma propio, **Ver ítems** está al lado del título **Detalles**.
 - **Cronograma:**
   - Se ve con las actividades de hoy que todavía no terminaron, y las páginas pasan deslizándose cada los segundos elegidos.
-  - Uno "del edificio de la pantalla" tiene un selector **Como en…** para elegir en qué edificio mirarlo.
 - **Junto al TV:** una línea dice a qué hora corresponde lo que se ve y qué tema tomó el automático. En el formulario va debajo; en el modal **Ver**, arriba, con **Ampliar** a la altura del título.
 - **Ampliar:** la abre en grande. Desde el modal **Ver**, si el contenido tiene archivo, abre el visor con todas las acciones.
 
@@ -205,16 +204,10 @@ Hasta el 29/10/2026 había además **Borrador** y **Publicar/Despublicar**: un c
 
 Un contenido tipo cronograma es una tabla de horarios (materias, aulas, docentes). Se carga **una vez por semana**, como el Excel de horarios: cada clase lleva los días en que se dicta, y cada pantalla muestra sólo lo del día.
 
-**¿Qué cronograma muestra?** (al crearlo o editarlo):
+**Datos de un cronograma** (al crearlo o editarlo). Cada edificio tiene su cronograma y su playlist: el contenido muestra las clases que tiene cargadas, a mano o desde el Excel, en toda pantalla donde se lo programe.
 
-- **Propio:**
-  - Tiene sus clases, cargadas a mano o desde el Excel.
-  - Opcionalmente, un **edificio** y una **vigencia** (desde / hasta, por ejemplo el cuatrimestre).
-  - El edificio hace falta para que lo encuentren los cronogramas "del edificio de la pantalla". Sin vigencia, rige siempre.
-- **Del edificio de la pantalla:**
-  - No tiene clases propias.
-  - En cada pantalla muestra el cronograma propio vigente del edificio donde está ubicada.
-  - Si una pantalla se muda de edificio (se le cambia la Ubicación), cambia de cronograma sola.
+- **Edificio (opcional):** es el título del cronograma en el TV y el lugar al pie; sin edificio, el título es el del contenido. Con él, el importador de Excel propone qué cronograma reemplaza cada hoja.
+- **Vigencia (opcional):** desde / hasta, por ejemplo el cuatrimestre. Sin vigencia, rige siempre.
 - **Segundos por página:**
   - Cada página muestra las actividades que entran y pasa a la siguiente deslizándose. Por defecto 10 segundos, de 5 a 60.
   - **No se corta ni se achica nada:** una materia larga ocupa más de un renglón y la fila crece hacia abajo; el docente va debajo del nombre completo. Por eso una página puede tener más o menos actividades que otra.

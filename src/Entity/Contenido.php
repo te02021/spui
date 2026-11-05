@@ -9,7 +9,6 @@ use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 use SPUI\Enum\EstadoContenido;
-use SPUI\Enum\OrigenCronograma;
 use SPUI\Enum\PlantillaPantalla;
 use SPUI\Enum\TemaPantalla;
 use SPUI\Enum\TipoContenido;
@@ -76,12 +75,13 @@ class Contenido
 
     // ── Sólo cronogramas ───────────────────────────────────────────────────
 
-    #[ORM\Column(length: 20, nullable: true, enumType: OrigenCronograma::class)]
-    private ?OrigenCronograma $cronogramaOrigen = null;
+    /** Sin uso desde el 05/11/2026 (era el "del edificio de la pantalla"): la columna queda hasta una migración. */
+    #[ORM\Column(length: 20, nullable: true)]
+    private ?string $cronogramaOrigen = null;
 
     /**
-     * A qué edificio pertenece un cronograma propio. Opcional: hace falta para
-     * que lo encuentren los cronogramas "del edificio de la pantalla".
+     * De qué edificio es el cronograma. Opcional: es el título y el pie en el
+     * TV, y con él el importador propone qué cronograma reemplaza cada hoja.
      */
     #[ORM\ManyToOne(targetEntity: Edificio::class)]
     #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
@@ -182,11 +182,6 @@ class Contenido
         return $this->tipo === TipoContenido::Cronograma;
     }
 
-    /** Un cronograma con clases cargadas (no uno "del edificio de la pantalla"). */
-    public function tieneItemsPropios(): bool
-    {
-        return $this->esCronograma() && $this->cronogramaOrigen !== OrigenCronograma::Edificio;
-    }
 
     public function getPlantilla(): PlantillaPantalla { return $this->plantilla; }
     public function setPlantilla(PlantillaPantalla $plantilla): static { $this->plantilla = $plantilla; return $this; }
@@ -197,8 +192,6 @@ class Contenido
     public function isMarcaAgua(): bool { return $this->marcaAgua; }
     public function setMarcaAgua(bool $marcaAgua): static { $this->marcaAgua = $marcaAgua; return $this; }
 
-    public function getCronogramaOrigen(): ?OrigenCronograma { return $this->cronogramaOrigen; }
-    public function setCronogramaOrigen(?OrigenCronograma $origen): static { $this->cronogramaOrigen = $origen; return $this; }
 
     public function getCronogramaEdificio(): ?Edificio { return $this->cronogramaEdificio; }
     public function setCronogramaEdificio(?Edificio $edificio): static { $this->cronogramaEdificio = $edificio; return $this; }

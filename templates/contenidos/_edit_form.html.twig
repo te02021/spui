@@ -135,8 +135,7 @@
                 </div>
 
             {% elseif contenido.tipo.value == 'cronograma' %}
-                {# Uno "del edificio de la pantalla" no tiene ítems propios. #}
-                <div class="spui-form-accion" data-spui-si-origen="propio">
+                <div class="spui-form-accion">
                     <p class="spui-ver-texto">Las actividades se cargan en el listado de ítems. Lo que no hayas guardado acá se pierde al pasar a los ítems.</p>
                     {# data-spui-abrir: reemplaza este modal por el listado de ítems (modal.js). #}
                     <button type="button" class="unraf-btn spui-btn-items unraf-btn-sm"
@@ -146,7 +145,6 @@
                         <img src="{{ asset('unraf-ui/icons/calendar-dots.svg') }}" class="spui-action-icon" alt=""> Ver ítems
                     </button>
                 </div>
-                <p class="spui-ver-texto" data-spui-si-origen="edificio" hidden>Muestra el cronograma del edificio de cada pantalla: no tiene ítems propios.</p>
             {% endif %}
         </div>
     </section>

@@ -22,7 +22,7 @@
     <section class="spui-ver-seccion" aria-labelledby="spui-ver-detalles">
         <div class="spui-ver-cabecera">
             <h5 class="spui-ver-titulo" id="spui-ver-detalles">Detalles</h5>
-            {% if contenido.tieneItemsPropios %}
+            {% if contenido.esCronograma %}
                 {# data-spui-abrir: reemplaza este modal por el listado de ítems (modal.js). #}
                 <button type="button" class="unraf-btn spui-btn-items unraf-btn-sm"
                         data-spui-abrir="{{ path('spui_cms_cronograma_items', {id: contenido.id}) }}"
@@ -40,20 +40,17 @@
             {# El horario del tema automático lo dice la línea debajo de la vista previa. #}
             <div><dt>Tema</dt><dd>{{ contenido.tema.etiqueta }}</dd></div>
             {% if contenido.esCronograma %}
-                <div><dt>Muestra</dt><dd>{{ contenido.tieneItemsPropios ? 'Sus propias clases' : 'El cronograma del edificio de cada pantalla' }}</dd></div>
-                {% if contenido.tieneItemsPropios %}
-                    <div><dt>Edificio</dt><dd>{{ contenido.cronogramaEdificio ? contenido.cronogramaEdificio.nombre : 'Sin edificio' }}</dd></div>
-                    <div>
-                        <dt>Vigencia</dt>
-                        <dd>
-                            {% if contenido.vigenciaDesde or contenido.vigenciaHasta %}
-                                {{ contenido.vigenciaDesde ? 'Desde el ' ~ contenido.vigenciaDesde|date('d/m/Y') }}{{ contenido.vigenciaDesde and contenido.vigenciaHasta ? ' ' }}{{ contenido.vigenciaHasta ? (contenido.vigenciaDesde ? 'hasta' : 'Hasta') ~ ' el ' ~ contenido.vigenciaHasta|date('d/m/Y') }}
-                            {% else %}
-                                Siempre
-                            {% endif %}
-                        </dd>
-                    </div>
-                {% endif %}
+                <div><dt>Edificio</dt><dd>{{ contenido.cronogramaEdificio ? contenido.cronogramaEdificio.nombre : 'Sin edificio' }}</dd></div>
+                <div>
+                    <dt>Vigencia</dt>
+                    <dd>
+                        {% if contenido.vigenciaDesde or contenido.vigenciaHasta %}
+                            {{ contenido.vigenciaDesde ? 'Desde el ' ~ contenido.vigenciaDesde|date('d/m/Y') }}{{ contenido.vigenciaDesde and contenido.vigenciaHasta ? ' ' }}{{ contenido.vigenciaHasta ? (contenido.vigenciaDesde ? 'hasta' : 'Hasta') ~ ' el ' ~ contenido.vigenciaHasta|date('d/m/Y') }}
+                        {% else %}
+                            Siempre
+                        {% endif %}
+                    </dd>
+                </div>
                 <div><dt>Cada página</dt><dd>{{ contenido.segundosPorPagina ?? constant('SPUI\\Service\\PresentacionContenidoService::SEG_PAGINA_DEFECTO') }} s</dd></div>
             {% endif %}
             <div><dt>Creado</dt><dd>{{ contenido.creadoEn|date('d/m/Y H:i') }}</dd></div>

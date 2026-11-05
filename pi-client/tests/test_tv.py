@@ -68,7 +68,6 @@ class ReglasTest(unittest.TestCase):
 
     def test_sin_actividades_lo_dice(self):
         self.assertEqual(tv.filas_del_dia({'items': []}, LUNES_18)[1], 'No quedan actividades por hoy.')
-        self.assertEqual(tv.filas_del_dia({'vacio': 'Sin cronograma.'}, LUNES_18)[1], 'Sin cronograma.')
 
     def test_tema_automatico_por_la_hora(self):
         self.assertEqual(tv.tema_efectivo('automatico', datetime(2026, 11, 2, 18, 59), None), 'clara')

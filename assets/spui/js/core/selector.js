@@ -219,8 +219,7 @@
 
     function iniciar(raiz) {
         cerrar(false);
-        // El de "Como en…" de la vista previa es otra cosa: va chico y se redibuja solo.
-        (raiz || document).querySelectorAll('.spui-form select.unraf-form-select:not([data-spui-tv-edificio])').forEach(mejorar);
+        (raiz || document).querySelectorAll('.spui-form select.unraf-form-select').forEach(mejorar);
     }
 
     document.addEventListener('DOMContentLoaded', function () { iniciar(); });

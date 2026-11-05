@@ -10,7 +10,6 @@ use RuntimeException;
 use SPUI\Entity\Contenido;
 use SPUI\Entity\CronogramaItem;
 use SPUI\Enum\EstadoContenido;
-use SPUI\Enum\OrigenCronograma;
 use SPUI\Enum\PlantillaPantalla;
 use SPUI\Enum\TemaPantalla;
 use SPUI\Enum\TipoContenido;
@@ -315,7 +314,7 @@ class ImportadorCronogramaService
 
     /**
      * Qué proponer de entrada: para cada hoja, el edificio cuyo nombre
-     * coincide y, si ese edificio ya tiene un cronograma propio, reemplazarlo;
+     * coincide y, si ese edificio ya tiene un cronograma, reemplazarlo;
      * para cada grupo de eventos, la hoja del mismo nombre.
      */
     public function sugerencias(array $plan): array
@@ -333,7 +332,7 @@ class ImportadorCronogramaService
                 }
             }
             $existente = $edificio ? $this->contenidos->findOneBy(
-                ['tipo' => TipoContenido::Cronograma, 'cronogramaOrigen' => OrigenCronograma::Propio, 'cronogramaEdificio' => $edificio],
+                ['tipo' => TipoContenido::Cronograma, 'cronogramaEdificio' => $edificio],
                 ['actualizadoEn' => 'DESC'],
             ) : null;
             $hojas[$h['nombre']] = [
@@ -393,12 +392,11 @@ class ImportadorCronogramaService
                         ->setCreadoPorId($usuarioId)
                         ->setPlantilla(PlantillaPantalla::Institucional)
                         ->setTema(TemaPantalla::Automatico)
-                        ->setCronogramaOrigen(OrigenCronograma::Propio)
                         ->setSegundosPorPagina(PresentacionContenidoService::SEG_PAGINA_DEFECTO);
                     $em->persist($c);
                 } else {
                     $c = $this->contenidos->find((int) $op['destino']);
-                    if (!$c || !$c->tieneItemsPropios()) {
+                    if (!$c || !$c->esCronograma()) {
                         throw new RuntimeException("El cronograma elegido para «{$h['nombre']}» ya no existe. Volvé a elegir el destino.");
                     }
                     $em->createQuery('DELETE FROM SPUI\Entity\CronogramaItem i WHERE i.contenido = :c')

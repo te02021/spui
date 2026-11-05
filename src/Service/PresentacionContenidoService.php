@@ -7,7 +7,6 @@ namespace SPUI\Service;
 use DateTimeImmutable;
 use SPUI\Entity\Contenido;
 use SPUI\Entity\Edificio;
-use SPUI\Enum\OrigenCronograma;
 use SPUI\Enum\PlantillaPantalla;
 use SPUI\Enum\TemaPantalla;
 use SPUI\Enum\TipoContenido;
@@ -56,8 +55,6 @@ class PresentacionContenidoService
             return null;
         }
 
-        $origen = OrigenCronograma::tryFrom($p->getString('cronograma_origen')) ?? OrigenCronograma::Propio;
-        $c->setCronogramaOrigen($origen);
         // Su duración la da la cantidad de páginas: la calcula la Pi.
         $c->setDuracionSegundos(null);
 
@@ -68,13 +65,6 @@ class PresentacionContenidoService
             return ['segundos_por_pagina', sprintf('Elegí entre %d y %d segundos.', self::SEG_PAGINA_MIN, self::SEG_PAGINA_MAX)];
         } else {
             $c->setSegundosPorPagina((int) $seg);
-        }
-
-        // Uno "del edificio de la pantalla" no tiene edificio ni vigencia
-        // propios: toma los del cronograma que encuentre en cada TV.
-        if ($origen === OrigenCronograma::Edificio) {
-            $c->setCronogramaEdificio(null)->setVigenciaDesde(null)->setVigenciaHasta(null);
-            return null;
         }
 
         $edificioId = $p->getString('cronograma_edificio');
@@ -113,7 +103,6 @@ class PresentacionContenidoService
             return [
                 'plantilla'           => $p->getString('plantilla'),
                 'tema'                => $p->getString('tema') ?: TemaPantalla::Automatico->value,
-                'cronograma_origen'   => $p->getString('cronograma_origen') ?: OrigenCronograma::Propio->value,
                 'cronograma_edificio' => $p->getString('cronograma_edificio'),
                 'vigencia_desde'      => $p->getString('vigencia_desde'),
                 'vigencia_hasta'      => $p->getString('vigencia_hasta'),
@@ -125,7 +114,6 @@ class PresentacionContenidoService
             // Vacío en el alta: content-type-fields.js pone la del tipo elegido.
             'plantilla'           => $c?->getId() ? $c->getPlantilla()->value : '',
             'tema'                => ($c?->getId() ? $c->getTema() : TemaPantalla::Automatico)->value,
-            'cronograma_origen'   => ($c?->getCronogramaOrigen() ?? OrigenCronograma::Propio)->value,
             'cronograma_edificio' => (string) ($c?->getCronogramaEdificio()?->getId() ?? ''),
             'vigencia_desde'      => $c?->getVigenciaDesde()?->format('Y-m-d') ?? '',
             'vigencia_hasta'      => $c?->getVigenciaHasta()?->format('Y-m-d') ?? '',

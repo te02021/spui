@@ -6,8 +6,7 @@ Las medidas, colores y reglas salen de assets/spui/css/pantalla-tv.css y de
 SPUI\\Service\\PantallaTvService: si cambia una, hay que cambiar la otra.
 
   - Plantilla institucional (franja con el logo y la fecha, filete de colores
-    y pie con el lugar) o sin plantilla (de borde a borde, con marca de agua
-    opcional).
+    y pie con el lugar) o sin plantilla (de borde a borde).
   - Tema claro u oscuro; el automático es claro de 07:00 a 19:00 (el horario
     lo manda el CMS en cada sync).
   - Cronograma: lo de hoy que todavía no terminó, en páginas armadas por
@@ -99,9 +98,6 @@ def filas_del_dia(cronograma: dict, ahora: datetime) -> tuple[list[dict], Option
     fecha): elegir el día acá hace que la pantalla pase sola de un día al
     otro y que sin conexión siga mostrando lo que corresponde.
     """
-    if cronograma.get('vacio'):
-        return [], cronograma['vacio']
-
     hoy = ahora.strftime('%Y-%m-%d')
     desde, hasta = cronograma.get('vigencia_desde'), cronograma.get('vigencia_hasta')
     if (desde and hoy < desde) or (hasta and hoy > hasta):
