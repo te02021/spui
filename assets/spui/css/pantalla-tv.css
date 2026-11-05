@@ -122,6 +122,5 @@
    y, a la derecha, el edificio en el que se mira y "Ampliar". */
 .spui-vista-previa-pie { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .5rem 1rem; margin-top: .6rem; }
 .spui-vista-previa-acciones { display: flex; align-items: center; gap: .5rem; margin-left: auto; }
-.spui-vista-previa-acciones .unraf-form-select { width: auto; max-width: 14rem; }
 .spui-vista-previa-acciones .unraf-btn { white-space: nowrap; }
 .spui-tv-leyenda { margin: 0; font-size: .8rem; color: #6c7a89; flex: 1 1 16rem; }

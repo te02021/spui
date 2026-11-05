@@ -35,20 +35,22 @@
             <div>{{ f.campo(form.titulo) }}</div>
             <div>
                 {# content-type-fields.js oculta el campo en un video o un cronograma, y muestra de dónde sale. #}
-                <div id="campoDuracion">{{ f.campo(form.duracionSegundos) }}</div>
+                <div id="campoDuracion">
+                    {{ f.campo(form.duracionSegundos) }}
+                    <small class="spui-form-ayuda">{{ include('@SPUI/contenidos/_ayuda_duracion.html.twig') }}</small>
+                </div>
                 <div id="notaDuracionVideo" hidden>
                     <span class="unraf-form-label d-block">Duración</span>
                     <div class="unraf-form-control spui-form-fijo">La del archivo</div>
+                    <small class="spui-form-ayuda">La lee el CMS al guardar, y la playlist muestra el video completo.</small>
                 </div>
                 <div id="notaDuracionCronograma" hidden>
                     <span class="unraf-form-label d-block">Duración</span>
                     <div class="unraf-form-control spui-form-fijo">Según sus páginas</div>
+                    <small class="spui-form-ayuda">Depende de cuántas actividades queden en el día.</small>
                 </div>
             </div>
         </div>
-        <small class="spui-form-ayuda" id="ayudaDuracion">{{ include('@SPUI/contenidos/_ayuda_duracion.html.twig') }}</small>
-        <small class="spui-form-ayuda" id="ayudaDuracionVideo" hidden>La lee el CMS al guardar, y la playlist muestra el video completo.</small>
-        <small class="spui-form-ayuda" id="ayudaDuracionCronograma" hidden>Depende de cuántas actividades queden en el día.</small>
     </div>
 </section>
 

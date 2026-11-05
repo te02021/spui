@@ -119,13 +119,8 @@
         if (campoDuracion) campoDuracion.hidden = !!fija;
         ['Video', 'Cronograma'].forEach(function (t) {
             var nota = form.querySelector('#notaDuracion' + t);
-            var ayudaTipo = form.querySelector('#ayudaDuracion' + t);
             if (nota) nota.hidden = fija !== t;
-            if (ayudaTipo) ayudaTipo.hidden = fija !== t;
         });
-        // Las ayudas van debajo de la fila título/tipo/duración (30/10/2026).
-        var ayuda = form.querySelector('#ayudaDuracion');
-        if (ayuda) ayuda.hidden = !!fija;
         if (archivoInput)    archivoInput.required = esArchivo;
         if (textarea)        textarea.required     = esTexto;
         if (qrUrl)           qrUrl.required        = esQr;

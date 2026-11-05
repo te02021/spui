@@ -176,7 +176,7 @@ El modal **Ver** del contenido muestra lo elegido.
 - **Modal Ver:** arriba, los **Detalles**; después el **Código QR**, si lo es, con **Copiar** y **Abrir** en cada enlace; **Dónde se usa**, y abajo la única vista previa, a todo el ancho. En un cronograma propio, **Ver ítems** está al lado del título **Detalles**.
 - **Cronograma:**
   - Se ve con las actividades de hoy que todavía no terminaron, y las páginas pasan deslizándose cada los segundos elegidos.
-- **Junto al TV:** una línea dice a qué hora corresponde lo que se ve y qué tema tomó el automático. En el formulario va debajo; en el modal **Ver**, arriba, con **Ampliar** a la altura del título.
+- **Junto al TV:** una línea dice a qué hora corresponde lo que se ve y qué tema tomó el automático. Va arriba del TV, debajo del título, con **Ampliar** a la altura del título; igual en el formulario y en el modal **Ver**.
 - **Ampliar:** la abre en grande. Desde el modal **Ver**, si el contenido tiene archivo, abre el visor con todas las acciones.
 
 **Visor:** **Ampliar** en el modal **Ver**, o el ojo de un archivo en el formulario, lo abre a pantalla completa, sobre fondo oscuro.

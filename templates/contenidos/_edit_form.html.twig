@@ -31,20 +31,19 @@
                     {% if contenido.esVideo or contenido.esCronograma %}
                         <span class="unraf-form-label d-block">Duración</span>
                         <div class="unraf-form-control spui-form-fijo">{{ contenido.etiquetaDuracion }}</div>
+                        {% if contenido.esVideo %}
+                            <small class="spui-form-ayuda">La del archivo: la playlist muestra el video completo. Si lo reemplazás, se vuelve a leer.</small>
+                        {% else %}
+                            <small class="spui-form-ayuda">Depende de cuántas actividades queden en el día.</small>
+                        {% endif %}
                     {% else %}
                         <label class="unraf-form-label" for="ed_duracion">Duración (segundos)</label>
                         <input type="number" id="ed_duracion" name="duracion_segundos" class="unraf-form-control"
                                value="{{ contenido.duracionSegundos ?? '' }}" min="1" max="3600" placeholder="Permanente">
+                        <small class="spui-form-ayuda">{{ include('@SPUI/contenidos/_ayuda_duracion.html.twig') }}</small>
                     {% endif %}
                 </div>
             </div>
-            {% if contenido.esVideo %}
-                <small class="spui-form-ayuda">La del archivo: la playlist muestra el video completo. Si lo reemplazás, se vuelve a leer.</small>
-            {% elseif contenido.esCronograma %}
-                <small class="spui-form-ayuda">Depende de cuántas actividades queden en el día.</small>
-            {% else %}
-                <small class="spui-form-ayuda">{{ include('@SPUI/contenidos/_ayuda_duracion.html.twig') }}</small>
-            {% endif %}
         </div>
     </section>
 

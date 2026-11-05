@@ -121,6 +121,15 @@ async function revisarDom(page, alcance, esCelular) {
                 .slice(0, 3).map(describir);
             desborde = { ancho: document.documentElement.scrollWidth, ventana: window.innerWidth, culpables };
         }
+        // Formularios: la ayuda debajo de su campo, nunca suelta bajo una fila de
+        // varios, y la vista previa como en el modal Ver (pedido de Mateo, 05/11/2026).
+        const formularioMal = [];
+        raiz.querySelectorAll('.spui-form-fila ~ .spui-form-ayuda').forEach((a) => {
+            if (visible(a)) formularioMal.push('ayuda suelta bajo una fila: ' + a.textContent.trim().slice(0, 50));
+        });
+        raiz.querySelectorAll('.spui-form [data-spui-vista-previa-url]').forEach((c) => {
+            if (!c.closest('.spui-ver-previa')) formularioMal.push('vista previa sin el diseño del modal Ver');
+        });
         // Modales Ver: cada bloque a todo el ancho y cada fila de datos hasta el
         // borde, sin huecos (pedido de Mateo, 05/11/2026; style.css, .spui-ver).
         const verConHuecos = [];
@@ -143,7 +152,7 @@ async function revisarDom(page, alcance, esCelular) {
                 });
             });
         });
-        return { hiddenVisibles, imgsRotas, basura, desborde, tablasAnchas, verConHuecos };
+        return { hiddenVisibles, imgsRotas, basura, desborde, tablasAnchas, verConHuecos, formularioMal };
     }, { alcance });
 
     if (r.sinRaiz) { falla(`no aparece ${alcance}`); return; }
@@ -151,6 +160,7 @@ async function revisarDom(page, alcance, esCelular) {
     for (const i of r.imgsRotas) falla(`imagen rota: ${i}`);
     for (const b of r.basura) falla(`texto sospechoso en pantalla: "${b}"`);
     for (const h of r.verConHuecos) falla(`modal Ver: ${h}`);
+    for (const h of r.formularioMal) falla(`formulario: ${h}`);
     if (!esCelular) for (const t of r.tablasAnchas) falla(`la tabla no entra y esconde columnas detrás de un scroll horizontal (${t})`);
     if (r.desborde && esCelular) aviso(`scroll horizontal: la página mide ${r.desborde.ancho}px en una ventana de ${r.desborde.ventana}px (${r.desborde.culpables.join(', ')})`);
 }

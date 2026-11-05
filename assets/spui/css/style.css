@@ -3102,6 +3102,10 @@ html.spui-sidebar-plegado .spui-sidebar-plegar img { transform: rotate(180deg); 
     .spui-form-fila-principal { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .spui-form-fila-principal > :first-child { grid-column: 1 / -1; }
     .spui-form-fila-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    /* En media fila, la fecha centrada se pegaba al ícono del calendario. */
+    .spui-form-fila-4 input[type="date"] { padding-inline: .6rem; }
+    .spui-form-fila-4 input::-webkit-datetime-edit { justify-content: flex-start; }
+    .spui-form-fila-4 input::-webkit-calendar-picker-indicator { right: .5rem; }
     .spui-form-fila-dato, .spui-form-fila-2, .spui-form-fila-3, .spui-form-fila-sync, .spui-form-fila-item { grid-template-columns: minmax(0, 1fr); }
     .spui-form-fila-docente { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     /* Fecha con hora: en media fila no entra. */
@@ -3192,8 +3196,8 @@ html.spui-sidebar-plegado .spui-sidebar-plegar img { transform: rotate(180deg); 
 .spui-ver-usos small { flex-shrink: 0; font-size: .75rem; font-weight: 400; color: #5f6b76; white-space: nowrap; }
 .spui-ver .spui-vista-previa-ver { margin-bottom: 0; }
 
-/* Vista previa: el título con Ampliar a su altura, la explicación debajo y
-   recién ahí el TV. Sólo acá: en los formularios sigue debajo del TV. */
+/* Vista previa, en el modal Ver y en los formularios: el título con Ampliar a
+   su altura, la explicación debajo y recién ahí el TV. */
 .spui-ver-previa { position: relative; }
 .spui-ver-previa .spui-ver-titulo { display: flex; align-items: center; min-height: 2.375rem; margin-bottom: 0; }
 .spui-ver-previa .spui-vista-previa { display: flex; flex-direction: column; }
@@ -3214,7 +3218,5 @@ html.spui-sidebar-plegado .spui-sidebar-plegar img { transform: rotate(180deg); 
     .spui-ver-datos > :nth-child(odd of :not(.spui-ver-dato-largo)):has(+ .spui-ver-dato-largo),
     .spui-ver-datos > :nth-child(odd of :not(.spui-ver-dato-largo)):last-child { grid-column: 1 / -1; }
     .spui-ver-enlaces { grid-template-columns: minmax(0, 1fr); }
-    /* Con el selector de edificio no entran junto al título: bajan de renglón. */
-    .spui-ver-previa .spui-vista-previa-acciones:has(select) { position: static; height: auto; }
     .spui-ver-icono-btn { width: 2.375rem; height: 2.375rem; }
 }

@@ -54,12 +54,14 @@
                         {% endfor %}
                     </select>
                     {% if err.cronograma_edificio is defined %}<p class="spui-campo-error">{{ err.cronograma_edificio }}</p>{% endif %}
+                    <small class="spui-form-ayuda">Es el título en el TV; si no hay, va el del contenido.</small>
                 </div>
                 <div class="spui-fecha-field" data-spui-campo>
                     <label class="unraf-form-label" for="{{ uid }}_vig_desde">Vigente desde</label>
                     <input type="date" id="{{ uid }}_vig_desde" name="vigencia_desde" value="{{ pv.vigencia_desde }}"
                            class="unraf-form-control{{ err.vigencia_desde is defined ? ' is-invalid' }}">
                     {% if err.vigencia_desde is defined %}<p class="spui-campo-error">{{ err.vigencia_desde }}</p>{% endif %}
+                    <small class="spui-form-ayuda">Sin fechas, rige siempre.</small>
                 </div>
                 <div class="spui-fecha-field" data-spui-campo>
                     <label class="unraf-form-label" for="{{ uid }}_vig_hasta">Hasta</label>
@@ -78,13 +80,14 @@
                     {% if err.segundos_por_pagina is defined %}<p class="spui-campo-error">{{ err.segundos_por_pagina }}</p>{% endif %}
                 </div>
             </div>
-            <small class="spui-form-ayuda">El edificio es el título del cronograma en el TV; sin edificio, va el título del contenido. Sin vigencia, rige siempre.</small>
         </div>
     </div>
 </section>
 
-{# Vista previa en vivo: se vuelve a pedir con cada cambio del formulario (core/vista-tv.js). #}
-<section class="spui-ver-seccion" aria-labelledby="{{ uid }}_previa">
+{# Vista previa en vivo: se vuelve a pedir con cada cambio del formulario (core/vista-tv.js).
+   Con .spui-ver-previa, igual que en el modal Ver: Ampliar a la altura del título y la
+   explicación antes del TV. #}
+<section class="spui-ver-seccion spui-ver-previa" aria-labelledby="{{ uid }}_previa">
     <h5 class="spui-ver-titulo" id="{{ uid }}_previa">Vista previa</h5>
     <div class="spui-vista-previa" data-spui-vista-previa-url="{{ path('spui_cms_contenidos_vista_previa') }}"
          {% if vista_id is defined %}data-spui-vista-id="{{ vista_id }}"{% endif %} aria-live="polite"></div>
