@@ -71,10 +71,10 @@ class CodigoQr
     public function getUrlDestinoAlternativa(): ?string { return $this->urlDestinoAlternativa; }
     public function setUrlDestinoAlternativa(?string $url): static { $this->urlDestinoAlternativa = $url; return $this; }
 
-    /** Los destinos como se cargan en el formulario: uno por renglón. */
-    public function getDestinosTexto(): string
+    /** @return list<string> Los destinos, uno por campo del formulario. */
+    public function getDestinos(): array
     {
-        return $this->urlDestino . ($this->urlDestinoAlternativa ? "\n" . $this->urlDestinoAlternativa : '');
+        return array_values(array_filter([$this->urlDestino, $this->urlDestinoAlternativa]));
     }
 
     /** 'android' si es un enlace de Google Play, 'ios' si es del App Store; null si es otra cosa. */

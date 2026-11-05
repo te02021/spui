@@ -95,11 +95,7 @@
         <div id="campoQr" class="spui-form-fila spui-form-fila-dato" hidden>
             <div>
                 <label class="unraf-form-label" for="qrUrlDestino">Enlace de destino</label>
-                {# Uno o dos enlaces: con los de las dos tiendas, cada teléfono va a la suya (CodigoQr::destinoPara). #}
-                <textarea name="qr_url_destino" id="qrUrlDestino" rows="2" class="unraf-form-control spui-qr-destinos{{ err.qr_url_destino is defined ? ' is-invalid' }}"
-                          maxlength="1001" placeholder="https://…" spellcheck="false" autocomplete="off">{{ qr_url_destino|default('') }}</textarea>
-                {% if err.qr_url_destino is defined %}<p class="spui-campo-error">{{ err.qr_url_destino }}</p>{% endif %}
-                <small class="spui-form-ayuda" data-spui-qr-app-ayuda>¿Es una app? Pegá los enlaces de Google Play y del App Store, uno por renglón: cada teléfono va a su tienda.</small>
+                {{ include('@SPUI/contenidos/_qr_destinos.html.twig', {id: 'qrUrlDestino', destinos: qr_destinos|default([]), err: err}) }}
                 <small class="spui-form-ayuda">Se puede cambiar después sin reimprimir el código.</small>
             </div>
             <div class="spui-fecha-field">

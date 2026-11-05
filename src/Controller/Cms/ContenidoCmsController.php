@@ -45,7 +45,9 @@ class ContenidoCmsController extends AbstractController
     private const TIPOS_ARCHIVO = ['imagen', 'video'];
 
     /** Tope de la columna codigo_qr.url_destino. */
-    private const QR_URL_MAX = 500;
+    public const QR_URL_MAX = 500;
+    /** Uno, o los de las dos tiendas. */
+    public const QR_DESTINOS_MAX = 2;
 
     public function __construct(
         private readonly ContenidoRepository $repo,
@@ -140,34 +142,25 @@ class ContenidoCmsController extends AbstractController
      * vencimiento, o eliminar el contenido.
      *
      * @return array{0:string,1:string}|null [campo, mensaje en español] del error, o null si salió bien.
-     *         El campo es el name del input (qr_url_destino / qr_expira_en): el
-     *         mensaje se muestra debajo de él.
+     *         El campo es qr_expira_en, qr_url_destino (los enlaces en conjunto)
+     *         o qr_url_destino_N (el enlace N): el mensaje se muestra debajo de él.
      */
     private function aplicarDatosQr(Contenido $contenido, Request $request): ?array
     {
-        // InputBag::get() lanza BadRequestException (500) si el valor no es
-        // escalar — un qr_url_destino[]=a&qr_url_destino[]=b manual lo
-        // convierte en array. El formulario real nunca manda eso, pero un
-        // POST armado a mano sí puede, y un 500 técnico viola la regla del
-        // proyecto de no mostrar nada de eso al frontend.
-        $urlCruda = $request->request->all()['qr_url_destino'] ?? '';
-        if (!is_string($urlCruda)) {
-            return ['qr_url_destino', 'La URL de destino no tiene el formato esperado.'];
-        }
-        // Uno o dos enlaces, uno por renglón (03/11/2026): con dos, uno es de
-        // Google Play y el otro del App Store, y cada teléfono va a su tienda.
-        $lineas = array_values(array_filter(array_map('trim', preg_split('/\R/', $urlCruda)), static fn($l) => $l !== ''));
+        // Uno o dos enlaces (03/11/2026): con dos, uno es de Google Play y el
+        // otro del App Store, y cada teléfono va a su tienda.
+        $lineas = $this->destinosEnviados($request);
         if ($lineas === []) {
             return ['qr_url_destino', 'La URL de destino es requerida: es a dónde llega quien escanea el código.'];
         }
-        if (count($lineas) > 2) {
-            return ['qr_url_destino', 'Pegá como máximo dos enlaces, uno por renglón: el de Google Play y el del App Store.'];
+        if (count($lineas) > self::QR_DESTINOS_MAX) {
+            return ['qr_url_destino', 'Cargá como máximo dos enlaces: el de Google Play y el del App Store.'];
         }
         $urls = [];
-        foreach ($lineas as $linea) {
+        foreach ($lineas as $i => $linea) {
             $resultado = $this->validarUrlQr($linea);
             if (is_array($resultado)) {
-                return $resultado;
+                return ['qr_url_destino_' . $i, $resultado[1]];
             }
             $urls[] = $resultado;
         }
@@ -193,6 +186,23 @@ class ContenidoCmsController extends AbstractController
                ->setActivo(true);
 
         return $this->guardarCodigoQr($contenido, $codigo);
+    }
+
+    /**
+     * Los enlaces que llegaron, sin los campos vacíos. Un POST armado a mano
+     * puede mandar cualquier forma: lo que no sea texto se ignora, nunca un 500.
+     *
+     * @return list<string>
+     */
+    private function destinosEnviados(Request $request): array
+    {
+        $crudo = $request->request->all()['qr_url_destino'] ?? [];
+        $crudo = is_string($crudo) ? [$crudo] : (is_array($crudo) ? $crudo : []);
+
+        return array_values(array_filter(
+            array_map('trim', array_filter($crudo, 'is_string')),
+            static fn(string $url) => $url !== '',
+        ));
     }
 
     /**
@@ -324,7 +334,7 @@ class ContenidoCmsController extends AbstractController
             // Para que al re-renderizar por un error de validación los
             // campos del QR conserven lo que el usuario había cargado
             // (no son campos del FormType, así que no vuelven solos).
-            'qr_url_destino'    => $request->request->get('qr_url_destino'),
+            'qr_destinos'       => $this->destinosEnviados($request),
             'qr_expira_en'      => $request->request->get('qr_expira_en'),
             'contenido_texto'   => $request->request->get('contenido_texto'),
             'presentacion'      => $this->presentacion->valores(null, $request),
@@ -345,6 +355,7 @@ class ContenidoCmsController extends AbstractController
             'errores'           => $errores,
             'max_bytes_archivo' => $this->limiteArchivoBytes(MediaStorageService::TAMANIO_MAXIMO),
             // Con el request, lo recién enviado (al volver por un error).
+            'qr_destinos'       => $request?->isMethod('POST') ? $this->destinosEnviados($request) : $c->getCodigoQr()?->getDestinos(),
             'presentacion'      => $this->presentacion->valores($c, $request),
             'edificios'         => $this->presentacion->edificios(),
         ]);

@@ -1,0 +1,35 @@
+{# Los enlaces de destino de un QR, un campo por enlace (05/11/2026): primero uno con el
+   botón +; con dos, cada uno con su tacho. Con los de las dos tiendas, cada teléfono va a
+   la suya (CodigoQr::destinoPara). Agregar y quitar: core/qr-destinos.js.
+
+   Variables: id (del primer campo, el de la etiqueta), destinos, err, requerido. #}
+{% set max = constant('SPUI\\Controller\\Cms\\ContenidoCmsController::QR_DESTINOS_MAX') %}
+{% set filas = destinos ?: [''] %}
+<div data-spui-qr-destinos data-spui-qr-max="{{ max }}">
+    {% for url in filas %}
+        {% set campo = 'qr_url_destino_' ~ loop.index0 %}
+        {# data-spui-campo: el error de cada enlace va debajo de ese enlace, no al lado de los botones. #}
+        <div class="spui-qr-destino" data-spui-campo>
+            <div class="spui-qr-destino-fila">
+                <input type="text" inputmode="url" name="qr_url_destino[]"
+                       {% if loop.first %}id="{{ id }}" {{ requerido|default(false) ? 'required' }}{% else %}aria-label="Segundo enlace"{% endif %}
+                       class="unraf-form-control{{ err[campo] is defined ? ' is-invalid' }}" value="{{ url }}"
+                       maxlength="{{ constant('SPUI\\Controller\\Cms\\ContenidoCmsController::QR_URL_MAX') + 1 }}"
+                       placeholder="https://…" spellcheck="false" autocomplete="off">
+                <button type="button" class="unraf-btn spui-btn-eliminar unraf-btn-icon" data-spui-qr-quitar
+                        title="Quitar este enlace" aria-label="Quitar este enlace" {{ filas|length < 2 ? 'hidden' }}>
+                    <img src="{{ asset('unraf-ui/icons/trash.svg') }}" class="spui-action-icon" alt="">
+                </button>
+                <button type="button" class="unraf-btn spui-btn-back unraf-btn-icon" data-spui-qr-agregar
+                        title="Agregar otro enlace" aria-label="Agregar otro enlace" {{ filas|length >= max ? 'hidden' }}>
+                    <img src="{{ asset('unraf-ui/icons/plus.svg') }}" class="spui-action-icon" alt="">
+                </button>
+            </div>
+            {% if err[campo] is defined %}<p class="spui-campo-error">{{ err[campo] }}</p>{% endif %}
+        </div>
+    {% endfor %}
+    {# Lo que es de los enlaces en conjunto: que falte, o que no sean de las dos tiendas. #}
+    {% if err.qr_url_destino is defined %}<p class="spui-campo-error">{{ err.qr_url_destino }}</p>{% endif %}
+    {# Habla del +: se va junto con él. #}
+    <small class="spui-form-ayuda" data-spui-qr-ayuda {{ filas|length >= max ? 'hidden' }}>¿Es una app? Con el + sumá el otro enlace, uno de Google Play y otro del App Store: cada teléfono va a su tienda.</small>
+</div>

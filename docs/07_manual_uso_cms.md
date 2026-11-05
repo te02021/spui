@@ -275,10 +275,11 @@ Volver a importar el mismo Excel con correcciones, eligiendo "reemplazar", deja 
 **No hay una sección aparte de códigos QR.** Un QR es un tipo de contenido más y se administra
 como cualquier otro: Contenidos → Nuevo → tipo **QR**.
 
-- **Crear:** el formulario se adapta al elegir el tipo y pide **URL destino** (a dónde llega quien
+- **Crear:** el formulario se adapta al elegir el tipo y pide el **enlace de destino** (a dónde llega quien
   escanea) y un **vencimiento opcional**. Nada más: el nombre del código es el título del contenido.
-- **QR de una app** (desde el 03/11/2026): en **URL destino** se pegan los dos enlaces, el de Google
-  Play y el del App Store, uno por renglón y en cualquier orden. El CMS reconoce solo cuál es cuál.
+- **QR de una app** (desde el 03/11/2026): el botón **+** suma un segundo campo, y en cada uno va un
+  enlace: el de Google Play y el del App Store, en cualquier orden. El CMS reconoce solo cuál es cuál.
+  El tacho quita un enlace; con uno solo no aparece, porque el enlace es obligatorio.
   - **Android** va directo a Google Play y **iPhone** al App Store, con un solo código y un solo contador.
   - **Una computadora o un iPad** (Safari en iPad se presenta como una Mac) ven una página de la UNRaf
     con los dos botones de las tiendas, en vez de una tienda elegida a ciegas.
