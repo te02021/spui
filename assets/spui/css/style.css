@@ -2987,27 +2987,28 @@ html.spui-sidebar-plegado .spui-sidebar-plegar img { transform: rotate(180deg); 
 }
 
 /* ---- Modal Ver de un contenido (05/11/2026) ----
-   Cada sección es un solo bloque, sin un marco por dato. Los datos van en
-   columnas de ancho fijo: lo que baja de renglón conserva el ancho de su
-   columna en vez de estirarse. Abajo, la vista previa. */
+   Regla (pedido de Mateo): cada bloque mide lo que su contenido, nunca todo el
+   ancho si no lo necesita, y sin un marco por dato. Sólo la vista previa va a
+   todo el ancho. */
 .spui-ver { display: flex; flex-direction: column; gap: 1.25rem; }
 .spui-ver-seccion { min-width: 0; }
-.spui-ver-cabecera { display: flex; align-items: center; justify-content: space-between; gap: .75rem; margin-bottom: .55rem; }
+.spui-ver-cabecera { display: flex; align-items: center; gap: .75rem; margin-bottom: .55rem; }
 .spui-ver-cabecera .spui-ver-titulo { margin-bottom: 0; }
 .spui-ver-titulo { margin: 0 0 .55rem; font-size: .92rem; font-weight: 700; color: var(--unraf-azul, #446687); }
-.spui-ver-bloque { padding: .9rem 1.1rem; background: #f8f9fa; border: 1px solid #e9ecef; border-radius: .6rem; }
+.spui-ver-bloque { width: fit-content; max-width: 100%; padding: .9rem 1.1rem; background: #f8f9fa; border: 1px solid #e9ecef; border-radius: .6rem; }
 
-.spui-ver-datos { display: grid; grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr)); gap: .85rem 1.5rem; margin: 0; }
+.spui-ver-datos { display: grid; grid-template-columns: repeat(4, minmax(0, max-content)); gap: .85rem 2.5rem; margin: 0; }
+.spui-ver-datos-tres { grid-template-columns: repeat(3, minmax(0, max-content)); }
 .spui-ver-datos > div { min-width: 0; }
 .spui-ver-dato-doble { grid-column: span 2; }
 .spui-ver-datos dt { margin-bottom: .1rem; font-size: .75rem; font-weight: 400; color: #5f6b76; }
 .spui-ver-datos dd { margin: 0; font-size: .9rem; font-weight: 600; color: #2b3a4a; overflow-wrap: anywhere; }
 
-/* Enlaces del QR: de a dos columnas; uno solo no ocupa todo el ancho. */
-.spui-ver-enlaces { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .6rem 1.5rem; }
-.spui-ver-enlace { display: flex; align-items: center; gap: .6rem; min-width: 0; }
+/* Enlaces del QR: uno al lado del otro, cada uno a su medida. */
+.spui-ver-enlaces { display: flex; flex-wrap: wrap; gap: .6rem 2.5rem; }
+.spui-ver-enlace { display: flex; flex: 0 1 auto; align-items: center; gap: .6rem; min-width: 0; max-width: 100%; }
 .spui-ver-enlace-icono { flex-shrink: 0; width: 1.35rem; height: 1.35rem; opacity: .75; }
-.spui-ver-enlace-texto { display: flex; flex: 1 1 auto; flex-direction: column; min-width: 0; }
+.spui-ver-enlace-texto { display: flex; flex: 0 1 auto; flex-direction: column; min-width: 0; max-width: 20rem; }
 .spui-ver-enlace-etiqueta { font-size: .9rem; font-weight: 600; color: #2b3a4a; }
 .spui-ver-enlace-url { overflow: hidden; font-size: .75rem; color: #5f6b76; white-space: nowrap; text-overflow: ellipsis; }
 .spui-ver-icono-btn {
@@ -3021,8 +3022,7 @@ html.spui-sidebar-plegado .spui-sidebar-plegar img { transform: rotate(180deg); 
 .spui-ver-bloque > .spui-ver-datos { margin-top: .85rem; padding-top: .85rem; border-top: 1px solid #e9ecef; }
 .spui-ver-texto { margin: 0; font-size: .9rem; line-height: 1.55; color: #2b3a4a; white-space: pre-line; overflow-wrap: anywhere; }
 
-/* Dónde se usa: el bloque mide lo que su contenido, no todo el ancho. */
-.spui-ver-bloque-ajustado { width: fit-content; max-width: 100%; }
+/* Dónde se usa */
 .spui-ver-usos { display: flex; flex-wrap: wrap; gap: .5rem 2rem; max-height: 9rem; margin: 0; padding: 0; overflow-y: auto; list-style: none; }
 .spui-ver-usos li { display: flex; align-items: baseline; gap: .5rem; min-width: 0; font-size: .9rem; font-weight: 600; color: #2b3a4a; }
 .spui-ver-usos li span { min-width: 0; overflow-wrap: anywhere; }
@@ -3041,9 +3041,10 @@ html.spui-sidebar-plegado .spui-sidebar-plegar img { transform: rotate(180deg); 
 /* Celular: dos columnas de datos y una de enlaces. */
 @media (max-width: 575.98px) {
     .spui-ver-bloque { padding: .75rem .85rem; }
-    .spui-ver-datos { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem 1rem; }
+    .spui-ver-datos { grid-template-columns: repeat(2, minmax(0, max-content)); gap: .75rem 1.5rem; }
     .spui-ver-dato-largo { grid-column: span 2; }
-    .spui-ver-enlaces { grid-template-columns: minmax(0, 1fr); }
+    .spui-ver-enlaces { flex-direction: column; }
+    .spui-ver-enlace-texto { flex: 1 1 auto; max-width: none; }
     /* Con el selector de edificio no entran junto al título: bajan de renglón. */
     .spui-ver-previa .spui-vista-previa-acciones:has(select) { position: static; height: auto; }
     .spui-ver-icono-btn { width: 2.375rem; height: 2.375rem; }

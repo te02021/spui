@@ -1,7 +1,7 @@
 {# Detalle de un contenido (rediseñado el 05/11/2026, pedido de Mateo). El título
-   es el del modal. Cada sección es un solo bloque con los datos en columnas de
-   ancho fijo, sin un marco por dato: lo que baja de renglón no se estira. Abajo,
-   la única vista previa: "Ampliar" abre el visor con todo (core/media-viewer.js).
+   es el del modal. Cada sección es un solo bloque, sin un marco por dato, que
+   mide lo que su contenido y nunca todo el ancho si no lo necesita. Abajo, la
+   única vista previa: "Ampliar" abre el visor con todo (core/media-viewer.js).
    Un dato sin cargar se omite, no se muestra un guión. #}
 {% macro enlace(etiqueta, icono, url) %}
     <div class="spui-ver-enlace">
@@ -90,7 +90,7 @@
             {% if tiendas %}
                 <p class="spui-ver-nota">Cada teléfono va a su tienda. Una computadora o un iPad ven una página con las dos.</p>
             {% endif %}
-            <dl class="spui-ver-datos">
+            <dl class="spui-ver-datos spui-ver-datos-tres">
                 <div><dt>Vencimiento</dt><dd>{{ qr.expiraEn ? qr.expiraEn|date('d/m/Y H:i') : 'Sin vencimiento' }}</dd></div>
                 <div><dt>Vigencia</dt><dd>{{ qr.estaVigente ? 'Vigente' : 'Vencido: ya no redirige' }}</dd></div>
                 {# El número arranca con lo que dice la base y después lo mueve el broker:
@@ -115,7 +115,7 @@
     <section class="spui-ver-seccion" aria-labelledby="spui-ver-uso">
         <h5 class="spui-ver-titulo" id="spui-ver-uso">Dónde se usa</h5>
         {% if contenido.playlistItems|length > 0 or contenido.alertas|length > 0 %}
-            <div class="spui-ver-bloque spui-ver-bloque-ajustado">
+            <div class="spui-ver-bloque">
             <ul class="spui-ver-usos">
                 {# La duración ya no se pisa por playlist: lo útil es la posición en cada una. #}
                 {% for item in contenido.playlistItems %}

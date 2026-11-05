@@ -174,7 +174,7 @@ El modal **Ver** del contenido muestra lo elegido.
   - Se actualiza solo con cada cambio: plantilla, tema, título, texto, segundos por página.
   - Una imagen o un video recién elegido se ve antes de guardarlo.
   - Así se puede comparar cada plantilla y tema antes de decidir.
-- **Modal Ver:** arriba, los **Detalles** en columnas; después el **Código QR**, si lo es, con **Copiar** y **Abrir** en cada enlace; **Dónde se usa**, y abajo la única vista previa, a todo el ancho. En un cronograma propio, **Ver ítems** está al lado del título **Detalles**.
+- **Modal Ver:** arriba, los **Detalles**; después el **Código QR**, si lo es, con **Copiar** y **Abrir** en cada enlace; **Dónde se usa**, y abajo la única vista previa, a todo el ancho. En un cronograma propio, **Ver ítems** está al lado del título **Detalles**.
 - **Cronograma:**
   - Se ve con las actividades de hoy que todavía no terminaron, y las páginas pasan deslizándose cada los segundos elegidos.
   - Uno "del edificio de la pantalla" tiene un selector **Como en…** para elegir en qué edificio mirarlo.
