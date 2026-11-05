@@ -1,5 +1,5 @@
-{# Cómo se ve el contenido en el TV (noviembre 2026): plantilla, tema, marca de
-   agua y, en un cronograma, de dónde salen sus clases y cómo pasan las páginas.
+{# Cómo se ve el contenido en el TV: plantilla, tema, marca de agua y, en un cronograma,
+   de dónde salen sus clases y cómo pasan las páginas.
 
    Lo incluyen el alta (_form) y la edición (_edit_form); los campos los lee y
    valida PresentacionContenidoService. Qué parte se ve según el tipo y lo
@@ -14,121 +14,100 @@
 {% set err = err|default({}) %}
 {% set uid = tipo_fijo is defined ? 'ed' : 'al' %}
 
-<fieldset class="spui-presentacion mb-3" {% if tipo_fijo is defined %}data-spui-tipo-fijo="{{ tipo_fijo }}"{% endif %}>
-    <legend class="spui-presentacion-titulo">Cómo se ve en pantalla</legend>
-
-    <div class="row g-3">
-        <div class="col-12 col-md-6">
-            <span class="unraf-form-label d-block" id="{{ uid }}_plantilla_lbl">Plantilla</span>
-            <div class="spui-opciones" role="radiogroup" aria-labelledby="{{ uid }}_plantilla_lbl" data-spui-solo-tipos="texto imagen qr cronograma">
-                {% for op in enum('SPUI\\Enum\\PlantillaPantalla').cases() %}
-                    <input type="radio" class="spui-opcion-input" name="plantilla" id="{{ uid }}_plantilla_{{ op.value }}"
-                           value="{{ op.value }}" {{ pv.plantilla == op.value ? 'checked' }}>
-                    <label class="spui-opcion" for="{{ uid }}_plantilla_{{ op.value }}">{{ op.etiqueta }}</label>
-                {% endfor %}
-            </div>
-            {# Un video no admite plantilla: VLC lo muestra a pantalla completa. #}
-            <span class="spui-campo-fijo" data-spui-solo-tipos="video" hidden>Sin plantilla</span>
-            <small class="text-muted d-block mt-1" data-spui-solo-tipos="texto imagen qr cronograma">
-                Institucional: arriba el logo de la UNRaf y la fecha, abajo el nombre del sistema y el lugar.
-            </small>
-            <small class="text-muted d-block mt-1" data-spui-solo-tipos="video" hidden>Un video ocupa siempre toda la pantalla.</small>
-        </div>
-        <div class="col-12 col-md-6">
-            <span class="unraf-form-label d-block" id="{{ uid }}_tema_lbl">Tema</span>
-            <div class="spui-opciones" role="radiogroup" aria-labelledby="{{ uid }}_tema_lbl">
-                {% for op in enum('SPUI\\Enum\\TemaPantalla').cases() %}
-                    <input type="radio" class="spui-opcion-input" name="tema" id="{{ uid }}_tema_{{ op.value }}"
-                           value="{{ op.value }}" {{ pv.tema == op.value ? 'checked' }}>
-                    <label class="spui-opcion" for="{{ uid }}_tema_{{ op.value }}">{{ op.etiqueta }}</label>
-                {% endfor %}
-            </div>
-            <small class="text-muted d-block mt-1">
-                Automático: claro de {{ spui_tema_claro_desde }} a {{ spui_tema_oscuro_desde }} y oscuro el resto del día.
-            </small>
-        </div>
-    </div>
-
-    <div class="mt-3" data-spui-si-plantilla="ninguna" hidden>
-        <div class="d-flex align-items-center gap-2">
-            <div class="form-switch m-0">
-                <input class="form-check-input" type="checkbox" role="switch" name="marca_agua" value="1"
-                       id="{{ uid }}_marca_agua" {{ pv.marca_agua ? 'checked' }}>
-            </div>
-            <label class="form-check-label" for="{{ uid }}_marca_agua">Mostrar el molino de la UNRaf en una esquina</label>
-        </div>
-    </div>
-
-    {# ── Sólo cronogramas ── #}
-    <div class="spui-presentacion-crono mt-3" data-spui-solo-tipos="cronograma" hidden>
-        <span class="unraf-form-label d-block" id="{{ uid }}_origen_lbl">Qué cronograma muestra</span>
-        <div class="spui-opciones" role="radiogroup" aria-labelledby="{{ uid }}_origen_lbl">
-            {% for op in enum('SPUI\\Enum\\OrigenCronograma').cases() %}
-                <input type="radio" class="spui-opcion-input" name="cronograma_origen" id="{{ uid }}_origen_{{ op.value }}"
-                       value="{{ op.value }}" {{ pv.cronograma_origen == op.value ? 'checked' }}>
-                <label class="spui-opcion" for="{{ uid }}_origen_{{ op.value }}">{{ op.etiqueta }}</label>
-            {% endfor %}
-        </div>
-        <small class="text-muted d-block mt-1" data-spui-si-origen="propio">
-            Sus propias clases, cargadas a mano o desde el Excel.
-        </small>
-        <small class="text-muted d-block mt-1" data-spui-si-origen="edificio" hidden>
-            En cada pantalla muestra el cronograma vigente del edificio donde está ubicada. Si la pantalla
-            se muda de edificio, cambia solo.
-        </small>
-
-        <div class="row g-2 mt-2" data-spui-si-origen="propio">
-            <div class="col-12 col-md-4">
-                <label class="unraf-form-label" for="{{ uid }}_edificio">Edificio <small class="text-muted">(opcional)</small></label>
-                <select id="{{ uid }}_edificio" name="cronograma_edificio" class="unraf-form-select{{ err.cronograma_edificio is defined ? ' is-invalid' }}">
-                    <option value="">— ninguno —</option>
-                    {% for e in edificios %}
-                        <option value="{{ e.id }}" {{ pv.cronograma_edificio == e.id ~ '' ? 'selected' }}>{{ e.nombre }}</option>
+<section class="spui-ver-seccion" aria-labelledby="{{ uid }}_presentacion" {% if tipo_fijo is defined %}data-spui-tipo-fijo="{{ tipo_fijo }}"{% endif %}>
+    <h5 class="spui-ver-titulo" id="{{ uid }}_presentacion">Cómo se ve en pantalla</h5>
+    <div class="spui-ver-bloque">
+        <div class="spui-form-fila spui-form-fila-2">
+            <div>
+                <span class="unraf-form-label d-block" id="{{ uid }}_plantilla_lbl">Plantilla</span>
+                <div class="spui-opciones" role="radiogroup" aria-labelledby="{{ uid }}_plantilla_lbl" data-spui-solo-tipos="texto imagen qr cronograma">
+                    {% for op in enum('SPUI\\Enum\\PlantillaPantalla').cases() %}
+                        <input type="radio" class="spui-opcion-input" name="plantilla" id="{{ uid }}_plantilla_{{ op.value }}"
+                               value="{{ op.value }}" {{ pv.plantilla == op.value ? 'checked' }}>
+                        <label class="spui-opcion" for="{{ uid }}_plantilla_{{ op.value }}">{{ op.etiqueta }}</label>
                     {% endfor %}
-                </select>
-                {% if err.cronograma_edificio is defined %}<p class="spui-campo-error">{{ err.cronograma_edificio }}</p>{% endif %}
+                </div>
+                {# Un video no admite plantilla: VLC lo muestra a pantalla completa. #}
+                <div class="unraf-form-control spui-form-fijo" data-spui-solo-tipos="video" hidden>Sin plantilla: ocupa toda la pantalla</div>
+                <small class="spui-form-ayuda" data-spui-solo-tipos="texto imagen qr cronograma">Institucional: con el logo, la fecha y el lugar.</small>
             </div>
-            <div class="col-6 col-md-4" data-spui-campo>
-                <label class="unraf-form-label" for="{{ uid }}_vig_desde">Vigente desde</label>
-                <input type="date" id="{{ uid }}_vig_desde" name="vigencia_desde" value="{{ pv.vigencia_desde }}"
-                       class="unraf-form-control{{ err.vigencia_desde is defined ? ' is-invalid' }}">
-                {% if err.vigencia_desde is defined %}<p class="spui-campo-error">{{ err.vigencia_desde }}</p>{% endif %}
-            </div>
-            <div class="col-6 col-md-4" data-spui-campo>
-                <label class="unraf-form-label" for="{{ uid }}_vig_hasta">Hasta</label>
-                <input type="date" id="{{ uid }}_vig_hasta" name="vigencia_hasta" value="{{ pv.vigencia_hasta }}"
-                       class="unraf-form-control{{ err.vigencia_hasta is defined ? ' is-invalid' }}"
-                       data-spui-validar-posterior="#{{ uid }}_vig_desde" data-spui-permitir-igual
-                       data-spui-validar-mensaje="{{ constant('SPUI\\Service\\PresentacionContenidoService::MSG_VIGENCIA') }}">
-                {% if err.vigencia_hasta is defined %}<p class="spui-campo-error">{{ err.vigencia_hasta }}</p>{% endif %}
+            <div>
+                <span class="unraf-form-label d-block" id="{{ uid }}_tema_lbl">Tema</span>
+                <div class="spui-opciones" role="radiogroup" aria-labelledby="{{ uid }}_tema_lbl">
+                    {% for op in enum('SPUI\\Enum\\TemaPantalla').cases() %}
+                        <input type="radio" class="spui-opcion-input" name="tema" id="{{ uid }}_tema_{{ op.value }}"
+                               value="{{ op.value }}" {{ pv.tema == op.value ? 'checked' }}>
+                        <label class="spui-opcion" for="{{ uid }}_tema_{{ op.value }}">{{ op.etiqueta }}</label>
+                    {% endfor %}
+                </div>
+                <small class="spui-form-ayuda">Automático: claro de {{ spui_tema_claro_desde }} a {{ spui_tema_oscuro_desde }}, oscuro el resto del día.</small>
             </div>
         </div>
-        <small class="text-muted d-block mt-1" data-spui-si-origen="propio">
-            El edificio hace falta para que lo encuentren los cronogramas "del edificio de la pantalla". Sin
-            vigencia, rige siempre.
-        </small>
 
-        <div class="mt-3" data-spui-campo>
-            <label class="unraf-form-label" for="{{ uid }}_seg_pagina">Segundos por página</label>
-            <input type="number" id="{{ uid }}_seg_pagina" name="segundos_por_pagina" value="{{ pv.segundos_por_pagina }}"
-                   min="{{ constant('SPUI\\Service\\PresentacionContenidoService::SEG_PAGINA_MIN') }}"
-                   max="{{ constant('SPUI\\Service\\PresentacionContenidoService::SEG_PAGINA_MAX') }}"
-                   data-spui-entero style="max-width:8rem"
-                   class="unraf-form-control{{ err.segundos_por_pagina is defined ? ' is-invalid' }}">
-            {% if err.segundos_por_pagina is defined %}<p class="spui-campo-error">{{ err.segundos_por_pagina }}</p>{% endif %}
-            <small class="text-muted d-block mt-1">
-                Cada página muestra las actividades que entran (una materia larga ocupa más de un renglón,
-                nunca se corta) y pasa a la siguiente deslizándose. La duración del
-                cronograma en la playlist se calcula sola: páginas × segundos.
-            </small>
+        <div class="spui-form-separado" data-spui-si-plantilla="ninguna" hidden>
+            <div class="d-flex align-items-center gap-2">
+                <div class="form-switch m-0">
+                    <input class="form-check-input" type="checkbox" role="switch" name="marca_agua" value="1"
+                           id="{{ uid }}_marca_agua" {{ pv.marca_agua ? 'checked' }}>
+                </div>
+                <label class="form-check-label" for="{{ uid }}_marca_agua">Mostrar el molino de la UNRaf en una esquina</label>
+            </div>
+        </div>
+
+        {# ── Sólo cronogramas ── #}
+        <div class="spui-form-separado" data-spui-solo-tipos="cronograma" hidden>
+            <span class="unraf-form-label d-block" id="{{ uid }}_origen_lbl">Qué cronograma muestra</span>
+            <div class="spui-opciones" role="radiogroup" aria-labelledby="{{ uid }}_origen_lbl">
+                {% for op in enum('SPUI\\Enum\\OrigenCronograma').cases() %}
+                    <input type="radio" class="spui-opcion-input" name="cronograma_origen" id="{{ uid }}_origen_{{ op.value }}"
+                           value="{{ op.value }}" {{ pv.cronograma_origen == op.value ? 'checked' }}>
+                    <label class="spui-opcion" for="{{ uid }}_origen_{{ op.value }}">{{ op.etiqueta }}</label>
+                {% endfor %}
+            </div>
+            <small class="spui-form-ayuda" data-spui-si-origen="edificio" hidden>Cada pantalla muestra el cronograma vigente del edificio donde está.</small>
+
+            <div class="spui-form-fila spui-form-fila-4 mt-3">
+                <div data-spui-si-origen="propio">
+                    <label class="unraf-form-label" for="{{ uid }}_edificio">Edificio (opcional)</label>
+                    <select id="{{ uid }}_edificio" name="cronograma_edificio" class="unraf-form-select{{ err.cronograma_edificio is defined ? ' is-invalid' }}">
+                        <option value="">— ninguno —</option>
+                        {% for e in edificios %}
+                            <option value="{{ e.id }}" {{ pv.cronograma_edificio == e.id ~ '' ? 'selected' }}>{{ e.nombre }}</option>
+                        {% endfor %}
+                    </select>
+                    {% if err.cronograma_edificio is defined %}<p class="spui-campo-error">{{ err.cronograma_edificio }}</p>{% endif %}
+                </div>
+                <div class="spui-fecha-field" data-spui-campo data-spui-si-origen="propio">
+                    <label class="unraf-form-label" for="{{ uid }}_vig_desde">Vigente desde</label>
+                    <input type="date" id="{{ uid }}_vig_desde" name="vigencia_desde" value="{{ pv.vigencia_desde }}"
+                           class="unraf-form-control{{ err.vigencia_desde is defined ? ' is-invalid' }}">
+                    {% if err.vigencia_desde is defined %}<p class="spui-campo-error">{{ err.vigencia_desde }}</p>{% endif %}
+                </div>
+                <div class="spui-fecha-field" data-spui-campo data-spui-si-origen="propio">
+                    <label class="unraf-form-label" for="{{ uid }}_vig_hasta">Hasta</label>
+                    <input type="date" id="{{ uid }}_vig_hasta" name="vigencia_hasta" value="{{ pv.vigencia_hasta }}"
+                           class="unraf-form-control{{ err.vigencia_hasta is defined ? ' is-invalid' }}"
+                           data-spui-validar-posterior="#{{ uid }}_vig_desde" data-spui-permitir-igual
+                           data-spui-validar-mensaje="{{ constant('SPUI\\Service\\PresentacionContenidoService::MSG_VIGENCIA') }}">
+                    {% if err.vigencia_hasta is defined %}<p class="spui-campo-error">{{ err.vigencia_hasta }}</p>{% endif %}
+                </div>
+                <div data-spui-campo>
+                    <label class="unraf-form-label" for="{{ uid }}_seg_pagina">Segundos por página</label>
+                    <input type="number" id="{{ uid }}_seg_pagina" name="segundos_por_pagina" value="{{ pv.segundos_por_pagina }}"
+                           min="{{ constant('SPUI\\Service\\PresentacionContenidoService::SEG_PAGINA_MIN') }}"
+                           max="{{ constant('SPUI\\Service\\PresentacionContenidoService::SEG_PAGINA_MAX') }}"
+                           data-spui-entero class="unraf-form-control{{ err.segundos_por_pagina is defined ? ' is-invalid' }}">
+                    {% if err.segundos_por_pagina is defined %}<p class="spui-campo-error">{{ err.segundos_por_pagina }}</p>{% endif %}
+                </div>
+            </div>
+            <small class="spui-form-ayuda" data-spui-si-origen="propio">El edificio es para que lo encuentren los cronogramas "del edificio de la pantalla". Sin vigencia, rige siempre.</small>
         </div>
     </div>
+</section>
 
-    {# Vista previa en vivo: se vuelve a pedir con cada cambio del formulario
-       (core/vista-tv.js), así se ve cada plantilla y tema antes de guardar. #}
-    <div class="spui-presentacion-previa">
-        <span class="unraf-form-label d-block">Vista previa</span>
-        <div class="spui-vista-previa" data-spui-vista-previa-url="{{ path('spui_cms_contenidos_vista_previa') }}"
-             {% if vista_id is defined %}data-spui-vista-id="{{ vista_id }}"{% endif %} aria-live="polite"></div>
-    </div>
-</fieldset>
+{# Vista previa en vivo: se vuelve a pedir con cada cambio del formulario (core/vista-tv.js). #}
+<section class="spui-ver-seccion" aria-labelledby="{{ uid }}_previa">
+    <h5 class="spui-ver-titulo" id="{{ uid }}_previa">Vista previa</h5>
+    <div class="spui-vista-previa" data-spui-vista-previa-url="{{ path('spui_cms_contenidos_vista_previa') }}"
+         {% if vista_id is defined %}data-spui-vista-id="{{ vista_id }}"{% endif %} aria-live="polite"></div>
+</section>

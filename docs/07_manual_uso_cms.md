@@ -102,7 +102,7 @@ La Raspberry Pi. **Acá se genera la clave que necesita el reproductor.**
 
 **Al registrar uno:**
 
-1. Se ingresa el hostname (ej. `spui-pi-01`), la versión de firmware si se sabe, y cada cuántos minutos sincroniza (ver abajo).
+1. Se ingresa el nombre del equipo (ej. `spui-pi-01`), la versión del software si se sabe, y cada cuántos minutos sincroniza (ver abajo).
 2. Al guardar, el sistema genera una **API key aleatoria de 64 caracteres**.
 3. **La clave se muestra una sola vez**, en un cuadro con botón de copiar.
 4. Hay que copiarla y ponerla en la Pi **antes de cerrar ese cuadro**. No se puede recuperar después: en la base solo queda su hash SHA-256.
@@ -359,7 +359,7 @@ Al crear una regla:
 - **Horario:** hora de inicio y fin.
 - **Fechas:** desde (obligatoria) y hasta (opcional; vacío = sin vencimiento).
 - **Días:** los siete, con checkboxes. Hay que marcar **al menos uno**: si se desmarcan todos, el formulario lo avisa debajo y no guarda (antes se guardaba en silencio como "todos los días"). Para todos los días, marcar los siete.
-- **Prioridad:** un número. Si dos reglas aplican al mismo tiempo en la misma pantalla, **gana la de mayor prioridad**, sea cual sea su alcance: una regla de todas las pantallas con prioridad 10 le gana a una de esa pantalla con prioridad 5. Conviene no repetir el número: con la misma prioridad, cuál gana no está definido.
+- **Prioridad:** un número. Si dos reglas aplican al mismo tiempo en la misma pantalla, **gana la de mayor prioridad**, sea cual sea su alcance: una regla de todas las pantallas con prioridad 10 le gana a una de esa pantalla con prioridad 5. Con la misma prioridad gana la más específica (pantalla, después ubicación, después edificio, después todas) y, entre iguales, la más nueva.
 
 Las reglas se pueden desactivar sin borrarlas, para pausarlas temporalmente.
 
@@ -444,6 +444,8 @@ Los datos se agrupan por hora: con una lectura por minuto, 7 días serían unos 
 **Filtros:** al lado del buscador (salvo en Playlists), un chip por grupo con la opción elegida y su cantidad (por defecto **Todos**); tocarlo abre las demás opciones, con su cantidad y una tilde en la elegida. Si hay un filtro puesto, el chip queda en azul. Cuando el buscador y los chips no entran en una fila, se centran. Edificios, Ubicaciones y Pantallas: activos / inactivos. Reproductores: conectados / desconectados / sin registrar (por la última señal, en el momento). Contenidos: disponibles / archivados y, aparte, un chip por tipo; los dos grupos se combinan. Programación y Alertas: activas / inactivas y, aparte, el orden por prioridad (mayor primero, por defecto, o menor primero); en Alertas, las activas van siempre arriba. El filtro va en la dirección (`?estado=activos`), así que se puede compartir o volver con "atrás".
 
 **El modal Ver** (desde el 05/11/2026) es igual en todas las secciones: el título es el del modal; cada sección es un bloque a todo el ancho, con los datos repartidos en columnas según cuántos hay; y las listas (sectores, pantallas, reglas, horarios) son filas con el nombre a la izquierda y el dato a la derecha.
+
+**Los formularios** (desde el 05/11/2026) tienen el mismo estilo en todas las secciones: bloques con título, listas con buscador cuando son largas, Estado en dos opciones y **Cancelar** y **Guardar** siempre a la vista. Sólo dicen `(opcional)` los campos que lo son. En una **alerta**, a qué pantallas llega es una elección obligatoria: en el alta no viene nada marcado, para que nadie la mande a todo el campus por olvidarse.
 
 **Acciones de cada tarjeta** (desde el 03/11/2026): queda a la vista **Ver** y el resto está en el botón **⋮ Más**, que abre una lista: Editar, Activar o Desactivar, Ítems, Energía, Telemetría, Sincronizar, Clave, según la sección, y **Eliminar** al final, en rojo.
 - **Al elegir una acción**, el menú se cierra y la acción sigue como siempre: su confirmación o su ventana.

@@ -2985,17 +2985,52 @@ html.spui-sidebar-plegado .spui-sidebar-plegar img { transform: rotate(180deg); 
    siempre a la vista, aunque el formulario tenga scroll. */
 .spui-form { --spui-campo-alto: 2.8125rem; display: flex; flex-direction: column; gap: 1.25rem; }
 .spui-form .unraf-form-control, .spui-form .unraf-form-select { background-color: #fff; }
+/* La misma distancia entre etiqueta y campo, venga de un FormType o esté escrita a mano. */
+.spui-form .unraf-form-label { display: block; margin-bottom: .5rem; }
 .spui-form-fila { display: grid; gap: .85rem 1.25rem; align-items: start; }
 .spui-form-fila > div { min-width: 0; }
 .spui-form-fila-principal { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr); }
+.spui-form-fila-dato { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); }
+.spui-form-fila-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.spui-form-fila-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.spui-form-fila-docente { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 2fr); }
+.spui-form-fila-item { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); }
+.spui-form-fila-sync { grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); align-items: center; }
+.spui-form-fila > [hidden] { display: none; }
+.spui-form-grupo { display: flex; flex-direction: column; gap: 1.25rem; }
+.spui-form-grupo[hidden] { display: none; }
+.spui-form-explica { margin: 0; font-size: .85rem; line-height: 1.5; color: #5f6b76; }
+/* Un texto y su botón en una fila, a lo ancho del bloque. */
+.spui-form-accion { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .6rem 1.25rem; }
+.spui-form-accion[hidden] { display: none; }
+.spui-form-accion .spui-ver-texto { flex: 1 1 16rem; }
+/* Elegir un archivo. */
+.spui-archivo-zona {
+    position: relative; display: flex; flex-direction: column; align-items: center; gap: .15rem; margin: 0; padding: 1.25rem 1rem; text-align: center;
+    background: #fff; border: 2px dashed #b8c7d6; border-radius: .6rem; cursor: pointer; transition: border-color .15s ease, background-color .15s ease;
+}
+.spui-archivo-zona:hover, .spui-archivo-zona:focus-within { background: #eef4fa; border-color: var(--unraf-azul, #446687); }
+.spui-archivo-zona:has(input.is-invalid) { border-color: var(--unraf-error, #FF223D); }
+.spui-archivo-zona input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+.spui-archivo-zona img { width: 1.6rem; height: 1.6rem; opacity: .6; }
+.spui-archivo-zona strong { font-size: .92rem; color: #2b3a4a; overflow-wrap: anywhere; }
+.spui-archivo-zona small { font-size: .78rem; color: #5f6b76; }
+.spui-form-archivo-btn { display: inline-flex; align-items: center; gap: .4rem; }
+.spui-form .spui-archivo-row .spui-form-archivo-btn { margin-left: auto; }
+.spui-form .spui-sonido-row { margin-top: .5rem; }
+/* A qué pantallas llega una alerta: el selector y, debajo, lo que corresponde. */
+.spui-form-alcance-apilado { display: flex; flex-direction: column; align-items: stretch; gap: .75rem; }
+.spui-form-alcance-apilado > .spui-opciones { align-self: flex-start; background: #fff; }
+.spui-form-alcance-apilado > [hidden] { display: none; }
+.spui-form-alcance-apilado .spui-alerta-destinos { background: #fff; }
 .spui-form-fila-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .spui-form-ayuda { display: block; margin: .25rem 0 0; font-size: .78rem; color: #5f6b76; }
 /* Hora, fecha y números con el valor al centro; el ícono del calendario, al borde. */
 .spui-form input[type="number"] { text-align: center; }
-.spui-form input[type="time"], .spui-form input[type="date"] { position: relative; text-align: center; }
-.spui-form input[type="time"]::-webkit-date-and-time-value, .spui-form input[type="date"]::-webkit-date-and-time-value { text-align: center; }
-.spui-form input[type="time"]::-webkit-datetime-edit, .spui-form input[type="date"]::-webkit-datetime-edit { display: flex; justify-content: center; width: 100%; }
-.spui-form input[type="time"]::-webkit-calendar-picker-indicator, .spui-form input[type="date"]::-webkit-calendar-picker-indicator { position: absolute; right: .75rem; }
+.spui-form input[type="time"], .spui-form input[type="date"], .spui-form input[type="datetime-local"] { position: relative; text-align: center; }
+.spui-form input::-webkit-date-and-time-value { text-align: center; }
+.spui-form input::-webkit-datetime-edit { display: flex; justify-content: center; width: 100%; }
+.spui-form input::-webkit-calendar-picker-indicator { position: absolute; right: .75rem; }
 /* Estado: dos opciones del alto de los demás campos, en vez de un interruptor. */
 .spui-estado {
     display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .2rem; margin: 0; padding: .2rem; min-height: var(--spui-campo-alto);
@@ -3067,6 +3102,15 @@ html.spui-sidebar-plegado .spui-sidebar-plegar img { transform: rotate(180deg); 
     .spui-form-fila-principal { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .spui-form-fila-principal > :first-child { grid-column: 1 / -1; }
     .spui-form-fila-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .spui-form-fila-dato, .spui-form-fila-2, .spui-form-fila-3, .spui-form-fila-sync, .spui-form-fila-item { grid-template-columns: minmax(0, 1fr); }
+    .spui-form-fila-docente { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    /* Fecha con hora: en media fila no entra. */
+    .spui-form-fila-principal:has(input[type="datetime-local"]) { grid-template-columns: minmax(0, 1fr); }
+    .spui-form .spui-opcion:last-of-type:nth-of-type(odd) { grid-column: 1 / -1; }
+    .spui-form-fila-docente > :last-child { grid-column: 1 / -1; }
+    .spui-form .spui-opciones { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; }
+    .spui-form .spui-opcion { text-align: center; border-left: 0; }
+    .spui-form-alcance-apilado > .spui-opciones { align-self: stretch; }
     .spui-form-dia { padding: .55rem 0; font-size: .8rem; }
     .spui-form-pie .unraf-btn { flex: 1 1 0; }
 }

@@ -1,14 +1,34 @@
 {# Piezas comunes de los formularios (estilos en .spui-form, style.css). #}
 
+{# Etiqueta, control y errores de un campo de Symfony. #}
+{% macro campo(c, attr) %}
+    {{ form_label(c) }}
+    {{ form_widget(c, attr is defined and attr ? {'attr': attr} : {}) }}
+    {% for e in c.vars.errors %}<p class="spui-campo-error">{{ e.message }}</p>{% endfor %}
+{% endmacro %}
+
 {# Estado de un registro: dos opciones de lado a lado, del alto de los demás campos.
    El dato sigue siendo un checkbox: prendido es la primera opción. #}
-{% macro estado(campo, si, no) %}
-    <span class="unraf-form-label d-block" id="{{ campo.vars.id }}_lbl">Estado</span>
-    <input type="checkbox" class="spui-opcion-input" role="switch" aria-labelledby="{{ campo.vars.id }}_lbl"
-           name="{{ campo.vars.full_name }}" id="{{ campo.vars.id }}" value="{{ campo.vars.value }}" {{ campo.vars.checked ? 'checked' }}>
-    <label class="spui-estado" for="{{ campo.vars.id }}">
+{% macro estado_html(id, name, value, checked, si, no) %}
+    <span class="unraf-form-label d-block" id="{{ id }}_lbl">Estado</span>
+    <input type="checkbox" class="spui-opcion-input" role="switch" aria-labelledby="{{ id }}_lbl"
+           name="{{ name }}" id="{{ id }}" value="{{ value }}" {{ checked ? 'checked' }}>
+    <label class="spui-estado" for="{{ id }}">
         <span class="spui-estado-si">{{ si }}</span>
         <span class="spui-estado-no">{{ no }}</span>
     </label>
-    {% do campo.setRendered() %}
+{% endmacro %}
+
+{# Lo mismo, con un campo de Symfony. #}
+{% macro estado(c, si, no) %}
+    {{ _self.estado_html(c.vars.id, c.vars.full_name, c.vars.value, c.vars.checked, si, no) }}
+    {% do c.setRendered() %}
+{% endmacro %}
+
+{# Cancelar y Guardar, siempre a la vista. d-flex: ahí se ancla la barra de subida (modal.js). #}
+{% macro pie(clase) %}
+    <div class="spui-form-pie d-flex">
+        <button type="button" class="unraf-btn spui-btn-back" data-spui-close>Cancelar</button>
+        <button type="submit" class="unraf-btn {{ clase }}">Guardar</button>
+    </div>
 {% endmacro %}

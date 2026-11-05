@@ -1,46 +1,48 @@
-<form method="post" action="{{ path('spui_cms_playlists_nueva') }}" data-spui-ajax="1" novalidate>
+{# Alta y edición de una playlist, en un solo archivo (05/11/2026).
+   Sin Estado: una playlist se usa o no según esté en una pantalla o en una regla.
+   Al redibujarse por un error de campo, v trae lo que se había cargado (manda sobre
+   lo guardado) y err el error de cada campo, que va debajo de su input. #}
+{% import '@SPUI/_macros/form.html.twig' as f %}
+{% set editando = playlist is defined and playlist.id %}
+{% set v = values is defined ? values : (editando ? {nombre: playlist.nombre, descripcion: playlist.descripcion} : {}) %}
+{% set err = errores is defined ? errores : {} %}
+{% set cantidad = items_confirmados is defined and items_confirmados is not null ? items_confirmados|length : (editando ? playlist.items|length : 0) %}
+<form method="post" class="spui-form" novalidate data-spui-ajax="1"
+      action="{{ editando ? path('spui_cms_playlists_editar', {id: playlist.id}) : path('spui_cms_playlists_nueva') }}">
 
     <input type="hidden" name="_token" value="{{ csrf_token('spui_action') }}">
 
-    {# Al redibujarse por un error de campo, v trae lo que se había cargado y
-       err el error de cada campo (se muestra debajo de su input). #}
-    {% set v = values is defined ? values : {} %}
-    {% set err = errores is defined ? errores : {} %}
-
-    {# Sin Estado: una playlist se usa o no según esté en una pantalla o en una
-       regla. El switch Activa/Inactiva se quitó el 29/10/2026 (no frenaba la
-       reproducción y confundía). #}
-    <div class="row g-3 mb-3 align-items-start">
-        <div class="col">
-            <label class="unraf-form-label" for="pl_nombre">Nombre <span class="text-danger">*</span></label>
+    <section class="spui-ver-seccion" aria-labelledby="spui-form-datos">
+        <h5 class="spui-ver-titulo" id="spui-form-datos">Datos</h5>
+        <div class="spui-ver-bloque">
+            <label class="unraf-form-label" for="pl_nombre">Nombre</label>
             <input type="text" id="pl_nombre" name="nombre" class="unraf-form-control{{ err.nombre is defined ? ' is-invalid' }}" maxlength="150"
                    value="{{ v.nombre ?? '' }}" placeholder="Ej: Cartelera Edificio A" required>
             {% if err.nombre is defined %}<p class="spui-campo-error">{{ err.nombre }}</p>{% endif %}
+            <div class="spui-form-separado">
+                <label class="unraf-form-label" for="pl_descripcion">Descripción (opcional)</label>
+                <textarea id="pl_descripcion" name="descripcion" class="unraf-form-control" rows="2"
+                          placeholder="Descripción breve de la playlist…">{{ v.descripcion ?? '' }}</textarea>
+            </div>
         </div>
-    </div>
+    </section>
 
-    <div class="mb-4">
-        <label class="unraf-form-label" for="pl_descripcion">Descripción (opcional)</label>
-        <textarea id="pl_descripcion" name="descripcion" class="unraf-form-control" rows="3"
-                  placeholder="Descripción breve de la playlist…">{{ v.descripcion ?? '' }}</textarea>
-    </div>
-
-    {# Los ítems elegidos acá no se persisten hasta el Guardar de este form: un
-       PlaylistItem necesita una playlist ya existente. items.js los deja como
-       inputs hidden dentro de este mismo <form>, así viajan solos en el submit. #}
+    {# "Ver ítems" abre el nivel 2 sin cerrar este formulario: lo que se confirme ahí queda
+       como inputs hidden acá (items.js) y se guarda con el Guardar de abajo. Un PlaylistItem
+       necesita una playlist ya existente, por eso en el alta tampoco se graba antes. #}
     {{ include('@SPUI/playlists/_items_confirmados.html.twig') }}
-    <div class="d-flex justify-content-between align-items-center gap-2 pt-3 border-top flex-wrap">
-        <button type="button" class="unraf-btn spui-btn-items unraf-btn-sm"
-                data-spui-form2="{{ path('spui_cms_playlists_items_nueva') }}"
-                data-spui-title="Ítems de la playlist"
-                data-spui-size="modal-lg">
-            <img src="{{ asset('unraf-ui/icons/playlist.svg') }}" class="spui-action-icon" alt="">
-            Ver ítems <span class="text-muted ms-1" data-spui-items-resumen>· {{ (items_confirmados ?? [])|length }}</span>
-        </button>
-        <div class="d-flex gap-2 ms-auto">
-            <button type="button" class="unraf-btn spui-btn-back" data-spui-close>Cancelar</button>
-            <button type="submit" class="unraf-btn spui-btn-crear">Guardar</button>
+    <section class="spui-ver-seccion" aria-labelledby="spui-form-contenidos">
+        <h5 class="spui-ver-titulo" id="spui-form-contenidos">Contenidos</h5>
+        <div class="spui-ver-bloque spui-form-accion">
+            <p class="spui-ver-texto">Ítems de la playlist <span data-spui-items-resumen>· {{ cantidad }}</span></p>
+            <button type="button" class="unraf-btn spui-btn-items unraf-btn-sm"
+                    data-spui-form2="{{ editando ? path('spui_cms_playlists_items', {id: playlist.id}) : path('spui_cms_playlists_items_nueva') }}"
+                    data-spui-title="{{ editando ? 'Ítems de ' ~ playlist.nombre : 'Ítems de la playlist' }}"
+                    data-spui-size="modal-lg">
+                <img src="{{ asset('unraf-ui/icons/playlist.svg') }}" class="spui-action-icon" alt=""> Ver ítems
+            </button>
         </div>
-    </div>
+    </section>
 
+    {{ f.pie(editando ? 'spui-btn-editar' : 'spui-btn-crear') }}
 </form>

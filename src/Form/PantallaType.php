@@ -33,12 +33,12 @@ class PantallaType extends AbstractType
                 'class'        => Ubicacion::class,
                 'em'           => 'SPUI',
                 'choice_label' => fn(Ubicacion $u) => $u->getEdificio()->getNombre() . ($u->getSector() ? ' — ' . $u->getSector() : ''),
-                'placeholder'  => '— seleccionar ubicación —',
+                'placeholder'  => '— elegí una ubicación —',
                 'attr'         => ['class' => 'unraf-form-select'],
                 'constraints'  => [new NotBlank(message: 'Seleccioná una ubicación.')],
             ])
             ->add('reproductor', EntityType::class, [
-                'label'        => 'Reproductor (Raspberry Pi)',
+                'label'        => 'Reproductor (opcional)',
                 'label_attr'   => ['class' => 'unraf-form-label'],
                 'class'        => Reproductor::class,
                 'em'           => 'SPUI',
@@ -48,12 +48,12 @@ class PantallaType extends AbstractType
                 'attr'         => ['class' => 'unraf-form-select'],
             ])
             ->add('playlistFallback', EntityType::class, [
-                'label'        => 'Playlist de fallback (cuando no hay programación activa)',
+                'label'        => 'Playlist de respaldo (opcional)',
                 'label_attr'   => ['class' => 'unraf-form-label'],
                 'class'        => Playlist::class,
                 'em'           => 'SPUI',
                 'choice_label' => fn(Playlist $p) => $p->getNombre(),
-                'placeholder'  => '— ninguna (pantalla de espera institucional) —',
+                'placeholder'  => '— ninguna: muestra la pantalla de espera —',
                 'required'     => false,
                 'attr'         => ['class' => 'unraf-form-select'],
             ])

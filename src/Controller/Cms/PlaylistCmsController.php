@@ -162,7 +162,7 @@ class PlaylistCmsController extends AbstractController
         if ($request->isXmlHttpRequest()) {
             return $this->json([
                 'title' => 'Editar: ' . $playlist->getNombre(),
-                'html'  => $this->renderView('@SPUI/playlists/_edit_form.html.twig', ['playlist' => $playlist]),
+                'html'  => $this->renderView('@SPUI/playlists/_form.html.twig', ['playlist' => $playlist]),
             ]);
         }
         return $this->redirectToRoute('spui_cms_playlists_index');
@@ -430,7 +430,7 @@ class PlaylistCmsController extends AbstractController
 
         $html = $playlist === null
             ? $this->renderView('@SPUI/playlists/_form.html.twig', $vars)
-            : $this->renderView('@SPUI/playlists/_edit_form.html.twig', $vars + ['playlist' => $playlist]);
+            : $this->renderView('@SPUI/playlists/_form.html.twig', $vars + ['playlist' => $playlist]);
 
         return $this->json(['success' => false, 'html' => $html]);
     }

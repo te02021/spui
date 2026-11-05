@@ -20,16 +20,16 @@ class ReproductorType extends AbstractType
     {
         $builder
             ->add('hostname', TextType::class, [
-                'label'      => 'Hostname',
+                'label'      => 'Nombre del equipo',
                 'label_attr' => ['class' => 'unraf-form-label'],
-                'attr'       => ['class' => 'unraf-form-control', 'maxlength' => 100, 'placeholder' => 'spui-pi-01'],
-                'constraints' => [new NotBlank(message: 'El hostname del reproductor es requerido.')],
+                'attr'       => ['class' => 'unraf-form-control', 'maxlength' => 100, 'placeholder' => 'Ej: spui-pi-01'],
+                'constraints' => [new NotBlank(message: 'El nombre del equipo es obligatorio.')],
             ])
             ->add('versionFirmware', TextType::class, [
-                'label'      => 'Versión firmware (opcional)',
+                'label'      => 'Versión del software (opcional)',
                 'label_attr' => ['class' => 'unraf-form-label'],
                 'required'   => false,
-                'attr'       => ['class' => 'unraf-form-control', 'maxlength' => 50, 'placeholder' => 'v1.0.0'],
+                'attr'       => ['class' => 'unraf-form-control', 'maxlength' => 50, 'placeholder' => 'Ej: v1.0.0'],
             ])
             // En minutos enteros, 1 o más, sin tope práctico (decisión de Mateo,
             // 10/10/2026). El mínimo de 1 min respeta el límite del CMS de 2

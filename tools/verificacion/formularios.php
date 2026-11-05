@@ -45,7 +45,7 @@ $id  = fn(string $clase): string => (string) ($em->getRepository($clase)->findOn
 /** [FormType, fábrica de la entidad, datos válidos de base (sin checkboxes)] */
 $tipos = [
     'Alerta'         => [F\AlertaType::class, fn() => new E\AlertaEmergencia(),
-        ['titulo' => 'T', 'mensaje' => 'M', 'prioridad' => '10']],
+        ['titulo' => 'T', 'mensaje' => 'M', 'prioridad' => '10', 'alcance' => 'todas']],
     'Contenido'      => [F\ContenidoType::class, fn() => new E\Contenido(),
         ['titulo' => 'T', 'tipo' => 'texto', 'duracionSegundos' => '10']],
     // El ítem del cronograma ya no tiene FormType (02/11/2026): es un

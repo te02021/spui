@@ -35,6 +35,9 @@ class ProgramacionRepository extends ServiceEntityRepository
         $hoy = new DateTimeImmutable();
 
         return $this->createQueryBuilder('p')
+            // Entre reglas de la misma prioridad gana la más específica, y entre
+            // iguales la más nueva: el resultado no depende del orden de la base.
+            ->addSelect('CASE WHEN p.pantalla IS NOT NULL THEN 3 WHEN p.ubicacion IS NOT NULL THEN 2 WHEN p.edificio IS NOT NULL THEN 1 ELSE 0 END AS HIDDEN especificidad')
             ->where('p.activo = true')
             ->andWhere('p.horaInicio IS NOT NULL')
             ->andWhere('p.horaFin IS NOT NULL')
@@ -52,6 +55,8 @@ class ProgramacionRepository extends ServiceEntityRepository
             ->setParameter('ubicacion', $pantalla->getUbicacion())
             ->setParameter('edificio', $pantalla->getUbicacion()->getEdificio())
             ->orderBy('p.prioridad', 'DESC')
+            ->addOrderBy('especificidad', 'DESC')
+            ->addOrderBy('p.id', 'DESC')
             ->getQuery()
             ->getResult();
     }

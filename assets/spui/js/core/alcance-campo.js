@@ -22,6 +22,7 @@
                 s.value = '';
                 s.dispatchEvent(new Event('change', { bubbles: true }));
             });
+            bloque.querySelectorAll('input[type="checkbox"]').forEach(function (c) { c.checked = false; });
             bloque.querySelectorAll('.spui-campo-error').forEach(function (e) { e.remove(); });
             bloque.querySelectorAll('.is-invalid').forEach(function (e) { e.classList.remove('is-invalid'); });
         });
@@ -37,6 +38,9 @@
         var t = e.target;
         if (!t.matches || !t.matches('input[type="radio"]')) return;
         var cont = t.closest('[data-spui-alcance]');
-        if (cont) aplicar(cont, true);
+        if (!cont) return;
+        // Ya eligió: el aviso de que falta elegir deja de valer.
+        cont.querySelectorAll(':scope > .spui-campo-error').forEach(function (err) { err.remove(); });
+        aplicar(cont, true);
     });
 }());

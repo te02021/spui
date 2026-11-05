@@ -92,6 +92,17 @@
         }
     });
 
+    // Zona de archivo de un formulario: el nombre y el peso de lo que se eligió.
+    document.addEventListener('change', function (e) {
+        var zona = e.target.closest && e.target.closest('[data-spui-archivo-zona]');
+        if (!zona) return;
+        var nombre = zona.querySelector('[data-spui-zona-nombre]');
+        var archivo = e.target.files && e.target.files[0];
+        if (!archivo) { nombre.textContent = 'Elegí un archivo'; return; }
+        var mb = archivo.size / 1048576;
+        nombre.textContent = archivo.name + ' · ' + (mb < 1 ? Math.max(1, Math.round(mb * 1024)) + ' KB' : mb.toFixed(1).replace('.', ',') + ' MB');
+    });
+
     // Auto-cierre de los flashes renderizados por el servidor.
     document.addEventListener('DOMContentLoaded', function () {
         document.querySelectorAll('.flash-container .alert').forEach(function (alert) {

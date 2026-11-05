@@ -183,6 +183,15 @@
     document.addEventListener('change', function (e) {
         var t = e.target;
         if (!t || !t.form) return;
+        // Los botones de tipo mandan sobre el <select>, que es el dato que viaja.
+        if (t.hasAttribute('data-spui-tipo-opcion')) {
+            var tipoSelect = t.form.querySelector(SELECTOR_TIPO);
+            if (tipoSelect) {
+                tipoSelect.value = t.value;
+                tipoSelect.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+            return;
+        }
         // Lo que cambia por algo que eligió la persona, con animación.
         if (t.matches(SELECTOR_TIPO)) {
             plantillaPorDefecto(t.form, t.value);
