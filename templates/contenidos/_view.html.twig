@@ -1,8 +1,8 @@
 {# Detalle de un contenido (rediseñado el 05/11/2026, pedido de Mateo). El título
-   es el del modal. Ningún bloque es más alto que lo que muestra: los datos son
-   fichas que se reparten el ancho y lo que usa el contenido, una fila de
-   etiquetas. Abajo, la única vista previa: "Ampliar" abre el visor con todo
-   (core/media-viewer.js). Un dato sin cargar se omite, no se muestra un guión. #}
+   es el del modal. Cada sección es un solo bloque con los datos en columnas de
+   ancho fijo, sin un marco por dato: lo que baja de renglón no se estira. Abajo,
+   la única vista previa: "Ampliar" abre el visor con todo (core/media-viewer.js).
+   Un dato sin cargar se omite, no se muestra un guión. #}
 {% macro enlace(etiqueta, icono, url) %}
     <div class="spui-ver-enlace">
         <img src="{{ asset('unraf-ui/icons/' ~ icono ~ '.svg') }}" class="spui-ver-enlace-icono" alt="">
@@ -32,7 +32,7 @@
                 </button>
             {% endif %}
         </div>
-        <dl class="spui-ver-fichas">
+        <dl class="spui-ver-datos spui-ver-bloque">
             <div><dt>Tipo</dt><dd>{{ contenido.tipo.etiqueta }}</dd></div>
             <div><dt>Estado</dt><dd><span class="spui-badge-{{ contenido.estado.value }}">{{ contenido.estado.etiqueta }}</span></dd></div>
             <div><dt>Duración</dt><dd>{{ contenido.etiquetaDuracion }}</dd></div>
@@ -58,9 +58,9 @@
             {% endif %}
             <div><dt>Creado</dt><dd>{{ contenido.creadoEn|date('d/m/Y H:i') }}</dd></div>
             <div><dt>Última modificación</dt><dd>{{ contenido.actualizadoEn|date('d/m/Y H:i') }}</dd></div>
-            <div><dt>Creado por</dt><dd>{{ creado_por_email|default('Usuario #' ~ contenido.creadoPorId) }}</dd></div>
+            <div class="spui-ver-dato-largo"><dt>Creado por</dt><dd>{{ creado_por_email|default('Usuario #' ~ contenido.creadoPorId) }}</dd></div>
             {% if contenido.rutaArchivo and contenido.tipo.value != 'qr' %}
-                <div><dt>Archivo</dt><dd>{{ contenido.rutaArchivo|split('/')|last }}</dd></div>
+                <div class="spui-ver-dato-doble"><dt>Archivo</dt><dd>{{ contenido.rutaArchivo|split('/')|last }}</dd></div>
             {% endif %}
         </dl>
     </section>
@@ -69,7 +69,7 @@
     {% if contenido.contenidoTexto and contenido.tipo.value != 'qr' %}
         <section class="spui-ver-seccion" aria-labelledby="spui-ver-texto">
             <h5 class="spui-ver-titulo" id="spui-ver-texto">Texto</h5>
-            <p class="spui-ver-texto">{{ contenido.contenidoTexto }}</p>
+            <div class="spui-ver-bloque"><p class="spui-ver-texto">{{ contenido.contenidoTexto }}</p></div>
         </section>
     {% endif %}
 
@@ -78,6 +78,7 @@
         {% set tiendas = qr.enlacesDeTienda %}
         <section class="spui-ver-seccion" aria-labelledby="spui-ver-qr">
             <h5 class="spui-ver-titulo" id="spui-ver-qr">Código QR</h5>
+            <div class="spui-ver-bloque">
             <div class="spui-ver-enlaces">
                 {% if tiendas %}
                     {{ _self.enlace('Android', 'android-logo', tiendas.android) }}
@@ -89,7 +90,7 @@
             {% if tiendas %}
                 <p class="spui-ver-nota">Cada teléfono va a su tienda. Una computadora o un iPad ven una página con las dos.</p>
             {% endif %}
-            <dl class="spui-ver-fichas">
+            <dl class="spui-ver-datos">
                 <div><dt>Vencimiento</dt><dd>{{ qr.expiraEn ? qr.expiraEn|date('d/m/Y H:i') : 'Sin vencimiento' }}</dd></div>
                 <div><dt>Vigencia</dt><dd>{{ qr.estaVigente ? 'Vigente' : 'Vencido: ya no redirige' }}</dd></div>
                 {# El número arranca con lo que dice la base y después lo mueve el broker:
@@ -107,12 +108,14 @@
                         {% endif %}>{{ qr.usosCount }}</dd>
                 </div>
             </dl>
+            </div>
         </section>
     {% endif %}
 
     <section class="spui-ver-seccion" aria-labelledby="spui-ver-uso">
         <h5 class="spui-ver-titulo" id="spui-ver-uso">Dónde se usa</h5>
         {% if contenido.playlistItems|length > 0 or contenido.alertas|length > 0 %}
+            <div class="spui-ver-bloque">
             <ul class="spui-ver-usos">
                 {# La duración ya no se pisa por playlist: lo útil es la posición en cada una. #}
                 {% for item in contenido.playlistItems %}
@@ -122,8 +125,9 @@
                     <li><small>Alerta</small><span>{{ alerta.titulo }}</span><small>{{ alerta.activa ? 'Activa' : 'Inactiva' }}</small></li>
                 {% endfor %}
             </ul>
+            </div>
         {% else %}
-            <p class="spui-ver-nota mb-0">Todavía no está en ninguna playlist ni alerta.</p>
+            <p class="spui-ver-nota mt-0">Todavía no está en ninguna playlist ni alerta.</p>
         {% endif %}
     </section>
 
