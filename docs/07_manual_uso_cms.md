@@ -351,11 +351,11 @@ Define **qué playlist va, dónde y cuándo**.
 Al crear una regla:
 
 - **Playlist:** cuál se reproduce.
-- **Destino** — cuatro alcances, del más específico al más general:
-  - *Pantalla:* solo esa
-  - *Ubicación:* todas las de ese sector
-  - *Edificio:* todas las de todos sus sectores
-  - *Global:* si no se elige ninguno, aplica a todas
+- **Dónde** — un selector con cuatro alcances, y sólo aparece la lista del elegido, que es obligatoria:
+  - *Todas:* todas las pantallas
+  - *Un edificio:* todas las de todos sus sectores
+  - *Una ubicación:* todas las de ese sector
+  - *Una pantalla:* solo esa
 - **Horario:** hora de inicio y fin.
 - **Fechas:** desde (obligatoria) y hasta (opcional; vacío = sin vencimiento).
 - **Días:** los siete, con checkboxes. Hay que marcar **al menos uno**: si se desmarcan todos, el formulario lo avisa debajo y no guarda (antes se guardaba en silencio como "todos los días"). Para todos los días, marcar los siete.
