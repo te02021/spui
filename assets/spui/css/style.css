@@ -3112,8 +3112,9 @@ html.spui-sidebar-plegado .spui-sidebar-plegar img { transform: rotate(180deg); 
     .spui-form-fila-principal:has(input[type="datetime-local"]) { grid-template-columns: minmax(0, 1fr); }
     .spui-form .spui-opcion:last-of-type:nth-of-type(odd) { grid-column: 1 / -1; }
     .spui-form-fila-docente > :last-child { grid-column: 1 / -1; }
-    .spui-form .spui-opciones { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; }
-    .spui-form .spui-opcion { text-align: center; border-left: 0; }
+    /* En grilla, una línea entre opción y opción: el espacio de 1 px deja ver el fondo del grupo. */
+    .spui-form .spui-opciones { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; width: 100%; background: #cfd8e1; }
+    .spui-form .spui-opcion { text-align: center; border-left: 0; background: #fff; }
     .spui-form-alcance-apilado > .spui-opciones { align-self: stretch; }
     .spui-form-dia { padding: .55rem 0; font-size: .8rem; }
     .spui-form-pie .unraf-btn { flex: 1 1 0; }
