@@ -1,62 +1,51 @@
-{{ form_start(form, {'attr': {'data-spui-ajax': '1', 'novalidate': 'novalidate'}}) }}
+{% import '@SPUI/_macros/form.html.twig' as f %}
+{{ form_start(form, {'attr': {'data-spui-ajax': '1', 'novalidate': 'novalidate', 'class': 'spui-form'}}) }}
 
 {# Errores del form raíz (típicamente el CSRF vencido). Sin esto el modal se
    recargaba sin ningún mensaje y el guardado parecía no responder. #}
 {% for e in form.vars.errors %}
-    <div class="alert alert-danger mb-3">{{ e.message }}</div>
+    <div class="alert alert-danger mb-0">{{ e.message }}</div>
 {% endfor %}
 
-<div class="row g-3 mb-3">
-    <div class="col-12 col-sm">
-        {{ form_label(form.hostname) }}
-        {{ form_widget(form.hostname) }}
-        {% for e in form.hostname.vars.errors %}
-            <p class="spui-campo-error">{{ e.message }}</p>
-        {% endfor %}
+<section class="spui-ver-seccion" aria-labelledby="spui-form-equipo">
+    <h5 class="spui-ver-titulo" id="spui-form-equipo">Equipo</h5>
+    <div class="spui-ver-bloque">
+        <div class="spui-form-fila spui-form-fila-2">
+            <div>
+                {{ f.campo(form.hostname) }}
+                <small class="spui-form-ayuda">El nombre de la Raspberry Pi en la red.</small>
+            </div>
+            <div>{{ f.campo(form.versionFirmware) }}</div>
+        </div>
+        {% if reproductor is not defined or not reproductor.id %}
+            <p class="spui-ver-nota">La clave de acceso se genera al guardar y se muestra una sola vez: guardala en un lugar seguro.</p>
+        {% endif %}
     </div>
-    <div class="col-12 col-sm">
-        {{ form_label(form.versionFirmware) }}
-        {{ form_widget(form.versionFirmware) }}
-        {% for e in form.versionFirmware.vars.errors %}
-            <p class="spui-campo-error">{{ e.message }}</p>
-        {% endfor %}
-    </div>
-</div>
+</section>
 
-{# Intervalo de sync. La unidad va pegada al número ("min") y la equivalencia
-   legible se actualiza mientras se escribe (duracion-minutos.js). #}
-<div class="mb-4">
-<div data-spui-campo>
-    {{ form_label(form.intervaloSyncMin) }}
-    <div class="spui-input-with-addon" style="max-width:10rem">
-        {{ form_widget(form.intervaloSyncMin) }}
-        <span class="spui-input-addon spui-input-unidad">min</span>
+<section class="spui-ver-seccion" aria-labelledby="spui-form-sync">
+    <h5 class="spui-ver-titulo" id="spui-form-sync">Sincronización</h5>
+    {# La unidad va pegada al número ("min") y la equivalencia legible se actualiza mientras se escribe (duracion-minutos.js). #}
+    <div class="spui-ver-bloque spui-form-fila spui-form-fila-sync">
+        <div>
+            <div data-spui-campo>
+                {{ form_label(form.intervaloSyncMin) }}
+                <div class="spui-input-with-addon">
+                    {{ form_widget(form.intervaloSyncMin) }}
+                    <span class="spui-input-addon spui-input-unidad">min</span>
+                </div>
+                {% for e in form.intervaloSyncMin.vars.errors %}<p class="spui-campo-error">{{ e.message }}</p>{% endfor %}
+            </div>
+            {# Fuera de [data-spui-campo]: así el error en vivo queda pegado al campo, como el del servidor. #}
+            <small class="spui-form-ayuda fw-semibold" id="{{ form.intervaloSyncMin.vars.id }}_texto"></small>
+        </div>
+        <p class="spui-form-explica">
+            Lo que se guarda en el CMS le llega al instante. Este intervalo es el respaldo, y es lo que puede demorar
+            en arrancar una programación o un horario de energía.
+        </p>
     </div>
-    {% for e in form.intervaloSyncMin.vars.errors %}
-        <p class="spui-campo-error">{{ e.message }}</p>
-    {% endfor %}
-</div>
-    {# Fuera de [data-spui-campo]: así el error en vivo queda pegado al campo, como el del servidor. #}
-    <small class="d-block mt-1 fw-semibold" id="{{ form.intervaloSyncMin.vars.id }}_texto"></small>
-    <small class="text-muted d-block mt-1">
-        Minutos enteros, 1 o más. Cada cuánto el reproductor consulta al CMS por su cuenta. Lo que se guarda
-        en el CMS le llega al instante igual; este intervalo es el respaldo, y además es lo que puede demorar
-        en arrancar una programación o un horario de energía. Para sincronizar en el momento, usá
-        <strong>Sincronizar</strong> en el listado.
-    </small>
-</div>
+</section>
 
-{% if reproductor is not defined or not reproductor.id %}
-    <div class="alert alert-info mb-4" style="font-size:.875rem">
-        <strong>Clave API:</strong> Se generará automáticamente. Aparecerá una sola vez al crear el reproductor — guardála en un lugar seguro.
-    </div>
-{% endif %}
-
-<div class="d-flex justify-content-end gap-2 pt-3 border-top">
-    <button type="button" class="unraf-btn spui-btn-back" data-spui-close>Cancelar</button>
-    <button type="submit" class="unraf-btn {{ reproductor is defined and reproductor.id ? 'spui-btn-editar' : 'spui-btn-crear' }}">
-        Guardar
-    </button>
-</div>
+{{ f.pie(reproductor is defined and reproductor.id ? 'spui-btn-editar' : 'spui-btn-crear') }}
 
 {{ form_end(form) }}

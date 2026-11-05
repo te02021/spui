@@ -117,13 +117,13 @@ class SyncController extends AbstractController
             $playlistData = null;
 
             if ($progActiva !== null) {
-                $playlistData = $this->serializePlaylist($progActiva->getPlaylist(), $request, $pantalla, $ahora);
+                $playlistData = $this->serializePlaylist($progActiva->getPlaylist(), $request, $ahora);
             }
             // Si la playlist de la regla no tiene nada que mostrar (todos sus
             // contenidos archivados), la pantalla cae a su playlist de
             // respaldo, como si no hubiera regla, y no a la pantalla de espera.
             if (($playlistData === null || $playlistData['items'] === []) && $pantalla->getPlaylistFallback() !== null) {
-                $playlistData = $this->serializePlaylist($pantalla->getPlaylistFallback(), $request, $pantalla, $ahora);
+                $playlistData = $this->serializePlaylist($pantalla->getPlaylistFallback(), $request, $ahora);
             }
 
             $pantallasData[] = [
@@ -310,29 +310,28 @@ class SyncController extends AbstractController
         return implode(' · ', array_filter([$ubicacion->getEdificio()->getNombre(), $ubicacion->getSector()]));
     }
 
-    private function serializePlaylist(Playlist $playlist, Request $request, Pantalla $pantalla, DateTimeImmutable $ahora): array
+    private function serializePlaylist(Playlist $playlist, Request $request, DateTimeImmutable $ahora): array
     {
         return [
             'id'     => $playlist->getId(),
             'nombre' => $playlist->getNombre(),
             // Sin los archivados: archivar saca el contenido de las pantallas.
             'items'  => array_map(
-                fn(PlaylistItem $item) => $this->serializeItem($item, $request, $pantalla, $ahora),
+                fn(PlaylistItem $item) => $this->serializeItem($item, $request, $ahora),
                 $playlist->getItemsVigentes(),
             ),
         ];
     }
 
-    private function serializeItem(PlaylistItem $item, Request $request, Pantalla $pantalla, DateTimeImmutable $ahora): array
+    private function serializeItem(PlaylistItem $item, Request $request, DateTimeImmutable $ahora): array
     {
         $c = $item->getContenido();
 
         $cronogramaItems = null;
         $cronograma      = null;
         if ($c->getTipo() === TipoContenido::Cronograma) {
-            // La semana entera, con el edificio de esta pantalla si es "del
-            // edificio de la pantalla": la Pi elige el día y la hora.
-            $cronograma = $this->tv->cronogramaParaReproductor($c, $pantalla->getUbicacion()->getEdificio(), $ahora);
+            // La semana entera: la Pi elige el día y la hora.
+            $cronograma = $this->tv->cronogramaParaReproductor($c, $ahora);
             // Formato anterior (sólo lo de hoy), para una Pi sin actualizar.
             // Los del día: clases por día de la semana, eventos por su fecha.
             $cronogramaItems = array_values(array_map(
@@ -368,7 +367,6 @@ class SyncController extends AbstractController
                 'presentacion'     => [
                     'plantilla'  => $c->getTipo() === TipoContenido::Video ? PlantillaPantalla::Ninguna->value : $c->getPlantilla()->value,
                     'tema'       => $c->getTema()->value,
-                    'marca_agua' => $c->isMarcaAgua(),
                 ],
                 'cronograma'       => $cronograma,
             ],

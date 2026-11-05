@@ -1,57 +1,39 @@
-{{ form_start(form, {'attr': {'data-spui-ajax': '1', 'novalidate': 'novalidate'}}) }}
+{% import '@SPUI/_macros/form.html.twig' as f %}
+{{ form_start(form, {'attr': {'data-spui-ajax': '1', 'novalidate': 'novalidate', 'class': 'spui-form'}}) }}
 
 {# Errores del form raíz (típicamente el CSRF vencido). Sin esto el modal se
    recargaba sin ningún mensaje y el guardado parecía no responder. #}
 {% for e in form.vars.errors %}
-    <div class="alert alert-danger mb-3">{{ e.message }}</div>
+    <div class="alert alert-danger mb-0">{{ e.message }}</div>
 {% endfor %}
 
-<p class="text-muted small mb-3">
-    Horario de <strong>{{ dia }}</strong> para <strong>{{ pantalla.nombre }}</strong>.
-</p>
-
-<div class="row g-3 mb-3">
-    <div class="col-12 col-sm-6">
-        {{ form_label(form.horaEncendido) }}
-        {{ form_widget(form.horaEncendido) }}
-        {% for e in form.horaEncendido.vars.errors %}
-            <p class="spui-campo-error">{{ e.message }}</p>
-        {% endfor %}
+<section class="spui-ver-seccion" aria-labelledby="spui-form-horario">
+    <h5 class="spui-ver-titulo" id="spui-form-horario">Horario</h5>
+    <div class="spui-ver-bloque">
+        <div class="spui-form-fila spui-form-fila-2">
+            <div class="spui-fecha-field">{{ f.campo(form.horaEncendido) }}</div>
+            <div class="spui-fecha-field">
+                {{ f.campo(form.horaApagado, {
+                    'data-spui-validar-posterior': '#' ~ form.horaEncendido.vars.id,
+                    'data-spui-validar-mensaje': constant('SPUI\\Controller\\Cms\\ProgramacionEnergeticaCmsController::MSG_APAGADO_POSTERIOR'),
+                }) }}
+            </div>
+        </div>
+        <div class="spui-form-separado">
+            {{ form_label(form.nivelBrillo) }}
+            {# El addon muestra el valor mientras se arrastra: range-input.js lo busca por el id del input + _val. #}
+            <div class="spui-input-with-addon">
+                {{ form_widget(form.nivelBrillo) }}
+                <span class="spui-input-addon" id="{{ form.nivelBrillo.vars.id }}_val">{{ form.nivelBrillo.vars.value }}%</span>
+            </div>
+            {% for e in form.nivelBrillo.vars.errors %}<p class="spui-campo-error">{{ e.message }}</p>{% endfor %}
+            <small class="spui-form-ayuda">
+                Relativo al brillo de la pantalla (100 % = sin cambios). Si la pantalla lo permite baja su brillo real; si no, se oscurece la imagen.
+            </small>
+        </div>
     </div>
-    <div class="col-12 col-sm-6">
-        {{ form_label(form.horaApagado) }}
-        {{ form_widget(form.horaApagado, {attr: {
-            'data-spui-validar-posterior': '#' ~ form.horaEncendido.vars.id,
-            'data-spui-validar-mensaje': constant('SPUI\\Controller\\Cms\\ProgramacionEnergeticaCmsController::MSG_APAGADO_POSTERIOR'),
-        }}) }}
-        {% for e in form.horaApagado.vars.errors %}
-            <p class="spui-campo-error">{{ e.message }}</p>
-        {% endfor %}
-    </div>
-</div>
+</section>
 
-<div class="mb-4">
-    {{ form_label(form.nivelBrillo) }}
-    {# El addon deja de ser un "%" fijo: muestra el valor mientras se arrastra.
-       range-input.js lo busca por el id del input + _val. #}
-    <div class="spui-input-with-addon">
-        {{ form_widget(form.nivelBrillo) }}
-        <span class="spui-input-addon" id="{{ form.nivelBrillo.vars.id }}_val">{{ form.nivelBrillo.vars.value }}%</span>
-    </div>
-    {% for e in form.nivelBrillo.vars.errors %}
-        <p class="spui-campo-error">{{ e.message }}</p>
-    {% endfor %}
-    <small class="text-muted d-block mt-1">
-        Relativo al brillo que tiene configurado la pantalla (100 % = sin cambios). Si la pantalla
-        lo permite, baja su brillo real y el consumo; si no, se oscurece la imagen.
-    </small>
-</div>
-
-<div class="d-flex justify-content-end gap-2 pt-3 border-top">
-    <button type="button" class="unraf-btn spui-btn-back" data-spui-close>Cancelar</button>
-    <button type="submit" class="unraf-btn {{ esNueva ? 'spui-btn-crear' : 'spui-btn-editar' }}">
-        Guardar
-    </button>
-</div>
+{{ f.pie(esNueva ? 'spui-btn-crear' : 'spui-btn-editar') }}
 
 {{ form_end(form) }}

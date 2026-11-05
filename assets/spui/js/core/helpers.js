@@ -57,6 +57,52 @@
         });
     };
 
+    // Cualquier botón con data-spui-copiar="texto", también en HTML inyectado por
+    // un modal. El navegador sólo da navigator.clipboard por HTTPS: en HTTP se copia
+    // con execCommand, y tiene que ser sobre un campo dentro del modal abierto.
+    document.addEventListener('click', function (e) {
+        var btn = e.target.closest && e.target.closest('[data-spui-copiar]');
+        if (!btn) return;
+        var texto = btn.getAttribute('data-spui-copiar');
+        var titulo = btn.getAttribute('title');
+        function hecho() {
+            btn.classList.add('is-copiado');
+            btn.setAttribute('title', 'Copiado');
+            setTimeout(function () {
+                btn.classList.remove('is-copiado');
+                btn.setAttribute('title', titulo);
+            }, 1500);
+        }
+        function legado() {
+            var ta = document.createElement('textarea');
+            ta.value = texto;
+            ta.setAttribute('readonly', '');
+            ta.style.position = 'fixed';
+            ta.style.opacity = '0';
+            btn.parentNode.appendChild(ta);
+            ta.select();
+            try { if (document.execCommand('copy')) hecho(); } catch (err) { /* sin aviso de copiado */ }
+            ta.remove();
+            btn.focus();
+        }
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(texto).then(hecho).catch(legado);
+        } else {
+            legado();
+        }
+    });
+
+    // Zona de archivo de un formulario: el nombre y el peso de lo que se eligió.
+    document.addEventListener('change', function (e) {
+        var zona = e.target.closest && e.target.closest('[data-spui-archivo-zona]');
+        if (!zona) return;
+        var nombre = zona.querySelector('[data-spui-zona-nombre]');
+        var archivo = e.target.files && e.target.files[0];
+        if (!archivo) { nombre.textContent = 'Elegí un archivo'; return; }
+        var mb = archivo.size / 1048576;
+        nombre.textContent = archivo.name + ' · ' + (mb < 1 ? Math.max(1, Math.round(mb * 1024)) + ' KB' : mb.toFixed(1).replace('.', ',') + ' MB');
+    });
+
     // Auto-cierre de los flashes renderizados por el servidor.
     document.addEventListener('DOMContentLoaded', function () {
         document.querySelectorAll('.flash-container .alert').forEach(function (alert) {

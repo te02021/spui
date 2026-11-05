@@ -8,7 +8,6 @@ use DateTimeImmutable;
 use Psr\Log\LoggerInterface;
 use RuntimeException;
 use SPUI\Entity\Contenido;
-use SPUI\Enum\OrigenCronograma;
 use SPUI\Enum\TipoContenido;
 use SPUI\Enum\TipoItemCronograma;
 use SPUI\Repository\ContenidoRepository;
@@ -223,7 +222,7 @@ class ImportarCronogramaCmsController extends AbstractController
         // los muestran (para avisar que lo reciben al reconectarse).
         $offline   = $this->alcance->idsOfflineDeUnaVez();
         $destinos  = [];
-        foreach ($this->contenidos->findBy(['tipo' => TipoContenido::Cronograma, 'cronogramaOrigen' => OrigenCronograma::Propio], ['titulo' => 'ASC']) as $c) {
+        foreach ($this->contenidos->findBy(['tipo' => TipoContenido::Cronograma], ['titulo' => 'ASC']) as $c) {
             /** @var Contenido $c */
             $caidos = array_values(array_map(
                 fn($r) => $r->getHostname(),

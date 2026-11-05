@@ -25,7 +25,9 @@
     function escalar(escala) {
         var tv = escala.querySelector('.spui-tv');
         if (!tv || !escala.clientWidth) return;
-        tv.style.transform = 'scale(' + (escala.clientWidth / ANCHO) + ')';
+        // Con decimales: clientWidth redondea hacia abajo y quedaba una línea del
+        // fondo negro al costado. getComputedStyle no cambia con la animación del modal.
+        tv.style.transform = 'scale(' + (parseFloat(getComputedStyle(escala).width) / ANCHO) + ')';
         // Texto y páginas se arman recién cuando la vista se ve: oculta mide 0
         // de alto (la letra bajaría al mínimo y no entraría ninguna fila).
         if (!escala.dataset.spuiTvAjustado) {
@@ -151,17 +153,13 @@
         var url = cont.getAttribute('data-spui-vista-previa-url');
         var form = cont.closest('form');
         var opciones = { headers: { 'X-Requested-With': 'XMLHttpRequest' }, credentials: 'same-origin' };
-        var edificio = cont.querySelector('[data-spui-tv-edificio]');
 
         if (form) {
             var datos = new FormData(form);
             datos.delete('archivo');   // el archivo lo muestra el navegador, no se sube
             if (cont.dataset.spuiVistaId) datos.set('vista_id', cont.dataset.spuiVistaId);
-            if (edificio) datos.set('vista_edificio', edificio.value);
             opciones.method = 'POST';
             opciones.body = datos;
-        } else if (edificio) {
-            url += (url.indexOf('?') === -1 ? '?' : '&') + 'edificio=' + encodeURIComponent(edificio.value);
         }
 
         var pedido = (cont._spuiPedido || 0) + 1;
@@ -232,7 +230,6 @@
         if (!form) return;
         var cont = form.querySelector('[data-spui-vista-previa-url]');
         if (!cont) return;
-        if (e.target.matches('[data-spui-tv-edificio]')) { pedir(cont); return; }
         clearTimeout(esperas.get(cont));
         esperas.set(cont, setTimeout(function () { pedir(cont); }, e.type === 'input' ? ESPERA_MS : 0));
     }
@@ -244,12 +241,6 @@
         // Lo que se escribe (título, texto) espera a que se deje de tipear.
         if (e.target && e.target.matches && e.target.matches('input[type="text"], textarea')) alCambiarFormulario(e);
     });
-    // El selector de edificio de la vista del modal Ver (fuera de un form).
-    document.addEventListener('change', function (e) {
-        if (!e.target.matches || !e.target.matches('[data-spui-tv-edificio]') || e.target.form) return;
-        var cont = e.target.closest('[data-spui-vista-previa-url]');
-        if (cont) pedir(cont);
-    });
 
     document.addEventListener('click', function (e) {
         var btn = e.target.closest && e.target.closest('[data-spui-tv-ampliar]');
@@ -257,7 +248,17 @@
         var cont = btn.closest('[data-spui-vista-previa-url]');
         var tv = cont && cont.querySelector('.spui-vista-previa-tv');
         if (!tv || !window.spui.abrirVisorPantalla) return;
-        window.spui.abrirVisorPantalla(limpia(tv).innerHTML, tv.getAttribute('data-spui-tv-titulo') || 'Vista previa');
+        var html = limpia(tv).innerHTML;
+        var titulo = tv.getAttribute('data-spui-tv-titulo') || 'Vista previa';
+        // Con un archivo (modal Ver), el visor completo: el video con sus
+        // controles, zoom, descarga y la pestaña En pantalla.
+        var archivo = cont.getAttribute('data-spui-archivo-url');
+        if (archivo && window.spui.abrirVisorMedia) {
+            window.spui.abrirVisorMedia(archivo, cont.getAttribute('data-spui-archivo-tipo'),
+                cont.getAttribute('data-spui-archivo-nombre') || titulo, { pantallaHtml: html, pestana: 'archivo' });
+            return;
+        }
+        window.spui.abrirVisorPantalla(html, titulo);
     });
 
     // Copia del TV como recién pintado (primera página, sin animación a

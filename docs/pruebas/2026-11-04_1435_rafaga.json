@@ -1,0 +1,637 @@
+{
+ "escenario": "rafaga",
+ "inicio": "2026-11-04T14:35:29.471967",
+ "fin": "2026-11-04T14:38:01.063137",
+ "commit": "fbeaa2f",
+ "n": 10,
+ "parametros": {
+  "escenario": "rafaga",
+  "n": 10,
+  "minutos": 10,
+  "intervalo_sync": 60,
+  "repeticiones": 5,
+  "timeout_alerta": 30,
+  "api": "http://intranet/api/spui",
+  "mqtt_host": "127.0.0.1",
+  "mqtt_port": 1883,
+  "playlist": null,
+  "conservar": false
+ },
+ "preparacion": {
+  "creados": 10,
+  "credenciales_mqtt_fallidas": 0,
+  "playlist": {
+   "id": 30,
+   "nombre": "Playlist temporal",
+   "items": 4
+  },
+  "estado": "C:\\wamp64\\www\\intranet\\apps\\spui\\tools\\simulador\\.sim\\estado.json"
+ },
+ "resultado": {
+  "rondas": [
+   {
+    "ronda": 1,
+    "hasta_el_ultimo_ms": 1583.2438999786973,
+    "ok": 10,
+    "fallidos": 0,
+    "p50_ms": 1465.9710499690846,
+    "p95_ms": 1565.8069749712013,
+    "max_ms": 1580.9442999307066
+   },
+   {
+    "ronda": 2,
+    "hasta_el_ultimo_ms": 1320.5490000545979,
+    "ok": 10,
+    "fallidos": 0,
+    "p50_ms": 426.7575000412762,
+    "p95_ms": 1300.466680014506,
+    "max_ms": 1316.952700028196
+   },
+   {
+    "ronda": 3,
+    "hasta_el_ultimo_ms": 1351.867699995637,
+    "ok": 10,
+    "fallidos": 0,
+    "p50_ms": 456.025599851273,
+    "p95_ms": 1346.1657399777323,
+    "max_ms": 1346.7429999727756
+   },
+   {
+    "ronda": 4,
+    "hasta_el_ultimo_ms": 1336.9768001139164,
+    "ok": 10,
+    "fallidos": 0,
+    "p50_ms": 475.18695006147027,
+    "p95_ms": 1329.721444833558,
+    "max_ms": 1331.2801998108625
+   },
+   {
+    "ronda": 5,
+    "hasta_el_ultimo_ms": 1342.5712999887764,
+    "ok": 10,
+    "fallidos": 0,
+    "p50_ms": 479.72920001484454,
+    "p95_ms": 1335.0083150202408,
+    "max_ms": 1336.1825000029057
+   }
+  ]
+ },
+ "http_por_endpoint": [
+  {
+   "endpoint": "/reproductores/sync",
+   "pedidos": 50,
+   "errores": 0,
+   "error_pct": 0.0,
+   "http_429": 0,
+   "p50_ms": 474.7858999762684,
+   "p95_ms": 1513.7740449863484,
+   "p99_ms": 1563.2452759053558,
+   "max_ms": 1579.3993999250233,
+   "bytes_resp_prom": 49293.1,
+   "estados": {
+    "200": 50
+   }
+  }
+ ],
+ "servidor": {
+  "muestras": 28,
+  "cpu_total_prom": 11.432142857142857,
+  "cpu_total_max": 38.0,
+  "ram_total_max_pct": 72.5,
+  "procesos": {
+   "Apache": {
+    "cpu_prom": 0.04285714285714286,
+    "cpu_max": 0.9,
+    "ram_max_mb": 74.828125
+   },
+   "Mosquitto": {
+    "cpu_prom": 0.08571428571428572,
+    "cpu_max": 0.3,
+    "ram_max_mb": 12.8515625
+   },
+   "MySQL": {
+    "cpu_prom": 0.75,
+    "cpu_max": 3.0,
+    "ram_max_mb": 181.41796875
+   },
+   "PHP": {
+    "cpu_prom": 6.239285714285715,
+    "cpu_max": 56.9,
+    "ram_max_mb": 511.21484375
+   }
+  }
+ },
+ "integridad": {
+  "reproductores": 10,
+  "telemetria_por_reproductor": [],
+  "reproductores_sin_sync_en_la_corrida": 0,
+  "reproductores_sin_heartbeat_en_la_corrida": 10,
+  "telemetria_huerfana_en_toda_la_base": 0,
+  "telemetria_con_valores_fuera_de_rango": 0,
+  "reproductores_con_diagnostico": 0,
+  "errores_del_cms_en_el_log": []
+ },
+ "veredictos": [],
+ "pedidos": [
+  {
+   "t": 1793813730.1081245,
+   "rep": 1044,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 409.1771000530571,
+   "bytes_resp": 49293,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1793813730.10822,
+   "rep": 1047,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 410.3796000126749,
+   "bytes_resp": 49293,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1793813730.1078932,
+   "rep": 1048,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 1370.1347999740392,
+   "bytes_resp": 49294,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1793813730.1083133,
+   "rep": 1040,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 1371.678200084716,
+   "bytes_resp": 49293,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1793813730.1082902,
+   "rep": 1043,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 1450.8086999412626,
+   "bytes_resp": 49293,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1793813730.1085374,
+   "rep": 1042,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 1479.3473000172526,
+   "bytes_resp": 49293,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1793813730.1084406,
+   "rep": 1046,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 1490.2901998721063,
+   "bytes_resp": 49293,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1793813730.108331,
+   "rep": 1045,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 1532.9881000798196,
+   "bytes_resp": 49293,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1793813730.1082518,
+   "rep": 1041,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 1546.4317998848855,
+   "bytes_resp": 49293,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1793813730.1083608,
+   "rep": 1039,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 1579.3993999250233,
+   "bytes_resp": 49293,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1793813766.694878,
+   "rep": 1040,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 404.9794999882579,
+   "bytes_resp": 49293,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1793813766.6950314,
+   "rep": 1046,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 406.4392999280244,
+   "bytes_resp": 49293,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1793813766.6955285,
+   "rep": 1045,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 419.2089999560267,
+   "bytes_resp": 49293,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1793813766.6956878,
+   "rep": 1047,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 420.73140013962984,
+   "bytes_resp": 49293,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1793813766.6953664,
+   "rep": 1043,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 422.8521001059562,
+   "bytes_resp": 49293,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1793813766.694294,
+   "rep": 1039,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 428.6518001463264,
+   "bytes_resp": 49293,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1793813766.695189,
+   "rep": 1044,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 429.41729980520904,
+   "bytes_resp": 49293,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1793813766.6945198,
+   "rep": 1042,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 453.68670020252466,
+   "bytes_resp": 49293,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1793813766.6947067,
+   "rep": 1041,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 1279.1703999973834,
+   "bytes_resp": 49293,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1793813766.6938488,
+   "rep": 1048,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 1316.4317000191659,
+   "bytes_resp": 49294,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1793813803.0165448,
+   "rep": 1039,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 439.217499922961,
+   "bytes_resp": 49293,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1793813803.0168617,
+   "rep": 1043,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 440.74800005182624,
+   "bytes_resp": 49293,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1793813803.0158052,
+   "rep": 1040,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 450.58740000240505,
+   "bytes_resp": 49293,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1793813803.0161884,
+   "rep": 1041,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 452.0933998282999,
+   "bytes_resp": 49293,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1793813803.01702,
+   "rep": 1045,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 453.3207998611033,
+   "bytes_resp": 49293,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1793813803.0171816,
+   "rep": 1044,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 456.6339000593871,
+   "bytes_resp": 49293,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1793813803.0160098,
+   "rep": 1042,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 460.5557001195848,
+   "bytes_resp": 49293,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1793813803.0154648,
+   "rep": 1048,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 510.9063000418246,
+   "bytes_resp": 49294,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1793813803.016381,
+   "rep": 1047,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 1343.0252999532968,
+   "bytes_resp": 49293,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1793813803.0167012,
+   "rep": 1046,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 1345.776699949056,
+   "bytes_resp": 49293,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1793813839.4064443,
+   "rep": 1044,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 443.77649994567037,
+   "bytes_resp": 49293,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1793813839.398377,
+   "rep": 1042,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 455.82769997417927,
+   "bytes_resp": 49293,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1793813839.3979745,
+   "rep": 1041,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 465.43630002997816,
+   "bytes_resp": 49293,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1793813839.4011934,
+   "rep": 1043,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 464.04629992321134,
+   "bytes_resp": 49293,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1793813839.3994443,
+   "rep": 1047,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 467.45229978114367,
+   "bytes_resp": 49293,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1793813839.3965187,
+   "rep": 1048,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 481.2972000800073,
+   "bytes_resp": 49294,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1793813839.396687,
+   "rep": 1040,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 536.2965001258999,
+   "bytes_resp": 49293,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1793813839.3988454,
+   "rep": 1046,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 536.9308998342603,
+   "bytes_resp": 49293,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1793813839.397259,
+   "rep": 1039,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 1327.1522999275476,
+   "bytes_resp": 49293,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1793813839.39957,
+   "rep": 1045,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 1330.5680002085865,
+   "bytes_resp": 49293,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1793813875.7379632,
+   "rep": 1040,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 461.7286999709904,
+   "bytes_resp": 49293,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1793813875.7381163,
+   "rep": 1043,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 463.2943000178784,
+   "bytes_resp": 49293,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1793813875.7369916,
+   "rep": 1039,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 473.9552999380976,
+   "bytes_resp": 49293,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1793813875.7373526,
+   "rep": 1045,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 475.6165000144392,
+   "bytes_resp": 49293,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1793813875.738273,
+   "rep": 1042,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 477.1900000050664,
+   "bytes_resp": 49293,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1793813875.737501,
+   "rep": 1047,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 480.0080000422895,
+   "bytes_resp": 49293,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1793813875.7378094,
+   "rep": 1044,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 481.4791998360306,
+   "bytes_resp": 49293,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1793813875.7366729,
+   "rep": 1048,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 484.8325001075864,
+   "bytes_resp": 49294,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1793813875.737179,
+   "rep": 1041,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 1332.8857000451535,
+   "bytes_resp": 49293,
+   "bytes_env": 0,
+   "error": null
+  },
+  {
+   "t": 1793813875.737655,
+   "rep": 1046,
+   "endpoint": "/reproductores/sync",
+   "estado": 200,
+   "ms": 1334.1217001434416,
+   "bytes_resp": 49293,
+   "bytes_env": 0,
+   "error": null
+  }
+ ]
+}

@@ -1,63 +1,36 @@
-{{ form_start(form, {'attr': {'data-spui-ajax': '1', 'novalidate': 'novalidate'}}) }}
+{% import '@SPUI/_macros/form.html.twig' as f %}
+{{ form_start(form, {'attr': {'data-spui-ajax': '1', 'novalidate': 'novalidate', 'class': 'spui-form'}}) }}
 
 {# Errores del form raíz (típicamente el CSRF vencido). Sin esto el modal se
    recargaba sin ningún mensaje y el guardado parecía no responder. #}
 {% for e in form.vars.errors %}
-    <div class="alert alert-danger mb-3">{{ e.message }}</div>
+    <div class="alert alert-danger mb-0">{{ e.message }}</div>
 {% endfor %}
 
-<div class="row g-2 mb-3">
-    <div class="col-12 col-sm">
-        {{ form_label(form.nombre) }}
-        {{ form_widget(form.nombre) }}
-        {% for e in form.nombre.vars.errors %}
-            <p class="spui-campo-error">{{ e.message }}</p>
-        {% endfor %}
+<section class="spui-ver-seccion" aria-labelledby="spui-form-datos">
+    <h5 class="spui-ver-titulo" id="spui-form-datos">Datos</h5>
+    {# Una pantalla inactiva muestra la pantalla de espera (SyncController), no su programación ni su respaldo. #}
+    <div class="spui-ver-bloque spui-form-fila spui-form-fila-3">
+        <div>{{ f.campo(form.nombre) }}</div>
+        <div>{{ f.campo(form.ubicacion) }}</div>
+        <div>{{ f.estado(form.activa, 'Activa', 'Inactiva') }}</div>
     </div>
-    <div class="col-12 col-sm">
-        {{ form_label(form.ubicacion) }}
-        {{ form_widget(form.ubicacion) }}
-        {% for e in form.ubicacion.vars.errors %}
-            <p class="spui-campo-error">{{ e.message }}</p>
-        {% endfor %}
-    </div>
-    <div class="col-12 col-sm">
-        {{ form_label(form.reproductor) }}
-        {{ form_widget(form.reproductor) }}
-        {% for e in form.reproductor.vars.errors %}
-            <p class="spui-campo-error">{{ e.message }}</p>
-        {% endfor %}
-        <small class="text-muted d-block mt-1">Raspberry Pi que controla esta pantalla. Opcional.</small>
-    </div>
-</div>
+</section>
 
-<div class="row g-2 mb-3 align-items-start">
-    <div class="col">
-        {{ form_label(form.playlistFallback) }}
-        {{ form_widget(form.playlistFallback) }}
-        {% for e in form.playlistFallback.vars.errors %}
-            <p class="spui-campo-error">{{ e.message }}</p>
-        {% endfor %}
-    </div>
-    {# Estado con el switch estándar del CMS. Una pantalla inactiva muestra la
-       pantalla de espera (SyncController) — no su programación ni su respaldo. #}
-    {% set swEstadoId = form.activa.vars.id %}
-    <div class="col-12 col-sm-auto d-flex flex-column align-items-center" style="min-width:110px">
-        <label class="unraf-form-label mb-2 text-center" for="{{ swEstadoId }}">Estado</label>
-        <div class="d-flex align-items-center gap-2">
-            <div class="form-switch m-0">
-                {{ form_widget(form.activa, {'attr': {'class': 'form-check-input spui-switch-input', 'role': 'switch', 'data-spui-switch': '1', 'data-switch-on': 'Activa', 'data-switch-off': 'Inactiva'}}) }}
-            </div>
-            <span class="spui-switch-status {{ form.activa.vars.checked ? 'on' : 'off' }}" id="{{ swEstadoId }}_lbl">{{ form.activa.vars.checked ? 'Activa' : 'Inactiva' }}</span>
+<section class="spui-ver-seccion" aria-labelledby="spui-form-reproduccion">
+    <h5 class="spui-ver-titulo" id="spui-form-reproduccion">Reproducción</h5>
+    <div class="spui-ver-bloque spui-form-fila spui-form-fila-2">
+        <div>
+            {{ f.campo(form.reproductor) }}
+            <small class="spui-form-ayuda">La Raspberry Pi que controla esta pantalla.</small>
+        </div>
+        <div>
+            {{ f.campo(form.playlistFallback) }}
+            <small class="spui-form-ayuda">Se muestra cuando no hay ninguna regla de programación vigente.</small>
         </div>
     </div>
-</div>
+</section>
 
-<div class="d-flex justify-content-end gap-2 pt-3 border-top">
-    <button type="button" class="unraf-btn spui-btn-back" data-spui-close>Cancelar</button>
-    <button type="submit" class="unraf-btn {{ pantalla is defined and pantalla.id ? 'spui-btn-editar' : 'spui-btn-crear' }}">
-        Guardar
-    </button>
-</div>
+{{ f.pie(pantalla is defined and pantalla.id ? 'spui-btn-editar' : 'spui-btn-crear') }}
 
 {{ form_end(form) }}

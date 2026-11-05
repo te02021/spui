@@ -7,11 +7,11 @@
    ========================================================= */
 .spui-tv-escala {
     position: relative; width: 100%; aspect-ratio: 16 / 9; overflow: hidden;
-    border-radius: 8px; background: #000; box-shadow: 0 6px 20px rgba(20, 35, 55, .22);
+    border-radius: 8px; box-shadow: 0 6px 20px rgba(20, 35, 55, .22);
 }
 .spui-tv {
     --tv-azul: #446687; --tv-azul-osc: #24394f; --tv-amarillo: #FEAA20; --tv-turquesa: #1CA1A7;
-    position: absolute; top: 0; left: 0; width: 1920px; height: 1080px; transform-origin: 0 0;
+    position: absolute; top: 0; left: 0; width: 1920px; height: 1080px; transform-origin: 0 0; background: #000;
     display: flex; flex-direction: column; overflow: hidden;
     font-family: 'Museo', sans-serif; font-weight: 300; line-height: 1.2;
 }
@@ -44,7 +44,6 @@
 /* Sin plantilla: de borde a borde */
 .tv-completa { flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 64px; }
 .spui-tv--imagen .tv-completa, .spui-tv--video .tv-completa { padding: 0; background: #000; }
-.tv-agua { position: absolute; right: 40px; bottom: 36px; width: 96px; height: 96px; padding: 10px; border-radius: 50%; background: #fff; opacity: .85; }
 
 /* Imagen y video: ocupan todo su espacio, sin recortar (el sobrante toma el
    color del tema con plantilla, negro sin plantilla). */
@@ -123,6 +122,5 @@
    y, a la derecha, el edificio en el que se mira y "Ampliar". */
 .spui-vista-previa-pie { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .5rem 1rem; margin-top: .6rem; }
 .spui-vista-previa-acciones { display: flex; align-items: center; gap: .5rem; margin-left: auto; }
-.spui-vista-previa-acciones .unraf-form-select { width: auto; max-width: 14rem; }
 .spui-vista-previa-acciones .unraf-btn { white-space: nowrap; }
 .spui-tv-leyenda { margin: 0; font-size: .8rem; color: #6c7a89; flex: 1 1 16rem; }

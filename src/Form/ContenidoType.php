@@ -30,7 +30,7 @@ class ContenidoType extends AbstractType
                 'label'        => 'Tipo',
                 'label_attr'   => ['class' => 'unraf-form-label'],
                 'class'        => TipoContenido::class,
-                'choice_label' => fn(TipoContenido $t) => ucfirst($t->value),
+                'choice_label' => fn(TipoContenido $t) => $t->etiqueta(),
                 'placeholder'  => '— seleccionar —',
                 // El gancho para el JS va como data-*, no como 'id': Symfony ya
                 // emite su propio id="contenido_tipo" y un id en 'attr' se

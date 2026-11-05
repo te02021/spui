@@ -304,6 +304,9 @@
     // campo): si se cambia de ventana, o se hace clic en Cancelar / cerrar, no
     // se reprocha nada.
     function alSalir(e) {
+        // Lista propia (selector.js): el foco pasa de largo por el <select> invisible.
+        // Eso no es "salir del campo": se revisa al elegir y al guardar.
+        if (e.target instanceof Element && e.target.classList.contains('spui-select-nativo')) return;
         var t = e.target;
         if (!(t instanceof Element) || !t.matches('input, select, textarea')) return;
         var destino = e.relatedTarget;

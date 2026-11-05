@@ -64,15 +64,13 @@ class MediaController extends AbstractController
             return $response;
         }
 
-        $contenido = $this->media->leer($filename);
-        if ($contenido === null) {
+        // De a partes: un video puede pesar más que el memory_limit de PHP. La
+        // Pi recibe el hash en el sync y verifica lo que bajó, así que no hace
+        // falta calcularlo acá (04/11/2026).
+        $response = $this->media->respuestaEnPartes($filename);
+        if ($response === null) {
             throw new NotFoundHttpException('Archivo no encontrado.');
         }
-
-        $response = new Response($contenido, Response::HTTP_OK);
-        $response->headers->set('Content-Type', $this->media->tipoMimePorExtension($filename));
-        $response->setEtag(hash('sha256', $contenido));
-        $response->setPublic();
 
         return $response;
     }

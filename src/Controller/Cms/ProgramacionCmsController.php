@@ -79,7 +79,7 @@ class ProgramacionCmsController extends AbstractController
 
         if ($request->isXmlHttpRequest()) {
             return $this->json([
-                'title' => 'Regla de programación',
+                'title' => $prog->getPlaylist()?->getNombre() ?? 'Regla de programación',
                 'html'  => $this->renderView('@SPUI/programacion/_view.html.twig', [
                     'prog'             => $prog,
                     'creado_por_email' => $this->usuarios->email($prog->getCreadoPorId()),

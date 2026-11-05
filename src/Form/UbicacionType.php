@@ -26,18 +26,18 @@ class UbicacionType extends AbstractType
                 'class'        => Edificio::class,
                 'em'           => 'SPUI',
                 'choice_label' => fn(Edificio $e) => $e->getNombre(),
-                'placeholder'  => '— seleccionar edificio —',
+                'placeholder'  => '— elegí un edificio —',
                 'attr'         => ['class' => 'unraf-form-select'],
                 'constraints'  => [new NotBlank(message: 'El edificio es requerido.')],
             ])
             ->add('sector', TextType::class, [
-                'label'      => 'Sector / Espacio (opcional)',
+                'label'      => 'Sector o espacio (opcional)',
                 'label_attr' => ['class' => 'unraf-form-label'],
                 'required'   => false,
                 'attr'       => ['class' => 'unraf-form-control', 'maxlength' => 150, 'placeholder' => 'Ej: Hall de Entrada, Pasillo Planta Alta'],
             ])
             ->add('descripcion', TextareaType::class, [
-                'label'      => 'Descripción',
+                'label'      => 'Descripción (opcional)',
                 'label_attr' => ['class' => 'unraf-form-label'],
                 'required'   => false,
                 'attr'       => ['class' => 'unraf-form-control', 'rows' => 3],

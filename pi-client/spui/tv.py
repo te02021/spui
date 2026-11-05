@@ -6,8 +6,7 @@ Las medidas, colores y reglas salen de assets/spui/css/pantalla-tv.css y de
 SPUI\\Service\\PantallaTvService: si cambia una, hay que cambiar la otra.
 
   - Plantilla institucional (franja con el logo y la fecha, filete de colores
-    y pie con el lugar) o sin plantilla (de borde a borde, con marca de agua
-    opcional).
+    y pie con el lugar) o sin plantilla (de borde a borde).
   - Tema claro u oscuro; el automático es claro de 07:00 a 19:00 (el horario
     lo manda el CMS en cada sync).
   - Cronograma: lo de hoy que todavía no terminó, en páginas armadas por
@@ -99,9 +98,6 @@ def filas_del_dia(cronograma: dict, ahora: datetime) -> tuple[list[dict], Option
     fecha): elegir el día acá hace que la pantalla pase sola de un día al
     otro y que sin conexión siga mostrando lo que corresponde.
     """
-    if cronograma.get('vacio'):
-        return [], cronograma['vacio']
-
     hoy = ahora.strftime('%Y-%m-%d')
     desde, hasta = cronograma.get('vigencia_desde'), cronograma.get('vigencia_hasta')
     if (desde and hoy < desde) or (hasta and hoy > hasta):
@@ -273,8 +269,6 @@ class Dibujante:
         elif cr is not None:
             lam = self._cronograma(lienzo, caja, cr, contenido.get('titulo') or '', tema, ahora, institucional)
 
-        if not institucional and pres.get('marca_agua'):
-            self._marca_agua(lam.fondo)
         if con_hora:
             self._hora(lam, ahora, institucional)
         lam.fondo = lam.fondo.convert('RGB')
@@ -549,21 +543,6 @@ class Dibujante:
         self._escribir(lienzo, 64 + self._ancho('SPUI', fb), 1016, 64, ' · Sistema de Pantallas UNRaf', fl, texto, .8)
         if lugar:
             self._escribir(lienzo, ANCHO - 64 - self._ancho(lugar, fl), 1016, 64, lugar, fl, texto, .8)
-
-    def _marca_agua(self, lienzo) -> None:
-        """El molino abajo a la derecha, en un círculo blanco (opacidad .85)."""
-        capa = Image.new('RGBA', (96, 96), (0, 0, 0, 0))
-        ImageDraw.Draw(capa).ellipse((0, 0, 95, 95), fill=BLANCO + (255,))
-        molino = self._imagen_asset('unraf-molino.png')
-        if molino is not None:
-            capa.alpha_composite(molino.resize((76, 76), Image.LANCZOS), (10, 10))
-        # Recortado al círculo, como el border-radius del CSS: las esquinas
-        # del molino (cuadrado) se salían y sobre fondo oscuro se veían.
-        circulo = Image.new('L', (96, 96), 0)
-        ImageDraw.Draw(circulo).ellipse((0, 0, 95, 95), fill=255)
-        alfa = Image.composite(capa.getchannel('A'), circulo, circulo)
-        capa.putalpha(alfa.point(lambda a: round(a * .85)))
-        lienzo.alpha_composite(capa, (ANCHO - 40 - 96, ALTO - 36 - 96))
 
     # ── Texto, imagen y QR ────────────────────────────────────────────────
 

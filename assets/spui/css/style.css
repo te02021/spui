@@ -1279,7 +1279,9 @@ a.spui-paginacion-btn:hover { background: #eef4fa; border-color: #9fb6cc; color:
 }
 
 .spui-abm-modal-body {
-    padding: 1.5rem;
+    --spui-modal-pad-x: 1.5rem;
+    --spui-modal-pad-y: 1.5rem;
+    padding: var(--spui-modal-pad-y) var(--spui-modal-pad-x);
     overflow-y: auto;
     flex: 1 1 auto;
 }
@@ -2865,8 +2867,12 @@ html.spui-sidebar-plegado .spui-sidebar-plegar img { transform: rotate(180deg); 
 .spui-reloj-ahora:hover { background: #eef4fa; }
 .spui-reloj-acciones { display: flex; gap: .5rem; }
 .spui-reloj-acciones .unraf-btn { flex: 1 1 0; justify-content: center; }
-/* Destino del QR: uno o dos enlaces, uno por renglón, sin cortarlos. */
-.spui-qr-destinos { resize: vertical; min-height: 4.2rem; white-space: pre; overflow-x: auto; font-size: .92rem; }
+/* Enlaces de destino del QR: un campo por enlace, con sus botones al lado. */
+.spui-qr-destino + .spui-qr-destino { margin-top: .5rem; }
+.spui-qr-destino-fila { display: flex; align-items: stretch; gap: .5rem; }
+.spui-qr-destino-fila > .unraf-form-control { flex: 1 1 auto; min-width: 0; }
+.spui-qr-destino-fila > .unraf-btn { flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; width: 2.75rem; height: auto; min-height: 0; padding: 0; }
+.spui-qr-destino-fila > .unraf-btn[hidden] { display: none; }
 .spui-importar-desde-alta {
     display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .5rem 1rem;
     margin-top: .75rem; padding-top: .75rem; border-top: 1px solid #d5e5f3;
@@ -2928,15 +2934,6 @@ html.spui-sidebar-plegado .spui-sidebar-plegar img { transform: rotate(180deg); 
 }
 .spui-solo-icono:not(.spui-btn-submitting):hover::before, .spui-solo-icono:not(.spui-btn-submitting):focus-visible::before { opacity: 1; }
 
-/* Vistas con una vista previa (Ver de una alerta o de un contenido): con el
-   modal ancho, la previa a la izquierda y los datos a la derecha, en vez de
-   una previa del ancho entero que hacía el modal más alto. Apiladas abajo
-   de 992 px. */
-.spui-view-dos { display: grid; gap: 0 1.75rem; }
-@media (min-width: 992px) {
-    .spui-view-dos { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); align-items: start; }
-    .spui-view-dos > .spui-vista-previa-ver { margin-bottom: 0; }
-}
 /* Pantallas de una alerta: en columnas, ahora que hay ancho. */
 .spui-alerta-destinos { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
 
@@ -2946,7 +2943,7 @@ html.spui-sidebar-plegado .spui-sidebar-plegar img { transform: rotate(180deg); 
     .spui-abm-overlay { padding: .75rem; }
     .spui-abm-modal { max-height: calc(100dvh - 1.5rem); }
     .spui-abm-modal-header { padding: .8rem 1.4rem .7rem; }
-    .spui-abm-modal-body { padding: 1.15rem 1.4rem; }
+    .spui-abm-modal-body { --spui-modal-pad-x: 1.4rem; --spui-modal-pad-y: 1.15rem; }
 }
 
 /* Tablet y celular: botones un escalón más chicos. */
@@ -2967,7 +2964,7 @@ html.spui-sidebar-plegado .spui-sidebar-plegar img { transform: rotate(180deg); 
     .spui-abm-modal { max-height: calc(100dvh - 1rem); border-radius: .75rem; }
     .spui-abm-modal-header { padding: .8rem 1rem .65rem; }
     .spui-abm-modal-title { font-size: .98rem; }
-    .spui-abm-modal-body { padding: 1rem; }
+    .spui-abm-modal-body { --spui-modal-pad-x: 1rem; --spui-modal-pad-y: 1rem; }
 
     .unraf-btn-sm,
     .spui-acciones .unraf-btn,
@@ -2984,4 +2981,247 @@ html.spui-sidebar-plegado .spui-sidebar-plegar img { transform: rotate(180deg); 
        pantalla sin partirse en dos renglones), del mismo ancho entre sí pero
        sólo el que pide la más larga, no toda la pantalla (03/11/2026). */
     .spui-cabecera-acciones { display: inline-flex; width: auto; flex-direction: column; align-items: stretch; }
+}
+
+/* ---- Formularios (05/11/2026) ----
+   Mismas secciones y bloques que los modales Ver (.spui-ver-titulo,
+   .spui-ver-bloque), con los campos en columnas parejas. Cancelar y Guardar quedan
+   siempre a la vista, aunque el formulario tenga scroll. */
+.spui-form { --spui-campo-alto: 2.8125rem; display: flex; flex-direction: column; gap: 1.25rem; }
+.spui-form .unraf-form-control, .spui-form .unraf-form-select { background-color: #fff; }
+/* La misma distancia entre etiqueta y campo, venga de un FormType o esté escrita a mano. */
+.spui-form .unraf-form-label { display: block; margin-bottom: .5rem; }
+.spui-form-fila { display: grid; gap: .85rem 1.25rem; align-items: start; }
+.spui-form-fila > div { min-width: 0; }
+.spui-form-fila-principal { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr); }
+.spui-form-fila-dato { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); }
+.spui-form-fila-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.spui-form-fila-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.spui-form-fila-docente { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 2fr); }
+.spui-form-fila-item { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); }
+.spui-form-fila-sync { grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); align-items: center; }
+.spui-form-fila > [hidden] { display: none; }
+.spui-form-grupo { display: flex; flex-direction: column; gap: 1.25rem; }
+.spui-form-grupo[hidden] { display: none; }
+.spui-form-explica { margin: 0; font-size: .85rem; line-height: 1.5; color: #5f6b76; }
+/* Un texto y su botón en una fila, a lo ancho del bloque. */
+.spui-form-accion { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .6rem 1.25rem; }
+.spui-form-accion[hidden] { display: none; }
+.spui-form-accion .spui-ver-texto { flex: 1 1 16rem; }
+/* Elegir un archivo. */
+.spui-archivo-zona {
+    position: relative; display: flex; flex-direction: column; align-items: center; gap: .15rem; margin: 0; padding: 1.25rem 1rem; text-align: center;
+    background: #fff; border: 2px dashed #b8c7d6; border-radius: .6rem; cursor: pointer; transition: border-color .15s ease, background-color .15s ease;
+}
+.spui-archivo-zona:hover, .spui-archivo-zona:focus-within { background: #eef4fa; border-color: var(--unraf-azul, #446687); }
+.spui-archivo-zona:has(input.is-invalid) { border-color: var(--unraf-error, #FF223D); }
+.spui-archivo-zona input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+.spui-archivo-zona img { width: 1.6rem; height: 1.6rem; opacity: .6; }
+.spui-archivo-zona strong { font-size: .92rem; color: #2b3a4a; overflow-wrap: anywhere; }
+.spui-archivo-zona small { font-size: .78rem; color: #5f6b76; }
+.spui-form-archivo-btn { display: inline-flex; align-items: center; gap: .4rem; }
+.spui-form .spui-archivo-row .spui-form-archivo-btn { margin-left: auto; }
+.spui-form .spui-sonido-row { margin-top: .5rem; }
+/* A qué pantallas llega una alerta: el selector y, debajo, lo que corresponde. */
+.spui-form-alcance-apilado { display: flex; flex-direction: column; align-items: stretch; gap: .75rem; }
+.spui-form-alcance-apilado > .spui-opciones { align-self: flex-start; background: #fff; }
+.spui-form-alcance-apilado > [hidden] { display: none; }
+.spui-form-alcance-apilado .spui-alerta-destinos { background: #fff; }
+.spui-form-fila-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.spui-form-ayuda { display: block; margin: .25rem 0 0; font-size: .78rem; color: #5f6b76; }
+/* Hora, fecha y números con el valor al centro; el ícono del calendario, al borde. */
+.spui-form input[type="number"] { text-align: center; }
+.spui-form input[type="time"], .spui-form input[type="date"], .spui-form input[type="datetime-local"] { position: relative; text-align: center; }
+.spui-form input::-webkit-date-and-time-value { text-align: center; }
+.spui-form input::-webkit-datetime-edit { display: flex; justify-content: center; width: 100%; }
+.spui-form input::-webkit-calendar-picker-indicator { position: absolute; right: .75rem; }
+/* Estado: dos opciones del alto de los demás campos, en vez de un interruptor. */
+.spui-estado {
+    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .2rem; margin: 0; padding: .2rem; min-height: var(--spui-campo-alto);
+    background: #fff; border: 1px solid #cfd8e1; border-radius: .375rem; cursor: pointer; user-select: none;
+}
+.spui-estado span {
+    display: flex; align-items: center; justify-content: center; min-width: 0; padding: 0 .25rem;
+    font-size: .875rem; font-weight: 600; color: #5f6b76; border-radius: .25rem; transition: background-color .15s ease, color .15s ease;
+}
+.spui-opcion-input:checked + .spui-estado .spui-estado-si { color: #fff; background: var(--unraf-success, #4A9930); }
+.spui-opcion-input:not(:checked) + .spui-estado .spui-estado-no { color: #fff; background: #6c7a89; }
+.spui-opcion-input:focus-visible + .spui-estado { outline: 3px solid rgba(51, 135, 239, .45); outline-offset: 1px; }
+/* Listas propias (core/selector.js): el <select> real queda invisible debajo. */
+.spui-select { position: relative; }
+.spui-select-nativo { position: absolute; bottom: 0; left: 0; width: 100%; height: 1px; opacity: 0; pointer-events: none; }
+.spui-select-btn { display: flex; align-items: center; gap: .5rem; width: 100%; text-align: left; cursor: pointer; }
+.spui-select-texto { overflow: hidden; color: #2b3a4a; white-space: nowrap; text-overflow: ellipsis; }
+.spui-select-texto.is-vacio { color: #7b8794; }
+.spui-select-detalle { flex: 0 1 auto; overflow: hidden; font-size: .8rem; color: #5f6b76; white-space: nowrap; text-overflow: ellipsis; }
+.spui-select-btn[aria-expanded="true"], .spui-select-btn:focus-visible { border-color: var(--unraf-azul, #446687); outline: 0; box-shadow: 0 0 0 3px rgba(68, 102, 135, .18); }
+.spui-select:has(> select.is-invalid) .spui-select-btn { border-color: var(--unraf-error, #FF223D); }
+.spui-select-panel {
+    position: fixed; z-index: 10040; display: flex; flex-direction: column; padding: .3rem; overflow: hidden;
+    background: #fff; border: 1px solid #d5dbe1; border-radius: .6rem; box-shadow: 0 12px 32px rgba(20, 35, 55, .22); animation: spui-select-abrir .12s ease-out;
+}
+@keyframes spui-select-abrir { from { opacity: 0; transform: translateY(-4px); } }
+@media (prefers-reduced-motion: reduce) { .spui-select-panel { animation: none; } }
+.spui-select-buscar { flex: 0 0 auto; width: 100%; margin-bottom: .3rem; padding: .45rem .6rem; font-size: .875rem; border: 1px solid #d5dbe1; border-radius: .4rem; outline: 0; }
+.spui-select-buscar:focus { border-color: var(--unraf-azul, #446687); }
+.spui-select-lista { flex: 1 1 auto; max-height: 15rem; margin: 0; padding: 0; overflow-y: auto; list-style: none; }
+.spui-select-lista li { display: flex; align-items: center; justify-content: space-between; gap: .6rem; padding: .5rem .65rem; font-size: .9rem; color: #2b3a4a; border-radius: .4rem; cursor: pointer; }
+.spui-select-lista li[hidden] { display: none; }
+.spui-select-lista li.is-activo { background: #eef2f6; }
+.spui-select-lista li[aria-selected="true"] { font-weight: 600; color: var(--unraf-azul, #446687); }
+.spui-select-lista li img { flex-shrink: 0; width: 1rem; height: 1rem; }
+.spui-select-op-texto { min-width: 0; overflow-wrap: anywhere; }
+.spui-select-op-texto.is-vacio { color: #5f6b76; }
+.spui-select-op-texto small { display: block; font-size: .76rem; font-weight: 400; color: #5f6b76; }
+.spui-select-vacio { margin: 0; padding: .6rem .65rem; font-size: .85rem; color: #5f6b76; }
+.spui-select-vacio[hidden] { display: none; }
+.spui-form-separado { margin-top: .85rem; padding-top: .85rem; border-top: 1px solid #e9ecef; }
+.spui-form-pie {
+    position: sticky; bottom: calc(-1 * var(--spui-modal-pad-y)); z-index: 5; display: flex; justify-content: flex-end; gap: .5rem;
+    margin: 0 calc(-1 * var(--spui-modal-pad-x)) calc(-1 * var(--spui-modal-pad-y));
+    padding: .8rem var(--spui-modal-pad-x); background: #fff; border-top: 1px solid #e9ecef;
+}
+/* Dónde: el selector a la izquierda y la lista que corresponde a la derecha. */
+.spui-form-alcance { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: .75rem 1.5rem; align-items: start; }
+.spui-form-alcance > [hidden] { display: none; }
+.spui-form-alcance .spui-opciones { background: #fff; }
+.spui-form .spui-form-fijo { display: flex; align-items: center; color: #5f6b76; background: #eef1f4; }
+/* Días: los siete de lado a lado; prendidos en azul, como en el modal Ver. */
+.spui-form-dias { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: .35rem; }
+.spui-form-dias > div { position: relative; min-width: 0; }
+.spui-form-dia {
+    display: block; margin: 0; padding: .45rem 0; font-size: .85rem; font-weight: 600; color: #5f6b76; text-align: center;
+    background: #e9ecef; border-radius: .35rem; cursor: pointer; user-select: none; transition: background-color .15s ease, color .15s ease;
+}
+.spui-form-dia:hover { background: #dde3e9; }
+.spui-opcion-input:checked + .spui-form-dia { color: #fff; background: var(--unraf-azul, #446687); }
+.spui-opcion-input:focus-visible + .spui-form-dia { outline: 3px solid rgba(51, 135, 239, .45); outline-offset: 1px; }
+.spui-form-dias.is-invalid .spui-form-dia { box-shadow: 0 0 0 1px var(--unraf-error, #FF223D); }
+@media (max-width: 767.98px) {
+    .spui-form-alcance { grid-template-columns: minmax(0, 1fr); }
+    .spui-form-alcance .spui-opciones { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .spui-form-alcance .spui-opcion { text-align: center; border-left: 0; }
+}
+@media (max-width: 575.98px) {
+    .spui-form-fila-principal { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .spui-form-fila-principal > :first-child { grid-column: 1 / -1; }
+    .spui-form-fila-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    /* En media fila, la fecha centrada se pegaba al ícono del calendario. */
+    .spui-form-fila-4 input[type="date"] { padding-inline: .6rem; }
+    .spui-form-fila-4 input::-webkit-datetime-edit { justify-content: flex-start; }
+    .spui-form-fila-4 input::-webkit-calendar-picker-indicator { right: .5rem; }
+    .spui-form-fila-dato, .spui-form-fila-2, .spui-form-fila-3, .spui-form-fila-sync, .spui-form-fila-item { grid-template-columns: minmax(0, 1fr); }
+    .spui-form-fila-docente { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    /* Fecha con hora: en media fila no entra. */
+    .spui-form-fila-principal:has(input[type="datetime-local"]) { grid-template-columns: minmax(0, 1fr); }
+    .spui-form .spui-opcion:last-of-type:nth-of-type(odd) { grid-column: 1 / -1; }
+    .spui-form-fila-docente > :last-child { grid-column: 1 / -1; }
+    /* En grilla, una línea entre opción y opción: el espacio de 1 px deja ver el fondo del grupo. */
+    .spui-form .spui-opciones { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; width: 100%; background: #cfd8e1; }
+    .spui-form .spui-opcion { text-align: center; border-left: 0; background: #fff; }
+    .spui-form-alcance-apilado > .spui-opciones { align-self: stretch; }
+    .spui-form-dia { padding: .55rem 0; font-size: .8rem; }
+    .spui-form-pie .unraf-btn { flex: 1 1 0; }
+}
+
+/* ---- Modales Ver (05/11/2026) ----
+   Regla (pedido de Mateo): cada bloque va a todo el ancho, sin un marco por dato,
+   y lo que tiene adentro lo llena, sin huecos. */
+.spui-ver { display: flex; flex-direction: column; gap: 1.25rem; }
+.spui-ver-seccion { min-width: 0; }
+.spui-ver-cabecera { display: flex; align-items: center; justify-content: space-between; gap: .75rem; margin-bottom: .55rem; }
+.spui-ver-cabecera .spui-ver-titulo { margin-bottom: 0; }
+.spui-ver-titulo { margin: 0 0 .55rem; font-size: .92rem; font-weight: 700; color: var(--unraf-azul, #446687); }
+.spui-ver-bloque { padding: .9rem 1.1rem; background: #f8f9fa; border: 1px solid #e9ecef; border-radius: .6rem; }
+
+/* Las columnas salen de cuántos datos hay, para que cada fila llegue al borde:
+   8 van en 4×2, 9 en 3×3, 12 en 4×3. Si no da justo, los últimos toman más lugar.
+   En celular son dos columnas (más abajo). */
+.spui-ver-datos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem 1rem; margin: 0; }
+@media (min-width: 576px) {
+    .spui-ver-datos { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .85rem 1.5rem; }
+    /* De a cuatro, lo que sobra al final se estira hasta el borde. */
+    .spui-ver-datos > :last-child:nth-child(4n + 1) { grid-column: 1 / -1; }
+    .spui-ver-datos > :nth-last-child(2):nth-child(4n + 1),
+    .spui-ver-datos > :last-child:nth-child(4n + 2) { grid-column: span 2; }
+    .spui-ver-datos > :last-child:nth-child(4n + 3) { grid-column: span 2; }
+    /* Con estas cantidades, otras columnas cierran justo. */
+    .spui-ver-datos:has(> :last-child:nth-child(1)) { grid-template-columns: minmax(0, 1fr); }
+    .spui-ver-datos:has(> :last-child:nth-child(2)) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .spui-ver-datos:has(> :last-child:nth-child(3)),
+    .spui-ver-datos:has(> :last-child:nth-child(6)),
+    .spui-ver-datos:has(> :last-child:nth-child(9)) { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .spui-ver-datos:has(> :last-child:nth-child(5)) { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+    .spui-ver-datos:has(> :last-child:nth-child(1)) > *,
+    .spui-ver-datos:has(> :last-child:nth-child(2)) > *,
+    .spui-ver-datos:has(> :last-child:nth-child(3)) > *,
+    .spui-ver-datos:has(> :last-child:nth-child(6)) > *,
+    .spui-ver-datos:has(> :last-child:nth-child(9)) > * { grid-column: auto; }
+    /* 5 datos en 6 columnas: tres de a dos y dos de a tres. */
+    .spui-ver-datos:has(> :last-child:nth-child(5)) > * { grid-column: span 2; }
+    .spui-ver-datos:has(> :last-child:nth-child(5)) > :nth-last-child(-n + 2) { grid-column: span 3; }
+}
+.spui-ver-datos > div { min-width: 0; }
+.spui-ver-datos dt { margin-bottom: .1rem; font-size: .75rem; font-weight: 400; color: #5f6b76; }
+.spui-ver-datos dd { margin: 0; font-size: .9rem; font-weight: 600; color: #2b3a4a; overflow-wrap: anywhere; }
+.spui-ver-datos dd small { display: block; font-size: .75rem; font-weight: 400; color: #5f6b76; }
+
+/* Enlaces del QR: dos mitades; uno solo, todo el ancho. Los botones, al borde. */
+.spui-ver-enlaces { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .6rem 1.5rem; }
+.spui-ver-enlaces:has(> :only-child) { grid-template-columns: minmax(0, 1fr); }
+.spui-ver-enlace { display: flex; align-items: center; gap: .6rem; min-width: 0; }
+.spui-ver-enlace-icono { flex-shrink: 0; width: 1.35rem; height: 1.35rem; opacity: .75; }
+.spui-ver-enlace-texto { display: flex; flex: 1 1 auto; flex-direction: column; min-width: 0; }
+.spui-ver-enlace-etiqueta { font-size: .9rem; font-weight: 600; color: #2b3a4a; }
+.spui-ver-enlace-url { overflow: hidden; font-size: .75rem; color: #5f6b76; white-space: nowrap; text-overflow: ellipsis; }
+.spui-ver-icono-btn {
+    display: inline-flex; flex-shrink: 0; align-items: center; justify-content: center; width: 2.125rem; height: 2.125rem; padding: 0;
+    background: #fff; border: 1px solid #d5dbe1; border-radius: .4rem; cursor: pointer; transition: background-color .15s ease, border-color .15s ease;
+}
+.spui-ver-icono-btn:hover, .spui-ver-icono-btn:focus-visible { background: #eef2f6; border-color: var(--unraf-azul, #446687); }
+.spui-ver-icono-btn img { width: 1.05rem; height: 1.05rem; }
+.spui-ver-icono-btn.is-copiado { background: #e8f4e4; border-color: var(--unraf-success, #4A9930); }
+.spui-ver-nota { margin: .6rem 0 0; font-size: .8rem; color: #5f6b76; }
+.spui-ver-bloque > .spui-ver-datos { margin-top: .85rem; padding-top: .85rem; border-top: 1px solid #e9ecef; }
+.spui-ver-bloque > .spui-ver-datos-solos { margin-top: 0; padding-top: 0; border-top: 0; }
+/* Días de una regla: los siete de lado a lado. */
+.spui-ver-dias { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: .35rem; margin: .85rem 0 0; padding: .85rem 0 0; list-style: none; border-top: 1px solid #e9ecef; }
+.spui-ver-dias li { padding: .3rem 0; font-size: .8rem; font-weight: 600; color: #5f6b76; text-align: center; background: #e9ecef; border-radius: .35rem; }
+.spui-ver-dias li.is-activo { color: #fff; background: var(--unraf-azul, #446687); }
+/* Sonido de una alerta: el nombre a la izquierda y el reproductor llena el resto. */
+.spui-ver-sonido { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem 1rem; }
+.spui-ver-sonido span { font-size: .9rem; font-weight: 600; color: #2b3a4a; overflow-wrap: anywhere; }
+.spui-ver-sonido audio { flex: 1 1 16rem; min-width: 0; height: 2.25rem; }
+.spui-ver-texto { margin: 0; font-size: .9rem; line-height: 1.55; color: #2b3a4a; white-space: pre-line; overflow-wrap: anywhere; }
+
+/* Dónde se usa: una fila de lado a lado por cada uso. */
+.spui-ver-usos { display: flex; flex-direction: column; gap: .5rem; max-height: 9rem; margin: 0; padding: 0; overflow-y: auto; list-style: none; }
+.spui-ver-usos li { display: flex; align-items: baseline; gap: .6rem; min-width: 0; font-size: .9rem; font-weight: 600; color: #2b3a4a; }
+.spui-ver-usos li span { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
+.spui-ver-usos small { flex-shrink: 0; font-size: .75rem; font-weight: 400; color: #5f6b76; white-space: nowrap; }
+.spui-ver .spui-vista-previa-ver { margin-bottom: 0; }
+
+/* Vista previa, en el modal Ver y en los formularios: el título con Ampliar a
+   su altura, la explicación debajo y recién ahí el TV. */
+.spui-ver-previa { position: relative; }
+.spui-ver-previa .spui-ver-titulo { display: flex; align-items: center; min-height: 2.375rem; margin-bottom: 0; }
+.spui-ver-previa .spui-vista-previa { display: flex; flex-direction: column; }
+/* La alerta lleva un filete oscuro por fuera: que no se salga del modal. */
+.spui-ver-previa .spui-alerta-pantalla { width: calc(100% - 12px); max-width: none; margin: 6px; }
+.spui-visor-tv .spui-alerta-pantalla { width: 100%; max-width: none; margin: 0; }
+.spui-ver-previa .spui-vista-previa-pie { order: -1; margin: 0 0 .6rem; }
+.spui-ver-previa-leyenda { margin: 0 0 .6rem; }
+.spui-ver-previa .spui-vista-previa-acciones { position: absolute; top: 0; right: 0; height: 2.375rem; margin: 0; }
+.spui-ver-previa .spui-vista-previa-acciones .unraf-btn { min-height: 2.125rem; padding-top: .2rem; padding-bottom: .2rem; }
+
+/* Celular: dos columnas de datos y una de enlaces. Los datos largos (fecha con
+   hora, mail, archivo) van a todo el ancho; uno suelto al final, también. */
+@media (max-width: 575.98px) {
+    .spui-ver-bloque { padding: .75rem .85rem; }
+    .spui-ver-datos > .spui-ver-dato-largo { grid-column: 1 / -1; }
+    /* Un dato corto sin pareja (el siguiente es largo, o es el último) también. */
+    .spui-ver-datos > :nth-child(odd of :not(.spui-ver-dato-largo)):has(+ .spui-ver-dato-largo),
+    .spui-ver-datos > :nth-child(odd of :not(.spui-ver-dato-largo)):last-child { grid-column: 1 / -1; }
+    .spui-ver-enlaces { grid-template-columns: minmax(0, 1fr); }
+    .spui-ver-icono-btn { width: 2.375rem; height: 2.375rem; }
 }

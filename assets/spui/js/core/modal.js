@@ -40,7 +40,7 @@
             bloquearScroll();
             setTimeout(function () {
                 if (!bodyEl) return;
-                var el = bodyEl.querySelector('input:not([type=hidden]),select,textarea');
+                var el = bodyEl.querySelector('input:not([type=hidden]):not(.spui-opcion-input),select,textarea');
                 if (el) el.focus();
             }, 270);
         }

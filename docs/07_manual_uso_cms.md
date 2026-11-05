@@ -102,7 +102,7 @@ La Raspberry Pi. **Acá se genera la clave que necesita el reproductor.**
 
 **Al registrar uno:**
 
-1. Se ingresa el hostname (ej. `spui-pi-01`), la versión de firmware si se sabe, y cada cuántos minutos sincroniza (ver abajo).
+1. Se ingresa el nombre del equipo (ej. `spui-pi-01`), la versión del software si se sabe, y cada cuántos minutos sincroniza (ver abajo).
 2. Al guardar, el sistema genera una **API key aleatoria de 64 caracteres**.
 3. **La clave se muestra una sola vez**, en un cuadro con botón de copiar.
 4. Hay que copiarla y ponerla en la Pi **antes de cerrar ese cuadro**. No se puede recuperar después: en la base solo queda su hash SHA-256.
@@ -154,7 +154,7 @@ Además se define **título** y **duración en segundos**:
 - **Un video no pide duración:** dura lo que dura el archivo. El CMS la lee al guardarlo y la muestra al editarlo; la playlist lo muestra completo.
 - **Un cronograma tampoco:** dura lo que tardan en pasar sus páginas (ver §3.2).
 
-**Cómo se ve en pantalla** (desde noviembre 2026), en el mismo formulario de alta y de edición:
+**¿Cómo se ve en pantalla?** (desde noviembre 2026), en el mismo formulario de alta y de edición:
 
 - **Plantilla:**
   - **Institucional:** arriba una franja blanca con el logo de la UNRaf y la fecha; abajo, el nombre del sistema y el lugar. El contenido ocupa el resto.
@@ -164,7 +164,6 @@ Además se define **título** y **duración en segundos**:
 - **Tema:**
   - **Claro** u **Oscuro**.
   - **Automático** (el que viene elegido): claro de 07:00 a 19:00 y oscuro el resto del día.
-- **Marca de agua:** sólo sin plantilla. Muestra el molino de la UNRaf chico en una esquina.
 
 El modal **Ver** del contenido muestra lo elegido.
 
@@ -174,17 +173,16 @@ El modal **Ver** del contenido muestra lo elegido.
   - Se actualiza solo con cada cambio: plantilla, tema, título, texto, segundos por página.
   - Una imagen o un video recién elegido se ve antes de guardarlo.
   - Así se puede comparar cada plantilla y tema antes de decidir.
-- **Modal Ver:** la misma vista, arriba de todo.
+- **Modal Ver:** arriba, los **Detalles**; después el **Código QR**, si lo es, con **Copiar** y **Abrir** en cada enlace; **Dónde se usa**, y abajo la única vista previa, a todo el ancho. En un cronograma propio, **Ver ítems** está al lado del título **Detalles**.
 - **Cronograma:**
   - Se ve con las actividades de hoy que todavía no terminaron, y las páginas pasan deslizándose cada los segundos elegidos.
-  - Uno "del edificio de la pantalla" tiene un selector **Como en…** para elegir en qué edificio mirarlo.
-- **Debajo del TV:** una línea dice a qué hora corresponde lo que se ve y qué tema tomó el automático.
-- **Ampliar:** la abre en grande.
+- **Junto al TV:** una línea dice a qué hora corresponde lo que se ve y qué tema tomó el automático. Va arriba del TV, debajo del título, con **Ampliar** a la altura del título; igual en el formulario y en el modal **Ver**.
+- **Ampliar:** la abre en grande. Desde el modal **Ver**, si el contenido tiene archivo, abre el visor con todas las acciones.
 
-**Visor:** el ojo de un archivo (imagen, video o QR) lo abre a pantalla completa, sobre fondo oscuro.
+**Visor:** **Ampliar** en el modal **Ver**, o el ojo de un archivo en el formulario, lo abre a pantalla completa, sobre fondo oscuro.
 
-- **Pestañas:** **Archivo** (lo que se subió, con su tamaño en píxeles o la duración del video) y **En pantalla** (cómo se ve en el TV).
-- **Herramientas:** en una imagen, zoom con los botones o la rueda del mouse; tocar el porcentaje vuelve al 100%. Descargar y cerrar (también con Esc o tocando afuera).
+- **Pestañas:** **Archivo** (lo que se subió, con su tamaño en píxeles o la duración del video) y **En pantalla** (cómo se ve en el TV, sin controles ni sonido).
+- **Herramientas:** un video trae sus controles y se puede adelantar con la barra; en una imagen, zoom con los botones o la rueda del mouse, y tocar el porcentaje vuelve al 100%. Descargar y cerrar (también con Esc o tocando afuera).
 - **Fondo a cuadros:** se ven las partes transparentes de una imagen.
 
 **Estados:** sólo dos.
@@ -206,16 +204,10 @@ Hasta el 29/10/2026 había además **Borrador** y **Publicar/Despublicar**: un c
 
 Un contenido tipo cronograma es una tabla de horarios (materias, aulas, docentes). Se carga **una vez por semana**, como el Excel de horarios: cada clase lleva los días en que se dicta, y cada pantalla muestra sólo lo del día.
 
-**Qué cronograma muestra** (al crearlo o editarlo):
+**Datos de un cronograma** (al crearlo o editarlo). Cada edificio tiene su cronograma y su playlist: el contenido muestra las clases que tiene cargadas, a mano o desde el Excel, en toda pantalla donde se lo programe.
 
-- **Propio:**
-  - Tiene sus clases, cargadas a mano o desde el Excel.
-  - Opcionalmente, un **edificio** y una **vigencia** (desde / hasta, por ejemplo el cuatrimestre).
-  - El edificio hace falta para que lo encuentren los cronogramas "del edificio de la pantalla". Sin vigencia, rige siempre.
-- **Del edificio de la pantalla:**
-  - No tiene clases propias.
-  - En cada pantalla muestra el cronograma propio vigente del edificio donde está ubicada.
-  - Si una pantalla se muda de edificio (se le cambia la Ubicación), cambia de cronograma sola.
+- **Edificio (opcional):** es el título del cronograma en el TV y el lugar al pie; sin edificio, el título es el del contenido. Con él, el importador de Excel propone qué cronograma reemplaza cada hoja.
+- **Vigencia (opcional):** desde / hasta, por ejemplo el cuatrimestre. Sin vigencia, rige siempre.
 - **Segundos por página:**
   - Cada página muestra las actividades que entran y pasa a la siguiente deslizándose. Por defecto 10 segundos, de 5 a 60.
   - **No se corta ni se achica nada:** una materia larga ocupa más de un renglón y la fila crece hacia abajo; el docente va debajo del nombre completo. Por eso una página puede tener más o menos actividades que otra.
@@ -283,10 +275,11 @@ Volver a importar el mismo Excel con correcciones, eligiendo "reemplazar", deja 
 **No hay una sección aparte de códigos QR.** Un QR es un tipo de contenido más y se administra
 como cualquier otro: Contenidos → Nuevo → tipo **QR**.
 
-- **Crear:** el formulario se adapta al elegir el tipo y pide **URL destino** (a dónde llega quien
+- **Crear:** el formulario se adapta al elegir el tipo y pide el **enlace de destino** (a dónde llega quien
   escanea) y un **vencimiento opcional**. Nada más: el nombre del código es el título del contenido.
-- **QR de una app** (desde el 03/11/2026): en **URL destino** se pegan los dos enlaces, el de Google
-  Play y el del App Store, uno por renglón y en cualquier orden. El CMS reconoce solo cuál es cuál.
+- **QR de una app** (desde el 03/11/2026): el botón **+** suma un segundo campo, y en cada uno va un
+  enlace: el de Google Play y el del App Store, en cualquier orden. El CMS reconoce solo cuál es cuál.
+  El tacho quita un enlace; con uno solo no aparece, porque el enlace es obligatorio.
   - **Android** va directo a Google Play y **iPhone** al App Store, con un solo código y un solo contador.
   - **Una computadora o un iPad** (Safari en iPad se presenta como una Mac) ven una página de la UNRaf
     con los dos botones de las tiendas, en vez de una tienda elegida a ciegas.
@@ -300,8 +293,8 @@ como cualquier otro: Contenidos → Nuevo → tipo **QR**.
   un cartel. Cambiar el destino **no invalida** los QR ya impresos ni el que está en pantalla.
 - **Escaneos:** el contador se ve en el modal **Ver** del contenido, junto con su destino y su
   vencimiento, y **se actualiza solo, en el momento del escaneo**: si tenés el modal abierto, el
-  número cambia sin tocar nada ni recargar la página. La imagen del código se abre con el botón del
-  ojo, igual que la de una imagen o un video.
+  número cambia sin tocar nada ni recargar la página. La imagen del código se abre con **Ampliar**,
+  igual que la de una imagen o un video.
 - **Si alguien escanea un código eliminado o vencido** —queda impreso en un cartel, o guardado en el
   historial del teléfono— ve una pantalla que se lo explica, distinta según el caso, en vez de un
   error del navegador. Nunca se lo manda a otro destino sin avisar.
@@ -351,15 +344,15 @@ Define **qué playlist va, dónde y cuándo**.
 Al crear una regla:
 
 - **Playlist:** cuál se reproduce.
-- **Destino** — cuatro alcances, del más específico al más general:
-  - *Pantalla:* solo esa
-  - *Ubicación:* todas las de ese sector
-  - *Edificio:* todas las de todos sus sectores
-  - *Global:* si no se elige ninguno, aplica a todas
+- **Dónde** — un selector con cuatro alcances, y sólo aparece la lista del elegido, que es obligatoria:
+  - *Todas:* todas las pantallas
+  - *Un edificio:* todas las de todos sus sectores
+  - *Una ubicación:* todas las de ese sector
+  - *Una pantalla:* solo esa
 - **Horario:** hora de inicio y fin.
 - **Fechas:** desde (obligatoria) y hasta (opcional; vacío = sin vencimiento).
 - **Días:** los siete, con checkboxes. Hay que marcar **al menos uno**: si se desmarcan todos, el formulario lo avisa debajo y no guarda (antes se guardaba en silencio como "todos los días"). Para todos los días, marcar los siete.
-- **Prioridad:** un número. Si dos reglas aplican al mismo tiempo en la misma pantalla, **gana la de mayor prioridad**.
+- **Prioridad:** un número. Si dos reglas aplican al mismo tiempo en la misma pantalla, **gana la de mayor prioridad**, sea cual sea su alcance: una regla de todas las pantallas con prioridad 10 le gana a una de esa pantalla con prioridad 5. Con la misma prioridad gana la más específica (pantalla, después ubicación, después edificio, después todas) y, entre iguales, la más nueva.
 
 Las reglas se pueden desactivar sin borrarlas, para pausarlas temporalmente.
 
@@ -395,7 +388,7 @@ Para avisos urgentes o de último momento: evacuaciones, incidentes, un cambio d
 
 El listado muestra arriba cuántas hay activas, listas para activar y expiradas, y una tarjeta por alerta: las activas primero, con la etiqueta roja **En curso**; las expiradas, atenuadas. Cada tarjeta trae el mensaje (dos renglones; completo en **Ver**), la prioridad, a qué pantallas va, el vencimiento, el adjunto y si tiene sonido propio.
 
-**Ver** abre el detalle con **"Así se ve en las pantallas"**: una vista previa con el mismo diseño que dibuja el reproductor (banda oscura con el título, adjunto de imagen estirado debajo, mensaje centrado y pie institucional). Es aproximada: el reproductor ajusta el tamaño del mensaje para que entre y la vista previa lo imita por tramos de largo. Un video adjunto se indica con una etiqueta, no se reproduce.
+**Ver** abre el detalle y, abajo, una vista previa con **Ampliar**, con el mismo diseño que dibuja el reproductor (banda oscura con el título, adjunto de imagen estirado debajo, mensaje centrado y pie institucional). Es aproximada: el reproductor ajusta el tamaño del mensaje para que entre y la vista previa lo imita por tramos de largo. Un video adjunto se indica con una etiqueta, no se reproduce.
 
 - **Crear:** título, mensaje, prioridad, vencimiento opcional, contenido multimedia opcional para acompañar, y **sonido de alerta opcional** (MP3 o WAV, hasta 5 MB) — se puede escuchar antes de guardar con el reproductor que aparece al elegir el archivo.
 - **Editar:** solo si está inactiva. Una alerta activa no se puede editar — hay que desactivarla primero, porque el aviso que ya salió a las pantallas no coincidiría con lo que muestra el panel. Desde acá también se reemplaza o se quita el sonido personalizado (casilla "Quitar sonido personalizado").
@@ -442,6 +435,10 @@ Los datos se agrupan por hora: con una lectura por minuto, 7 días serían unos 
 **Buscador:** arriba a la izquierda de cada listado. Filtra a medida que se escribe, sin botón (la × lo limpia, también Esc), y se combina con los chips y la paginación. Busca en: Edificios, nombre y descripción; Ubicaciones, sector, edificio y descripción; Reproductores, nombre y el de sus pantallas; Pantallas, nombre, ubicación y reproductor; Contenidos, título y texto; Playlists, nombre y descripción; Programación, playlist y destino; Alertas, título y mensaje. Las cantidades de los chips cuentan sólo lo que coincide con la búsqueda. Va en la dirección (`?q=`), como los filtros.
 
 **Filtros:** al lado del buscador (salvo en Playlists), un chip por grupo con la opción elegida y su cantidad (por defecto **Todos**); tocarlo abre las demás opciones, con su cantidad y una tilde en la elegida. Si hay un filtro puesto, el chip queda en azul. Cuando el buscador y los chips no entran en una fila, se centran. Edificios, Ubicaciones y Pantallas: activos / inactivos. Reproductores: conectados / desconectados / sin registrar (por la última señal, en el momento). Contenidos: disponibles / archivados y, aparte, un chip por tipo; los dos grupos se combinan. Programación y Alertas: activas / inactivas y, aparte, el orden por prioridad (mayor primero, por defecto, o menor primero); en Alertas, las activas van siempre arriba. El filtro va en la dirección (`?estado=activos`), así que se puede compartir o volver con "atrás".
+
+**El modal Ver** (desde el 05/11/2026) es igual en todas las secciones: el título es el del modal; cada sección es un bloque a todo el ancho, con los datos repartidos en columnas según cuántos hay; y las listas (sectores, pantallas, reglas, horarios) son filas con el nombre a la izquierda y el dato a la derecha.
+
+**Los formularios** (desde el 05/11/2026) tienen el mismo estilo en todas las secciones: bloques con título, listas con buscador cuando son largas, Estado en dos opciones y **Cancelar** y **Guardar** siempre a la vista. Sólo dicen `(opcional)` los campos que lo son. En una **alerta**, a qué pantallas llega es una elección obligatoria: en el alta no viene nada marcado, para que nadie la mande a todo el campus por olvidarse.
 
 **Acciones de cada tarjeta** (desde el 03/11/2026): queda a la vista **Ver** y el resto está en el botón **⋮ Más**, que abre una lista: Editar, Activar o Desactivar, Ítems, Energía, Telemetría, Sincronizar, Clave, según la sección, y **Eliminar** al final, en rojo.
 - **Al elegir una acción**, el menú se cierra y la acción sigue como siempre: su confirmación o su ventana.

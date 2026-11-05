@@ -11,6 +11,10 @@ use SPUI\Enum\EstadoContenido;
 use SPUI\Enum\TipoContenido;
 use Symfony\Bridge\Doctrine\Form\Type\EntityType;
 use Symfony\Component\Form\AbstractType;
+use Symfony\Component\Form\FormEvents;
+use Symfony\Component\Form\FormEvent;
+use Symfony\Component\Form\FormError;
+use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
 use Symfony\Component\Form\Extension\Core\Type\DateTimeType;
 use Symfony\Component\Form\Extension\Core\Type\IntegerType;
 use Symfony\Component\Form\Extension\Core\Type\TextareaType;
@@ -40,14 +44,14 @@ class AlertaType extends AbstractType
             ->add('prioridad', IntegerType::class, [
                 'label'      => 'Prioridad',
                 'label_attr' => ['class' => 'unraf-form-label'],
-                'attr'       => ['class' => 'unraf-form-control', 'min' => 1, 'max' => 100, 'style' => 'max-width:8rem'],
+                'attr'       => ['class' => 'unraf-form-control', 'min' => 1, 'max' => 100],
                 'constraints' => [
                     new NotBlank(message: 'La prioridad es obligatoria.'),
                     new Range(notInRangeMessage: 'La prioridad debe estar entre {{ min }} y {{ max }}.', min: 1, max: 100),
                 ],
             ])
             ->add('expiraEn', DateTimeType::class, [
-                'label'      => 'Expira en (opcional)',
+                'label'      => 'Vence el (opcional)',
                 'label_attr' => ['class' => 'unraf-form-label'],
                 'required'   => false,
                 'widget'     => 'single_text',
@@ -55,7 +59,7 @@ class AlertaType extends AbstractType
                 'attr'       => ['class' => 'unraf-form-control'],
             ])
             ->add('contenido', EntityType::class, [
-                'label'         => 'Contenido multimedia (opcional)',
+                'label'         => 'Contenido adjunto (opcional)',
                 'label_attr'    => ['class' => 'unraf-form-label'],
                 'class'         => Contenido::class,
                 'em'            => 'SPUI',
@@ -71,14 +75,13 @@ class AlertaType extends AbstractType
                     ->setParameter('tipos', [TipoContenido::Imagen, TipoContenido::Video])
                     ->orderBy('c.titulo', 'ASC'),
                 'choice_label'  => fn(Contenido $c) => $c->getTitulo() . ' (' . $c->getTipo()->etiqueta() . ')',
-                'placeholder'   => '— Sin contenido asociado —',
+                'placeholder'   => '— sin contenido adjunto —',
                 'required'      => false,
                 'attr'          => ['class' => 'unraf-form-select'],
             ])
             /**
              * Destinatarias de la alerta.
-             * Sin ninguna elegida la alerta es global (va a todas), que es el
-             * comportamiento histórico y el que conviene en una emergencia real.
+             * Sin ninguna elegida la alerta es global (va a todas). Ver 'alcance'.
              */
             ->add('pantallas', EntityType::class, [
                 'label'         => 'Pantallas que la reciben',
@@ -95,7 +98,45 @@ class AlertaType extends AbstractType
                 'expanded'      => true,
                 'required'      => false,
                 'by_reference'  => false,
+            ])
+            // A qué pantallas llega es una decisión explícita (05/11/2026). No se guarda:
+            // la alerta es global cuando no tiene pantallas. En el alta no viene nada
+            // elegido, porque olvidarse de marcar la mandaba a todo el campus.
+            ->add('alcance', ChoiceType::class, [
+                'label'       => false,
+                'mapped'      => false,
+                'expanded'    => true,
+                'required'    => false,
+                'placeholder' => false,
+                'choices'     => ['Todas las pantallas' => 'todas', 'Elegir pantallas' => 'elegir'],
             ]);
+
+        $builder->addEventListener(FormEvents::POST_SET_DATA, function (FormEvent $e): void {
+            $alerta = $e->getData();
+            if ($alerta instanceof AlertaEmergencia && $alerta->getId() !== null) {
+                $e->getForm()->get('alcance')->setData($alerta->esGlobal() ? 'todas' : 'elegir');
+            }
+        });
+
+        $builder->addEventListener(FormEvents::POST_SUBMIT, function (FormEvent $e): void {
+            $form = $e->getForm();
+            $alerta = $e->getData();
+            if (!$alerta instanceof AlertaEmergencia) {
+                return;
+            }
+            $alcance = $form->get('alcance')->getData();
+            if ($alcance === 'todas') {
+                foreach ($alerta->getPantallas()->toArray() as $pantalla) {
+                    $alerta->removePantalla($pantalla);
+                }
+            } elseif ($alcance === 'elegir') {
+                if ($alerta->getPantallas()->isEmpty()) {
+                    $form->get('pantallas')->addError(new FormError('Elegí al menos una pantalla.'));
+                }
+            } else {
+                $form->get('alcance')->addError(new FormError('Elegí a qué pantallas llega la alerta.'));
+            }
+        });
     }
 
     public function configureOptions(OptionsResolver $resolver): void

@@ -5,8 +5,6 @@
 // Desde noviembre 2026 también maneja la parte "Cómo se ve en pantalla"
 // (contenidos/_presentacion), con atributos genéricos:
 //   data-spui-solo-tipos="a b"   visible sólo con esos tipos de contenido
-//   data-spui-si-plantilla="x"   visible sólo con esa plantilla elegida
-//   data-spui-si-origen="x"      visible sólo con ese origen de cronograma
 // y, en el ítem de un cronograma, data-spui-si-tipo-item (días o fecha).
 (function () {
     // El select lo renderiza Symfony con su propio id (contenido_tipo), así que
@@ -82,9 +80,6 @@
 
     function actualizarPresentacion(form, tipo, animar) {
         alternar(form, 'data-spui-solo-tipos', tipo, animar);
-        // Un video va siempre sin plantilla (y así lo manda el servidor).
-        alternar(form, 'data-spui-si-plantilla', tipo === 'video' ? 'ninguna' : elegido(form, 'plantilla'), animar);
-        alternar(form, 'data-spui-si-origen', elegido(form, 'cronograma_origen') || 'propio', animar);
     }
 
     function actualizarCampos(form, animar) {
@@ -124,13 +119,8 @@
         if (campoDuracion) campoDuracion.hidden = !!fija;
         ['Video', 'Cronograma'].forEach(function (t) {
             var nota = form.querySelector('#notaDuracion' + t);
-            var ayudaTipo = form.querySelector('#ayudaDuracion' + t);
             if (nota) nota.hidden = fija !== t;
-            if (ayudaTipo) ayudaTipo.hidden = fija !== t;
         });
-        // Las ayudas van debajo de la fila título/tipo/duración (30/10/2026).
-        var ayuda = form.querySelector('#ayudaDuracion');
-        if (ayuda) ayuda.hidden = !!fija;
         if (archivoInput)    archivoInput.required = esArchivo;
         if (textarea)        textarea.required     = esTexto;
         if (qrUrl)           qrUrl.required        = esQr;
@@ -183,14 +173,23 @@
     document.addEventListener('change', function (e) {
         var t = e.target;
         if (!t || !t.form) return;
+        // Los botones de tipo mandan sobre el <select>, que es el dato que viaja.
+        if (t.hasAttribute('data-spui-tipo-opcion')) {
+            var tipoSelect = t.form.querySelector(SELECTOR_TIPO);
+            if (tipoSelect) {
+                tipoSelect.value = t.value;
+                tipoSelect.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+            return;
+        }
         // Lo que cambia por algo que eligió la persona, con animación.
         if (t.matches(SELECTOR_TIPO)) {
             plantillaPorDefecto(t.form, t.value);
             actualizarCampos(t.form, true);
         } else if (t.name === 'tipo_item') {
             actualizarItem(t.form, true);
-        } else if (t.name === 'plantilla' || t.name === 'cronograma_origen') {
-            if (t.name === 'plantilla') t.form.dataset.spuiPlantillaElegida = '1';
+        } else if (t.name === 'plantilla') {
+            t.form.dataset.spuiPlantillaElegida = '1';
             actualizarCampos(t.form, true);
         }
     });

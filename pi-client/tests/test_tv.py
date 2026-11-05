@@ -68,7 +68,6 @@ class ReglasTest(unittest.TestCase):
 
     def test_sin_actividades_lo_dice(self):
         self.assertEqual(tv.filas_del_dia({'items': []}, LUNES_18)[1], 'No quedan actividades por hoy.')
-        self.assertEqual(tv.filas_del_dia({'vacio': 'Sin cronograma.'}, LUNES_18)[1], 'Sin cronograma.')
 
     def test_tema_automatico_por_la_hora(self):
         self.assertEqual(tv.tema_efectivo('automatico', datetime(2026, 11, 2, 18, 59), None), 'clara')
@@ -141,7 +140,7 @@ class DibujoTest(unittest.TestCase):
 
     def test_cada_tipo_da_una_pantalla_completa(self):
         for c in ({'tipo': 'texto', 'contenido_texto': 'Hola ' * 300, 'presentacion': {'plantilla': 'institucional', 'tema': 'oscuro'}},
-                  {'tipo': 'qr', 'titulo': 'Encuesta', 'presentacion': {'plantilla': 'ninguna', 'tema': 'claro', 'marca_agua': True}},
+                  {'tipo': 'qr', 'titulo': 'Encuesta', 'presentacion': {'plantilla': 'ninguna', 'tema': 'claro'}},
                   {'tipo': 'imagen', 'presentacion': {'plantilla': 'institucional', 'tema': 'automatico'}},
                   {'tipo': 'texto', 'contenido_texto': None}):
             lam = self.d.lamina(c, LUNES_18, 'Campus E4')

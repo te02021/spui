@@ -189,7 +189,7 @@ La migración `Version20261028190000` borró los contenidos de ese tipo que hab�
 
 **Texto, imagen, QR y cronograma se ven como en la vista previa del CMS** (desde noviembre 2026):
 
-- **Plantilla y tema.** Cada uno se dibuja con su plantilla (institucional o sin plantilla, con la marca de agua opcional) y su tema (claro, oscuro o automático).
+- **Plantilla y tema.** Cada uno se dibuja con su plantilla (institucional o sin plantilla) y su tema (claro, oscuro o automático).
   - Lo dibuja `spui/tv.py` con Pillow, con las medidas, colores y fuentes de `assets/spui/css/pantalla-tv.css`. Museo 300 y 700 y los logos van en `pi-client/assets/`. Si se cambia el CSS, hay que cambiar `tv.py`.
   - El automático es claro de 07:00 a 19:00. El horario llega en el sync (`tema_horario`) y se ajusta con `SPUI_TEMA_CLARO_DESDE` / `SPUI_TEMA_OSCURO_DESDE` en el CMS.
 - **La ventana.** Lo muestra una ventana pygame (`spui/ventana.py`, paquete `pygame-ce`), siempre la misma: un contenido reemplaza al otro sin que se abra ni se cierre nada.
@@ -202,7 +202,6 @@ La migración `Version20261028190000` borró los contenidos de ese tipo que hab�
 - **Por qué la semana entera.** El sync manda en `contenido.cronograma` las clases (con su máscara de días) y los eventos de hoy a 7 días, más la vigencia. La Pi elige el día y la hora con las mismas reglas que `PantallaTvService` (`tv.filas_del_dia()`).
   - Así pasa sola de un día al otro.
   - Sin conexión con el CMS sigue mostrando lo que corresponde con lo que tiene en caché.
-  - El "del edificio de la pantalla" se resuelve en el CMS con el edificio de cada pantalla.
   - El campo anterior, `cronograma_items` (sólo lo de hoy), se sigue mandando para una Pi sin actualizar.
 - **La hora en vivo** (desde el 03/11/2026, 24 h, sin segundos): con plantilla, grande en la cabecera con la fecha debajo; sin plantilla, en una píldora oscura arriba a la derecha (no sobre un video, que lo dibuja VLC). Es la hora que confirma el CMS (`spui/reloj.py`).
   - **Cómo se actualiza:** la lámina guarda el recuadro de la hora (`Lamina.zona_hora`) y la ventana repinta sólo ese recuadro al cambiar el minuto, sin redibujar la pantalla.
@@ -303,7 +302,7 @@ Toda acción del CMS que cambia lo que muestra un reproductor se **rechaza si es
 | Panel CMS (`/spui/*`) | Sesión del monolito (Google OAuth) + rol `ROLE_SPUI` o `ROLE_SUPERADMIN` |
 | Acciones de un solo botón del CMS (activar, eliminar, toggle…) | Token CSRF propio (`CsrfProtegidoTrait`, intent `spui_action`) además de la sesión. Los formularios de Symfony traen el suyo |
 | Endpoints de la Pi (`/sync`, `/heartbeat`, `/telemetria`) | Header `X-Api-Key`, comparada contra un hash SHA-256 |
-| Archivos de medios (`/api/spui/media/*`) | También `X-Api-Key`, con protección contra path traversal |
+| Archivos de medios (`/api/spui/media/*`) | También `X-Api-Key`, con protección contra path traversal. Se entregan de a partes, sin cargarlos en memoria, y la Pi verifica el SHA-256 de lo que bajó |
 | Redirect y PNG de QR | Público por diseño: los abre el celular de un visitante |
 | Broker MQTT | Sin acceso anónimo (`allow_anonymous false`), usuarios y ACL con el plugin Dynamic Security, TLS en 8883. **Permisos por equipo** (29/10/2026): cada reproductor tiene su propio rol, `spui-repro-{id}-rol`, y sólo puede publicar su telemetría (normal y en vivo) y su estado, y suscribirse a la alerta global y a sus propias alertas y comandos. No puede publicar a nombre de otro, leer los comandos de otro ni emitir alertas. El CMS arma el rol al crear el reproductor o regenerar su clave, y lo asegura en cada sync (`MqttSecurityService::asegurarPermisos()`, cacheado 1 h), así que los equipos que ya existían pasaron solos. Lo verifica `tools/verificacion/mqtt_permisos.php` contra el broker real. Detalle en `config/mosquitto/README.md` |
 | CORS | Lista blanca configurable (`SPUI_CORS_ORIGINS`) |

@@ -1,132 +1,100 @@
-{{ form_start(form, {'attr': {'data-spui-ajax': '1', 'novalidate': 'novalidate'}}) }}
+{# Alta y edición de una regla de programación (rediseñado el 05/11/2026): tres
+   secciones con el mismo estilo que los modales Ver. Formulario de muestra del
+   estilo .spui-form.
+
+   Dónde: un solo selector de alcance y sólo la lista que corresponde
+   (core/alcance-campo.js). ProgramacionType valida que esté elegida y limpia las
+   otras dos al guardar: antes eran tres listas sueltas y se podían completar varias. #}
+{{ form_start(form, {'attr': {'data-spui-ajax': '1', 'novalidate': 'novalidate', 'class': 'spui-form'}}) }}
 
 {# Errores del form raíz (típicamente el CSRF vencido). Sin esto el modal se
    recargaba sin ningún mensaje y el guardado parecía no responder. #}
 {% for e in form.vars.errors %}
-    <div class="alert alert-danger mb-3">{{ e.message }}</div>
+    <div class="alert alert-danger mb-0">{{ e.message }}</div>
 {% endfor %}
 
-{% set swActivoId  = form.activo.vars.id %}
-{% set swRepetirId = form.repetirSemanal.vars.id %}
+{% import '@SPUI/_macros/form.html.twig' as campos %}
 
-<div class="mb-3">
-    {{ form_label(form.playlist) }}
-    {{ form_widget(form.playlist) }}
-    {% for e in form.playlist.vars.errors %}
-        <p class="spui-campo-error">{{ e.message }}</p>
-    {% endfor %}
-</div>
-
-{# Los tres selectores son mutuamente excluyentes (elegir uno "gana" sobre los
-   otros en el orden de prioridad de abajo) — se agrupan en una caja para que
-   se lean como una sola decisión, no como tres campos sueltos. #}
-<div class="spui-form-group-box mb-3">
-    <p class="spui-form-group-label mb-2">Destino <small class="text-muted fw-normal">(elegí uno o ninguno para global)</small></p>
-
-    <div class="row g-2 mb-1">
-        <div class="col-12 col-sm">
-            {{ form_label(form.pantalla) }}
-            {{ form_widget(form.pantalla) }}
+<section class="spui-ver-seccion" aria-labelledby="spui-form-que">
+    <h5 class="spui-ver-titulo" id="spui-form-que">¿Qué se muestra?</h5>
+    <div class="spui-ver-bloque spui-form-fila spui-form-fila-principal">
+        <div>
+            {{ form_label(form.playlist) }}
+            {{ form_widget(form.playlist) }}
+            {% for e in form.playlist.vars.errors %}<p class="spui-campo-error">{{ e.message }}</p>{% endfor %}
         </div>
-        <div class="col-12 col-sm">
-            {{ form_label(form.ubicacion) }}
-            {{ form_widget(form.ubicacion) }}
+        <div>
+            {{ form_label(form.prioridad) }}
+            {{ form_widget(form.prioridad) }}
+            {% for e in form.prioridad.vars.errors %}<p class="spui-campo-error">{{ e.message }}</p>{% endfor %}
+            <small class="spui-form-ayuda">A mayor número, más prioridad.</small>
         </div>
-        <div class="col-12 col-sm">
-            {{ form_label(form.edificio) }}
-            {{ form_widget(form.edificio) }}
+        <div>{{ campos.estado(form.activo, 'Activa', 'Inactiva') }}</div>
+    </div>
+</section>
+
+<section class="spui-ver-seccion" aria-labelledby="spui-form-donde">
+    <h5 class="spui-ver-titulo" id="spui-form-donde">¿Dónde?</h5>
+    <div class="spui-ver-bloque spui-form-alcance" data-spui-alcance>
+        <div>
+            <span class="unraf-form-label d-block" id="spui-form-alcance-lbl">Pantallas</span>
+            <div class="spui-opciones" role="radiogroup" aria-labelledby="spui-form-alcance-lbl">
+                {% for op in form.alcance %}
+                    <input type="radio" class="spui-opcion-input" name="{{ op.vars.full_name }}" id="{{ op.vars.id }}"
+                           value="{{ op.vars.value }}" {{ op.vars.checked ? 'checked' }}>
+                    <label class="spui-opcion" for="{{ op.vars.id }}">{{ op.vars.label }}</label>
+                {% endfor %}
+                {% do form.alcance.setRendered() %}
+            </div>
         </div>
-    </div>
-    <small class="text-muted d-block">Pantalla &gt; Ubicación &gt; Edificio &gt; Global (en orden de prioridad).</small>
-</div>
-
-{# Horas y fechas en columnas parejas, con la etiqueta a la izquierda como el
-   resto del formulario. Antes iban centradas (spui-hora-field) y el
-   formulario mezclaba dos alineaciones (pedido de Mateo, 28/10/2026). Con el
-   modal ancho (02/11/2026), las cuatro en una fila; dos y dos en celular. #}
-<div class="row g-3 mb-3">
-    <div class="col-6 col-lg-3 spui-fecha-field">
-        {{ form_label(form.horaInicio) }}
-        {{ form_widget(form.horaInicio) }}
-        {% for e in form.horaInicio.vars.errors %}
-            <p class="spui-campo-error">{{ e.message }}</p>
-        {% endfor %}
-    </div>
-    <div class="col-6 col-lg-3 spui-fecha-field">
-        {{ form_label(form.horaFin) }}
-        {{ form_widget(form.horaFin) }}
-        {% for e in form.horaFin.vars.errors %}
-            <p class="spui-campo-error">{{ e.message }}</p>
-        {% endfor %}
-    </div>
-    <div class="col-6 col-lg-3 spui-fecha-field">
-        {{ form_label(form.fechaInicio) }}
-        {{ form_widget(form.fechaInicio) }}
-        {% for e in form.fechaInicio.vars.errors %}
-            <p class="spui-campo-error">{{ e.message }}</p>
-        {% endfor %}
-    </div>
-    <div class="col-6 col-lg-3 spui-fecha-field">
-        {{ form_label(form.fechaFin) }}
-        {{ form_widget(form.fechaFin) }}
-        {% for e in form.fechaFin.vars.errors %}
-            <p class="spui-campo-error">{{ e.message }}</p>
-        {% endfor %}
-    </div>
-</div>
-
-{# Los siete días en una grilla pareja (una fila en escritorio, 4 + 3 en
-   celular). Cada día es una tarjeta con su interruptor y su nombre: el
-   nombre lo pone el propio widget (form-check-label). #}
-<div class="mb-3" data-spui-campo>
-    {{ form_label(form.diasSemana) }}
-    <div class="spui-dias-switches spui-switch-limpio{{ form.diasSemana.vars.errors|length ? ' is-invalid' }}"
-         data-spui-requiere-alguno="{{ constant('SPUI\\Form\\ProgramacionType::MSG_DIAS_REQUERIDOS') }}">
-        {% for child in form.diasSemana %}
-            <div class="spui-dia-switch form-switch">
-                {{ form_widget(child, {'attr': {'class': 'form-check-input', 'role': 'switch'}}) }}
+        {# Del mismo alto que una lista: cambiar de opción no mueve lo de abajo. #}
+        <div data-spui-si-alcance="todas" hidden>
+            <span class="unraf-form-label d-block">Destino</span>
+            <div class="unraf-form-control spui-form-fijo">Todas las pantallas activas</div>
+        </div>
+        {% for destino in [form.edificio, form.ubicacion, form.pantalla] %}
+            <div data-spui-si-alcance="{{ destino.vars.name }}" hidden>
+                {{ form_label(destino) }}
+                {{ form_widget(destino, {'attr': {'required': 'required'}}) }}
+                {% for e in destino.vars.errors %}<p class="spui-campo-error">{{ e.message }}</p>{% endfor %}
             </div>
         {% endfor %}
     </div>
-    {% for e in form.diasSemana.vars.errors %}
-        <p class="spui-campo-error">{{ e.message }}</p>
-    {% endfor %}
-</div>
+</section>
 
-{# Prioridad, estado y repetición en una fila: tres opciones de la regla,
-   cada una con su etiqueta arriba a la izquierda. #}
-<div class="row g-3 mb-4 spui-switch-limpio">
-    <div class="col-12 col-sm-4">
-        <label class="unraf-form-label" for="{{ form.prioridad.vars.id }}">Prioridad</label>
-        {{ form_widget(form.prioridad, {'attr': {'style': 'max-width:7rem'}}) }}
-        {% for e in form.prioridad.vars.errors %}
-            <p class="spui-campo-error">{{ e.message }}</p>
-        {% endfor %}
-        <small class="text-muted mt-1 d-block">Mayor número = mayor prioridad.</small>
-    </div>
-    <div class="col-12 col-sm-4">
-        {# Estado de la regla: mismo switch y mismas palabras que el resto del
-           CMS, en el alta y en la edición. #}
-        <label class="unraf-form-label" for="{{ swActivoId }}">Estado</label>
-        <div class="d-flex align-items-center gap-2 spui-switch-fila">
-            <div class="form-switch m-0">
-                {{ form_widget(form.activo, {'attr': {'class': 'form-check-input spui-switch-input', 'role': 'switch', 'data-spui-switch': '1', 'data-switch-on': 'Activa', 'data-switch-off': 'Inactiva'}}) }}
+<section class="spui-ver-seccion" aria-labelledby="spui-form-cuando">
+    <h5 class="spui-ver-titulo" id="spui-form-cuando">¿Cuándo?</h5>
+    <div class="spui-ver-bloque">
+        <div class="spui-form-fila spui-form-fila-4">
+            {% for campo in [form.horaInicio, form.horaFin, form.fechaInicio, form.fechaFin] %}
+                <div class="spui-fecha-field">
+                    {{ form_label(campo) }}
+                    {{ form_widget(campo) }}
+                    {% for e in campo.vars.errors %}<p class="spui-campo-error">{{ e.message }}</p>{% endfor %}
+                </div>
+            {% endfor %}
+        </div>
+
+        <div class="spui-form-separado" data-spui-campo>
+            <span class="unraf-form-label d-block">{{ form.diasSemana.vars.label }}</span>
+            {# Checkboxes reales, con la etiqueta como botón: los mismos colores que el modal Ver. #}
+            <div class="spui-form-dias{{ form.diasSemana.vars.errors|length ? ' is-invalid' }}"
+                 data-spui-requiere-alguno="{{ constant('SPUI\\Form\\ProgramacionType::MSG_DIAS_REQUERIDOS') }}">
+                {% for dia in form.diasSemana %}
+                    <div>
+                        <input type="checkbox" class="spui-opcion-input" name="{{ dia.vars.full_name }}" id="{{ dia.vars.id }}"
+                               value="{{ dia.vars.value }}" {{ dia.vars.checked ? 'checked' }}>
+                        <label class="spui-form-dia" for="{{ dia.vars.id }}">{{ dia.vars.label }}</label>
+                    </div>
+                {% endfor %}
+                {% do form.diasSemana.setRendered() %}
             </div>
-            <span class="spui-switch-status {{ form.activo.vars.checked ? 'on' : 'off' }}" id="{{ swActivoId }}_lbl">{{ form.activo.vars.checked ? 'Activa' : 'Inactiva' }}</span>
+            {% for e in form.diasSemana.vars.errors %}<p class="spui-campo-error">{{ e.message }}</p>{% endfor %}
         </div>
     </div>
-    <div class="col-12 col-sm-4">
-        <label class="unraf-form-label" for="{{ swRepetirId }}">Repetir semanalmente</label>
-        <div class="d-flex align-items-center gap-2 spui-switch-fila">
-            <div class="form-switch m-0">
-                {{ form_widget(form.repetirSemanal, {'attr': {'class': 'form-check-input spui-switch-secondary', 'role': 'switch', 'data-spui-switch': '1', 'data-switch-on': 'Sí', 'data-switch-off': 'No', 'data-switch-variant': 'azul'}}) }}
-            </div>
-            <span class="spui-switch-status {{ form.repetirSemanal.vars.checked ? 'on-azul' : 'off' }}" id="{{ swRepetirId }}_lbl">{{ form.repetirSemanal.vars.checked ? 'Sí' : 'No' }}</span>
-        </div>
-    </div>
-</div>
+</section>
 
-<div class="d-flex justify-content-end gap-2 pt-3 border-top">
+<div class="spui-form-pie d-flex">
     <button type="button" class="unraf-btn spui-btn-back" data-spui-close>Cancelar</button>
     <button type="submit" class="unraf-btn {{ submit_label is defined ? 'spui-btn-editar' : 'spui-btn-crear' }}">Guardar</button>
 </div>

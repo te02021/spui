@@ -5,11 +5,8 @@ declare(strict_types=1);
 namespace SPUI\Controller\Cms;
 
 use SPUI\Entity\Contenido;
-use SPUI\Entity\Edificio;
-use SPUI\Enum\OrigenCronograma;
 use SPUI\Enum\TipoContenido;
 use SPUI\Repository\ContenidoRepository;
-use SPUI\Repository\EdificioRepository;
 use SPUI\Service\PantallaTvService;
 use SPUI\Service\PresentacionContenidoService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -31,7 +28,6 @@ class VistaTvCmsController extends AbstractController
 {
     public function __construct(
         private readonly ContenidoRepository $contenidos,
-        private readonly EdificioRepository $edificios,
         private readonly PantallaTvService $tv,
         private readonly PresentacionContenidoService $presentacion,
     ) {}
@@ -47,7 +43,7 @@ class VistaTvCmsController extends AbstractController
             return $this->redirectToRoute('spui_cms_contenidos_index');
         }
 
-        return $this->respuesta($c, $request->query->getString('edificio'), null);
+        return $this->respuesta($c, null);
     }
 
     /**
@@ -84,45 +80,22 @@ class VistaTvCmsController extends AbstractController
         // Un cronograma nuevo todavía no tiene ítems.
         $items = $guardado ? null : [];
 
-        return $this->respuesta($c, $p->getString('vista_edificio'), $items, $guardado);
+        return $this->respuesta($c, $items, $guardado);
     }
 
     /** @param list<\SPUI\Entity\CronogramaItem>|null $items */
-    private function respuesta(Contenido $c, string $edificioId, ?array $items, ?Contenido $conArchivo = null): JsonResponse
+    private function respuesta(Contenido $c, ?array $items, ?Contenido $conArchivo = null): JsonResponse
     {
         $conArchivo = $conArchivo ?? ($c->getId() ? $c : null);
-        $porEdificio = $c->getTipo() === TipoContenido::Cronograma && $c->getCronogramaOrigen() === OrigenCronograma::Edificio;
-        $edificio    = $porEdificio ? $this->edificioParaMirar($edificioId) : null;
-        $ahora       = new \DateTimeImmutable();
+        $ahora      = new \DateTimeImmutable();
 
         return new JsonResponse(['html' => $this->renderView('@SPUI/pantalla/_vista_previa.html.twig', [
-            'tv'        => $this->tv->vista($c, $edificio, $items, $ahora),
+            'tv'        => $this->tv->vista($c, $items, $ahora),
             'media_url' => $conArchivo?->getRutaArchivo()
                 ? $this->generateUrl('spui_cms_contenidos_archivo_preview', ['id' => $conArchivo->getId()])
                 : null,
             'ahora'     => $ahora,
-            'edificios' => $porEdificio ? $this->presentacion->edificios() : [],
-            'edificio'  => $edificio,
             'titulo'    => $c->getTitulo(),
         ])]);
-    }
-
-    /**
-     * Uno "del edificio de la pantalla" se ve distinto en cada edificio: se
-     * mira en el elegido o, de entrada, en el primero que tenga un cronograma
-     * vigente (así la vista previa muestra algo).
-     */
-    private function edificioParaMirar(string $id): ?Edificio
-    {
-        if ($id !== '' && ($e = $this->edificios->find((int) $id))) {
-            return $e;
-        }
-        $hoy = new \DateTimeImmutable();
-        foreach ($this->presentacion->edificios() as $e) {
-            if ($this->contenidos->cronogramaVigenteDeEdificio($e, $hoy)) {
-                return $e;
-            }
-        }
-        return $this->presentacion->edificios()[0] ?? null;
     }
 }

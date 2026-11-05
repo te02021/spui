@@ -1,0 +1,24 @@
+{# Piezas comunes de los modales Ver (estilos en .spui-ver, style.css). #}
+
+{# Una lista vacía: el mismo bloque, con su aviso. #}
+{% macro vacio(texto) %}
+    <div class="spui-ver-bloque"><p class="spui-ver-texto">{{ texto }}</p></div>
+{% endmacro %}
+
+{# Las reglas de programación de un edificio, una ubicación o una pantalla. #}
+{% macro reglas(programaciones, texto_vacio) %}
+    {% if programaciones|length > 0 %}
+        <div class="spui-ver-bloque">
+            <ul class="spui-ver-usos">
+                {% for prog in programaciones %}
+                    <li>
+                        <span>{{ prog.playlist ? prog.playlist.nombre : 'Sin playlist' }}</span>
+                        <small>{{ prog.horaInicio ? prog.horaInicio|date('H:i') : '—' }} a {{ prog.horaFin ? prog.horaFin|date('H:i') : '—' }} · {{ prog.activo ? 'Activa' : 'Inactiva' }}</small>
+                    </li>
+                {% endfor %}
+            </ul>
+        </div>
+    {% else %}
+        {{ _self.vacio(texto_vacio) }}
+    {% endif %}
+{% endmacro %}
