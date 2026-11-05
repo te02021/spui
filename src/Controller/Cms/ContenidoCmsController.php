@@ -31,6 +31,7 @@ use SPUI\Service\VideoInspectorService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\Form\FormInterface;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
@@ -723,15 +724,20 @@ class ContenidoCmsController extends AbstractController
      * AlertaCmsController::sonidoPreview().
      */
     #[Route('/{id}/archivo-preview', name: 'spui_cms_contenidos_archivo_preview', methods: ['GET'], requirements: ['id' => '\d+'])]
-    public function archivoPreview(int $id): Response
+    public function archivoPreview(int $id, Request $request): Response
     {
         $contenido = $this->repo->find($id);
         if (!$contenido || $contenido->getRutaArchivo() === null) {
             throw $this->createNotFoundException();
         }
 
-        // De a partes, como MediaController: acá también puede ser un video.
-        $response = $this->media->respuestaEnPartes($contenido->getRutaArchivo());
+        // De a partes, como MediaController: acá también puede ser un video, y
+        // con la cabecera Range el navegador puede saltar a cualquier punto.
+        $rutaLocal = $this->media->rutaLocal($contenido->getRutaArchivo());
+        if ($rutaLocal !== null) {
+            return new BinaryFileResponse($rutaLocal);
+        }
+        $response = $this->media->respuestaEnPartes($contenido->getRutaArchivo(), $request->headers->get('Range'));
         if ($response === null) {
             throw $this->createNotFoundException();
         }

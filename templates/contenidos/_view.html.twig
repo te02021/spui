@@ -1,233 +1,144 @@
-{# Detalle de un contenido.
+{# Detalle de un contenido (rediseñado el 05/11/2026, pedido de Mateo). El título
+   es el del modal. Arriba, tres paneles parejos con los datos; abajo, la única
+   vista previa, a todo el ancho. "Ampliar" abre el visor con todo: el video con
+   sus controles, zoom, descarga y la vista en el TV (core/media-viewer.js).
    Las filas opcionales van dentro de un {% if %}: si el dato no está cargado
    se omite la fila entera en vez de mostrar un guión. #}
-<div class="spui-view-header">
-    <div>
-        <p class="spui-view-title">{{ contenido.titulo }}</p>
-        <p class="spui-view-subtitle">Creado el {{ contenido.creadoEn|date('d/m/Y') }} a las {{ contenido.creadoEn|date('H:i') }}</p>
-    </div>
-    {% if contenido.tipo.value == 'cronograma' %}
-        <span class="unraf-badge-turquesa flex-shrink-0">{{ contenido.tipo.etiqueta }}</span>
-    {% elseif contenido.tipo.value in ['imagen', 'qr'] %}
-        <span class="unraf-badge-info flex-shrink-0">{{ contenido.tipo.etiqueta }}</span>
-    {% elseif contenido.tipo.value == 'video' %}
-        <span class="unraf-badge-azul flex-shrink-0">{{ contenido.tipo.etiqueta }}</span>
-    {% else %}
-        <span class="unraf-badge-turquesa flex-shrink-0">{{ contenido.tipo.etiqueta }}</span>
-    {% endif %}
-</div>
+<div class="spui-ver">
+    <div class="spui-ver-paneles">
+        <section class="spui-ver-panel" aria-labelledby="spui-ver-detalles">
+            <h5 class="spui-ver-panel-titulo" id="spui-ver-detalles">Detalles</h5>
+            <dl class="spui-ver-datos">
+                <div><dt>Tipo</dt><dd>{{ contenido.tipo.etiqueta }}</dd></div>
+                <div><dt>Estado</dt><dd><span class="spui-badge-{{ contenido.estado.value }}">{{ contenido.estado.etiqueta }}</span></dd></div>
+                <div><dt>Duración</dt><dd>{{ contenido.etiquetaDuracion }}</dd></div>
+                <div><dt>Creado</dt><dd>{{ contenido.creadoEn|date('d/m/Y H:i') }}</dd></div>
+                <div><dt>Última modificación</dt><dd>{{ contenido.actualizadoEn|date('d/m/Y H:i') }}</dd></div>
+                <div><dt>Creado por</dt><dd>{{ creado_por_email|default('Usuario #' ~ contenido.creadoPorId) }}</dd></div>
+                {% if contenido.rutaArchivo and contenido.tipo.value != 'qr' %}
+                    <div><dt>Archivo</dt><dd>{{ contenido.rutaArchivo|split('/')|last }}</dd></div>
+                {% endif %}
+            </dl>
+        </section>
 
-{# Cómo se ve en el TV (noviembre 2026): la vista previa se pide sola
-   (core/vista-tv.js) y "Ampliar" la abre en el visor. Con el modal ancho, a
-   la izquierda de los detalles; en pantallas angostas, arriba. #}
-<div class="spui-view-dos">
-<div class="spui-vista-previa spui-vista-previa-ver" data-spui-vista-previa-url="{{ path('spui_cms_contenidos_pantalla', {id: contenido.id}) }}" aria-live="polite"></div>
-
-<div>
-<div class="spui-view-section">
-    <p class="spui-view-section-title">Detalles</p>
-    <div class="spui-view-row">
-        <span class="spui-view-row-label">Tipo</span>
-        <span class="spui-view-row-value">{{ contenido.tipo.etiqueta }}</span>
-    </div>
-    <div class="spui-view-row">
-        <span class="spui-view-row-label">Estado</span>
-        <span class="spui-view-row-value"><span class="spui-badge-{{ contenido.estado.value }}">{{ contenido.estado.etiqueta }}</span></span>
-    </div>
-    <div class="spui-view-row">
-        <span class="spui-view-row-label">Duración</span>
-        <span class="spui-view-row-value">{{ contenido.etiquetaDuracion }}</span>
-    </div>
-    <div class="spui-view-row">
-        <span class="spui-view-row-label">Última modificación</span>
-        <span class="spui-view-row-value">{{ contenido.actualizadoEn|date('d/m/Y H:i') }}</span>
-    </div>
-    <div class="spui-view-row">
-        <span class="spui-view-row-label">Creado por</span>
-        <span class="spui-view-row-value">{{ creado_por_email|default('Usuario #' ~ contenido.creadoPorId) }}</span>
-    </div>
-</div>
-
-<div class="spui-view-section">
-    <p class="spui-view-section-title">Cómo se ve en pantalla</p>
-    <div class="spui-view-row">
-        <span class="spui-view-row-label">Plantilla</span>
-        <span class="spui-view-row-value">{{ contenido.plantilla.etiqueta }}{{ contenido.plantilla.value == 'ninguna' and contenido.marcaAgua ? ', con el molino en una esquina' }}</span>
-    </div>
-    <div class="spui-view-row">
-        <span class="spui-view-row-label">Tema</span>
-        <span class="spui-view-row-value">
-            {{ contenido.tema.etiqueta }}
-            {% if contenido.tema.value == 'automatico' %}<small class="text-muted">· claro de {{ spui_tema_claro_desde }} a {{ spui_tema_oscuro_desde }}</small>{% endif %}
-        </span>
-    </div>
-    {% if contenido.esCronograma %}
-        <div class="spui-view-row">
-            <span class="spui-view-row-label">Muestra</span>
-            <span class="spui-view-row-value">{{ contenido.tieneItemsPropios ? 'Sus propias clases' : 'El cronograma del edificio de cada pantalla' }}</span>
-        </div>
-        {% if contenido.tieneItemsPropios %}
-            <div class="spui-view-row">
-                <span class="spui-view-row-label">Edificio</span>
-                <span class="spui-view-row-value">{{ contenido.cronogramaEdificio ? contenido.cronogramaEdificio.nombre : 'Sin edificio' }}</span>
-            </div>
-            <div class="spui-view-row">
-                <span class="spui-view-row-label">Vigencia</span>
-                <span class="spui-view-row-value">
-                    {% if contenido.vigenciaDesde or contenido.vigenciaHasta %}
-                        {{ contenido.vigenciaDesde ? 'Desde el ' ~ contenido.vigenciaDesde|date('d/m/Y') }}{{ contenido.vigenciaDesde and contenido.vigenciaHasta ? ' ' }}{{ contenido.vigenciaHasta ? (contenido.vigenciaDesde ? 'hasta' : 'Hasta') ~ ' el ' ~ contenido.vigenciaHasta|date('d/m/Y') }}
-                    {% else %}
-                        Siempre
+        <section class="spui-ver-panel" aria-labelledby="spui-ver-pantalla">
+            <h5 class="spui-ver-panel-titulo" id="spui-ver-pantalla">Cómo se ve en pantalla</h5>
+            <dl class="spui-ver-datos">
+                <div><dt>Plantilla</dt><dd>{{ contenido.plantilla.etiqueta }}{{ contenido.plantilla.value == 'ninguna' and contenido.marcaAgua ? ', con el molino en una esquina' }}</dd></div>
+                <div>
+                    <dt>Tema</dt>
+                    <dd>
+                        {{ contenido.tema.etiqueta }}
+                        {% if contenido.tema.value == 'automatico' %}<small>Claro de {{ spui_tema_claro_desde }} a {{ spui_tema_oscuro_desde }}</small>{% endif %}
+                    </dd>
+                </div>
+                {% if contenido.esCronograma %}
+                    <div><dt>Muestra</dt><dd>{{ contenido.tieneItemsPropios ? 'Sus propias clases' : 'El cronograma del edificio de cada pantalla' }}</dd></div>
+                    {% if contenido.tieneItemsPropios %}
+                        <div><dt>Edificio</dt><dd>{{ contenido.cronogramaEdificio ? contenido.cronogramaEdificio.nombre : 'Sin edificio' }}</dd></div>
+                        <div>
+                            <dt>Vigencia</dt>
+                            <dd>
+                                {% if contenido.vigenciaDesde or contenido.vigenciaHasta %}
+                                    {{ contenido.vigenciaDesde ? 'Desde el ' ~ contenido.vigenciaDesde|date('d/m/Y') }}{{ contenido.vigenciaDesde and contenido.vigenciaHasta ? ' ' }}{{ contenido.vigenciaHasta ? (contenido.vigenciaDesde ? 'hasta' : 'Hasta') ~ ' el ' ~ contenido.vigenciaHasta|date('d/m/Y') }}
+                                {% else %}
+                                    Siempre
+                                {% endif %}
+                            </dd>
+                        </div>
                     {% endif %}
-                </span>
-            </div>
-        {% endif %}
-        <div class="spui-view-row">
-            <span class="spui-view-row-label">Cada página</span>
-            <span class="spui-view-row-value">{{ contenido.segundosPorPagina ?? constant('SPUI\\Service\\PresentacionContenidoService::SEG_PAGINA_DEFECTO') }} s</span>
-        </div>
-    {% endif %}
-</div>
-</div>
-</div>
+                    <div><dt>Cada página</dt><dd>{{ contenido.segundosPorPagina ?? constant('SPUI\\Service\\PresentacionContenidoService::SEG_PAGINA_DEFECTO') }} s</dd></div>
+                {% endif %}
+            </dl>
+            {% if contenido.tieneItemsPropios %}
+                {# data-spui-abrir: reemplaza este modal por el listado de ítems (modal.js). #}
+                <div class="spui-ver-panel-pie">
+                    <button type="button" class="unraf-btn spui-btn-items unraf-btn-sm"
+                            data-spui-abrir="{{ path('spui_cms_cronograma_items', {id: contenido.id}) }}"
+                            data-spui-title="Ítems de «{{ contenido.titulo }}»"
+                            data-spui-size="modal-lg">
+                        <img src="{{ asset('unraf-ui/icons/calendar-dots.svg') }}" class="spui-action-icon" alt=""> Ver ítems
+                    </button>
+                </div>
+            {% endif %}
+        </section>
 
-{% if contenido.contenidoTexto or contenido.rutaArchivo %}
-<div class="spui-view-section">
-    <p class="spui-view-section-title">Contenido</p>
-    {# En un QR el texto guarda el destino, que ya se muestra completo en su
-       propia sección de abajo — repetirlo acá sólo llena la pantalla. #}
+        <section class="spui-ver-panel" aria-labelledby="spui-ver-uso">
+            <h5 class="spui-ver-panel-titulo" id="spui-ver-uso">Dónde se usa</h5>
+            <p class="spui-ver-subtitulo">Playlists · {{ contenido.playlistItems|length }}</p>
+            {% if contenido.playlistItems|length > 0 %}
+                <ul class="spui-ver-lista">
+                    {# La duración ya no se pisa por playlist: lo útil es la posición en cada una. #}
+                    {% for item in contenido.playlistItems %}
+                        <li><span>{{ item.playlist.nombre }}</span><small>Posición {{ item.orden }}</small></li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p class="spui-ver-vacio">Todavía no está en ninguna playlist.</p>
+            {% endif %}
+            {% if contenido.alertas|length > 0 %}
+                <p class="spui-ver-subtitulo">Alertas · {{ contenido.alertas|length }}</p>
+                <ul class="spui-ver-lista">
+                    {% for alerta in contenido.alertas %}
+                        <li><span>{{ alerta.titulo }}</span><small>{{ alerta.activa ? 'Activa' : 'Inactiva' }}</small></li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
+        </section>
+    </div>
+
+    {# En un QR el texto guarda el destino, que ya se muestra en su propio panel. #}
     {% if contenido.contenidoTexto and contenido.tipo.value != 'qr' %}
-    <div class="spui-view-row">
-        <span class="spui-view-row-label">Texto</span>
-        <span class="spui-view-row-value text-muted" style="font-size:.85rem;white-space:pre-line;line-height:1.6">{{ contenido.contenidoTexto }}</span>
-    </div>
+        <section class="spui-ver-panel" aria-labelledby="spui-ver-texto">
+            <h5 class="spui-ver-panel-titulo" id="spui-ver-texto">Texto</h5>
+            <p class="spui-ver-texto">{{ contenido.contenidoTexto }}</p>
+        </section>
     {% endif %}
-    {% if contenido.rutaArchivo %}
-    <div class="spui-view-row">
-        <span class="spui-view-row-label">Archivo</span>
-        <span class="spui-view-row-value d-flex align-items-center gap-2">
-            {{ contenido.rutaArchivo|split('/')|last }}
-            <a href="#" class="unraf-btn spui-btn-back unraf-btn-icon" title="Vista previa"
-               data-spui-preview-url="{{ path('spui_cms_contenidos_archivo_preview', {id: contenido.id}) }}"
-               data-spui-preview-pantalla-url="{{ path('spui_cms_contenidos_pantalla', {id: contenido.id}) }}"
-                   data-spui-preview-tipo="{{ contenido.tipo.value }}"
-               data-spui-preview-nombre="{{ contenido.rutaArchivo|split('/')|last }}">
-                <img src="{{ asset('unraf-ui/icons/eye.svg') }}" class="spui-action-icon" alt="Vista previa">
-            </a>
-        </span>
-    </div>
+
+    {% if contenido.codigoQr %}
+        {% set qr = contenido.codigoQr %}
+        {% set tiendas = qr.enlacesDeTienda %}
+        <section class="spui-ver-panel" aria-labelledby="spui-ver-qr">
+            <h5 class="spui-ver-panel-titulo" id="spui-ver-qr">Código QR</h5>
+            <dl class="spui-ver-datos spui-ver-datos-qr">
+                {% if tiendas %}
+                    {# Un QR de app: cada teléfono va a su tienda; los demás, a una página con las dos. #}
+                    <div class="spui-ver-dato-ancho"><dt>Android</dt><dd><a href="{{ tiendas.android }}" target="_blank" rel="noopener noreferrer">{{ tiendas.android }}</a></dd></div>
+                    <div class="spui-ver-dato-ancho"><dt>iPhone</dt><dd><a href="{{ tiendas.ios }}" target="_blank" rel="noopener noreferrer">{{ tiendas.ios }}</a></dd></div>
+                    <div class="spui-ver-dato-ancho"><dt>Otros</dt><dd>Una computadora o un iPad ven una página con las dos tiendas.</dd></div>
+                {% else %}
+                    <div class="spui-ver-dato-ancho"><dt>Destino</dt><dd><a href="{{ qr.urlDestino }}" target="_blank" rel="noopener noreferrer">{{ qr.urlDestino }}</a></dd></div>
+                {% endif %}
+                <div><dt>Expira</dt><dd>{{ qr.expiraEn ? qr.expiraEn|date('d/m/Y H:i') : 'Sin vencimiento' }}</dd></div>
+                <div><dt>Estado</dt><dd>{{ qr.estaVigente ? 'Vigente' : 'Vencido: ya no redirige' }}</dd></div>
+                {# El número arranca con lo que dice la base y después lo mueve el broker:
+                   qr-escaneos-vivo.js se suscribe por WebSocket al topic de este código.
+                   Los data-* viajan con este fragmento porque se inyecta por AJAX. Sin
+                   mqtt_web queda el número de la base y el modal no se conecta a nada. #}
+                <div>
+                    <dt>Escaneos</dt>
+                    <dd data-spui-qr-escaneos
+                        {% if mqtt_web|default(null) %}
+                            data-spui-mqtt-url="{{ mqtt_web.url }}"
+                            data-spui-mqtt-usuario="{{ mqtt_web.usuario }}"
+                            data-spui-mqtt-password="{{ mqtt_web.password }}"
+                            data-spui-mqtt-topic="{{ mqtt_web.topic }}"
+                        {% endif %}>{{ qr.usosCount }}</dd>
+                </div>
+            </dl>
+        </section>
     {% endif %}
+
+    {# La única vista previa. La pide sola core/vista-tv.js; si hay archivo, Ampliar lo abre con todo en el visor. #}
+    <section class="spui-ver-previa" aria-labelledby="spui-ver-previa-titulo">
+        <h5 class="spui-ver-panel-titulo" id="spui-ver-previa-titulo">Vista previa</h5>
+        <div class="spui-vista-previa spui-vista-previa-ver"
+             data-spui-vista-previa-url="{{ path('spui_cms_contenidos_pantalla', {id: contenido.id}) }}"
+             {% if contenido.rutaArchivo %}
+                 data-spui-archivo-url="{{ path('spui_cms_contenidos_archivo_preview', {id: contenido.id}) }}"
+                 data-spui-archivo-tipo="{{ contenido.tipo.value }}"
+                 data-spui-archivo-nombre="{{ contenido.titulo }}"
+             {% endif %}
+             aria-live="polite"></div>
+    </section>
 </div>
-{% endif %}
-
-{# Los datos del código QR y su estadística de escaneos: es el único lugar del
-   CMS donde se ven, desde que los códigos se administran acá adentro y no en
-   una sección aparte.
-
-   La imagen NO se muestra incrustada acá: se mira con el botón del ojo de la
-   fila "Archivo", igual que la de una imagen o un video. Un tipo de contenido
-   no tiene por qué verse distinto que el resto sólo por ser QR. #}
-{% if contenido.codigoQr %}
-{% set qr = contenido.codigoQr %}
-<div class="spui-view-section">
-    <p class="spui-view-section-title">Código QR</p>
-
-    {% set tiendas = qr.enlacesDeTienda %}
-    {% if tiendas %}
-        {# Un QR de app: cada teléfono va a su tienda; los demás, a una página con las dos. #}
-        <div class="spui-view-row">
-            <span class="spui-view-row-label">Android</span>
-            <span class="spui-view-row-value"><a href="{{ tiendas.android }}" target="_blank" rel="noopener noreferrer" style="word-break:break-all">{{ tiendas.android }}</a></span>
-        </div>
-        <div class="spui-view-row">
-            <span class="spui-view-row-label">iPhone</span>
-            <span class="spui-view-row-value"><a href="{{ tiendas.ios }}" target="_blank" rel="noopener noreferrer" style="word-break:break-all">{{ tiendas.ios }}</a></span>
-        </div>
-        <div class="spui-view-row">
-            <span class="spui-view-row-label">Otros</span>
-            <span class="spui-view-row-value text-muted">Una computadora o un iPad ven una página con las dos tiendas.</span>
-        </div>
-    {% else %}
-        <div class="spui-view-row">
-            <span class="spui-view-row-label">Destino</span>
-            <span class="spui-view-row-value">
-                <a href="{{ qr.urlDestino }}" target="_blank" rel="noopener noreferrer"
-                   style="word-break:break-all">{{ qr.urlDestino }}</a>
-            </span>
-        </div>
-    {% endif %}
-    <div class="spui-view-row">
-        <span class="spui-view-row-label">Expira</span>
-        <span class="spui-view-row-value">{{ qr.expiraEn ? qr.expiraEn|date('d/m/Y H:i') : 'Sin vencimiento' }}</span>
-    </div>
-    <div class="spui-view-row">
-        <span class="spui-view-row-label">Estado</span>
-        <span class="spui-view-row-value">{{ qr.estaVigente ? 'Vigente' : 'Vencido — ya no redirige' }}</span>
-    </div>
-    {# El número arranca con lo que dice la base y después lo mueve el broker:
-       qr-escaneos-vivo.js se suscribe por WebSocket al topic de este código y
-       lo actualiza en el instante del escaneo. Los data-* van acá y no en una
-       variable global porque este HTML se inyecta en el modal por AJAX: viajan
-       con el fragmento y desaparecen con él al cerrarlo.
-
-       Sin mqtt_web (broker caído, o contenido sin código) queda el número de la
-       base y nada más: el modal no intenta conectarse a ningún lado. #}
-    <div class="spui-view-row">
-        <span class="spui-view-row-label">Escaneos</span>
-        <span class="spui-view-row-value" data-spui-qr-escaneos
-              {% if mqtt_web|default(null) %}
-                  data-spui-mqtt-url="{{ mqtt_web.url }}"
-                  data-spui-mqtt-usuario="{{ mqtt_web.usuario }}"
-                  data-spui-mqtt-password="{{ mqtt_web.password }}"
-                  data-spui-mqtt-topic="{{ mqtt_web.topic }}"
-              {% endif %}>{{ qr.usosCount }}</span>
-    </div>
-</div>
-{% endif %}
-
-{# En qué playlists se usa: un mismo contenido puede estar en varias. #}
-<div class="spui-view-section">
-    <p class="spui-view-section-title">Playlists que lo usan · {{ contenido.playlistItems|length }}</p>
-    {% if contenido.playlistItems|length > 0 %}
-        <div class="spui-view-list">
-        {% for item in contenido.playlistItems %}
-            <div class="spui-view-list-item">
-                <span class="spui-view-list-bullet"></span>
-                <span>{{ item.playlist.nombre }}</span>
-                {# La duración ya no se pisa por playlist, así que lo útil acá es
-                   en qué posición aparece dentro de cada una. #}
-                <span class="spui-view-list-meta">posición {{ item.orden }}</span>
-            </div>
-        {% endfor %}
-        </div>
-    {% else %}
-        <p class="spui-view-empty">No se usa en ninguna playlist todavía</p>
-    {% endif %}
-</div>
-
-{% if contenido.alertas|length > 0 %}
-<div class="spui-view-section">
-    <p class="spui-view-section-title">Alertas que lo usan · {{ contenido.alertas|length }}</p>
-    <div class="spui-view-list">
-    {% for alerta in contenido.alertas %}
-        <div class="spui-view-list-item">
-            <span class="spui-view-list-bullet"></span>
-            <span>{{ alerta.titulo }}</span>
-            <span class="spui-view-list-meta">{{ alerta.activa ? 'Activa' : 'Inactiva' }}</span>
-        </div>
-    {% endfor %}
-    </div>
-</div>
-{% endif %}
-
-{% if contenido.tieneItemsPropios %}
-<div class="spui-view-section">
-    {# data-spui-abrir: reemplaza este modal por el listado de ítems (modal.js). #}
-    <button type="button" class="unraf-btn spui-btn-items unraf-btn-sm"
-            data-spui-abrir="{{ path('spui_cms_cronograma_items', {id: contenido.id}) }}"
-            data-spui-title="Ítems de «{{ contenido.titulo }}»"
-            data-spui-size="modal-lg">
-        <img src="{{ asset('unraf-ui/icons/calendar-dots.svg') }}" class="spui-action-icon" alt=""> Ver ítems del cronograma
-    </button>
-</div>
-{% endif %}

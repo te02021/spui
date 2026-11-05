@@ -151,8 +151,22 @@
         if (estado.volverA && estado.volverA.focus) estado.volverA.focus();
     }
 
+    // En el visor el video de la vista en el TV también se controla, y con sonido.
+    function conControles(tv) {
+        tv.querySelectorAll('video').forEach(function (v) {
+            v.controls = true;
+            v.loop = false;
+            v.muted = false;
+            v.removeAttribute('muted');
+        });
+    }
+
     function mostrar(cual) {
         estado.pestana = cual;
+        // El video de la pestaña que se deja no sigue sonando de fondo.
+        Object.keys(zonas).forEach(function (z) {
+            if (z !== cual) zonas[z].querySelectorAll('video').forEach(function (v) { v.pause(); });
+        });
         zonas.archivo.hidden = cual !== 'archivo';
         zonas.pantalla.hidden = cual !== 'pantalla';
         pestanas.forEach(function (b) {
@@ -225,6 +239,7 @@
         estado.pantallaLista = true;
         if (estado.pantallaHtml) {
             tv.innerHTML = estado.pantallaHtml;
+            conControles(tv);
             window.spui.vistaTv && window.spui.vistaTv.iniciar(tv);
             return;
         }
@@ -237,6 +252,7 @@
                 tmp.innerHTML = d.html || '';
                 var escala = tmp.querySelector('.spui-vista-previa-tv');
                 tv.innerHTML = escala ? escala.innerHTML : '';
+                conControles(tv);
                 window.spui.vistaTv && window.spui.vistaTv.iniciar(tv);
             })
             .catch(function () {

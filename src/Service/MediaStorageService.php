@@ -256,9 +256,12 @@ final class MediaStorageService
      * puede pesar más que el memory_limit de PHP (04/11/2026, en la VM son 128 MB
      * y se admiten hasta 200 MB). Devuelve el recurso y su tamaño, si se conoce.
      *
-     * @return array{recurso: resource, tamanio: ?int}|null
+     * Con $rango (cabecera Range de un solo tramo, de un navegador que salta en
+     * un video), S3 devuelve sólo ese tramo: `parcial` trae su Content-Range.
+     *
+     * @return array{recurso: resource, tamanio: ?int, parcial: ?string}|null
      */
-    public function abrirLectura(string $rutaRelativa): ?array
+    public function abrirLectura(string $rutaRelativa, ?string $rango = null): ?array
     {
         $clave = $this->claveDesdeRuta($rutaRelativa);
         if ($clave === null) {
@@ -268,12 +271,16 @@ final class MediaStorageService
         if (!$this->usaS3()) {
             $ruta = $this->uploadDir . '/' . $clave;
             $recurso = is_file($ruta) && is_readable($ruta) ? @fopen($ruta, 'rb') : false;
-            return $recurso === false ? null : ['recurso' => $recurso, 'tamanio' => (int) filesize($ruta)];
+            return $recurso === false ? null : ['recurso' => $recurso, 'tamanio' => (int) filesize($ruta), 'parcial' => null];
         }
 
         try {
             $url = $this->s3->getPresignedUrl(self::S3_PREFIX . $clave, 60);
-            $recurso = @fopen($url, 'rb', false, stream_context_create(['http' => ['timeout' => 30]]));
+            $http = ['timeout' => 30];
+            if ($rango !== null && preg_match('/^bytes=\d*-\d*$/', $rango) === 1) {
+                $http['header'] = 'Range: ' . $rango . "\r\n";
+            }
+            $recurso = @fopen($url, 'rb', false, stream_context_create(['http' => $http]));
         } catch (\Throwable $e) {
             $this->logger->warning('SPUI: no se pudo leer de S3: {msg}', ['msg' => $e->getMessage(), 'archivo' => $clave]);
             return null;
@@ -283,14 +290,19 @@ final class MediaStorageService
             return null;
         }
 
-        $tamanio = null;
+        $tamanio = $parcial = null;
         foreach (stream_get_meta_data($recurso)['wrapper_data'] ?? [] as $cabecera) {
-            if (is_string($cabecera) && preg_match('/^Content-Length:\s*(\d+)/i', $cabecera, $m)) {
+            if (!is_string($cabecera)) {
+                continue;
+            }
+            if (preg_match('/^Content-Length:\s*(\d+)/i', $cabecera, $m)) {
                 $tamanio = (int) $m[1];
+            } elseif (preg_match('/^Content-Range:\s*(.+)$/i', trim($cabecera), $m)) {
+                $parcial = $m[1];
             }
         }
 
-        return ['recurso' => $recurso, 'tamanio' => $tamanio];
+        return ['recurso' => $recurso, 'tamanio' => $tamanio, 'parcial' => $parcial];
     }
 
     /**
@@ -298,9 +310,9 @@ final class MediaStorageService
      * camino, la Pi lo nota igual: el tamaño no da y verifica el SHA-256 (CP07).
      * Devuelve null si el archivo no se pudo abrir.
      */
-    public function respuestaEnPartes(string $rutaRelativa): ?StreamedResponse
+    public function respuestaEnPartes(string $rutaRelativa, ?string $rango = null): ?StreamedResponse
     {
-        $archivo = $this->abrirLectura($rutaRelativa);
+        $archivo = $this->abrirLectura($rutaRelativa, $rango);
         if ($archivo === null) {
             return null;
         }
@@ -327,6 +339,12 @@ final class MediaStorageService
         $respuesta->headers->set('Content-Type', $this->tipoMimePorExtension($rutaRelativa));
         if ($archivo['tamanio'] !== null) {
             $respuesta->headers->set('Content-Length', (string) $archivo['tamanio']);
+        }
+        // Sin esto un <video> no puede saltar: la barra no adelanta (05/11/2026).
+        $respuesta->headers->set('Accept-Ranges', 'bytes');
+        if ($archivo['parcial'] !== null) {
+            $respuesta->setStatusCode(StreamedResponse::HTTP_PARTIAL_CONTENT);
+            $respuesta->headers->set('Content-Range', $archivo['parcial']);
         }
 
         return $respuesta;

@@ -25,7 +25,9 @@
     function escalar(escala) {
         var tv = escala.querySelector('.spui-tv');
         if (!tv || !escala.clientWidth) return;
-        tv.style.transform = 'scale(' + (escala.clientWidth / ANCHO) + ')';
+        // Con decimales: clientWidth redondea hacia abajo y quedaba una línea del
+        // fondo negro al costado. getComputedStyle no cambia con la animación del modal.
+        tv.style.transform = 'scale(' + (parseFloat(getComputedStyle(escala).width) / ANCHO) + ')';
         // Texto y páginas se arman recién cuando la vista se ve: oculta mide 0
         // de alto (la letra bajaría al mínimo y no entraría ninguna fila).
         if (!escala.dataset.spuiTvAjustado) {
@@ -257,7 +259,17 @@
         var cont = btn.closest('[data-spui-vista-previa-url]');
         var tv = cont && cont.querySelector('.spui-vista-previa-tv');
         if (!tv || !window.spui.abrirVisorPantalla) return;
-        window.spui.abrirVisorPantalla(limpia(tv).innerHTML, tv.getAttribute('data-spui-tv-titulo') || 'Vista previa');
+        var html = limpia(tv).innerHTML;
+        var titulo = tv.getAttribute('data-spui-tv-titulo') || 'Vista previa';
+        // Con un archivo (modal Ver), el visor completo: el video con sus
+        // controles, zoom, descarga y la pestaña En pantalla.
+        var archivo = cont.getAttribute('data-spui-archivo-url');
+        if (archivo && window.spui.abrirVisorMedia) {
+            window.spui.abrirVisorMedia(archivo, cont.getAttribute('data-spui-archivo-tipo'),
+                cont.getAttribute('data-spui-archivo-nombre') || titulo, { pantallaHtml: html, pestana: 'archivo' });
+            return;
+        }
+        window.spui.abrirVisorPantalla(html, titulo);
     });
 
     // Copia del TV como recién pintado (primera página, sin animación a

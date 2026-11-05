@@ -174,17 +174,17 @@ El modal **Ver** del contenido muestra lo elegido.
   - Se actualiza solo con cada cambio: plantilla, tema, título, texto, segundos por página.
   - Una imagen o un video recién elegido se ve antes de guardarlo.
   - Así se puede comparar cada plantilla y tema antes de decidir.
-- **Modal Ver:** la misma vista, arriba de todo.
+- **Modal Ver:** arriba, tres paneles con los datos (**Detalles**, **Cómo se ve en pantalla** y **Dónde se usa**) y, debajo, la única vista previa, a todo el ancho. En un cronograma propio, **Ver ítems** está al pie del segundo panel.
 - **Cronograma:**
   - Se ve con las actividades de hoy que todavía no terminaron, y las páginas pasan deslizándose cada los segundos elegidos.
   - Uno "del edificio de la pantalla" tiene un selector **Como en…** para elegir en qué edificio mirarlo.
 - **Debajo del TV:** una línea dice a qué hora corresponde lo que se ve y qué tema tomó el automático.
-- **Ampliar:** la abre en grande.
+- **Ampliar:** la abre en grande. Desde el modal **Ver**, si el contenido tiene archivo, abre el visor con todas las acciones.
 
-**Visor:** el ojo de un archivo (imagen, video o QR) lo abre a pantalla completa, sobre fondo oscuro.
+**Visor:** **Ampliar** en el modal **Ver**, o el ojo de un archivo en el formulario, lo abre a pantalla completa, sobre fondo oscuro.
 
 - **Pestañas:** **Archivo** (lo que se subió, con su tamaño en píxeles o la duración del video) y **En pantalla** (cómo se ve en el TV).
-- **Herramientas:** en una imagen, zoom con los botones o la rueda del mouse; tocar el porcentaje vuelve al 100%. Descargar y cerrar (también con Esc o tocando afuera).
+- **Herramientas:** un video trae sus controles y se puede adelantar con la barra; en una imagen, zoom con los botones o la rueda del mouse, y tocar el porcentaje vuelve al 100%. Descargar y cerrar (también con Esc o tocando afuera).
 - **Fondo a cuadros:** se ven las partes transparentes de una imagen.
 
 **Estados:** sólo dos.
@@ -300,8 +300,8 @@ como cualquier otro: Contenidos → Nuevo → tipo **QR**.
   un cartel. Cambiar el destino **no invalida** los QR ya impresos ni el que está en pantalla.
 - **Escaneos:** el contador se ve en el modal **Ver** del contenido, junto con su destino y su
   vencimiento, y **se actualiza solo, en el momento del escaneo**: si tenés el modal abierto, el
-  número cambia sin tocar nada ni recargar la página. La imagen del código se abre con el botón del
-  ojo, igual que la de una imagen o un video.
+  número cambia sin tocar nada ni recargar la página. La imagen del código se abre con **Ampliar**,
+  igual que la de una imagen o un video.
 - **Si alguien escanea un código eliminado o vencido** —queda impreso en un cartel, o guardado en el
   historial del teléfono— ve una pantalla que se lo explica, distinta según el caso, en vez de un
   error del navegador. Nunca se lo manda a otro destino sin avisar.
