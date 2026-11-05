@@ -7,11 +7,11 @@
    ========================================================= */
 .spui-tv-escala {
     position: relative; width: 100%; aspect-ratio: 16 / 9; overflow: hidden;
-    border-radius: 8px; background: #000; box-shadow: 0 6px 20px rgba(20, 35, 55, .22);
+    border-radius: 8px; box-shadow: 0 6px 20px rgba(20, 35, 55, .22);
 }
 .spui-tv {
     --tv-azul: #446687; --tv-azul-osc: #24394f; --tv-amarillo: #FEAA20; --tv-turquesa: #1CA1A7;
-    position: absolute; top: 0; left: 0; width: 1920px; height: 1080px; transform-origin: 0 0;
+    position: absolute; top: 0; left: 0; width: 1920px; height: 1080px; transform-origin: 0 0; background: #000;
     display: flex; flex-direction: column; overflow: hidden;
     font-family: 'Museo', sans-serif; font-weight: 300; line-height: 1.2;
 }
