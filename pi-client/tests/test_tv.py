@@ -141,7 +141,7 @@ class DibujoTest(unittest.TestCase):
 
     def test_cada_tipo_da_una_pantalla_completa(self):
         for c in ({'tipo': 'texto', 'contenido_texto': 'Hola ' * 300, 'presentacion': {'plantilla': 'institucional', 'tema': 'oscuro'}},
-                  {'tipo': 'qr', 'titulo': 'Encuesta', 'presentacion': {'plantilla': 'ninguna', 'tema': 'claro', 'marca_agua': True}},
+                  {'tipo': 'qr', 'titulo': 'Encuesta', 'presentacion': {'plantilla': 'ninguna', 'tema': 'claro'}},
                   {'tipo': 'imagen', 'presentacion': {'plantilla': 'institucional', 'tema': 'automatico'}},
                   {'tipo': 'texto', 'contenido_texto': None}):
             lam = self.d.lamina(c, LUNES_18, 'Campus E4')

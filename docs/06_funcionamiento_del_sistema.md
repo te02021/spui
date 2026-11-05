@@ -189,7 +189,7 @@ La migración `Version20261028190000` borró los contenidos de ese tipo que hab�
 
 **Texto, imagen, QR y cronograma se ven como en la vista previa del CMS** (desde noviembre 2026):
 
-- **Plantilla y tema.** Cada uno se dibuja con su plantilla (institucional o sin plantilla, con la marca de agua opcional) y su tema (claro, oscuro o automático).
+- **Plantilla y tema.** Cada uno se dibuja con su plantilla (institucional o sin plantilla) y su tema (claro, oscuro o automático).
   - Lo dibuja `spui/tv.py` con Pillow, con las medidas, colores y fuentes de `assets/spui/css/pantalla-tv.css`. Museo 300 y 700 y los logos van en `pi-client/assets/`. Si se cambia el CSS, hay que cambiar `tv.py`.
   - El automático es claro de 07:00 a 19:00. El horario llega en el sync (`tema_horario`) y se ajusta con `SPUI_TEMA_CLARO_DESDE` / `SPUI_TEMA_OSCURO_DESDE` en el CMS.
 - **La ventana.** Lo muestra una ventana pygame (`spui/ventana.py`, paquete `pygame-ce`), siempre la misma: un contenido reemplaza al otro sin que se abra ni se cierre nada.

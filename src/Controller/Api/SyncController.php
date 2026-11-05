@@ -368,7 +368,6 @@ class SyncController extends AbstractController
                 'presentacion'     => [
                     'plantilla'  => $c->getTipo() === TipoContenido::Video ? PlantillaPantalla::Ninguna->value : $c->getPlantilla()->value,
                     'tema'       => $c->getTema()->value,
-                    'marca_agua' => $c->isMarcaAgua(),
                 ],
                 'cronograma'       => $cronograma,
             ],

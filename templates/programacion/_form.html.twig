@@ -16,7 +16,7 @@
 {% import '@SPUI/_macros/form.html.twig' as campos %}
 
 <section class="spui-ver-seccion" aria-labelledby="spui-form-que">
-    <h5 class="spui-ver-titulo" id="spui-form-que">Qué se muestra</h5>
+    <h5 class="spui-ver-titulo" id="spui-form-que">¿Qué se muestra?</h5>
     <div class="spui-ver-bloque spui-form-fila spui-form-fila-principal">
         <div>
             {{ form_label(form.playlist) }}
@@ -34,7 +34,7 @@
 </section>
 
 <section class="spui-ver-seccion" aria-labelledby="spui-form-donde">
-    <h5 class="spui-ver-titulo" id="spui-form-donde">Dónde</h5>
+    <h5 class="spui-ver-titulo" id="spui-form-donde">¿Dónde?</h5>
     <div class="spui-ver-bloque spui-form-alcance" data-spui-alcance>
         <div>
             <span class="unraf-form-label d-block" id="spui-form-alcance-lbl">Pantallas</span>
@@ -63,7 +63,7 @@
 </section>
 
 <section class="spui-ver-seccion" aria-labelledby="spui-form-cuando">
-    <h5 class="spui-ver-titulo" id="spui-form-cuando">Cuándo</h5>
+    <h5 class="spui-ver-titulo" id="spui-form-cuando">¿Cuándo?</h5>
     <div class="spui-ver-bloque">
         <div class="spui-form-fila spui-form-fila-4">
             {% for campo in [form.horaInicio, form.horaFin, form.fechaInicio, form.fechaFin] %}

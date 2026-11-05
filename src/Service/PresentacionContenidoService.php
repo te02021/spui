@@ -51,8 +51,6 @@ class PresentacionContenidoService
         }
         $c->setPlantilla($plantilla);
         $c->setTema(TemaPantalla::tryFrom($p->getString('tema')) ?? TemaPantalla::Automatico);
-        // La institucional ya lleva el logo: la marca de agua sólo va sin plantilla.
-        $c->setMarcaAgua($plantilla === PlantillaPantalla::Ninguna && $p->getBoolean('marca_agua'));
 
         if ($tipo !== TipoContenido::Cronograma) {
             return null;
@@ -115,7 +113,6 @@ class PresentacionContenidoService
             return [
                 'plantilla'           => $p->getString('plantilla'),
                 'tema'                => $p->getString('tema') ?: TemaPantalla::Automatico->value,
-                'marca_agua'          => $p->getBoolean('marca_agua'),
                 'cronograma_origen'   => $p->getString('cronograma_origen') ?: OrigenCronograma::Propio->value,
                 'cronograma_edificio' => $p->getString('cronograma_edificio'),
                 'vigencia_desde'      => $p->getString('vigencia_desde'),
@@ -128,7 +125,6 @@ class PresentacionContenidoService
             // Vacío en el alta: content-type-fields.js pone la del tipo elegido.
             'plantilla'           => $c?->getId() ? $c->getPlantilla()->value : '',
             'tema'                => ($c?->getId() ? $c->getTema() : TemaPantalla::Automatico)->value,
-            'marca_agua'          => $c?->isMarcaAgua() ?? false,
             'cronograma_origen'   => ($c?->getCronogramaOrigen() ?? OrigenCronograma::Propio)->value,
             'cronograma_edificio' => (string) ($c?->getCronogramaEdificio()?->getId() ?? ''),
             'vigencia_desde'      => $c?->getVigenciaDesde()?->format('Y-m-d') ?? '',

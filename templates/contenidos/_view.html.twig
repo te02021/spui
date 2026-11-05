@@ -36,7 +36,7 @@
             <div><dt>Tipo</dt><dd>{{ contenido.tipo.etiqueta }}</dd></div>
             <div><dt>Estado</dt><dd><span class="spui-badge-{{ contenido.estado.value }}">{{ contenido.estado.etiqueta }}</span></dd></div>
             <div><dt>Duración</dt><dd>{{ contenido.etiquetaDuracion }}</dd></div>
-            <div><dt>Plantilla</dt><dd>{{ contenido.plantilla.etiqueta }}{{ contenido.plantilla.value == 'ninguna' and contenido.marcaAgua ? ', con el molino en una esquina' }}</dd></div>
+            <div><dt>Plantilla</dt><dd>{{ contenido.plantilla.etiqueta }}</dd></div>
             {# El horario del tema automático lo dice la línea debajo de la vista previa. #}
             <div><dt>Tema</dt><dd>{{ contenido.tema.etiqueta }}</dd></div>
             {% if contenido.esCronograma %}
@@ -113,7 +113,7 @@
     {% endif %}
 
     <section class="spui-ver-seccion" aria-labelledby="spui-ver-uso">
-        <h5 class="spui-ver-titulo" id="spui-ver-uso">Dónde se usa</h5>
+        <h5 class="spui-ver-titulo" id="spui-ver-uso">¿Dónde se usa?</h5>
         {% if contenido.playlistItems|length > 0 or contenido.alertas|length > 0 %}
             <div class="spui-ver-bloque">
             <ul class="spui-ver-usos">

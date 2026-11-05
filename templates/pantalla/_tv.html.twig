@@ -100,7 +100,6 @@
             </footer>
         {% else %}
             <div class="tv-completa">{{ _self.contenido(tv, media_url|default(null)) }}</div>
-            {% if tv.marca_agua %}<img class="tv-agua" src="{{ asset('spui/img/tv/unraf-molino.png') }}" alt="">{% endif %}
             {# Sin plantilla, la hora va en una píldora; no sobre un video (en
                la Pi lo dibuja VLC y no se le puede poner nada encima). #}
             {% if tv.tipo != 'video' %}<span class="tv-hora-pildora" data-spui-tv-hora>{{ tv.hora }}</span>{% endif %}

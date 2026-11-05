@@ -5,7 +5,6 @@
 // Desde noviembre 2026 también maneja la parte "Cómo se ve en pantalla"
 // (contenidos/_presentacion), con atributos genéricos:
 //   data-spui-solo-tipos="a b"   visible sólo con esos tipos de contenido
-//   data-spui-si-plantilla="x"   visible sólo con esa plantilla elegida
 //   data-spui-si-origen="x"      visible sólo con ese origen de cronograma
 // y, en el ítem de un cronograma, data-spui-si-tipo-item (días o fecha).
 (function () {
@@ -82,8 +81,6 @@
 
     function actualizarPresentacion(form, tipo, animar) {
         alternar(form, 'data-spui-solo-tipos', tipo, animar);
-        // Un video va siempre sin plantilla (y así lo manda el servidor).
-        alternar(form, 'data-spui-si-plantilla', tipo === 'video' ? 'ninguna' : elegido(form, 'plantilla'), animar);
         alternar(form, 'data-spui-si-origen', elegido(form, 'cronograma_origen') || 'propio', animar);
     }
 

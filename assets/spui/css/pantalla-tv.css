@@ -44,7 +44,6 @@
 /* Sin plantilla: de borde a borde */
 .tv-completa { flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 64px; }
 .spui-tv--imagen .tv-completa, .spui-tv--video .tv-completa { padding: 0; background: #000; }
-.tv-agua { position: absolute; right: 40px; bottom: 36px; width: 96px; height: 96px; padding: 10px; border-radius: 50%; background: #fff; opacity: .85; }
 
 /* Imagen y video: ocupan todo su espacio, sin recortar (el sobrante toma el
    color del tema con plantilla, negro sin plantilla). */

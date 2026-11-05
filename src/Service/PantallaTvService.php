@@ -58,7 +58,6 @@ class PantallaTvService
             'plantilla'  => $plantilla->value,
             'tema'       => $this->temaEfectivo($c->getTema(), $ahora),
             'tema_auto'  => $c->getTema() === TemaPantalla::Automatico,
-            'marca_agua' => $plantilla === PlantillaPantalla::Ninguna && $c->isMarcaAgua(),
             'fecha'      => $this->fechaLegible($ahora),
             // La hora en vivo (03/11/2026): la pone el servidor y vista-tv.js
             // la mantiene al día cada minuto, como la Pi.

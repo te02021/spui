@@ -1,11 +1,10 @@
-{# Cómo se ve el contenido en el TV: plantilla, tema, marca de agua y, en un cronograma,
+{
    de dónde salen sus clases y cómo pasan las páginas.
 
    Lo incluyen el alta (_form) y la edición (_edit_form); los campos los lee y
    valida PresentacionContenidoService. Qué parte se ve según el tipo y lo
    elegido lo resuelve content-type-fields.js con estos atributos:
      data-spui-solo-tipos="a b"     sólo con esos tipos de contenido
-     data-spui-si-plantilla="x"     sólo con esa plantilla elegida
      data-spui-si-origen="x"        sólo con ese origen de cronograma
    En la edición el tipo no cambia: va fijo en data-spui-tipo-fijo.
 
@@ -15,7 +14,7 @@
 {% set uid = tipo_fijo is defined ? 'ed' : 'al' %}
 
 <section class="spui-ver-seccion" aria-labelledby="{{ uid }}_presentacion" {% if tipo_fijo is defined %}data-spui-tipo-fijo="{{ tipo_fijo }}"{% endif %}>
-    <h5 class="spui-ver-titulo" id="{{ uid }}_presentacion">Cómo se ve en pantalla</h5>
+    <h5 class="spui-ver-titulo" id="{{ uid }}_presentacion">¿Cómo se ve en pantalla?</h5>
     <div class="spui-ver-bloque">
         <div class="spui-form-fila spui-form-fila-2">
             <div>
@@ -44,19 +43,9 @@
             </div>
         </div>
 
-        <div class="spui-form-separado" data-spui-si-plantilla="ninguna" hidden>
-            <div class="d-flex align-items-center gap-2">
-                <div class="form-switch m-0">
-                    <input class="form-check-input" type="checkbox" role="switch" name="marca_agua" value="1"
-                           id="{{ uid }}_marca_agua" {{ pv.marca_agua ? 'checked' }}>
-                </div>
-                <label class="form-check-label" for="{{ uid }}_marca_agua">Mostrar el molino de la UNRaf en una esquina</label>
-            </div>
-        </div>
-
         {# ── Sólo cronogramas ── #}
         <div class="spui-form-separado" data-spui-solo-tipos="cronograma" hidden>
-            <span class="unraf-form-label d-block" id="{{ uid }}_origen_lbl">Qué cronograma muestra</span>
+            <span class="unraf-form-label d-block" id="{{ uid }}_origen_lbl">¿Qué cronograma muestra?</span>
             <div class="spui-opciones" role="radiogroup" aria-labelledby="{{ uid }}_origen_lbl">
                 {% for op in enum('SPUI\\Enum\\OrigenCronograma').cases() %}
                     <input type="radio" class="spui-opcion-input" name="cronograma_origen" id="{{ uid }}_origen_{{ op.value }}"

@@ -154,7 +154,7 @@ Además se define **título** y **duración en segundos**:
 - **Un video no pide duración:** dura lo que dura el archivo. El CMS la lee al guardarlo y la muestra al editarlo; la playlist lo muestra completo.
 - **Un cronograma tampoco:** dura lo que tardan en pasar sus páginas (ver §3.2).
 
-**Cómo se ve en pantalla** (desde noviembre 2026), en el mismo formulario de alta y de edición:
+**¿Cómo se ve en pantalla?** (desde noviembre 2026), en el mismo formulario de alta y de edición:
 
 - **Plantilla:**
   - **Institucional:** arriba una franja blanca con el logo de la UNRaf y la fecha; abajo, el nombre del sistema y el lugar. El contenido ocupa el resto.
@@ -164,7 +164,6 @@ Además se define **título** y **duración en segundos**:
 - **Tema:**
   - **Claro** u **Oscuro**.
   - **Automático** (el que viene elegido): claro de 07:00 a 19:00 y oscuro el resto del día.
-- **Marca de agua:** sólo sin plantilla. Muestra el molino de la UNRaf chico en una esquina.
 
 El modal **Ver** del contenido muestra lo elegido.
 
@@ -206,7 +205,7 @@ Hasta el 29/10/2026 había además **Borrador** y **Publicar/Despublicar**: un c
 
 Un contenido tipo cronograma es una tabla de horarios (materias, aulas, docentes). Se carga **una vez por semana**, como el Excel de horarios: cada clase lleva los días en que se dicta, y cada pantalla muestra sólo lo del día.
 
-**Qué cronograma muestra** (al crearlo o editarlo):
+**¿Qué cronograma muestra?** (al crearlo o editarlo):
 
 - **Propio:**
   - Tiene sus clases, cargadas a mano o desde el Excel.
