@@ -234,6 +234,7 @@ class PlaylistCmsController extends AbstractController
                 'html'  => $this->renderView('@SPUI/playlists/_view.html.twig', [
                     'playlist'         => $playlist,
                     'creado_por_email' => $this->usuarios->email($playlist->getCreadoPorId()),
+                    'pantallas_respaldo' => $this->pantallaRepo->count(['playlistFallback' => $playlist]),
                 ]),
             ]);
         }

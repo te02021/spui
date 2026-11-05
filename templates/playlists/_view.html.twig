@@ -15,6 +15,7 @@
         <dl class="spui-ver-datos spui-ver-bloque">
             <div><dt>Ítems</dt><dd>{{ playlist.items|length }}</dd></div>
             <div><dt>Reglas que la usan</dt><dd>{{ playlist.programaciones|length }}</dd></div>
+            <div class="spui-ver-dato-largo"><dt>Pantallas que la usan de respaldo</dt><dd>{{ pantallas_respaldo }}</dd></div>
             <div class="spui-ver-dato-largo"><dt>Creada</dt><dd>{{ playlist.creadoEn|date('d/m/Y H:i') }}</dd></div>
             <div class="spui-ver-dato-largo"><dt>Última modificación</dt><dd>{{ playlist.actualizadoEn|date('d/m/Y H:i') }}</dd></div>
             <div class="spui-ver-dato-largo"><dt>Creada por</dt><dd>{{ creado_por_email|default('Usuario #' ~ playlist.creadoPorId) }}</dd></div>
