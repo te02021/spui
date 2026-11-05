@@ -13,8 +13,7 @@
     <div class="alert alert-danger mb-0">{{ e.message }}</div>
 {% endfor %}
 
-{% set swActivoId  = form.activo.vars.id %}
-{% set swRepetirId = form.repetirSemanal.vars.id %}
+{% import '@SPUI/_macros/form.html.twig' as campos %}
 
 <section class="spui-ver-seccion" aria-labelledby="spui-form-que">
     <h5 class="spui-ver-titulo" id="spui-form-que">Qué se muestra</h5>
@@ -30,15 +29,7 @@
             {% for e in form.prioridad.vars.errors %}<p class="spui-campo-error">{{ e.message }}</p>{% endfor %}
             <small class="spui-form-ayuda">A mayor número, más prioridad.</small>
         </div>
-        <div class="spui-switch-limpio">
-            <label class="unraf-form-label" for="{{ swActivoId }}">Estado</label>
-            <div class="d-flex align-items-center gap-2 spui-switch-fila">
-                <div class="form-switch m-0">
-                    {{ form_widget(form.activo, {'attr': {'class': 'form-check-input spui-switch-input', 'role': 'switch', 'data-spui-switch': '1', 'data-switch-on': 'Activa', 'data-switch-off': 'Inactiva'}}) }}
-                </div>
-                <span class="spui-switch-status {{ form.activo.vars.checked ? 'on' : 'off' }}" id="{{ swActivoId }}_lbl">{{ form.activo.vars.checked ? 'Activa' : 'Inactiva' }}</span>
-            </div>
-        </div>
+        <div>{{ campos.estado(form.activo, 'Activa', 'Inactiva') }}</div>
     </div>
 </section>
 
@@ -56,7 +47,11 @@
                 {% do form.alcance.setRendered() %}
             </div>
         </div>
-        <p class="spui-form-ayuda spui-form-alcance-nota" data-spui-si-alcance="todas" hidden>Se muestra en todas las pantallas activas.</p>
+        {# Del mismo alto que una lista: cambiar de opción no mueve lo de abajo. #}
+        <div data-spui-si-alcance="todas" hidden>
+            <span class="unraf-form-label d-block">Destino</span>
+            <div class="unraf-form-control spui-form-fijo">Todas las pantallas activas</div>
+        </div>
         {% for destino in [form.edificio, form.ubicacion, form.pantalla] %}
             <div data-spui-si-alcance="{{ destino.vars.name }}" hidden>
                 {{ form_label(destino) }}
@@ -95,16 +90,6 @@
                 {% do form.diasSemana.setRendered() %}
             </div>
             {% for e in form.diasSemana.vars.errors %}<p class="spui-campo-error">{{ e.message }}</p>{% endfor %}
-        </div>
-
-        <div class="spui-form-separado spui-switch-limpio">
-            <label class="unraf-form-label" for="{{ swRepetirId }}">Repetir cada semana</label>
-            <div class="d-flex align-items-center gap-2 spui-switch-fila">
-                <div class="form-switch m-0">
-                    {{ form_widget(form.repetirSemanal, {'attr': {'class': 'form-check-input spui-switch-secondary', 'role': 'switch', 'data-spui-switch': '1', 'data-switch-on': 'Sí', 'data-switch-off': 'No', 'data-switch-variant': 'azul'}}) }}
-                </div>
-                <span class="spui-switch-status {{ form.repetirSemanal.vars.checked ? 'on-azul' : 'off-azul' }}" id="{{ swRepetirId }}_lbl">{{ form.repetirSemanal.vars.checked ? 'Sí' : 'No' }}</span>
-            </div>
         </div>
     </div>
 </section>

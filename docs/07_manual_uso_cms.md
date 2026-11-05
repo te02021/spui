@@ -359,7 +359,7 @@ Al crear una regla:
 - **Horario:** hora de inicio y fin.
 - **Fechas:** desde (obligatoria) y hasta (opcional; vacío = sin vencimiento).
 - **Días:** los siete, con checkboxes. Hay que marcar **al menos uno**: si se desmarcan todos, el formulario lo avisa debajo y no guarda (antes se guardaba en silencio como "todos los días"). Para todos los días, marcar los siete.
-- **Prioridad:** un número. Si dos reglas aplican al mismo tiempo en la misma pantalla, **gana la de mayor prioridad**.
+- **Prioridad:** un número. Si dos reglas aplican al mismo tiempo en la misma pantalla, **gana la de mayor prioridad**, sea cual sea su alcance: una regla de todas las pantallas con prioridad 10 le gana a una de esa pantalla con prioridad 5. Conviene no repetir el número: con la misma prioridad, cuál gana no está definido.
 
 Las reglas se pueden desactivar sin borrarlas, para pausarlas temporalmente.
 

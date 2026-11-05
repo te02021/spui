@@ -134,13 +134,6 @@ class ProgramacionType extends AbstractType
                 // avisar. Ahora se exige al menos uno (decisión de Mateo, 10/10/2026).
                 'constraints' => [new Count(min: 1, minMessage: ProgramacionType::MSG_DIAS_REQUERIDOS)],
             ])
-            ->add('repetirSemanal', CheckboxType::class, [
-                'label'    => false,
-                'required' => false,
-                // Sin 'data' => true: forzaba "Sí" al editar y pisaba lo guardado.
-                // El valor inicial del alta lo da la entidad.
-                'attr'     => ['class' => 'form-check-input'],
-            ])
             ->add('prioridad', IntegerType::class, [
                 'label'      => 'Prioridad',
                 'label_attr' => ['class' => 'unraf-form-label'],

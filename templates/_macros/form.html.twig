@@ -1,0 +1,14 @@
+{# Piezas comunes de los formularios (estilos en .spui-form, style.css). #}
+
+{# Estado de un registro: dos opciones de lado a lado, del alto de los demás campos.
+   El dato sigue siendo un checkbox: prendido es la primera opción. #}
+{% macro estado(campo, si, no) %}
+    <span class="unraf-form-label d-block" id="{{ campo.vars.id }}_lbl">Estado</span>
+    <input type="checkbox" class="spui-opcion-input" role="switch" aria-labelledby="{{ campo.vars.id }}_lbl"
+           name="{{ campo.vars.full_name }}" id="{{ campo.vars.id }}" value="{{ campo.vars.value }}" {{ campo.vars.checked ? 'checked' }}>
+    <label class="spui-estado" for="{{ campo.vars.id }}">
+        <span class="spui-estado-si">{{ si }}</span>
+        <span class="spui-estado-no">{{ no }}</span>
+    </label>
+    {% do campo.setRendered() %}
+{% endmacro %}

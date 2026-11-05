@@ -18,7 +18,10 @@
             var visible = bloque.getAttribute('data-spui-si-alcance') === valor;
             bloque.hidden = !visible;
             if (visible || !limpiar) return;
-            bloque.querySelectorAll('select').forEach(function (s) { s.value = ''; });
+            bloque.querySelectorAll('select').forEach(function (s) {
+                s.value = '';
+                s.dispatchEvent(new Event('change', { bubbles: true }));
+            });
             bloque.querySelectorAll('.spui-campo-error').forEach(function (e) { e.remove(); });
             bloque.querySelectorAll('.is-invalid').forEach(function (e) { e.classList.remove('is-invalid'); });
         });

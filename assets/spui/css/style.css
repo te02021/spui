@@ -2983,13 +2983,59 @@ html.spui-sidebar-plegado .spui-sidebar-plegar img { transform: rotate(180deg); 
    Mismas secciones y bloques que los modales Ver (.spui-ver-titulo,
    .spui-ver-bloque), con los campos en columnas parejas. Cancelar y Guardar quedan
    siempre a la vista, aunque el formulario tenga scroll. */
-.spui-form { display: flex; flex-direction: column; gap: 1.25rem; }
+.spui-form { --spui-campo-alto: 2.8125rem; display: flex; flex-direction: column; gap: 1.25rem; }
 .spui-form .unraf-form-control, .spui-form .unraf-form-select { background-color: #fff; }
 .spui-form-fila { display: grid; gap: .85rem 1.25rem; align-items: start; }
 .spui-form-fila > div { min-width: 0; }
 .spui-form-fila-principal { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr); }
 .spui-form-fila-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .spui-form-ayuda { display: block; margin: .25rem 0 0; font-size: .78rem; color: #5f6b76; }
+/* Hora, fecha y números con el valor al centro; el ícono del calendario, al borde. */
+.spui-form input[type="number"] { text-align: center; }
+.spui-form input[type="time"], .spui-form input[type="date"] { position: relative; text-align: center; }
+.spui-form input[type="time"]::-webkit-date-and-time-value, .spui-form input[type="date"]::-webkit-date-and-time-value { text-align: center; }
+.spui-form input[type="time"]::-webkit-datetime-edit, .spui-form input[type="date"]::-webkit-datetime-edit { display: flex; justify-content: center; width: 100%; }
+.spui-form input[type="time"]::-webkit-calendar-picker-indicator, .spui-form input[type="date"]::-webkit-calendar-picker-indicator { position: absolute; right: .75rem; }
+/* Estado: dos opciones del alto de los demás campos, en vez de un interruptor. */
+.spui-estado {
+    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .2rem; margin: 0; padding: .2rem; min-height: var(--spui-campo-alto);
+    background: #fff; border: 1px solid #cfd8e1; border-radius: .375rem; cursor: pointer; user-select: none;
+}
+.spui-estado span {
+    display: flex; align-items: center; justify-content: center; min-width: 0; padding: 0 .25rem;
+    font-size: .875rem; font-weight: 600; color: #5f6b76; border-radius: .25rem; transition: background-color .15s ease, color .15s ease;
+}
+.spui-opcion-input:checked + .spui-estado .spui-estado-si { color: #fff; background: var(--unraf-success, #4A9930); }
+.spui-opcion-input:not(:checked) + .spui-estado .spui-estado-no { color: #fff; background: #6c7a89; }
+.spui-opcion-input:focus-visible + .spui-estado { outline: 3px solid rgba(51, 135, 239, .45); outline-offset: 1px; }
+/* Listas propias (core/selector.js): el <select> real queda invisible debajo. */
+.spui-select { position: relative; }
+.spui-select-nativo { position: absolute; bottom: 0; left: 0; width: 100%; height: 1px; opacity: 0; pointer-events: none; }
+.spui-select-btn { display: flex; align-items: center; gap: .5rem; width: 100%; text-align: left; cursor: pointer; }
+.spui-select-texto { overflow: hidden; color: #2b3a4a; white-space: nowrap; text-overflow: ellipsis; }
+.spui-select-texto.is-vacio { color: #7b8794; }
+.spui-select-detalle { flex: 0 1 auto; overflow: hidden; font-size: .8rem; color: #5f6b76; white-space: nowrap; text-overflow: ellipsis; }
+.spui-select-btn[aria-expanded="true"], .spui-select-btn:focus-visible { border-color: var(--unraf-azul, #446687); outline: 0; box-shadow: 0 0 0 3px rgba(68, 102, 135, .18); }
+.spui-select:has(> select.is-invalid) .spui-select-btn { border-color: var(--unraf-error, #FF223D); }
+.spui-select-panel {
+    position: fixed; z-index: 10040; display: flex; flex-direction: column; padding: .3rem; overflow: hidden;
+    background: #fff; border: 1px solid #d5dbe1; border-radius: .6rem; box-shadow: 0 12px 32px rgba(20, 35, 55, .22); animation: spui-select-abrir .12s ease-out;
+}
+@keyframes spui-select-abrir { from { opacity: 0; transform: translateY(-4px); } }
+@media (prefers-reduced-motion: reduce) { .spui-select-panel { animation: none; } }
+.spui-select-buscar { flex: 0 0 auto; width: 100%; margin-bottom: .3rem; padding: .45rem .6rem; font-size: .875rem; border: 1px solid #d5dbe1; border-radius: .4rem; outline: 0; }
+.spui-select-buscar:focus { border-color: var(--unraf-azul, #446687); }
+.spui-select-lista { flex: 1 1 auto; max-height: 15rem; margin: 0; padding: 0; overflow-y: auto; list-style: none; }
+.spui-select-lista li { display: flex; align-items: center; justify-content: space-between; gap: .6rem; padding: .5rem .65rem; font-size: .9rem; color: #2b3a4a; border-radius: .4rem; cursor: pointer; }
+.spui-select-lista li[hidden] { display: none; }
+.spui-select-lista li.is-activo { background: #eef2f6; }
+.spui-select-lista li[aria-selected="true"] { font-weight: 600; color: var(--unraf-azul, #446687); }
+.spui-select-lista li img { flex-shrink: 0; width: 1rem; height: 1rem; }
+.spui-select-op-texto { min-width: 0; overflow-wrap: anywhere; }
+.spui-select-op-texto.is-vacio { color: #5f6b76; }
+.spui-select-op-texto small { display: block; font-size: .76rem; font-weight: 400; color: #5f6b76; }
+.spui-select-vacio { margin: 0; padding: .6rem .65rem; font-size: .85rem; color: #5f6b76; }
+.spui-select-vacio[hidden] { display: none; }
 .spui-form-separado { margin-top: .85rem; padding-top: .85rem; border-top: 1px solid #e9ecef; }
 .spui-form-pie {
     position: sticky; bottom: calc(-1 * var(--spui-modal-pad-y)); z-index: 5; display: flex; justify-content: flex-end; gap: .5rem;
@@ -3000,7 +3046,7 @@ html.spui-sidebar-plegado .spui-sidebar-plegar img { transform: rotate(180deg); 
 .spui-form-alcance { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: .75rem 1.5rem; align-items: start; }
 .spui-form-alcance > [hidden] { display: none; }
 .spui-form-alcance .spui-opciones { background: #fff; }
-.spui-form-alcance-nota { margin: 0; align-self: end; padding-bottom: .55rem; }
+.spui-form .spui-form-fijo { display: flex; align-items: center; color: #5f6b76; background: #eef1f4; }
 /* Días: los siete de lado a lado; prendidos en azul, como en el modal Ver. */
 .spui-form-dias { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: .35rem; }
 .spui-form-dias > div { position: relative; min-width: 0; }
@@ -3016,7 +3062,6 @@ html.spui-sidebar-plegado .spui-sidebar-plegar img { transform: rotate(180deg); 
     .spui-form-alcance { grid-template-columns: minmax(0, 1fr); }
     .spui-form-alcance .spui-opciones { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .spui-form-alcance .spui-opcion { text-align: center; border-left: 0; }
-    .spui-form-alcance-nota { padding-bottom: 0; }
 }
 @media (max-width: 575.98px) {
     .spui-form-fila-principal { grid-template-columns: repeat(2, minmax(0, 1fr)); }

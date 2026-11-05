@@ -50,7 +50,6 @@
             <div class="spui-chips">
                 <span class="spui-chip" title="Destino"><img src="{{ asset('unraf-ui/icons/' ~ (prog.pantalla ? 'monitor.svg' : (prog.ubicacion ? 'map-pin.svg' : (prog.edificio ? 'buildings.svg' : 'globe.svg')))) }}" alt=""> {{ destino }}</span>
                 <span class="spui-chip"><img src="{{ asset('unraf-ui/icons/clock.svg') }}" alt=""> {{ prog.horaInicio|date('H:i') }} – {{ prog.horaFin|date('H:i') }}</span>
-                {% if prog.repetirSemanal %}
                     <span class="spui-desp">
                         <button type="button" class="spui-chip spui-chip-btn" data-spui-desp
                                 aria-expanded="false" aria-controls="regla-{{ prog.id }}-dias"
@@ -68,11 +67,6 @@
                             </ul>
                         </div>
                     </span>
-                {% else %}
-                    <span class="spui-chip"><img src="{{ asset('unraf-ui/icons/calendar-dots.svg') }}" alt="">
-                        Única vez{% if prog.fechaInicio %}: {{ prog.fechaInicio|date('d/m/Y') }}{% if prog.fechaFin and prog.fechaFin|date('Ymd') != prog.fechaInicio|date('Ymd') %} al {{ prog.fechaFin|date('d/m/Y') }}{% endif %}{% endif %}
-                    </span>
-                {% endif %}
                 <span class="spui-chip" title="Entre reglas que coinciden, gana la de mayor prioridad"><img src="{{ asset('unraf-ui/icons/sort-descending.svg') }}" alt=""> Prioridad {{ prog.prioridad }}</span>
             </div>
         </div>
