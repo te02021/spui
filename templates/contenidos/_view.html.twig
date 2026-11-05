@@ -1,7 +1,7 @@
 {# Detalle de un contenido (rediseñado el 05/11/2026, pedido de Mateo). El título
-   es el del modal. Cada sección es un solo bloque, sin un marco por dato, que
-   mide lo que su contenido y nunca todo el ancho si no lo necesita. Abajo, la
-   única vista previa: "Ampliar" abre el visor con todo (core/media-viewer.js).
+   es el del modal. Cada sección es un bloque a todo el ancho, sin un marco por
+   dato, y lo que tiene adentro lo llena: las columnas salen de cuántos datos hay
+   (style.css). Abajo, la única vista previa: "Ampliar" abre el visor con todo (core/media-viewer.js).
    Un dato sin cargar se omite, no se muestra un guión. #}
 {% macro enlace(etiqueta, icono, url) %}
     <div class="spui-ver-enlace">
@@ -57,10 +57,10 @@
                 <div><dt>Cada página</dt><dd>{{ contenido.segundosPorPagina ?? constant('SPUI\\Service\\PresentacionContenidoService::SEG_PAGINA_DEFECTO') }} s</dd></div>
             {% endif %}
             <div><dt>Creado</dt><dd>{{ contenido.creadoEn|date('d/m/Y H:i') }}</dd></div>
-            <div><dt>Última modificación</dt><dd>{{ contenido.actualizadoEn|date('d/m/Y H:i') }}</dd></div>
+            <div class="spui-ver-dato-largo"><dt>Última modificación</dt><dd>{{ contenido.actualizadoEn|date('d/m/Y H:i') }}</dd></div>
             <div class="spui-ver-dato-largo"><dt>Creado por</dt><dd>{{ creado_por_email|default('Usuario #' ~ contenido.creadoPorId) }}</dd></div>
             {% if contenido.rutaArchivo and contenido.tipo.value != 'qr' %}
-                <div class="spui-ver-dato-doble"><dt>Archivo</dt><dd>{{ contenido.rutaArchivo|split('/')|last }}</dd></div>
+                <div class="spui-ver-dato-largo"><dt>Archivo</dt><dd>{{ contenido.rutaArchivo|split('/')|last }}</dd></div>
             {% endif %}
         </dl>
     </section>
@@ -90,7 +90,7 @@
             {% if tiendas %}
                 <p class="spui-ver-nota">Cada teléfono va a su tienda. Una computadora o un iPad ven una página con las dos.</p>
             {% endif %}
-            <dl class="spui-ver-datos spui-ver-datos-tres">
+            <dl class="spui-ver-datos">
                 <div><dt>Vencimiento</dt><dd>{{ qr.expiraEn ? qr.expiraEn|date('d/m/Y H:i') : 'Sin vencimiento' }}</dd></div>
                 <div><dt>Vigencia</dt><dd>{{ qr.estaVigente ? 'Vigente' : 'Vencido: ya no redirige' }}</dd></div>
                 {# El número arranca con lo que dice la base y después lo mueve el broker:
@@ -127,7 +127,7 @@
             </ul>
             </div>
         {% else %}
-            <p class="spui-ver-nota mt-0">Todavía no está en ninguna playlist ni alerta.</p>
+            <div class="spui-ver-bloque"><p class="spui-ver-texto">Todavía no está en ninguna playlist ni alerta.</p></div>
         {% endif %}
     </section>
 
