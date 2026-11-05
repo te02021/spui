@@ -115,7 +115,7 @@
     <section class="spui-ver-seccion" aria-labelledby="spui-ver-uso">
         <h5 class="spui-ver-titulo" id="spui-ver-uso">Dónde se usa</h5>
         {% if contenido.playlistItems|length > 0 or contenido.alertas|length > 0 %}
-            <div class="spui-ver-bloque">
+            <div class="spui-ver-bloque spui-ver-bloque-ajustado">
             <ul class="spui-ver-usos">
                 {# La duración ya no se pisa por playlist: lo útil es la posición en cada una. #}
                 {% for item in contenido.playlistItems %}
@@ -132,7 +132,7 @@
     </section>
 
     {# La única vista previa. La pide sola core/vista-tv.js; si hay archivo, Ampliar lo abre con todo en el visor. #}
-    <section class="spui-ver-seccion" aria-labelledby="spui-ver-previa-titulo">
+    <section class="spui-ver-seccion spui-ver-previa" aria-labelledby="spui-ver-previa-titulo">
         <h5 class="spui-ver-titulo" id="spui-ver-previa-titulo">Vista previa</h5>
         <div class="spui-vista-previa spui-vista-previa-ver"
              data-spui-vista-previa-url="{{ path('spui_cms_contenidos_pantalla', {id: contenido.id}) }}"

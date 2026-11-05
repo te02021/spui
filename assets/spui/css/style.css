@@ -3021,18 +3021,30 @@ html.spui-sidebar-plegado .spui-sidebar-plegar img { transform: rotate(180deg); 
 .spui-ver-bloque > .spui-ver-datos { margin-top: .85rem; padding-top: .85rem; border-top: 1px solid #e9ecef; }
 .spui-ver-texto { margin: 0; font-size: .9rem; line-height: 1.55; color: #2b3a4a; white-space: pre-line; overflow-wrap: anywhere; }
 
-/* Dónde se usa: una lista simple, en las mismas columnas. */
-.spui-ver-usos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem 1.5rem; max-height: 9rem; margin: 0; padding: 0; overflow-y: auto; list-style: none; }
+/* Dónde se usa: el bloque mide lo que su contenido, no todo el ancho. */
+.spui-ver-bloque-ajustado { width: fit-content; max-width: 100%; }
+.spui-ver-usos { display: flex; flex-wrap: wrap; gap: .5rem 2rem; max-height: 9rem; margin: 0; padding: 0; overflow-y: auto; list-style: none; }
 .spui-ver-usos li { display: flex; align-items: baseline; gap: .5rem; min-width: 0; font-size: .9rem; font-weight: 600; color: #2b3a4a; }
 .spui-ver-usos li span { min-width: 0; overflow-wrap: anywhere; }
 .spui-ver-usos small { flex-shrink: 0; font-size: .75rem; font-weight: 400; color: #5f6b76; white-space: nowrap; }
 .spui-ver .spui-vista-previa-ver { margin-bottom: 0; }
+
+/* Vista previa: el título con Ampliar a su altura, la explicación debajo y
+   recién ahí el TV. Sólo acá: en los formularios sigue debajo del TV. */
+.spui-ver-previa { position: relative; }
+.spui-ver-previa .spui-ver-titulo { display: flex; align-items: center; min-height: 2.375rem; margin-bottom: 0; }
+.spui-ver-previa .spui-vista-previa { display: flex; flex-direction: column; }
+.spui-ver-previa .spui-vista-previa-pie { order: -1; margin: 0 0 .6rem; }
+.spui-ver-previa .spui-vista-previa-acciones { position: absolute; top: 0; right: 0; height: 2.375rem; margin: 0; }
+.spui-ver-previa .spui-vista-previa-acciones .unraf-btn { min-height: 2.125rem; padding-top: .2rem; padding-bottom: .2rem; }
 
 /* Celular: dos columnas de datos y una de enlaces. */
 @media (max-width: 575.98px) {
     .spui-ver-bloque { padding: .75rem .85rem; }
     .spui-ver-datos { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem 1rem; }
     .spui-ver-dato-largo { grid-column: span 2; }
-    .spui-ver-enlaces, .spui-ver-usos { grid-template-columns: minmax(0, 1fr); }
+    .spui-ver-enlaces { grid-template-columns: minmax(0, 1fr); }
+    /* Con el selector de edificio no entran junto al título: bajan de renglón. */
+    .spui-ver-previa .spui-vista-previa-acciones:has(select) { position: static; height: auto; }
     .spui-ver-icono-btn { width: 2.375rem; height: 2.375rem; }
 }

@@ -178,12 +178,12 @@ El modal **Ver** del contenido muestra lo elegido.
 - **Cronograma:**
   - Se ve con las actividades de hoy que todavía no terminaron, y las páginas pasan deslizándose cada los segundos elegidos.
   - Uno "del edificio de la pantalla" tiene un selector **Como en…** para elegir en qué edificio mirarlo.
-- **Debajo del TV:** una línea dice a qué hora corresponde lo que se ve y qué tema tomó el automático.
+- **Junto al TV:** una línea dice a qué hora corresponde lo que se ve y qué tema tomó el automático. En el formulario va debajo; en el modal **Ver**, arriba, con **Ampliar** a la altura del título.
 - **Ampliar:** la abre en grande. Desde el modal **Ver**, si el contenido tiene archivo, abre el visor con todas las acciones.
 
 **Visor:** **Ampliar** en el modal **Ver**, o el ojo de un archivo en el formulario, lo abre a pantalla completa, sobre fondo oscuro.
 
-- **Pestañas:** **Archivo** (lo que se subió, con su tamaño en píxeles o la duración del video) y **En pantalla** (cómo se ve en el TV).
+- **Pestañas:** **Archivo** (lo que se subió, con su tamaño en píxeles o la duración del video) y **En pantalla** (cómo se ve en el TV, sin controles ni sonido).
 - **Herramientas:** un video trae sus controles y se puede adelantar con la barra; en una imagen, zoom con los botones o la rueda del mouse, y tocar el porcentaje vuelve al 100%. Descargar y cerrar (también con Esc o tocando afuera).
 - **Fondo a cuadros:** se ven las partes transparentes de una imagen.
 
